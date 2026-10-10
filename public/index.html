@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NEC 团队 AI 中台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+  .tab-active { border-bottom: 3px solid #f97316; color: #f97316; }
+  pre.prompt { white-space: pre-wrap; word-break: break-all; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+
+<header class="bg-white shadow-sm">
+  <div class="max-w-5xl mx-auto px-6 py-5 flex items-center gap-4">
+    <div class="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center font-bold text-lg">N</div>
+    <div>
+      <h1 class="text-xl font-bold">NEC 团队 AI 中台</h1>
+      <p class="text-xs text-gray-500">应用广场 · Skill 中心 · 数据看板 · 我的 Agent</p>
+    </div>
+    <span id="health" class="ml-auto text-xs px-2 py-1 rounded bg-gray-100 text-gray-500">连接中…</span>
+  </div>
+  <nav class="max-w-5xl mx-auto px-6 flex gap-6 text-sm font-medium text-gray-500">
+    <button data-tab="apps" class="tab-btn py-3 tab-active">应用广场</button>
+    <button data-tab="skills" class="tab-btn py-3">Skill 中心</button>
+    <button data-tab="dashboard" class="tab-btn py-3">数据看板</button>
+    <button data-tab="agent" class="tab-btn py-3">我的 Agent</button>
+  </nav>
+</header>
+
+<main class="max-w-5xl mx-auto px-6 py-8">
+
+  <!-- 应用广场 -->
+  <section id="tab-apps">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">应用广场</h2>
+      <button onclick="showPublishPrompt()" class="text-sm bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg">＋ 发布我的应用</button>
+    </div>
+    <div id="publish-box" class="hidden mb-6 bg-white rounded-xl shadow p-5">
+      <h3 class="font-bold mb-2">上架 Prompt（复制后发给你的 Agent）</h3>
+      <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="publish-prompt"></pre>
+      <button onclick="copyText('publish-prompt')" class="mt-3 text-sm bg-gray-800 text-white px-3 py-1.5 rounded">复制</button>
+    </div>
+    <div id="apps-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  </section>
+
+  <!-- Skill 中心 -->
+  <section id="tab-skills" class="hidden">
+    <h2 class="text-lg font-bold mb-4">Skill 中心</h2>
+    <div id="skills-list" class="space-y-3"></div>
+  </section>
+
+  <!-- 数据看板 -->
+  <section id="tab-dashboard" class="hidden">
+    <h2 class="text-lg font-bold mb-4">数据看板</h2>
+    <div class="bg-white rounded-xl shadow p-6 text-sm text-gray-600 space-y-2">
+      <p>📊 数据源为飞书多维表格（队员名单 / 任务进度 / 物资台账 / 财务报销）。</p>
+      <p>当前为 MVP 占位：待飞书自建应用配置完成后，此处将实时渲染任务进度与物资余量。</p>
+      <p class="text-gray-400">配置项：FEISHU_APP_ID / FEISHU_APP_SECRET（wrangler secret）</p>
+    </div>
+  </section>
+
+  <!-- 我的 Agent -->
+  <section id="tab-agent" class="hidden">
+    <h2 class="text-lg font-bold mb-4">接入我的 Agent</h2>
+    <div class="bg-white rounded-xl shadow p-5">
+      <h3 class="font-bold mb-2">接入 Prompt（复制后发给 Claude Code / Kimi CLI / Codex）</h3>
+      <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="join-prompt"></pre>
+      <button onclick="copyText('join-prompt')" class="mt-3 text-sm bg-gray-800 text-white px-3 py-1.5 rounded">复制</button>
+    </div>
+  </section>
+
+</main>
+
+<footer class="max-w-5xl mx-auto px-6 py-8 text-xs text-gray-400">
+  NEC 团队 AI 中台 MVP · Cloudflare Workers + KV + R2 · 数据基建在飞书
+</footer>
+
+<script>
+const ORIGIN = location.origin;
+
+document.getElementById("join-prompt").textContent =
+`请帮我接入 NEC 团队中台 MCP：
+1. 安装 MCP server，地址：${ORIGIN}/mcp （streamable HTTP 传输）
+   - Claude Code: claude mcp add --transport http nec-hub ${ORIGIN}/mcp
+   - Kimi CLI / Codex: 在 MCP 配置中加入同一地址
+2. 完成后调用 nec-hub 的 ping 工具验证连接，并告诉我结果`;
+
+document.getElementById("publish-prompt").textContent =
+`请把当前项目发布到 NEC 团队应用广场：
+1. 收集本项目的静态文件（入口必须是 index.html，含引用的 CSS/JS/图片）
+2. 调用 nec-hub MCP 的 deploy_app 工具：
+   - name 用小写连字符命名（如 inventory-check）
+   - title 用中文展示名，author 填我的名字
+3. 成功后把访问链接发给我`;
+
+// Tab 切换
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("tab-active"));
+    btn.classList.add("tab-active");
+    ["apps","skills","dashboard","agent"].forEach(t =>
+      document.getElementById("tab-"+t).classList.toggle("hidden", t !== btn.dataset.tab));
+  });
+});
+
+function showPublishPrompt() {
+  document.getElementById("publish-box").classList.toggle("hidden");
+}
+
+function copyText(id) {
+  navigator.clipboard.writeText(document.getElementById(id).textContent);
+}
+
+// 健康检查
+fetch("/api/health").then(r => r.json()).then(d => {
+  const el = document.getElementById("health");
+  el.textContent = "● 服务正常";
+  el.className = "ml-auto text-xs px-2 py-1 rounded bg-green-100 text-green-700";
+}).catch(() => {
+  const el = document.getElementById("health");
+  el.textContent = "● 连接失败";
+  el.className = "ml-auto text-xs px-2 py-1 rounded bg-red-100 text-red-600";
+});
+
+// 应用广场
+fetch("/api/apps").then(r => r.json()).then(apps => {
+  const box = document.getElementById("apps-list");
+  if (!apps.length) {
+    box.innerHTML = `<div class="col-span-full bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">
+      还没有应用上架。<br/>点击右上角「发布我的应用」，把 Prompt 发给你的 Agent 即可上架第一个应用。</div>`;
+    return;
+  }
+  box.innerHTML = apps.map(a => `
+    <a href="${a.url}" target="_blank" class="block bg-white rounded-xl shadow hover:shadow-md transition p-5">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold">${esc(a.title)}</h3>
+        <span class="text-xs text-gray-400">v${esc(a.version)}${a.external ? ' · 外链' : ''}</span>
+      </div>
+      <p class="text-xs text-gray-500 mt-1">${esc(a.name)} · ${esc(a.author)}</p>
+      <p class="text-xs text-gray-400 mt-2">更新于 ${new Date(a.updatedAt).toLocaleString("zh-CN")}</p>
+    </a>`).join("");
+});
+
+// Skill 中心
+fetch("/api/skills").then(r => r.json()).then(skills => {
+  const box = document.getElementById("skills-list");
+  if (!skills.length) {
+    box.innerHTML = `<div class="bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">还没有 Skill 上架。</div>`;
+    return;
+  }
+  box.innerHTML = skills.map(s => `
+    <div class="bg-white rounded-xl shadow p-5 flex items-center gap-4">
+      <div class="flex-1">
+        <h3 class="font-bold">${esc(s.name)}</h3>
+        <p class="text-sm text-gray-500">${esc(s.description || "")}</p>
+        <p class="text-xs text-gray-400 mt-1">更新于 ${new Date(s.updatedAt).toLocaleString("zh-CN")}</p>
+      </div>
+      <a href="${ORIGIN}/skills/${encodeURIComponent(s.name)}/SKILL.md" target="_blank"
+         class="text-sm text-orange-500 hover:underline">查看 SKILL.md</a>
+    </div>`).join("");
+});
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+</script>
+</body>
+</html>

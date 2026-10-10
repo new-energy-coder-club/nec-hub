@@ -1,0 +1,31 @@
+{
+  "name": "nec-hub",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-08",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "assets": {
+    "directory": "./public/",
+    "binding": "ASSETS"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "REGISTRY",
+      "id": "nec-hub-registry",
+      "preview_id": "nec-hub-registry-preview"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "APPS_BUCKET",
+      "bucket_name": "nec-hub-apps",
+      "preview_bucket_name": "nec-hub-apps-preview"
+    }
+  ],
+  "vars": {
+    "HUB_NAME": "NEC 团队 AI 中台"
+  }
+}
