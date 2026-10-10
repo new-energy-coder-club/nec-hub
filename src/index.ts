@@ -72,6 +72,9 @@ export default {
       if (url.pathname === "/mcp" && request.method === "POST") {
         return await handleMcp(request, env);
       }
+      if (url.pathname === "/auth/feishu") {
+        return await handleFeishuAuth(request, env);
+      }
       if (url.pathname === "/api/health") {
         return json({ ok: true, service: env.HUB_NAME ?? "nec-hub", time: new Date().toISOString() });
       }
@@ -93,6 +96,104 @@ export default {
     }
   },
 } satisfies ExportedHandler<Env>;
+
+// ---------- 飞书免登（auth code 兑换用户信息） ----------
+
+const FEISHU_API = "https://open.feishu.cn/open-apis";
+
+function corsHeaders(request: Request): Record<string, string> {
+  const origin = request.headers.get("origin") ?? "*";
+  return {
+    "access-control-allow-origin": origin,
+    "access-control-allow-methods": "POST, OPTIONS",
+    "access-control-allow-headers": "content-type",
+    vary: "origin",
+  };
+}
+
+async function handleFeishuAuth(request: Request, env: Env): Promise<Response> {
+  const cors = corsHeaders(request);
+  const jsonCors = (data: unknown, status = 200) =>
+    new Response(JSON.stringify(data, null, 2), {
+      status,
+      headers: { "content-type": "application/json; charset=utf-8", ...cors },
+    });
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+  if (request.method !== "POST") return jsonCors({ error: "method not allowed" }, 405);
+  if (!env.FEISHU_APP_ID || !env.FEISHU_APP_SECRET) {
+    return jsonCors(
+      { error: "飞书自建应用未配置：请先 wrangler secret put FEISHU_APP_ID / FEISHU_APP_SECRET" },
+      500,
+    );
+  }
+  const { code } = (await request.json()) as { code?: string };
+  if (!code) return jsonCors({ error: "missing code" }, 400);
+
+  // 1. app_access_token（KV 缓存，提前 5 分钟过期）
+  const appToken = await getAppAccessToken(env);
+
+  // 2. code → user_access_token
+  const tokenResp = await fetch(`${FEISHU_API}/authen/v1/oidc/access_token`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      authorization: `Bearer ${appToken}`,
+    },
+    body: JSON.stringify({ grant_type: "authorization_code", code }),
+  });
+  const tokenData = (await tokenResp.json()) as {
+    code?: number;
+    msg?: string;
+    data?: { access_token?: string };
+  };
+  const userToken = tokenData.data?.access_token;
+  if (tokenData.code !== 0 || !userToken) {
+    return jsonCors({ error: `飞书 code 兑换失败：${tokenData.msg ?? "unknown"}（code 可能已过期，请重新登录）` }, 401);
+  }
+
+  // 3. 取用户信息
+  const userResp = await fetch(`${FEISHU_API}/authen/v1/user_info`, {
+    headers: { authorization: `Bearer ${userToken}` },
+  });
+  const userData = (await userResp.json()) as {
+    code?: number;
+    msg?: string;
+    data?: { name?: string; en_name?: string; open_id?: string; avatar_url?: string };
+  };
+  if (userData.code !== 0 || !userData.data) {
+    return jsonCors({ error: `获取用户信息失败：${userData.msg ?? "unknown"}` }, 502);
+  }
+
+  return new Response(
+    JSON.stringify({
+      name: userData.data.name,
+      en_name: userData.data.en_name,
+      open_id: userData.data.open_id,
+      avatar_url: userData.data.avatar_url,
+    }),
+    { headers: { "content-type": "application/json; charset=utf-8", ...cors } },
+  );
+}
+
+async function getAppAccessToken(env: Env): Promise<string> {
+  const cached = await env.REGISTRY.get("feishu:app_access_token", "json") as
+    | { token: string; expireAt: number }
+    | null;
+  if (cached && cached.expireAt > Date.now()) return cached.token;
+
+  const resp = await fetch(`${FEISHU_API}/auth/v3/app_access_token/internal`, {
+    method: "POST",
+    headers: { "content-type": "application/json; charset=utf-8" },
+    body: JSON.stringify({ app_id: env.FEISHU_APP_ID, app_secret: env.FEISHU_APP_SECRET }),
+  });
+  const data = (await resp.json()) as { code?: number; msg?: string; app_access_token?: string; expire?: number };
+  if (data.code !== 0 || !data.app_access_token) {
+    throw new Error(`获取 app_access_token 失败：${data.msg ?? "unknown"}`);
+  }
+  const expireAt = Date.now() + ((data.expire ?? 7200) - 300) * 1000;
+  await env.REGISTRY.put("feishu:app_access_token", JSON.stringify({ token: data.app_access_token, expireAt }));
+  return data.app_access_token;
+}
 
 // ---------- 应用 / Skill 托管 ----------
 
