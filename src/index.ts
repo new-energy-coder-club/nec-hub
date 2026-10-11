@@ -717,6 +717,20 @@ const TOOLS = [
     },
   },
   {
+    name: "setup_bitable",
+    description:
+      "数据基建一键建表：在指定飞书多维表格 base 里按标准字段 schema 创建 队员名单/任务进度/物资台账/财务报销 四张表，并把 table_id 写入看板配置。需先在飞书云文档新建空白多维表格，把 URL 中 /base/ 后的 app_token 传给 base 参数。仅管理端（MCP_TOKEN）可用。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        base: { type: "string", description: "多维表格 app_token（URL 中 /base/ 后的一段）" },
+        tables: { type: "array", items: { type: "string" }, description: "可选：只建部分表，如 [\"members\",\"tasks\"]，默认全部四张" },
+        force: { type: "boolean", description: "true 时即使配置里已有该表也强制新建（会留下旧表，谨慎）" },
+      },
+      required: ["base"],
+    },
+  },
+  {
     name: "validate_bitable",
     description:
       "数据健康校验：按声明式规则扫描多维表格（队员名单/任务进度/物资台账/财务报销），输出异常清单（类型/记录链接/修复建议）。全量明细仅管理端（MCP_TOKEN）或队长/组长角色（user_token）；无身份调用只返回各规则命中计数。详细报告会存为中台「数据健康」最新报告。",
@@ -851,6 +865,8 @@ async function callTool(
         return rpc(id, await toolQueryBitable(args, env, hasMcpToken));
       case "config_dashboard":
         return rpc(id, await toolConfigDashboard(args, env));
+      case "setup_bitable":
+        return rpc(id, await toolSetupBitable(args, env, hasMcpToken));
       case "validate_bitable":
         return rpc(id, await toolValidateBitable(args, env, hasMcpToken));
       case "whoami":
@@ -1233,6 +1249,109 @@ async function toolValidateBitable(args: Record<string, unknown>, env: Env, hasM
     ? `✅ 校验完成（明细）：共 ${(report as { anomalyCount?: number }).anomalyCount ?? 0} 项异常\n` + JSON.stringify(report, null, 2)
     : `✅ 校验完成（仅计数，明细需队长/组长或管理端）：共 ${(report as { anomalyCount?: number }).anomalyCount ?? 0} 项异常\n` + JSON.stringify(report, null, 2);
   return { content: [{ type: "text", text }] };
+}
+
+/** FE-02：四张逻辑表的标准字段schema（type: 1=文本 2=数字 5=日期） */
+const BITABLE_SCHEMAS: Record<DashTable, Array<{ name: string; type: number; property?: Record<string, unknown> }>> = {
+  members: [
+    { name: "姓名", type: 1 },
+    { name: "飞书ID", type: 1 },
+    { name: "组别", type: 1 },
+    { name: "权限角色", type: 1 },
+    { name: "赛季", type: 1 },
+  ],
+  tasks: [
+    { name: "任务", type: 1 },
+    { name: "负责人", type: 1 },
+    { name: "状态", type: 1 },
+    { name: "完成度", type: 2 },
+    { name: "截止日期", type: 5, property: { date_formatter: "yyyy/MM/dd" } },
+    { name: "创建日期", type: 5, property: { date_formatter: "yyyy/MM/dd" } },
+  ],
+  inventory: [
+    { name: "物料", type: 1 },
+    { name: "数量", type: 2 },
+    { name: "位置", type: 1 },
+    { name: "领用人", type: 1 },
+  ],
+  finance: [
+    { name: "事项", type: 1 },
+    { name: "金额", type: 2 },
+    { name: "发票状态", type: 1 },
+    { name: "状态", type: 1 },
+    { name: "报销人", type: 1 },
+    { name: "日期", type: 5, property: { date_formatter: "yyyy/MM/dd" } },
+  ],
+};
+
+const TABLE_DISPLAY_NAMES: Record<DashTable, string> = {
+  members: "队员名单",
+  tasks: "任务进度",
+  inventory: "物资台账",
+  finance: "财务报销",
+};
+
+/**
+ * 在指定多维表格 base 里按标准 schema 建表，并把 table_id 写入看板配置。
+ * 需在飞书里先建好空白多维表格（云文档 → 新建多维表格），把 URL 中 /base/ 后的 app_token 传给本工具。
+ */
+async function toolSetupBitable(args: Record<string, unknown>, env: Env, hasMcpToken: boolean) {
+  if (!hasMcpToken) {
+    throw new Error("setup_bitable 仅管理端可用（需 MCP_TOKEN）：建表会改变团队数据结构");
+  }
+  if (!env.FEISHU_APP_ID || !env.FEISHU_APP_SECRET) {
+    throw new Error("飞书自建应用未配置（FEISHU_APP_ID / FEISHU_APP_SECRET）");
+  }
+  const base = String(args.base ?? "").trim();
+  if (!/^[A-Za-z0-9]{10,}$/.test(base)) {
+    throw new Error("base 不合法：飞书多维表格 URL 中 /base/ 后的 app_token");
+  }
+  const force = args.force === true;
+  const want = Array.isArray(args.tables) && args.tables.length > 0
+    ? args.tables.map(String).filter((t): t is DashTable => DASH_TABLES.includes(t as DashTable))
+    : [...DASH_TABLES];
+  if (want.length === 0) throw new Error(`tables 必须是：${DASH_TABLES.join(" | ")}`);
+
+  const cfg = await getDashboardConfig(env);
+  const token = await getTenantAccessToken(env);
+  const created: string[] = [];
+  const skipped: string[] = [];
+  const failed: string[] = [];
+  const tables: DashboardConfig["tables"] = { ...(cfg?.base === base ? cfg.tables : {}) };
+
+  for (const t of want) {
+    if (tables[t] && !force) { skipped.push(t); continue; }
+    try {
+      const resp = await fetch(`${FEISHU_API}/bitable/v1/apps/${base}/tables`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json; charset=utf-8" },
+        body: JSON.stringify({ table: { name: TABLE_DISPLAY_NAMES[t], fields: BITABLE_SCHEMAS[t] } }),
+      });
+      const data = (await resp.json()) as { code?: number; msg?: string; data?: { table_id?: string } };
+      if (data.code !== 0 || !data.data?.table_id) {
+        throw new Error(data.msg ?? `code ${data.code}`);
+      }
+      tables[t] = data.data.table_id;
+      created.push(`${t}=${data.data.table_id}`);
+    } catch (err) {
+      failed.push(`${t}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  const newCfg: DashboardConfig = { base, tables, updatedAt: new Date().toISOString() };
+  await env.REGISTRY.put("dashboard:config", JSON.stringify(newCfg));
+  await Promise.all(DASH_TABLES.map((k) => env.REGISTRY.delete(`dashboard:cache:${k}`)));
+  return {
+    content: [
+      {
+        type: "text",
+        text:
+          `✅ 建表完成：新建 ${created.length} 张（${created.join("，") || "无"}），已存在跳过 ${skipped.length} 张（${skipped.join("，") || "无"}）` +
+          (failed.length ? `，失败 ${failed.length} 张：\n- ${failed.join("\n- ")}` : "") +
+          `\n看板配置已更新：base=${base}。打开门户「数据看板」Tab 验证。`,
+      },
+    ],
+  };
 }
 
 async function toolConfigDashboard(args: Record<string, unknown>, env: Env) {
