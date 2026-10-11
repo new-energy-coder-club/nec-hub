@@ -627,6 +627,18 @@ const TOOLS = [
     },
   },
   {
+    name: "remove_skills",
+    description:
+      "按名称批量下架 Skill。安全约束：只能删除外部登记来源（如 gitee 同步）的 Skill，中台自托管（source=hub）的不受影响。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        names: { type: "array", items: { type: "string" }, description: "要下架的 Skill 名列表" },
+      },
+      required: ["names"],
+    },
+  },
+  {
     name: "publish_skill",
     description: "把一个 SKILL.md 上架到 NEC 团队 Skill 中心，供其他队员一键安装到自己的 Agent。",
     inputSchema: {
@@ -740,6 +752,8 @@ async function callTool(
         return rpc(id, await toolSyncVercel(args, env));
       case "import_skills":
         return rpc(id, await toolImportSkills(args, env));
+      case "remove_skills":
+        return rpc(id, await toolRemoveSkills(args, env));
       case "publish_skill":
         return rpc(id, await toolPublishSkill(args, env));
       case "query_bitable":
@@ -945,6 +959,31 @@ async function toolImportSkills(args: Record<string, unknown>, env: Env) {
   };
 }
 
+async function toolRemoveSkills(args: Record<string, unknown>, env: Env) {
+  const names = new Set(((args.names ?? []) as unknown[]).map((n) => String(n)));
+  if (names.size === 0) throw new Error("names 不能为空");
+  const list = await readIndex<SkillEntry>(env, "skills:index");
+  const kept: SkillEntry[] = [];
+  let removed = 0;
+  const protectedNames: string[] = [];
+  for (const s of list) {
+    if (names.has(s.name)) {
+      if (s.source === "hub" || (!s.source && !s.url)) { protectedNames.push(s.name); kept.push(s); }
+      else removed++;
+    } else kept.push(s);
+  }
+  await env.REGISTRY.put("skills:index", JSON.stringify(kept));
+  return {
+    content: [
+      {
+        type: "text",
+        text: `✅ 已下架 ${removed} 个 Skill，Skill 中心剩余 ${kept.length} 个。` +
+          (protectedNames.length ? `（${protectedNames.join("、")} 为中台自托管，受保护未删除）` : ""),
+      },
+    ],
+  };
+}
+
 async function toolPublishSkill(args: Record<string, unknown>, env: Env) {
   const skillName = String(args.name ?? "");
   if (!NAME_RE.test(skillName)) throw new Error("Skill 名不合法：小写字母/数字/连字符");
@@ -954,6 +993,7 @@ async function toolPublishSkill(args: Record<string, unknown>, env: Env) {
   const entry: SkillEntry = {
     name: skillName,
     description: String(args.description ?? ""),
+    source: "hub", // 标记为中台自托管，import_skills 同步外部来源时不覆盖
     updatedAt: new Date().toISOString(),
   };
   const list = await upsertIndex(env, "skills:index", entry);

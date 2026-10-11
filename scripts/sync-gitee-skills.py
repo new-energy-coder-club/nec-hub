@@ -81,6 +81,8 @@ def main() -> None:
     ap.add_argument("--dir", default="skills")
     ap.add_argument("--hub", default="https://hub.newenergycoder.club")
     ap.add_argument("--confirm", action="store_true", help="实际写入（默认只预览）")
+    ap.add_argument("--allowlist", default="scripts/nec-skills-allowlist.txt",
+                    help="NEC 原创 Skill 白名单文件；存在时只导入名单内的 Skill")
     args = ap.parse_args()
 
     owner_repo = args.repo
@@ -96,6 +98,15 @@ def main() -> None:
         and len(e["path"].split("/")) == 3  # skills/<name>/SKILL.md
     )
     print(f"== 发现 {len(skill_md_paths)} 个 SKILL.md")
+
+    # 白名单过滤：只导入 NEC 原创（第三方/镜像 Skill 不上架）
+    import os
+    if os.path.exists(args.allowlist):
+        allowed = {ln.strip().lower() for ln in open(args.allowlist, encoding="utf-8")
+                   if ln.strip() and not ln.startswith("#")}
+        before = len(skill_md_paths)
+        skill_md_paths = [p for p in skill_md_paths if p.split("/")[1].lower() in allowed]
+        print(f"== 白名单过滤：{before} → {len(skill_md_paths)}（{args.allowlist}）")
 
     skills = []
     for i, path in enumerate(skill_md_paths, 1):
