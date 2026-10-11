@@ -14,7 +14,7 @@
   "kv_namespaces": [
     {
       "binding": "REGISTRY",
-      "id": "nec-hub-registry",
+      "id": "f5e9c203cc5b4bdea90e378df9783b78",
       "preview_id": "nec-hub-registry-preview"
     }
   ],
@@ -23,6 +23,12 @@
       "binding": "APPS_BUCKET",
       "bucket_name": "nec-hub-apps",
       "preview_bucket_name": "nec-hub-apps-preview"
+    }
+  ],
+  "routes": [
+    {
+      "pattern": "hub.newenergycoder.club",
+      "custom_domain": true
     }
   ],
   "vars": {
