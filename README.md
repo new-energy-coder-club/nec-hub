@@ -38,8 +38,16 @@ wrangler deploy
 ## MCP 工具
 
 - `deploy_app(name, title, author, files[])` — 上传静态文件到 R2 并注册到应用广场
+- `register_app(name, title, url)` — 外部已部署应用（如 Vercel 项目）链接登记
+- `sync_vercel(confirm, exclude, team)` — 自动发现 Vercel 团队项目并批量登记（默认 dry-run 预览，`confirm=true` 写入；需配置 `VERCEL_TOKEN` secret）
 - `publish_skill(name, description, content)` — 上架 SKILL.md 到 Skill 中心
-- `query_bitable(table, filter)` — 飞书多维表格查询（占位，需配置 `FEISHU_APP_ID` / `FEISHU_APP_SECRET`）
+- `query_bitable(table, filter)` — 飞书多维表格查询（占位）
+
+## 已配置的生产资源
+
+- 自定义域名：`hub.newenergycoder.club`（custom domain，自动签发证书）
+- Secrets：`FEISHU_APP_ID` / `FEISHU_APP_SECRET`（免登后端）· `VERCEL_TOKEN`（sync_vercel）
+- 待办：`MCP_TOKEN`（应用广场写保护，建议尽早配置）
 
 ## 待办（第二/三阶段）
 

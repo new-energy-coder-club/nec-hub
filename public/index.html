@@ -6,29 +6,80 @@
 <title>NEC 团队 AI 中台</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
+  :root { --navy:#141B5E; --ink:#0B1033; --cyan:#1FA9E8; --cyan-lt:#4FC3F7; }
   body { font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
-  .tab-active { border-bottom: 3px solid #f97316; color: #f97316; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; }
+  .tab-active { border-bottom: 3px solid var(--cyan); color: var(--navy); }
   pre.prompt { white-space: pre-wrap; word-break: break-all; }
+
+  /* KV V2 — 蓝图网格 Hero */
+  .hero {
+    position: relative; overflow: hidden; background: #fff;
+    background-image:
+      linear-gradient(rgba(31,169,232,.13) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31,169,232,.13) 1px, transparent 1px),
+      linear-gradient(rgba(31,169,232,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31,169,232,.05) 1px, transparent 1px);
+    background-size: 92px 92px, 92px 92px, 23px 23px, 23px 23px;
+  }
+  .hero-title { font-weight: 900; line-height: .95; letter-spacing: -.015em; color: var(--ink); }
+  .hero-title .to { color: var(--cyan); }
+  .horizon { position: absolute; left: 0; right: 0; height: 3px; background: var(--cyan); }
+  .base-line { height: 5px; background: linear-gradient(90deg, var(--cyan), var(--cyan-lt) 55%, rgba(79,195,247,0)); }
+  .chip { border: 1.5px solid var(--navy); color: var(--navy); }
+  .chip i { color: var(--cyan); }
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
 
-<header class="bg-white shadow-sm">
-  <div class="max-w-5xl mx-auto px-6 py-5 flex items-center gap-4">
-    <div class="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center font-bold text-lg">N</div>
-    <div>
-      <h1 class="text-xl font-bold">NEC 团队 AI 中台</h1>
-      <p class="text-xs text-gray-500">应用广场 · Skill 中心 · 数据看板 · 我的 Agent</p>
+<!-- KV V2 Hero：BUILT TO DAWN -->
+<header class="hero">
+  <div class="max-w-5xl mx-auto px-6 pt-8 pb-10 relative">
+    <div class="flex items-center gap-3 relative z-10">
+      <img src="/assets/nec-logo.png" alt="NEC" class="h-9 w-auto" />
+      <div class="leading-tight">
+        <div class="font-black text-lg" style="color:var(--navy)">常州工NEC <span class="text-sm font-extrabold" style="color:var(--cyan)">in CIT</span></div>
+        <div class="mono text-[11px] text-gray-500 tracking-wider">newenergycoder.club</div>
+      </div>
+      <span id="health" class="ml-auto text-xs px-2 py-1 rounded bg-gray-100 text-gray-500">连接中…</span>
     </div>
-    <span id="health" class="ml-auto text-xs px-2 py-1 rounded bg-gray-100 text-gray-500">连接中…</span>
+
+    <div class="mt-10 relative z-10">
+      <p class="mono text-xs tracking-[.22em] mb-4" style="color:var(--navy)"><b>NEC HUB</b> · 团队 AI 中台 · KEEP BUILDING</p>
+      <h1 class="hero-title text-5xl sm:text-7xl">BUILT <span class="to">TO</span> DAWN</h1>
+      <p class="mt-4 font-black tracking-[.4em] text-sm sm:text-base" style="color:var(--navy)">为黎明而造</p>
+      <p class="mono mt-3 text-xs text-gray-500 tracking-widest">应用广场 · SKILL 中心 · 数据看板 · 我的 AGENT</p>
+      <div class="mt-6 flex flex-wrap gap-3 text-sm">
+        <span class="chip mono px-3 py-1.5 rounded-sm bg-white"><i class="not-italic mr-1">01</i>找物品</span>
+        <span class="chip mono px-3 py-1.5 rounded-sm bg-white"><i class="not-italic mr-1">02</i>扫标签</span>
+        <span class="chip mono px-3 py-1.5 rounded-sm bg-white"><i class="not-italic mr-1">03</i>办工单</span>
+        <a href="https://mes.newenergycoder.club/home.html#label" target="_blank"
+           class="mono px-3 py-1.5 rounded-sm text-white" style="background:var(--cyan)">→ NEC 仓库作业台</a>
+      </div>
+    </div>
+
+    <!-- 破晓太阳 -->
+    <svg class="absolute right-2 sm:right-10 top-24 w-40 sm:w-64 opacity-90 z-0" viewBox="0 0 800 800" fill="none">
+      <defs><linearGradient id="sunG" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#4FC3F7"/><stop offset="1" stop-color="#1FA9E8"/></linearGradient></defs>
+      <circle cx="400" cy="400" r="330" stroke="url(#sunG)" stroke-width="10"/>
+      <circle cx="400" cy="400" r="282" stroke="#1FA9E8" stroke-width="2.5" stroke-dasharray="3 14" opacity=".85"/>
+      <g stroke="#141B5E" stroke-width="2"><line x1="400" y1="368" x2="400" y2="432"/><line x1="368" y1="400" x2="432" y2="400"/></g>
+      <circle cx="400" cy="400" r="7" fill="#141B5E"/>
+    </svg>
   </div>
-  <nav class="max-w-5xl mx-auto px-6 flex gap-6 text-sm font-medium text-gray-500">
+  <div class="horizon" style="bottom:34px"></div>
+  <div class="base-line"></div>
+</header>
+
+<nav class="bg-white shadow-sm">
+  <div class="max-w-5xl mx-auto px-6 flex gap-6 text-sm font-medium text-gray-500">
     <button data-tab="apps" class="tab-btn py-3 tab-active">应用广场</button>
     <button data-tab="skills" class="tab-btn py-3">Skill 中心</button>
     <button data-tab="dashboard" class="tab-btn py-3">数据看板</button>
     <button data-tab="agent" class="tab-btn py-3">我的 Agent</button>
-  </nav>
-</header>
+  </div>
+</nav>
 
 <main class="max-w-5xl mx-auto px-6 py-8">
 
@@ -36,12 +87,12 @@
   <section id="tab-apps">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-bold">应用广场</h2>
-      <button onclick="showPublishPrompt()" class="text-sm bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg">＋ 发布我的应用</button>
+      <button onclick="showPublishPrompt()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--cyan)">＋ 发布我的应用</button>
     </div>
     <div id="publish-box" class="hidden mb-6 bg-white rounded-xl shadow p-5">
       <h3 class="font-bold mb-2">上架 Prompt（复制后发给你的 Agent）</h3>
       <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="publish-prompt"></pre>
-      <button onclick="copyText('publish-prompt')" class="mt-3 text-sm bg-gray-800 text-white px-3 py-1.5 rounded">复制</button>
+      <button onclick="copyText('publish-prompt')" class="mt-3 text-sm text-white px-3 py-1.5 rounded" style="background:var(--navy)">复制</button>
     </div>
     <div id="apps-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
   </section>
@@ -68,14 +119,14 @@
     <div class="bg-white rounded-xl shadow p-5">
       <h3 class="font-bold mb-2">接入 Prompt（复制后发给 Claude Code / Kimi CLI / Codex）</h3>
       <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="join-prompt"></pre>
-      <button onclick="copyText('join-prompt')" class="mt-3 text-sm bg-gray-800 text-white px-3 py-1.5 rounded">复制</button>
+      <button onclick="copyText('join-prompt')" class="mt-3 text-sm text-white px-3 py-1.5 rounded" style="background:var(--navy)">复制</button>
     </div>
   </section>
 
 </main>
 
 <footer class="max-w-5xl mx-auto px-6 py-8 text-xs text-gray-400">
-  NEC 团队 AI 中台 MVP · Cloudflare Workers + KV + R2 · 数据基建在飞书
+  NEC 团队 AI 中台 MVP · Cloudflare Workers + KV + R2 · 数据基建在飞书 · BUILT TO DAWN — KEEP BUILDING
 </footer>
 
 <script>
@@ -159,7 +210,7 @@ fetch("/api/skills").then(r => r.json()).then(skills => {
         <p class="text-xs text-gray-400 mt-1">更新于 ${new Date(s.updatedAt).toLocaleString("zh-CN")}</p>
       </div>
       <a href="${ORIGIN}/skills/${encodeURIComponent(s.name)}/SKILL.md" target="_blank"
-         class="text-sm text-orange-500 hover:underline">查看 SKILL.md</a>
+         class="text-sm hover:underline" style="color:var(--cyan)">查看 SKILL.md</a>
     </div>`).join("");
 });
 

@@ -22,6 +22,9 @@ interface Env {
   /** 飞书自建应用凭证（第二阶段接入 query_bitable 时启用） */
   FEISHU_APP_ID?: string;
   FEISHU_APP_SECRET?: string;
+  /** Vercel 同步（sync_vercel 工具用） */
+  VERCEL_TOKEN?: string;
+  VERCEL_TEAM?: string;
 }
 
 interface AppEntry {
@@ -295,6 +298,19 @@ const TOOLS = [
     },
   },
   {
+    name: "sync_vercel",
+    description:
+      "从 Vercel 团队空间自动发现项目并登记到应用广场（外链）。默认只预览差异，confirm=true 才实际写入。需在 Worker 配置 VERCEL_TOKEN。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        confirm: { type: "boolean", description: "true 时实际写入注册表；缺省只预览" },
+        exclude: { type: "array", items: { type: "string" }, description: "额外排除的项目名" },
+        team: { type: "string", description: "Vercel 团队 slug，默认 necc" },
+      },
+    },
+  },
+  {
     name: "publish_skill",
     description: "把一个 SKILL.md 上架到 NEC 团队 Skill 中心，供其他队员一键安装到自己的 Agent。",
     inputSchema: {
@@ -371,6 +387,8 @@ async function callTool(
         return rpc(id, await toolDeployApp(args, env, request));
       case "register_app":
         return rpc(id, await toolRegisterApp(args, env));
+      case "sync_vercel":
+        return rpc(id, await toolSyncVercel(args, env));
       case "publish_skill":
         return rpc(id, await toolPublishSkill(args, env));
       case "query_bitable":
@@ -450,6 +468,91 @@ async function toolRegisterApp(args: Record<string, unknown>, env: Env) {
       {
         type: "text",
         text: `✅ 外部应用已登记：${entry.title}\n访问链接：${entry.url}\n应用广场现有 ${list.length} 个应用。`,
+      },
+    ],
+  };
+}
+
+/** sync_vercel 默认排除：临时/备份项目（可用 exclude 参数追加） */
+const VERCEL_DEFAULT_EXCLUDE = ["dist", "newenergycoder.club-satble", "solarglyph"];
+const VERCEL_DEFAULT_EXCLUDE_PREFIX = ["trae_"];
+
+async function toolSyncVercel(args: Record<string, unknown>, env: Env) {
+  if (!env.VERCEL_TOKEN) {
+    return {
+      content: [
+        { type: "text", text: "⚠️ 未配置 VERCEL_TOKEN。请运行 wrangler secret put VERCEL_TOKEN 后重试。" },
+      ],
+    };
+  }
+  const team = String(args.team ?? env.VERCEL_TEAM ?? "necc");
+  const confirm = args.confirm === true;
+  const extraExclude = Array.isArray(args.exclude) ? args.exclude.map(String) : [];
+  const excluded = new Set([...VERCEL_DEFAULT_EXCLUDE, ...extraExclude]);
+
+  const headers = { authorization: `Bearer ${env.VERCEL_TOKEN}` };
+  const listResp = await fetch(`https://api.vercel.com/v9/projects?slug=${encodeURIComponent(team)}&limit=100`, { headers });
+  const listData = (await listResp.json()) as { projects?: Array<{ name?: string }>; error?: { message?: string } };
+  if (!listResp.ok || !listData.projects) {
+    throw new Error(`Vercel API 错误：${listData.error?.message ?? listResp.status}`);
+  }
+
+  const registry = await readIndex<AppEntry>(env, "apps:index");
+  const existingHosts = new Set(
+    registry.map((a) => { try { return new URL(a.url).host; } catch { return ""; } }),
+  );
+  const existingNames = new Set(registry.map((a) => a.name));
+
+  const plan: Array<{ name: string; url: string; action: string }> = [];
+  for (const p of listData.projects) {
+    const name = p.name ?? "";
+    if (!name) continue;
+    if (excluded.has(name) || VERCEL_DEFAULT_EXCLUDE_PREFIX.some((pre) => name.startsWith(pre))) {
+      plan.push({ name, url: "-", action: "skip: 排除名单" });
+      continue;
+    }
+    if (existingNames.has(name)) {
+      plan.push({ name, url: "-", action: "skip: 已在广场" });
+      continue;
+    }
+    // 取项目生产域名：targets.production.alias，优先非 vercel.app 的自定义域名
+    let url = `https://${name}.vercel.app`;
+    try {
+      const dResp = await fetch(`https://api.vercel.com/v9/projects/${encodeURIComponent(name)}?slug=${encodeURIComponent(team)}`, { headers });
+      const detail = (await dResp.json()) as { targets?: { production?: { alias?: string[] } } };
+      const domains = detail.targets?.production?.alias ?? [];
+      const custom = domains.find((d) => !d.endsWith(".vercel.app"));
+      if (custom) url = `https://${custom}`;
+      else if (domains.length > 0) url = `https://${domains[0]}`;
+    } catch { /* 详情失败则用默认 vercel.app 域名 */ }
+
+    const host = new URL(url).host;
+    if (existingHosts.has(host)) {
+      plan.push({ name, url, action: "skip: 同域名已收录" });
+      continue;
+    }
+    plan.push({ name, url, action: confirm ? "registered" : "would register" });
+    if (confirm) {
+      await upsertIndex(env, "apps:index", {
+        name,
+        title: name,
+        author: "Vercel 同步",
+        visibility: "all",
+        version: "1.0.0",
+        updatedAt: new Date().toISOString(),
+        url,
+        external: true,
+      });
+    }
+  }
+
+  const lines = plan.map((p) => `- ${p.action === "registered" || p.action === "would register" ? "➕" : "⏭️"} ${p.name} → ${p.url}（${p.action}）`);
+  const newCount = plan.filter((p) => p.action === "registered" || p.action === "would register").length;
+  return {
+    content: [
+      {
+        type: "text",
+        text: `${confirm ? "✅ 已同步" : "🔍 预览（confirm=true 才会写入）"}：Vercel 团队 ${team} 共 ${listData.projects.length} 个项目，新增 ${newCount} 个\n\n${lines.join("\n")}`,
       },
     ],
   };
