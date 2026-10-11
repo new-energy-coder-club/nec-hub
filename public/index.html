@@ -80,6 +80,7 @@
   <div class="max-w-5xl mx-auto px-6 flex gap-6 text-sm font-medium text-gray-500">
     <button data-tab="apps" class="tab-btn py-3 tab-active">应用广场</button>
     <button data-tab="skills" class="tab-btn py-3">Skill 中心</button>
+    <button data-tab="docs" class="tab-btn py-3">资料页</button>
     <button data-tab="repos" class="tab-btn py-3">开源仓库</button>
     <button data-tab="dashboard" class="tab-btn py-3">数据看板</button>
     <button data-tab="agent" class="tab-btn py-3">我的 Agent</button>
@@ -106,6 +107,22 @@
   <section id="tab-skills" class="hidden">
     <h2 class="text-lg font-bold mb-4">Skill 中心</h2>
     <div id="skills-list" class="space-y-3"></div>
+  </section>
+
+  <!-- 资料页（FE-03） -->
+  <section id="tab-docs" class="hidden">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">资料页</h2>
+      <button onclick="showDocPrompt()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--cyan)">＋ 提交资料</button>
+    </div>
+    <div id="doc-box" class="hidden mb-6 bg-white rounded-xl shadow p-5">
+      <h3 class="font-bold mb-2">上架 Prompt（复制后发给你已接入中台 MCP 的 Agent）</h3>
+      <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="doc-prompt"></pre>
+      <button onclick="copyText('doc-prompt')" class="mt-3 text-sm text-white px-3 py-1.5 rounded" style="background:var(--navy)">复制</button>
+    </div>
+    <div id="docs-list" class="space-y-6">
+      <div class="bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">加载中…</div>
+    </div>
   </section>
 
   <!-- NEC 开源仓库 -->
@@ -139,6 +156,7 @@
     <div id="dash-body" class="space-y-4">
       <div class="bg-white rounded-xl shadow p-6 text-sm text-gray-400">加载中…</div>
     </div>
+    <div id="validate-body" class="mt-4"></div>
   </section>
 
   <!-- 我的 Agent -->
@@ -166,7 +184,7 @@ document.getElementById("join-prompt").textContent =
 1. 安装 MCP server，地址：${ORIGIN}/mcp （streamable HTTP 传输）
    - Claude Code: claude mcp add --transport http nec-hub ${ORIGIN}/mcp
    - Kimi CLI / Codex: 在 MCP 配置中加入同一地址
-2. 完成后调用 nec-hub 的 ping 工具验证连接，并告诉我结果`;
+2. 完成后调用 nec-hub 的 whoami 工具验证连接（返回管理端身份即成功），并告诉我结果`;
 
 document.getElementById("publish-prompt").textContent =
 `请把当前项目发布到 NEC 团队应用广场：
@@ -181,13 +199,25 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("tab-active"));
     btn.classList.add("tab-active");
-    ["apps","skills","repos","dashboard","agent"].forEach(t =>
+    ["apps","skills","docs","repos","dashboard","agent"].forEach(t =>
       document.getElementById("tab-"+t).classList.toggle("hidden", t !== btn.dataset.tab));
   });
 });
 
 function showPublishPrompt() {
   document.getElementById("publish-box").classList.toggle("hidden");
+}
+
+function showDocPrompt() {
+  const box = document.getElementById("doc-box");
+  if (box.classList.contains("hidden")) {
+    document.getElementById("doc-prompt").textContent =
+`请帮我把一份资料上架到 NEC 中台资料页：
+1. 确认资料信息：标题、分类（品牌规范/文档模板/制度SOP/培训材料）、链接（飞书文档/云盘均可）、维护人
+2. 调用 nec-hub MCP 的 publish_doc 工具提交（name 用小写连字符，如 vi-logo-rules）
+3. 成功后告诉我资料页里的展示位置`;
+  }
+  box.classList.toggle("hidden");
 }
 
 function copyText(id) {
@@ -236,6 +266,7 @@ async function bootAuth() {
   }
   await refreshMe();
   renderUserBox();
+  loadApps();
   loadDashboard(); // 财务区可见性随登录角色变化
 }
 
@@ -276,10 +307,12 @@ async function logout() {
   ME = { authenticated: false, user: null };
   renderUserBox();
   loadDashboard();
+  loadApps();
 }
 
-// 应用广场
-fetch("/api/apps").then(r => r.json()).then(apps => {
+// 应用广场（在 bootAuth / logout 中调用，保证带登录态语义后再加载）
+function loadApps() {
+  fetch("/api/apps").then(r => r.json()).then(apps => {
   const box = document.getElementById("apps-list");
   if (!apps.length) {
     box.innerHTML = `<div class="col-span-full bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">
@@ -296,6 +329,7 @@ fetch("/api/apps").then(r => r.json()).then(apps => {
       <p class="text-xs text-gray-400 mt-2">更新于 ${new Date(a.updatedAt).toLocaleString("zh-CN")}</p>
     </a>`).join("");
 });
+}
 
 // Skill 中心
 fetch("/api/skills").then(r => r.json()).then(skills => {
@@ -314,6 +348,38 @@ fetch("/api/skills").then(r => r.json()).then(skills => {
       <a href="${s.url || (ORIGIN + '/skills/' + encodeURIComponent(s.name) + '/SKILL.md')}" target="_blank"
          class="text-sm hover:underline whitespace-nowrap" style="color:var(--cyan)">查看 SKILL.md${s.source === 'gitee' ? ' ⤤' : ''}</a>
     </div>`).join("");
+});
+
+// 资料页（FE-03）：按四大分类分组渲染
+const DOC_CATEGORIES = ["品牌规范", "文档模板", "制度SOP", "培训材料"];
+fetch("/api/docs").then(r => r.json()).then(docs => {
+  const box = document.getElementById("docs-list");
+  if (!docs.length) {
+    box.innerHTML = `<div class="bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">
+      资料页还没有内容。<br/>点右上角「提交资料」，把上架 Prompt 发给你已接入中台 MCP 的 Agent。</div>`;
+    return;
+  }
+  box.innerHTML = DOC_CATEGORIES.map(cat => {
+    const items = docs.filter(d => d.category === cat);
+    if (!items.length) return "";
+    return `
+      <div>
+        <h3 class="font-bold text-sm mb-2" style="color:var(--navy)">${esc(cat)} <span class="text-gray-400 font-normal">(${items.length})</span></h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          ${items.map(d => `
+            <a href="${esc(d.url)}" target="_blank" class="block bg-white rounded-xl shadow hover:shadow-md transition p-4">
+              <div class="flex items-center justify-between gap-2">
+                <h4 class="font-bold text-sm">${esc(d.title)}</h4>
+                <span class="text-[10px] px-1.5 py-0.5 rounded border border-gray-200 text-gray-400 whitespace-nowrap">${esc(d.visibility === "all" ? "全员" : d.visibility)}</span>
+              </div>
+              <p class="text-xs text-gray-400 mt-2">维护：${esc(d.maintainer)} · 更新于 ${new Date(d.updatedAt).toLocaleDateString("zh-CN")}</p>
+            </a>`).join("")}
+        </div>
+      </div>`;
+  }).join("") || `<div class="bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">资料页还没有内容。</div>`;
+}).catch(() => {
+  document.getElementById("docs-list").innerHTML =
+    `<div class="bg-white rounded-xl shadow p-8 text-center text-red-500 text-sm">资料页加载失败，请稍后重试。</div>`;
 });
 
 // NEC 开源仓库（GitHub org + Gitee 账号合并，点击表头按 Star/Fork/Commit 等排序）
@@ -345,8 +411,10 @@ fetch("/api/repos").then(r => r.json()).then(d => {
     return;
   }
   const time = d.cachedAt ? new Date(d.cachedAt).toLocaleString("zh-CN") : "";
+  const missing = d.errors ? [d.errors.github ? "GitHub" : "", d.errors.gitee ? "Gitee" : ""].filter(Boolean).join("/") : "";
   document.getElementById("repos-meta").textContent =
-    `共 ${reposData.length} 个开源仓库（GitHub ${d.github || ""} + Gitee ${d.gitee || ""}） · 数据更新于 ${time}${d.stale ? "（上游暂不可用，展示缓存快照）" : ""}`;
+    `共 ${reposData.length} 个开源仓库（GitHub ${d.github || ""} + Gitee ${d.gitee || ""}） · 数据更新于 ${time}` +
+    `${d.stale ? "（上游暂不可用，展示缓存快照）" : ""}${missing ? `（${missing} 源暂时缺数据，稍后自动补全）` : ""}`;
   renderRepos();
 }).catch(() => {
   document.getElementById("repos-box").innerHTML =
@@ -544,6 +612,43 @@ function loadDashboard() {
     document.getElementById("dash-body").innerHTML =
       `<div class="bg-white rounded-xl shadow p-6 text-sm text-red-500">看板加载失败，请稍后重试。</div>`;
   });
+  loadValidate();
+}
+
+// 数据健康（FE-05）：展示最近一次 validate_bitable 全量校验报告
+function loadValidate() {
+  fetch("/api/validate").then(r => r.json()).then(v => {
+    const box = document.getElementById("validate-body");
+    if (!v || v.ran === false) {
+      box.innerHTML = `
+        <div class="bg-white rounded-xl shadow p-5">
+          <h3 class="font-bold mb-2">数据健康</h3>
+          <p class="text-sm text-gray-400">${esc(v?.hint || "还没有校验报告。让 Agent 调用 nec-hub MCP 的 validate_bitable 跑一次全量校验。")}</p>
+        </div>`;
+      return;
+    }
+    const rows = Object.entries(v.tables ?? {}).map(([t, tv]) => {
+      const bad = (tv.anomalyCount ?? 0) > 0;
+      return `
+        <div class="flex items-center justify-between border-t border-gray-100 py-2">
+          <span class="text-sm">${esc(t)} <span class="text-xs text-gray-400">（${tv.totalRecords ?? 0} 条记录）</span></span>
+          <span class="text-sm font-bold ${bad ? "text-red-500" : "text-green-600"}">${tv.anomalyCount ?? 0} 项异常</span>
+        </div>
+        ${bad ? `<div class="pl-3 pb-2">${(tv.byRule ?? []).map(r =>
+          `<p class="text-xs text-gray-500">· ${esc(r.name)} × ${r.count}</p>`).join("")}</div>` : ""}`;
+    }).join("");
+    box.innerHTML = `
+      <div class="bg-white rounded-xl shadow p-5">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-bold">数据健康</h3>
+          <span class="text-xs text-gray-400">校验于 ${new Date(v.validatedAt).toLocaleString("zh-CN")}${v.scope !== "all" ? " · 范围 " + esc(v.scope) : ""}</span>
+        </div>
+        ${v.anomalyCount === 0
+          ? `<p class="text-sm text-green-600">✅ 全部规则通过，共 ${Object.keys(v.tables ?? {}).length} 张表。</p>`
+          : `<p class="text-sm text-red-500 mb-1">共 ${v.anomalyCount} 项异常（明细见中台数据看板或问 Agent）</p>`}
+        ${rows}
+      </div>`;
+  }).catch(() => {});
 }
 
 bootAuth();

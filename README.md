@@ -64,6 +64,12 @@ wrangler deploy
 | `GET /api/apps` · `/api/skills` | 注册表 |
 | `GET /api/repos` | NEC 开源仓库列表（GitHub org `new-energy-coder-club` + Gitee `darrenpig` 合并，含 Star/Fork/Commit，KV 1 小时缓存；可选 `GITHUB_TOKEN` / `GITEE_TOKEN`） |
 | `GET /api/dashboard` | 数据看板聚合（飞书多维表格 + KV 5 分钟缓存；财务区按登录角色脱敏） |
+| `GET /api/whoami` | 当前登录用户与角色（`nec_session` Cookie；未登录返回 `authenticated:false`） |
+| `GET /api/config` | 公开配置（`feishuAppId` / `loginEnabled`，供门户"飞书登录"跳转用） |
+| `POST /auth/feishu` | 飞书 code 兑换用户信息 + 签发中台会话（与 MES 免登共用端点；同源调用才会种下会话 Cookie） |
+| `POST /auth/logout` | 登出（销毁会话并清除 Cookie） |
+| `GET /api/docs` | 资料页索引（KV，含分类/维护人/可见范围） |
+| `GET /api/validate` | 最近一次数据健康校验报告（由 `validate_bitable` 详细模式写入） |
 | `GET /apps/<name>/` | 队员应用（R2） |
 | `GET /skills/<name>/SKILL.md` | Skill 原文 |
 
@@ -74,8 +80,19 @@ wrangler deploy
 - `sync_vercel(confirm, exclude, team)` — 自动发现 Vercel 团队项目并批量登记（默认 dry-run 预览，`confirm=true` 写入；需配置 `VERCEL_TOKEN` secret）
 - `publish_skill(name, description, content)` — 上架 SKILL.md 到 Skill 中心（中台自托管）
 - `import_skills(skills[], source)` — 批量登记外部 Skill（只存名称/描述/链接，不托管文件）；不覆盖中台自托管（`source: "hub"`）的 Skill
-- `query_bitable(table, filter?, limit?, app_token?, table_id?)` — 只读查询飞书多维表格；finance 表需管理端（MCP_TOKEN）或有效 user_token（角色为队长/财务/指导）
+- `query_bitable(table, filter?, limit?, app_token?, table_id?, user_token?)` — 只读查询飞书多维表格；finance 表需管理端（MCP_TOKEN）或有效 user_token（角色为队长/财务/指导）。**MCP_TOKEN 未配置时 finance 门禁依然生效**（无 user_token 一律拒），生产环境务必配置 MCP_TOKEN
 - `config_dashboard(action, base?, tables?)` — 配置/查看数据看板对接的多维表格（app_token + 各表 table_id），配置手册见 `docs/数据看板配置手册.md`
+- `whoami(user_token?)` — 验证调用者身份：MCP_TOKEN 持有者 → 管理端；否则校验 user_token 并返回名单表角色
+- `remove_skills(names[])` — 从 Skill 中心移除指定 Skill（不删 R2 文件）
+- `publish_doc(name, title, category, url, maintainer?, visibility?)` — 上架资料页条目（分类：品牌规范/文档模板/制度SOP/培训材料）
+- `remove_docs(names[])` — 从资料页移除条目（只删索引）
+- `validate_bitable(scope?, user_token?)` — 数据健康校验：12 条内置声明式规则扫 4 张表，输出异常清单（记录直链飞书 + 修复建议）；明细仅管理端/队长/组长，无身份只返回计数；详细报告写入 `/api/validate` 供门户「数据健康」展示。规则可用 KV `validate:rules` 覆盖
+
+## 登录态与角色（FE-01）
+
+- 门户"飞书登录"走标准 OAuth：跳飞书授权 → 回调 `/?code=...` → `/auth/feishu` 兑换并种下 `nec_session`（HttpOnly，7 天，剩余不足一半时原地滑动续期）。
+- 角色取自多维表格"队员名单"表（`config_dashboard` 配置的 members 表）：按 open_id / 姓名匹配，读"角色/组别"字段；未匹配到 → `external`（仅公开区）；表不可用时兜底为"队员"。角色解析结果 KV 缓存 60 秒（负结果不缓存，移除队员后下一次请求即失效）。
+- **手动配置一步**：飞书开放平台 → 自建应用 → 安全设置 → 重定向 URL，需加入 `https://hub.newenergycoder.club/`（门户登录回调用，与 MES 的 `mes.newenergycoder.club` 并列），否则登录跳转后回调报错。
 
 ## Skill 同步脚本
 
@@ -97,8 +114,10 @@ python scripts/sync-gitee-skills.py --repo owner/name --branch SKill --dir skill
 
 > 完整需求、优先级与验收标准见 `docs/团队AI中台PRD_V2.0.md`（M1 地基 → M2 资产与智能 → M3 个性化与自动化）。
 
-- [ ] 飞书 OAuth 登录 + 权限角色（当前 MVP 无登录态，仅内网/小队使用）
+- [x] 飞书 OAuth 登录 + 权限角色（FE-01：会话 Cookie 滑动续期、`/api/whoami`、`/api/apps` 按角色过滤、看板与 `query_bitable` 财务区按角色脱敏；**工作区已落地待部署验证**）
 - [x] `query_bitable` 接入飞书多维表格 API（含 `config_dashboard` 配置工具与 `/api/dashboard` 聚合接口，财务区按角色脱敏）
+- [x] FE-03 资料页（第六 Tab + `publish_doc` / `remove_docs` MCP 工具 + `/api/docs`；内容填充为团队任务，每类 ≥3 条）
+- [x] FE-05 数据校验 Agent（`validate_bitable` 规则引擎 + `/api/validate` + 门户「数据健康」卡片；规则可 KV 覆盖，周一自动推送待配 `FEISHU_WEBHOOK` 后启用）
 - [ ] 飞书工作台入口配置（管理后台将工作台指向本域名）
 - [ ] `wrangler types` 生成权威 Env 类型（当前为手写最小接口）
 - [ ] 部署 `serveApp` 中文路径修复（`4be5456` 已提交未部署；部署后清理 R2 孤儿对象 `apps/kv-assets/assets/` 下 6 个中文名 PNG）

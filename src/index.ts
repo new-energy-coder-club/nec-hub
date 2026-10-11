@@ -59,6 +59,21 @@ interface SkillEntry {
   source?: string;
 }
 
+/** 资料页条目（KV key: docs:index，由 MCP publish_doc 写入） */
+interface DocEntry {
+  name: string;
+  title: string;
+  /** 分类：品牌规范 | 文档模板 | 制度SOP | 培训材料 */
+  category: string;
+  /** 资料链接（飞书文档/云盘/R2 等） */
+  url: string;
+  /** 维护人 */
+  maintainer: string;
+  /** 可见范围：all 或组别名，默认 all（当前仅展示标注，角色硬过滤随 FE-06/07 落地） */
+  visibility: string;
+  updatedAt: string;
+}
+
 /** 数据看板配置（KV key: dashboard:config，由 MCP config_dashboard 写入） */
 interface DashboardConfig {
   /** 多维表格 app_token（表格 URL 中 /base/ 之后的一段） */
@@ -112,6 +127,9 @@ const GITEE_USER = "darrenpig";
 /** 仓库列表缓存 TTL（秒）。两源合计单次刷新约 40+ 次请求（GitHub/Gitee 匿名均 60 次/小时），建议配置 GITHUB_TOKEN / GITEE_TOKEN */
 const REPOS_CACHE_TTL_SEC = 3600;
 
+/** 部分源失败时的缓存 TTL（秒）：缩短重试间隔，尽快补全缺失源 */
+const REPOS_PARTIAL_CACHE_TTL_SEC = 600;
+
 const MIME: Record<string, string> = {
   html: "text/html; charset=utf-8",
   htm: "text/html; charset=utf-8",
@@ -161,10 +179,22 @@ export default {
         return json({ ok: true, service: env.HUB_NAME ?? "nec-hub", time: new Date().toISOString() });
       }
       if (url.pathname === "/api/apps") {
-        return json(await readIndex<AppEntry>(env, "apps:index"));
+        return json(await visibleApps(env, request));
       }
       if (url.pathname === "/api/skills") {
         return json(await readIndex<SkillEntry>(env, "skills:index"));
+      }
+      if (url.pathname === "/api/docs") {
+        return json(await readIndex<DocEntry>(env, "docs:index"));
+      }
+      if (url.pathname === "/api/validate") {
+        const raw = await env.REGISTRY.get("validate:report");
+        if (!raw) return json({ ran: false, hint: "还没有校验报告。让 Agent 调用 validate_bitable（管理端/队长/组长）跑一次全量校验。" });
+        try {
+          return json(JSON.parse(raw));
+        } catch {
+          return json({ ran: false, hint: "校验报告损坏，请重新运行 validate_bitable。" });
+        }
       }
       if (url.pathname === "/api/dashboard") {
         return json(await buildDashboard(env, request));
@@ -351,8 +381,8 @@ async function createSession(env: Env, user: HubUser): Promise<string> {
   return sid;
 }
 
-/** 解析会话；滑动续期时返回 renewed（调用方需把新 sid 写回 Cookie） */
-async function resolveSession(env: Env, request: Request): Promise<{ user: HubUser; renewed?: string } | null> {
+/** 解析会话；剩余有效期不足一半时同 sid 原地滑动续期 */
+async function resolveSession(env: Env, request: Request): Promise<{ user: HubUser } | null> {
   const sid = parseCookies(request)[SESSION_COOKIE];
   if (!sid) return null;
   const raw = await env.REGISTRY.get(`session:${sid}`);
@@ -369,14 +399,7 @@ async function resolveSession(env: Env, request: Request): Promise<{ user: HubUs
   }
   const user: HubUser = { name: data.name, open_id: data.open_id, avatar_url: data.avatar_url };
   if (data.expiresAt - Date.now() < (SESSION_TTL_SEC * 1000) / 2) {
-    const sid2 = crypto.randomUUID();
-    await env.REGISTRY.put(
-      `session:${sid2}`,
-      JSON.stringify({ ...data, expiresAt: Date.now() + SESSION_TTL_SEC * 1000 }),
-      { expirationTtl: SESSION_TTL_SEC },
-    );
-    await env.REGISTRY.delete(`session:${sid}`);
-    return { user, renewed: sid2 };
+    await env.REGISTRY.put(`session:${sid}`, JSON.stringify({ ...data, expiresAt: Date.now() + SESSION_TTL_SEC * 1000 }), { expirationTtl: SESSION_TTL_SEC });
   }
   return { user };
 }
@@ -472,9 +495,7 @@ async function handleWhoami(request: Request, env: Env): Promise<Response> {
   const s = await resolveSession(env, request);
   if (!s) return json({ authenticated: false, user: null });
   const role = await resolveUserRole(env, s.user);
-  const res = json({ authenticated: true, user: { ...s.user, ...role } });
-  if (s.renewed) res.headers.set("set-cookie", sessionCookie(s.renewed));
-  return res;
+  return json({ authenticated: true, user: { ...s.user, ...role } });
 }
 
 async function handleLogout(request: Request, env: Env): Promise<Response> {
@@ -538,6 +559,22 @@ async function upsertIndex<T extends { name: string }>(env: Env, key: string, en
   else list.push(entry);
   await env.REGISTRY.put(key, JSON.stringify(list));
   return list;
+}
+
+/** 应用广场按登录角色过滤：未登录/名单外(external) 仅 visibility=all；在册队员额外可见本组、本角色及本人 authored */
+async function visibleApps(env: Env, request: Request): Promise<AppEntry[]> {
+  const apps = await readIndex<AppEntry>(env, "apps:index");
+  const session = await resolveSession(env, request);
+  if (!session) return apps.filter((a) => a.visibility === "all");
+  const role = await resolveUserRole(env, session.user);
+  if (role.role === "external") return apps.filter((a) => a.visibility === "all");
+  return apps.filter(
+    (a) =>
+      a.visibility === "all" ||
+      a.visibility === role.group ||
+      a.visibility === role.role ||
+      a.author === session!.user.name,
+  );
 }
 
 // ---------- MCP (JSON-RPC over streamable HTTP) ----------
@@ -652,6 +689,46 @@ const TOOLS = [
     },
   },
   {
+    name: "publish_doc",
+    description:
+      "把一条资料上架到中台资料页（品牌规范/文档模板/制度SOP/培训材料）。资料本体存飞书文档/云盘或 R2，这里只登记索引（标题/分类/链接/维护人/可见范围）。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "资料标识，小写连字符，如 vi-logo-rules" },
+        title: { type: "string", description: "展示标题，如 队标 VI 使用规范" },
+        category: { type: "string", description: "品牌规范 | 文档模板 | 制度SOP | 培训材料" },
+        url: { type: "string", description: "资料链接（飞书文档/云盘/R2 等），https://..." },
+        maintainer: { type: "string", description: "维护人姓名，默认 unknown" },
+        visibility: { type: "string", description: "可见范围：all 或组别名，默认 all" },
+      },
+      required: ["name", "title", "category", "url"],
+    },
+  },
+  {
+    name: "remove_docs",
+    description: "从资料页移除指定资料（只删索引，不动资料本体）。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        names: { type: "array", items: { type: "string" }, description: "要移除的资料 name 列表" },
+      },
+      required: ["names"],
+    },
+  },
+  {
+    name: "validate_bitable",
+    description:
+      "数据健康校验：按声明式规则扫描多维表格（队员名单/任务进度/物资台账/财务报销），输出异常清单（类型/记录链接/修复建议）。全量明细仅管理端（MCP_TOKEN）或队长/组长角色（user_token）；无身份调用只返回各规则命中计数。详细报告会存为中台「数据健康」最新报告。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        scope: { type: "string", description: "all（默认）| members | tasks | inventory | finance" },
+        user_token: { type: "string", description: "可选：飞书 user_access_token；无 MCP_TOKEN 时用于角色判定（队长/组长可看明细）" },
+      },
+    },
+  },
+  {
     name: "query_bitable",
     description:
       "只读查询飞书多维表格（队员名单/任务进度/物资台账/财务报销）。需先用 config_dashboard 配置 base 与 table_id，也可在调用时显式传 app_token/table_id 查询任意表格。finance 表受限：需管理端（MCP_TOKEN）或有效 user_token（角色为队长/财务）。",
@@ -690,9 +767,22 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: "whoami",
+    description:
+      "验证当前调用者身份。管理端（Bearer MCP_TOKEN）直接返回 admin；或传 user_token（飞书 user_access_token）返回 open_id/姓名/角色，供 user_token 方式接入的 Agent 自检。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        user_token: { type: "string", description: "可选：飞书 user_access_token" },
+      },
+    },
+  },
 ];
 
 async function handleMcp(request: Request, env: Env): Promise<Response> {
+  // hasMcpToken 仅表示"本次调用真实匹配了 MCP_TOKEN"：
+  // 未配置 MCP_TOKEN 时写操作保持原有开放行为，但财务门禁不因此放行（finance 仍需 user_token + 队长/财务角色）
   let hasMcpToken = false;
   if (env.MCP_TOKEN) {
     const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
@@ -700,9 +790,6 @@ async function handleMcp(request: Request, env: Env): Promise<Response> {
     if (!hasMcpToken) {
       return json({ error: "unauthorized" }, 401);
     }
-  } else {
-    // 未配置 MCP_TOKEN 时写操作本就对全网开放，财务门禁随之放行（生产环境建议配置 MCP_TOKEN）
-    hasMcpToken = true;
   }
   const msg = (await request.json()) as {
     jsonrpc?: string;
@@ -718,7 +805,7 @@ async function handleMcp(request: Request, env: Env): Promise<Response> {
         capabilities: { tools: {} },
         serverInfo: { name: "nec-hub-mcp", version: "0.2.0" },
         instructions:
-          "NEC 团队 AI 中台 MCP。deploy_app 部署静态应用到应用广场；publish_skill 上架 Skill；config_dashboard 配置数据看板对接的飞书多维表格；query_bitable 查询多维表格数据（finance 表需 user_token 且角色为队长/财务，或管理端 MCP_TOKEN）。",
+          "NEC 团队 AI 中台 MCP。deploy_app 部署静态应用到应用广场；publish_skill 上架 Skill；config_dashboard 配置数据看板对接的飞书多维表格；query_bitable 查询多维表格数据（finance 表需 user_token 且角色为队长/财务，或管理端 MCP_TOKEN）；whoami 验证调用者身份（MCP_TOKEN 或 user_token）。",
       });
     case "ping":
       return rpc(id, {});
@@ -756,10 +843,18 @@ async function callTool(
         return rpc(id, await toolRemoveSkills(args, env));
       case "publish_skill":
         return rpc(id, await toolPublishSkill(args, env));
+      case "publish_doc":
+        return rpc(id, await toolPublishDoc(args, env));
+      case "remove_docs":
+        return rpc(id, await toolRemoveDocs(args, env));
       case "query_bitable":
         return rpc(id, await toolQueryBitable(args, env, hasMcpToken));
       case "config_dashboard":
         return rpc(id, await toolConfigDashboard(args, env));
+      case "validate_bitable":
+        return rpc(id, await toolValidateBitable(args, env, hasMcpToken));
+      case "whoami":
+        return rpc(id, await toolWhoami(args, env, hasMcpToken));
       default:
         return rpcError(id, -32602, `Unknown tool: ${name}`);
     }
@@ -1010,6 +1105,52 @@ async function toolPublishSkill(args: Record<string, unknown>, env: Env) {
 const DASH_TABLES = ["members", "tasks", "inventory", "finance"] as const;
 type DashTable = (typeof DASH_TABLES)[number];
 
+/** 资料页四大分类（publish_doc 的 category 枚举） */
+const DOC_CATEGORIES = ["品牌规范", "文档模板", "制度SOP", "培训材料"] as const;
+
+async function toolPublishDoc(args: Record<string, unknown>, env: Env) {
+  const name = String(args.name ?? "");
+  if (!NAME_RE.test(name)) throw new Error("资料标识不合法：小写字母/数字/连字符（2-41 字符）");
+  const title = String(args.title ?? "").trim();
+  if (!title) throw new Error("title 不能为空");
+  const category = String(args.category ?? "").trim();
+  if (!DOC_CATEGORIES.includes(category as (typeof DOC_CATEGORIES)[number])) {
+    throw new Error(`category 必须是：${DOC_CATEGORIES.join(" | ")}`);
+  }
+  const url = String(args.url ?? "").trim();
+  if (!/^https?:\/\/.+/.test(url)) throw new Error("url 必须是 http(s) 完整链接");
+  const entry: DocEntry = {
+    name,
+    title,
+    category,
+    url,
+    maintainer: String(args.maintainer ?? "unknown"),
+    visibility: String(args.visibility ?? "all"),
+    updatedAt: new Date().toISOString(),
+  };
+  const list = await upsertIndex(env, "docs:index", entry);
+  return {
+    content: [
+      {
+        type: "text",
+        text: `✅ 资料已上架：【${category}】${title}\n资料页现有 ${list.length} 条。`,
+      },
+    ],
+  };
+}
+
+async function toolRemoveDocs(args: Record<string, unknown>, env: Env) {
+  const names = new Set(((args.names ?? []) as unknown[]).map((n) => String(n)));
+  if (names.size === 0) throw new Error("names 不能为空");
+  const list = await readIndex<DocEntry>(env, "docs:index");
+  const kept = list.filter((d) => !names.has(d.name));
+  const removed = list.length - kept.length;
+  await env.REGISTRY.put("docs:index", JSON.stringify(kept));
+  return {
+    content: [{ type: "text", text: `✅ 已移除 ${removed} 条资料，资料页剩余 ${kept.length} 条。` }],
+  };
+}
+
 async function toolQueryBitable(args: Record<string, unknown>, env: Env, hasMcpToken: boolean) {
   const table = String(args.table ?? "") as DashTable;
   if (!DASH_TABLES.includes(table)) {
@@ -1069,6 +1210,31 @@ async function toolQueryBitable(args: Record<string, unknown>, env: Env, hasMcpT
   };
 }
 
+/** 校验结果读取权限：管理端或 队长/组长 角色可看明细；否则只返回计数 */
+const VALIDATE_DETAIL_ROLE_RE = /队长|组长|财务|指导/i;
+
+async function toolValidateBitable(args: Record<string, unknown>, env: Env, hasMcpToken: boolean) {
+  const scopeRaw = String(args.scope ?? "all");
+  const scope: DashTable | "all" = scopeRaw === "all" ? "all" : (scopeRaw as DashTable);
+  if (scope !== "all" && !DASH_TABLES.includes(scope as DashTable)) {
+    throw new Error("scope 必须是 all | members | tasks | inventory | finance");
+  }
+  let detail = hasMcpToken;
+  if (!detail) {
+    const userToken = String(args.user_token ?? "").trim();
+    if (userToken) {
+      const openId = await validateUserToken(userToken);
+      const role = await resolveUserRole(env, { name: "", open_id: openId });
+      detail = VALIDATE_DETAIL_ROLE_RE.test(role.role);
+    }
+  }
+  const report = await runValidation(env, scope, detail);
+  const text = detail
+    ? `✅ 校验完成（明细）：共 ${(report as { anomalyCount?: number }).anomalyCount ?? 0} 项异常\n` + JSON.stringify(report, null, 2)
+    : `✅ 校验完成（仅计数，明细需队长/组长或管理端）：共 ${(report as { anomalyCount?: number }).anomalyCount ?? 0} 项异常\n` + JSON.stringify(report, null, 2);
+  return { content: [{ type: "text", text }] };
+}
+
 async function toolConfigDashboard(args: Record<string, unknown>, env: Env) {
   const action = String(args.action ?? "get");
   if (action === "get") {
@@ -1118,11 +1284,43 @@ async function toolConfigDashboard(args: Record<string, unknown>, env: Env) {
   };
 }
 
+async function toolWhoami(args: Record<string, unknown>, env: Env, hasMcpToken: boolean) {
+  if (hasMcpToken && !args.user_token) {
+    return { content: [{ type: "text", text: "✅ 管理端身份：MCP_TOKEN 持有者（全部权限，finance 表不受限）" }] };
+  }
+  const userToken = String(args.user_token ?? "").trim();
+  if (!userToken) throw new Error("无法识别身份：调用未携带 MCP_TOKEN，且未传 user_token");
+  const resp = await fetch(`${FEISHU_API}/authen/v1/user_info`, {
+    headers: { authorization: `Bearer ${userToken}` },
+  });
+  const data = (await resp.json()) as {
+    code?: number;
+    msg?: string;
+    data?: { open_id?: string; name?: string };
+  };
+  if (data.code !== 0 || !data.data?.open_id) {
+    throw new Error(`user_token 校验失败：${data.msg ?? "invalid token"}`);
+  }
+  const role = await resolveUserRole(env, { name: data.data.name ?? "", open_id: data.data.open_id });
+  return {
+    content: [
+      {
+        type: "text",
+        text:
+          `✅ 身份验证通过：${data.data.name ?? ""}（open_id: ${data.data.open_id}）\n` +
+          `角色：${role.role}${role.group ? ` · ${role.group}` : ""}` +
+          (role.matched ? "" : "（未在队员名单表匹配到，按 external 处理）"),
+      },
+    ],
+  };
+}
+
 // ---------- NEC 开源仓库（GitHub org + KV 缓存） ----------
 
 async function buildRepos(env: Env): Promise<unknown> {
-  const cacheKey = "repos:cache:v2";
-  const legacyKey = "repos:cache";
+  const cacheKey = "repos:cache:v3";
+  // 历次遗留 key：刷新成功后顺手清理（避免旧格式数据被误读）
+  const legacyKeys = ["repos:cache", "repos:cache:v2"];
   const cached = await env.REGISTRY.get(cacheKey, "json") as
     | { data: RepoEntry[]; cachedAt: number }
     | null;
@@ -1130,10 +1328,12 @@ async function buildRepos(env: Env): Promise<unknown> {
     return { github: GITHUB_ORG, gitee: GITEE_USER, cachedAt: new Date(cached.cachedAt).toISOString(), repos: cached.data };
   }
   try {
-    const repos = await fetchAllRepos(env);
-    await env.REGISTRY.put(cacheKey, JSON.stringify({ data: repos, cachedAt: Date.now() }));
-    await env.REGISTRY.delete(legacyKey); // 清理单源时代的旧缓存
-    return { github: GITHUB_ORG, gitee: GITEE_USER, cachedAt: new Date().toISOString(), repos };
+    const { repos, errors, partial } = await fetchAllRepos(env);
+    // 部分源失败时缩短缓存（10 分钟），尽快补全缺失源
+    const ttl = partial ? REPOS_PARTIAL_CACHE_TTL_SEC : REPOS_CACHE_TTL_SEC;
+    await env.REGISTRY.put(cacheKey, JSON.stringify({ data: repos, cachedAt: Date.now() }), { expirationTtl: ttl });
+    await Promise.all(legacyKeys.map((k) => env.REGISTRY.delete(k)));
+    return { github: GITHUB_ORG, gitee: GITEE_USER, cachedAt: new Date().toISOString(), errors, repos };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (cached) {
@@ -1150,18 +1350,28 @@ async function buildRepos(env: Env): Promise<unknown> {
   }
 }
 
-/** 双源拉取合并：单源失败不阻断另一源；双源均失败才抛错走缓存降级 */
-async function fetchAllRepos(env: Env): Promise<RepoEntry[]> {
+interface FetchReposResult {
+  repos: RepoEntry[];
+  /** 单源失败的原因（成功的源不受影响） */
+  errors: Record<string, string>;
+  /** true = 有源失败，缓存应缩短以便尽快补全 */
+  partial: boolean;
+}
+
+/** 双源拉取合并：单源失败不阻断另一源，失败原因透传给前端；双源均失败才抛错走缓存降级 */
+async function fetchAllRepos(env: Env): Promise<FetchReposResult> {
   const [gh, gj] = await Promise.allSettled([fetchOrgRepos(env), fetchGiteeRepos(env)]);
+  const errors: Record<string, string> = {};
+  if (gh.status === "rejected") errors.github = gh.reason instanceof Error ? gh.reason.message : String(gh.reason);
+  if (gj.status === "rejected") errors.gitee = gj.reason instanceof Error ? gj.reason.message : String(gj.reason);
+  if (gh.status === "rejected" && gj.status === "rejected") {
+    throw new Error(`GitHub 与 Gitee 均拉取失败：${errors.github ?? errors.gitee}`);
+  }
   const repos = [
     ...(gh.status === "fulfilled" ? gh.value : []),
     ...(gj.status === "fulfilled" ? gj.value : []),
-  ];
-  if (gh.status === "rejected" && gj.status === "rejected") {
-    const reason = (p: PromiseRejectedResult) => (p.reason instanceof Error ? p.reason.message : String(p.reason));
-    throw new Error(`GitHub 与 Gitee 均拉取失败：${reason(gh as PromiseRejectedResult)}`);
-  }
-  return repos.sort((a, b) => b.stars - a.stars || b.forks - a.forks || a.name.localeCompare(b.name));
+  ].sort((a, b) => b.stars - a.stars || b.forks - a.forks || a.name.localeCompare(b.name));
+  return { repos, errors, partial: Object.keys(errors).length > 0 };
 }
 
 async function fetchOrgRepos(env: Env): Promise<RepoEntry[]> {
@@ -1254,6 +1464,20 @@ interface GiteeRepoApi {
   fork: boolean;
 }
 
+/** 简单并发限制：同时最多 limit 个任务在跑（避免触发源站限流，也控制子请求总数） */
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let i = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (i < items.length) {
+      const idx = i++;
+      out[idx] = await fn(items[idx]);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
 async function fetchGiteeRepos(env: Env): Promise<RepoEntry[]> {
   const token = env.GITEE_TOKEN;
   const list: GiteeRepoApi[] = [];
@@ -1272,31 +1496,31 @@ async function fetchGiteeRepos(env: Env): Promise<RepoEntry[]> {
     if (data.length < 100) break;
   }
 
-  // 逐仓库取提交总数；单仓库失败仅该列留空
-  const repos = await Promise.all(
-    list.map(async (r): Promise<RepoEntry> => {
-      let commits: number | null = null;
+  // 逐仓库取提交总数（fork 跳过：上游提交数对团队无意义，也省子请求配额）；并发 4，单仓库失败仅该列留空
+  const repos = await mapLimit(list, 4, async (r): Promise<RepoEntry> => {
+    let commits: number | null = null;
+    if (!r.fork) {
       try {
         commits = await fetchGiteeCommitCount(r.full_name, token);
       } catch { /* 该仓库提交数留空 */ }
-      return {
-        host: "gitee",
-        name: r.name,
-        fullName: r.full_name,
-        url: `https://gitee.com/${r.full_name}`,
-        description: r.description ?? "",
-        stars: r.stargazers_count ?? 0,
-        forks: r.forks_count ?? 0,
-        commits,
-        language: r.language ?? "",
-        updatedAt: r.updated_at,
-        pushedAt: r.updated_at,
-        isFork: r.fork ?? false,
-        archived: false,
-        defaultBranch: "",
-      };
-    }),
-  );
+    }
+    return {
+      host: "gitee",
+      name: r.name,
+      fullName: r.full_name,
+      url: `https://gitee.com/${r.full_name}`,
+      description: r.description ?? "",
+      stars: r.stargazers_count ?? 0,
+      forks: r.forks_count ?? 0,
+      commits,
+      language: r.language ?? "",
+      updatedAt: r.updated_at,
+      pushedAt: r.updated_at,
+      isFork: r.fork ?? false,
+      archived: false,
+      defaultBranch: "",
+    };
+  });
   return repos;
 }
 
@@ -1581,6 +1805,197 @@ function firstFieldText(r: BitableRecord): string {
     if (v) return v;
   }
   return "";
+}
+
+// ---------- 数据校验 Agent（FE-05：声明式规则引擎） ----------
+
+/**
+ * 校验规则（声明式，无代码 eval）。
+ * KV key `validate:rules` 可存同名 JSON 数组覆盖内置规则；字段名不固定时用 fieldPattern 正则匹配。
+ */
+interface ValidateRule {
+  id: string;
+  table: DashTable;
+  /** 展示名，如 "队员名单：飞书ID 缺失" */
+  name: string;
+  /** 建议修复动作 */
+  suggestion: string;
+  severity?: "error" | "warning";
+  /** 主字段名正则 */
+  fieldPattern: string;
+  check: "missing" | "negative" | "notIn" | "regexMismatch" | "beforeField" | "notInRecords" | "contradiction";
+  options?: {
+    /** notIn：字段文本须包含其一 */
+    values?: string[];
+    /** regexMismatch：字段文本必须匹配 */
+    regex?: string;
+    /** beforeField / notInRecords / contradiction：对照字段/表 */
+    otherFieldPattern?: string;
+    otherTable?: DashTable;
+    /** contradiction：对照字段匹配 whenMatches 时触发；配 thenNotMatches = 主字段匹配即异常，配 thenMatches = 主字段不匹配即异常 */
+    whenMatches?: string;
+    thenMatches?: string;
+    thenNotMatches?: string;
+  };
+}
+
+/** 内置规则集（首轮只上高置信规则；误报率 >30% 的规则下线重调，见 PRD §10） */
+const DEFAULT_RULES: ValidateRule[] = [
+  { id: "members.feishu-id-missing", table: "members", name: "队员名单：飞书ID 为空", suggestion: "在名单表补上该队员的飞书 open_id（用于登录态角色判定）", fieldPattern: "open_?id|飞书", check: "missing" },
+  { id: "members.feishu-id-format", table: "members", name: "队员名单：飞书ID 格式异常", suggestion: "飞书ID 应为 ou 开头的 open_id，从飞书个人名片复制", fieldPattern: "open_?id|飞书", check: "regexMismatch", options: { regex: "^ou[a-zA-Z0-9_-]{6,}$" }, severity: "warning" },
+  { id: "members.group-enum", table: "members", name: "队员名单：组别不在常见枚举内", suggestion: "组别建议为：机械 / 电控 / 视觉 / 运营 / 宣传（或联系队长确认）", fieldPattern: "^组别$|组别|小组|部门|group", check: "notIn", options: { values: ["机械", "电控", "视觉", "运营", "宣传", "顾问"] }, severity: "warning" },
+  { id: "members.role-missing", table: "members", name: "队员名单：角色字段缺失", suggestion: "补上权限角色（队长/组长/队员/校友）", fieldPattern: "权限角色|角色|role", check: "missing" },
+  { id: "tasks.owner-missing", table: "tasks", name: "任务进度：无负责人", suggestion: "指定负责人，或在例会中认领", fieldPattern: "负责人|执行人|owner|assignee", check: "missing" },
+  { id: "tasks.deadline-before-created", table: "tasks", name: "任务进度：截止早于创建日期", suggestion: "检查截止日期是否填错年份", fieldPattern: "截止|deadline|完成时间", check: "beforeField", options: { otherFieldPattern: "创建" } },
+  { id: "tasks.progress-contradiction", table: "tasks", name: "任务进度：100% 却未标完成", suggestion: "完成度已到 100%，把状态改为完成", fieldPattern: "^状态$|状态|进度|status", check: "contradiction", options: { otherFieldPattern: "完成度|进度", whenMatches: "^100(%|\\.0*)?$", thenMatches: "完成|done|完结" } },
+  { id: "inventory.qty-negative", table: "inventory", name: "物资台账：数量为负", suggestion: "盘点后修正数量", fieldPattern: "^数量$|数量|库存|余量|quantity", check: "negative" },
+  { id: "inventory.location-missing", table: "inventory", name: "物资台账：位置字段为空", suggestion: "补库位/货架位置，方便 MES 找货", fieldPattern: "位置|库位|货架|仓库|location", check: "missing" },
+  { id: "inventory.owner-not-in-members", table: "inventory", name: "物资台账：领用人不在队员名单", suggestion: "领用人姓名需与名单表一致（或先补名单）", fieldPattern: "领用人|领用|借用人|holder", check: "notInRecords", options: { otherTable: "members", otherFieldPattern: "^姓名$|姓名|名字|^name$" } },
+  { id: "finance.amount-missing", table: "finance", name: "财务报销：金额缺失", suggestion: "补报销金额", fieldPattern: "报销金额|^金额|金额|费用|amount", check: "missing" },
+  { id: "finance.invoice-contradiction", table: "finance", name: "财务报销：已打款但发票缺失", suggestion: "已报销/打款的记录需补发票号或发票照片", fieldPattern: "发票状态|发票", check: "contradiction", options: { otherFieldPattern: "^状态$|状态", whenMatches: "已报销|已打款|已完成", thenNotMatches: "已收|齐全|有|正常" }, severity: "warning" },
+];
+
+async function getValidateRules(env: Env): Promise<ValidateRule[]> {
+  const raw = await env.REGISTRY.get("validate:rules");
+  if (!raw) return DEFAULT_RULES;
+  try {
+    const parsed = JSON.parse(raw) as ValidateRule[];
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_RULES;
+  } catch {
+    return DEFAULT_RULES;
+  }
+}
+
+interface Anomaly {
+  ruleId: string;
+  ruleName: string;
+  severity: string;
+  suggestion: string;
+  recordId: string;
+  recordTitle: string;
+  recordLink: string;
+}
+
+/** 执行一条规则，返回异常记录（每条规则最多收 50 条，防止刷屏） */
+function evalRule(
+  rule: ValidateRule,
+  records: BitableRecord[],
+  ctx: { cfg: DashboardConfig; tableId: string; members: BitableRecord[] },
+): Anomaly[] {
+  const out: Anomaly[] = [];
+  if (records.length === 0) return out;
+  const fieldKey = findFieldKey(records, [new RegExp(rule.fieldPattern, "i")]);
+  const otherKey = rule.options?.otherFieldPattern
+    ? findFieldKey(records, [new RegExp(rule.options.otherFieldPattern, "i")])
+    : null;
+  const opt = rule.options ?? {};
+  const limit = 50;
+  for (const r of records) {
+    if (out.length >= limit) break;
+    const text = fieldKey ? fieldText(r.fields[fieldKey]) : "";
+    const num = fieldKey ? fieldNum(r.fields[fieldKey]) : null;
+    let bad = false;
+    switch (rule.check) {
+      case "missing":
+        bad = !text;
+        break;
+      case "negative":
+        bad = num !== null && num < 0;
+        break;
+      case "notIn":
+        bad = !!text && !!opt.values && !opt.values.some((v) => text.includes(v));
+        break;
+      case "regexMismatch":
+        bad = !!text && !!opt.regex && !new RegExp(opt.regex, "i").test(text);
+        break;
+      case "beforeField": {
+        const other = otherKey ? fieldNum(r.fields[otherKey]) : null;
+        bad = num !== null && other !== null && num < other;
+        break;
+      }
+      case "notInRecords": {
+        if (!text || !opt.otherTable) break;
+        const others = ctx.members;
+        const okKey = findFieldKey(others, [new RegExp(opt.otherFieldPattern ?? "姓名|name", "i")]);
+        bad = !others.some((m) => okKey && fieldText(m.fields[okKey]) === text);
+        break;
+      }
+      case "contradiction": {
+        if (!otherKey || !opt.whenMatches) break;
+        const otherText = fieldText(r.fields[otherKey]);
+        if (!new RegExp(opt.whenMatches, "i").test(otherText)) break;
+        if (opt.thenNotMatches) bad = new RegExp(opt.thenNotMatches, "i").test(text);
+        else if (opt.thenMatches) bad = !new RegExp(opt.thenMatches, "i").test(text);
+        break;
+      }
+    }
+    if (bad) {
+      out.push({
+        ruleId: rule.id,
+        ruleName: rule.name,
+        severity: rule.severity ?? "error",
+        suggestion: rule.suggestion,
+        recordId: r.record_id,
+        recordTitle: firstFieldText(r) || "(未命名记录)",
+        recordLink: `https://www.feishu.cn/base/${ctx.cfg.base}?table=${ctx.tableId}&record=${r.record_id}`,
+      });
+    }
+  }
+  return out;
+}
+
+/** 跑校验。detail=false 时只出计数（无记录明细），供无身份调用方使用。结果存 KV validate:report */
+async function runValidation(env: Env, scope: DashTable | "all", detail: boolean): Promise<unknown> {
+  const cfg = await getDashboardConfig(env);
+  if (!cfg) {
+    return { configured: false, hint: "数据看板尚未配置（config_dashboard），无法校验。先配置 base 与 tables。" };
+  }
+  const rules = await getValidateRules(env);
+  const scopedRules = scope === "all" ? rules : rules.filter((r) => r.table === scope);
+  if (scopedRules.length === 0) {
+    return { configured: true, validatedAt: new Date().toISOString(), scope, tables: {}, anomalyCount: 0, note: "该范围没有匹配的规则" };
+  }
+  const tables = [...new Set(scopedRules.map((r) => r.table))] as DashTable[];
+  const fetched: Record<string, TableFetchResult> = {};
+  await Promise.all(tables.map(async (t) => { fetched[t] = await fetchTableCached(env, cfg, t); }));
+  // 跨表引用（notInRecords）需要 members 表
+  const members = fetched.members ?? await fetchTableCached(env, cfg, "members");
+
+  const reportTables: Record<string, unknown> = {};
+  let anomalyCount = 0;
+  for (const t of tables) {
+    const tableRules = scopedRules.filter((r) => r.table === t);
+    const tableId = cfg.tables[t] ?? "";
+    const all: Anomaly[] = [];
+    for (const rule of tableRules) {
+      all.push(...evalRule(rule, fetched[t]?.records ?? [], { cfg, tableId, members: members.records }));
+    }
+    anomalyCount += all.length;
+    const byRule = tableRules
+      .map((r) => ({ id: r.id, name: r.name, count: all.filter((a) => a.ruleId === r.id).length }))
+      .filter((x) => x.count > 0);
+    reportTables[t] = {
+      totalRecords: fetched[t]?.records.length ?? 0,
+      anomalyCount: all.length,
+      byRule,
+      error: fetched[t]?.error,
+      ...(detail ? { anomalies: all } : {}),
+      cachedAt: fetched[t]?.cachedAt,
+    };
+  }
+
+  const report = {
+    configured: true,
+    validatedAt: new Date().toISOString(),
+    scope,
+    detail,
+    anomalyCount,
+    tables: reportTables,
+  };
+  if (detail) {
+    await env.REGISTRY.put("validate:report", JSON.stringify(report), { expirationTtl: 7 * 24 * 3600 });
+  }
+  return report;
 }
 
 // ---------- 工具函数 ----------
