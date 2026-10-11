@@ -30,6 +30,31 @@ def http_get(url: str, retries: int = 3) -> bytes:
             time.sleep(3)
     raise RuntimeError("unreachable")
 
+def gitee_token() -> str:
+    """从本机 git 凭据管理器取 Gitee token（避免匿名 451 限流）。"""
+    import subprocess
+    r = subprocess.run(["git", "credential", "fill"], input="protocol=https\nhost=gitee.com\n\n",
+                       capture_output=True, text=True)
+    for line in r.stdout.splitlines():
+        if line.startswith("password="):
+            return line.split("=", 1)[1]
+    return ""
+
+TOKEN = gitee_token()
+
+def fetch_skill_md(owner_repo: str, branch: str, path: str) -> str:
+    """优先用 API contents（带 token，抗 451），失败回落 raw URL。"""
+    api = f"https://gitee.com/api/v5/repos/{owner_repo}/contents/{path}?ref={branch}"
+    if TOKEN:
+        try:
+            import base64
+            d = json.loads(http_get(f"{api}&access_token={TOKEN}"))
+            return base64.b64decode(d["content"]).decode("utf-8", errors="replace")
+        except Exception:
+            pass
+    raw_url = f"https://gitee.com/{owner_repo}/raw/{branch}/{path}"
+    return http_get(raw_url).decode("utf-8", errors="replace")
+
 def parse_description(md: str) -> str:
     """从 SKILL.md frontmatter 提取 description（单行）。"""
     m = re.match(r"^---\s*\n(.*?)\n---", md, re.S)
@@ -75,10 +100,9 @@ def main() -> None:
     skills = []
     for i, path in enumerate(skill_md_paths, 1):
         name = path.split("/")[1]
-        raw_url = f"https://gitee.com/{owner_repo}/raw/{args.branch}/{path}"
         page_url = f"https://gitee.com/{owner_repo}/blob/{args.branch}/{path}"
         try:
-            md = http_get(raw_url).decode("utf-8", errors="replace")
+            md = fetch_skill_md(owner_repo, args.branch, path)
             desc = parse_description(md)
         except Exception as e:
             print(f"  ⚠️ {name} 抓取失败：{e}")

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 234" role="img" aria-label="NEC 常州工学院NEC战队">
+  <defs><linearGradient id="royal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2B3FC2"/><stop offset="1" stop-color="#10277E"/></linearGradient></defs>
+  <g>
+    <polygon points="2,181 44,181 99,191 141,149 201,177 159,219 104,209 62,209" fill="#141B5E"/>
+  <polygon points="159,32 201,32 201,177 159,177" fill="#141B5E"/>
+  <polygon points="2,46 2,181 44,181 44,133 99,191 141,149 141,4 99,4 99,104 44,46" fill="url(#royal)"/>
+  <polygon points="2,46 44,46 104,74 62,74" fill="#3449B9"/>
+  <polygon points="99,4 141,4 201,32 159,32" fill="#3449B9"/>
+  </g>
+  <text x="252" y="128" font-family="Arial, Helvetica, sans-serif" font-size="104" font-weight="900" letter-spacing="2" fill="#0B1033">NEC</text>
+  <text x="256" y="168" font-family="Consolas, &quot;IBM Plex Mono&quot;, monospace" font-size="21" letter-spacing="4.5" fill="#5A6472">NEW ENERGY CODER</text>
+  <text x="256" y="200" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, sans-serif" font-size="20" font-weight="700" letter-spacing="6" fill="#5A6472">常州工学院 NEC 战队</text>
+</svg>

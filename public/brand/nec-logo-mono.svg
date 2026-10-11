@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 204 234" role="img" aria-label="NEC logo" >
+  <defs>
+    <linearGradient id="royal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2B3FC2"/>
+      <stop offset="1" stop-color="#10277E"/>
+    </linearGradient>
+  </defs>
+  <polygon points="2,181 44,181 99,191 141,149 201,177 159,219 104,209 62,209" fill="#0B1033"/>
+  <polygon points="159,32 201,32 201,177 159,177" fill="#0B1033"/>
+  <polygon points="2,46 2,181 44,181 44,133 99,191 141,149 141,4 99,4 99,104 44,46" fill="#0B1033"/>
+  <polygon points="2,46 44,46 104,74 62,74" fill="#0B1033"/>
+  <polygon points="99,4 141,4 201,32 159,32" fill="#0B1033"/>
+</svg>

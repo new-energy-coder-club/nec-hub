@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>NEC 团队 AI 中台</title>
+<link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   :root { --navy:#141B5E; --ink:#0B1033; --cyan:#1FA9E8; --cyan-lt:#4FC3F7; }
@@ -28,6 +29,8 @@
   .base-line { height: 5px; background: linear-gradient(90deg, var(--cyan), var(--cyan-lt) 55%, rgba(79,195,247,0)); }
   .chip { border: 1.5px solid var(--navy); color: var(--navy); }
   .chip i { color: var(--cyan); }
+  .host-btn { border: 1.5px solid #d1d5db; color: #6b7280; background: #fff; }
+  .host-btn.on { border-color: var(--navy); color: #fff; background: var(--navy); }
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
@@ -36,19 +39,20 @@
 <header class="hero">
   <div class="max-w-5xl mx-auto px-6 pt-8 pb-10 relative">
     <div class="flex items-center gap-3 relative z-10">
-      <img src="/assets/nec-logo.png" alt="NEC" class="h-9 w-auto" />
+      <img src="/brand/nec-logo.svg" alt="NEC" class="h-9 w-auto" />
       <div class="leading-tight">
         <div class="font-black text-lg" style="color:var(--navy)">常州工NEC <span class="text-sm font-extrabold" style="color:var(--cyan)">in CIT</span></div>
         <div class="mono text-[11px] text-gray-500 tracking-wider">newenergycoder.club</div>
       </div>
       <span id="health" class="ml-auto text-xs px-2 py-1 rounded bg-gray-100 text-gray-500">连接中…</span>
+      <div id="user-box" class="text-xs flex items-center gap-2"></div>
     </div>
 
     <div class="mt-10 relative z-10">
       <p class="mono text-xs tracking-[.22em] mb-4" style="color:var(--navy)"><b>NEC HUB</b> · 团队 AI 中台 · KEEP BUILDING</p>
       <h1 class="hero-title text-5xl sm:text-7xl">BUILT <span class="to">TO</span> DAWN</h1>
       <p class="mt-4 font-black tracking-[.4em] text-sm sm:text-base" style="color:var(--navy)">为黎明而造</p>
-      <p class="mono mt-3 text-xs text-gray-500 tracking-widest">应用广场 · SKILL 中心 · 数据看板 · 我的 AGENT</p>
+      <p class="mono mt-3 text-xs text-gray-500 tracking-widest">应用广场 · SKILL 中心 · 开源仓库 · 数据看板 · 我的 AGENT</p>
       <div class="mt-6 flex flex-wrap gap-3 text-sm">
         <span class="chip mono px-3 py-1.5 rounded-sm bg-white"><i class="not-italic mr-1">01</i>找物品</span>
         <span class="chip mono px-3 py-1.5 rounded-sm bg-white"><i class="not-italic mr-1">02</i>扫标签</span>
@@ -76,6 +80,7 @@
   <div class="max-w-5xl mx-auto px-6 flex gap-6 text-sm font-medium text-gray-500">
     <button data-tab="apps" class="tab-btn py-3 tab-active">应用广场</button>
     <button data-tab="skills" class="tab-btn py-3">Skill 中心</button>
+    <button data-tab="repos" class="tab-btn py-3">开源仓库</button>
     <button data-tab="dashboard" class="tab-btn py-3">数据看板</button>
     <button data-tab="agent" class="tab-btn py-3">我的 Agent</button>
   </div>
@@ -103,13 +108,36 @@
     <div id="skills-list" class="space-y-3"></div>
   </section>
 
+  <!-- NEC 开源仓库 -->
+  <section id="tab-repos" class="hidden">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">NEC 开源仓库</h2>
+      <div class="text-sm">
+        <a href="https://github.com/new-energy-coder-club" target="_blank" class="hover:underline" style="color:var(--cyan)">GitHub org →</a>
+        <span class="text-gray-300 mx-1">·</span>
+        <a href="https://gitee.com/darrenpig" target="_blank" class="hover:underline" style="color:var(--cyan)">Gitee →</a>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 mb-3 text-xs">
+      <button data-host="all" class="host-btn on px-3 py-1 rounded-full">全部</button>
+      <button data-host="github" class="host-btn px-3 py-1 rounded-full">GitHub</button>
+      <button data-host="gitee" class="host-btn px-3 py-1 rounded-full">Gitee</button>
+      <span class="text-gray-400 ml-auto">点击表头列可排序</span>
+    </div>
+    <div id="repos-box" class="bg-white rounded-xl shadow overflow-hidden">
+      <p class="p-8 text-center text-gray-400 text-sm">加载中…</p>
+    </div>
+    <p id="repos-meta" class="text-xs text-gray-400 mt-2"></p>
+  </section>
+
   <!-- 数据看板 -->
   <section id="tab-dashboard" class="hidden">
-    <h2 class="text-lg font-bold mb-4">数据看板</h2>
-    <div class="bg-white rounded-xl shadow p-6 text-sm text-gray-600 space-y-2">
-      <p>📊 数据源为飞书多维表格（队员名单 / 任务进度 / 物资台账 / 财务报销）。</p>
-      <p>当前为 MVP 占位：待飞书自建应用配置完成后，此处将实时渲染任务进度与物资余量。</p>
-      <p class="text-gray-400">配置项：FEISHU_APP_ID / FEISHU_APP_SECRET（wrangler secret）</p>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">数据看板</h2>
+      <span id="dash-status" class="text-xs text-gray-400"></span>
+    </div>
+    <div id="dash-body" class="space-y-4">
+      <div class="bg-white rounded-xl shadow p-6 text-sm text-gray-400">加载中…</div>
     </div>
   </section>
 
@@ -126,7 +154,8 @@
 </main>
 
 <footer class="max-w-5xl mx-auto px-6 py-8 text-xs text-gray-400">
-  NEC 团队 AI 中台 MVP · Cloudflare Workers + KV + R2 · 数据基建在飞书 · BUILT TO DAWN — KEEP BUILDING
+  NEC 团队 AI 中台 MVP · Cloudflare Workers + KV + R2 · 数据基建在飞书 · BUILT TO DAWN — KEEP BUILDING<br/>
+  <a href="/brand/" class="hover:underline" style="color:var(--cyan)">→ NEC 品牌主视觉（Logo / PPT 模板 / VI 规范）</a>
 </footer>
 
 <script>
@@ -152,7 +181,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("tab-active"));
     btn.classList.add("tab-active");
-    ["apps","skills","dashboard","agent"].forEach(t =>
+    ["apps","skills","repos","dashboard","agent"].forEach(t =>
       document.getElementById("tab-"+t).classList.toggle("hidden", t !== btn.dataset.tab));
   });
 });
@@ -175,6 +204,79 @@ fetch("/api/health").then(r => r.json()).then(d => {
   el.textContent = "● 连接失败";
   el.className = "ml-auto text-xs px-2 py-1 rounded bg-red-100 text-red-600";
 });
+
+// ===== 飞书登录态（FE-01）：OAuth 跳转登录 + 会话 Cookie + 角色徽章 =====
+let HUB_CONFIG = { loginEnabled: false, feishuAppId: null };
+let ME = { authenticated: false, user: null };
+
+async function bootAuth() {
+  try { HUB_CONFIG = await (await fetch("/api/config")).json(); } catch {}
+  const params = new URLSearchParams(location.search);
+  const code = params.get("code");
+  if (code) {
+    const state = params.get("state");
+    const saved = sessionStorage.getItem("nec_oauth_state");
+    history.replaceState(null, "", location.pathname + location.hash);
+    if (state && saved && state !== saved) {
+      alert("登录校验失败（state 不匹配），请重试");
+    } else {
+      try {
+        const resp = await fetch("/auth/feishu", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ code }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || data.error) throw new Error(data.error || ("HTTP " + resp.status));
+      } catch (e) {
+        alert("飞书登录失败：" + (e.message || e));
+      }
+    }
+    sessionStorage.removeItem("nec_oauth_state");
+  }
+  await refreshMe();
+  renderUserBox();
+  loadDashboard(); // 财务区可见性随登录角色变化
+}
+
+async function refreshMe() {
+  try { ME = await (await fetch("/api/whoami")).json(); }
+  catch { ME = { authenticated: false, user: null }; }
+}
+
+function renderUserBox() {
+  const box = document.getElementById("user-box");
+  if (ME.authenticated && ME.user) {
+    const u = ME.user;
+    box.innerHTML = `
+      ${u.avatar_url ? `<img src="${esc(u.avatar_url)}" class="w-6 h-6 rounded-full" alt=""/>` : ""}
+      <span class="font-medium" style="color:var(--navy)">${esc(u.name)}</span>
+      <span class="px-1.5 py-0.5 rounded text-[10px] text-white" style="background:var(--cyan)">${esc(u.role || "队员")}</span>
+      ${u.group ? `<span class="text-gray-400 hidden sm:inline">${esc(u.group)}</span>` : ""}
+      <button onclick="logout()" class="text-gray-400 hover:text-gray-600 ml-1">登出</button>`;
+  } else if (HUB_CONFIG.loginEnabled) {
+    box.innerHTML = `<button onclick="startLogin()" class="px-3 py-1 rounded text-white" style="background:var(--navy)">飞书登录</button>`;
+  } else {
+    box.innerHTML = "";
+  }
+}
+
+function startLogin() {
+  const state = crypto.randomUUID();
+  sessionStorage.setItem("nec_oauth_state", state);
+  const redirect = location.origin + location.pathname;
+  location.href = "https://open.feishu.cn/open-apis/authen/v1/authorize?app_id="
+    + encodeURIComponent(HUB_CONFIG.feishuAppId)
+    + "&redirect_uri=" + encodeURIComponent(redirect)
+    + "&state=" + state;
+}
+
+async function logout() {
+  await fetch("/auth/logout", { method: "POST" }).catch(() => {});
+  ME = { authenticated: false, user: null };
+  renderUserBox();
+  loadDashboard();
+}
 
 // 应用广场
 fetch("/api/apps").then(r => r.json()).then(apps => {
@@ -214,9 +316,237 @@ fetch("/api/skills").then(r => r.json()).then(skills => {
     </div>`).join("");
 });
 
+// NEC 开源仓库（GitHub org + Gitee 账号合并，点击表头按 Star/Fork/Commit 等排序）
+let reposData = [];
+let reposSort = { key: "stars", dir: -1 };
+let reposHost = "all";
+
+const REPO_COLS = [
+  { key: "name",     label: "仓库" },
+  { key: "host",     label: "来源" },
+  { key: "language", label: "语言" },
+  { key: "stars",    label: "★ Star" },
+  { key: "forks",    label: "⑂ Fork" },
+  { key: "commits",  label: "Commit" },
+  { key: "pushedAt", label: "最近提交" },
+];
+
+document.querySelectorAll(".host-btn").forEach(b => b.addEventListener("click", () => {
+  reposHost = b.dataset.host;
+  document.querySelectorAll(".host-btn").forEach(x => x.classList.toggle("on", x === b));
+  renderRepos();
+}));
+
+fetch("/api/repos").then(r => r.json()).then(d => {
+  reposData = d.repos || [];
+  const box = document.getElementById("repos-box");
+  if (!reposData.length) {
+    box.innerHTML = `<p class="p-8 text-center text-gray-400 text-sm">${esc(d.error || "暂无公开仓库。")}</p>`;
+    return;
+  }
+  const time = d.cachedAt ? new Date(d.cachedAt).toLocaleString("zh-CN") : "";
+  document.getElementById("repos-meta").textContent =
+    `共 ${reposData.length} 个开源仓库（GitHub ${d.github || ""} + Gitee ${d.gitee || ""}） · 数据更新于 ${time}${d.stale ? "（上游暂不可用，展示缓存快照）" : ""}`;
+  renderRepos();
+}).catch(() => {
+  document.getElementById("repos-box").innerHTML =
+    `<p class="p-8 text-center text-red-500 text-sm">仓库列表加载失败，请稍后刷新重试。</p>`;
+});
+
+function sortRepos(key) {
+  if (reposSort.key === key) reposSort.dir *= -1;
+  else reposSort = { key, dir: key === "name" || key === "host" ? 1 : -1 };
+  renderRepos();
+}
+
+function renderRepos() {
+  const box = document.getElementById("repos-box");
+  const { key, dir } = reposSort;
+  const data = reposData.filter(r => reposHost === "all" || r.host === reposHost);
+  if (!data.length) {
+    box.innerHTML = `<p class="p-8 text-center text-gray-400 text-sm">该来源下暂无仓库。</p>`;
+    return;
+  }
+  const val = r => key === "name" ? r.name : key === "host" ? r.host : key === "pushedAt" ? (Date.parse(r.pushedAt) || 0) : (r[key] || 0);
+  const rows = [...data].sort((a, b) => {
+    const va = val(a), vb = val(b);
+    return (typeof va === "string" ? va.localeCompare(vb) : va - vb) * dir;
+  });
+  const arrow = k => reposSort.key === k ? (reposSort.dir > 0 ? " ↑" : " ↓") : "";
+  const hostBadge = h => h === "gitee"
+    ? ' <span class="text-[10px] text-red-500 border border-red-200 rounded px-1 ml-1">Gitee</span>'
+    : ' <span class="text-[10px] text-gray-400 border border-gray-200 rounded px-1 ml-1">GitHub</span>';
+  box.innerHTML = `
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-xs text-gray-400 border-b">
+            ${REPO_COLS.map(c => `<th class="px-4 py-3 font-medium whitespace-nowrap"><button onclick="sortRepos('${c.key}')" class="hover:underline">${c.label}${arrow(c.key)}</button></th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr class="border-b last:border-0 hover:bg-gray-50">
+              <td class="px-4 py-3">
+                <a href="${r.url}" target="_blank" class="font-bold hover:underline" style="color:var(--navy)">${esc(r.name)}</a>${hostBadge(r.host)}${r.isFork ? ' <span class="text-[10px] text-gray-400 border border-gray-200 rounded px-1">fork</span>' : ""}
+                <p class="text-xs text-gray-400 mt-0.5">${esc(r.description || "")}</p>
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-gray-500">${r.host === "gitee" ? "Gitee" : "GitHub"}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-gray-500">${esc(r.language || "—")}</td>
+              <td class="px-4 py-3 mono whitespace-nowrap">${r.stars}</td>
+              <td class="px-4 py-3 mono whitespace-nowrap">${r.forks}</td>
+              <td class="px-4 py-3 mono whitespace-nowrap">${r.commits ?? "—"}</td>
+              <td class="px-4 py-3 mono whitespace-nowrap text-gray-500">${r.pushedAt ? new Date(r.pushedAt).toLocaleDateString("zh-CN") : "—"}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
+
+// 数据看板
+const DASH_CONFIG_PROMPT = `请帮我配置 NEC 中台的数据看板（飞书多维表格）：
+1. 打开飞书多维表格，从浏览器地址栏复制 app_token 与各表的 table_id：
+   URL 形如 https://xxx.feishu.cn/base/<app_token>?table=<table_id>&view=...
+2. 调用 nec-hub MCP 的 config_dashboard（action=set），传入 base 与 tables（tasks / inventory / members / finance → table_id）
+3. 配置完成后打开门户「数据看板」Tab 确认数据渲染`;
+
+function dashStatusColor(name) {
+  if (/进行|doing|progress/i.test(name)) return "#1FA9E8";
+  if (/完成|done|完结/i.test(name)) return "#141B5E";
+  if (/未开始|待|todo|pending/i.test(name)) return "#9CA3AF";
+  if (/取消|cancel|关闭|close/i.test(name)) return "#D1D5DB";
+  return "#4FC3F7";
+}
+
+function fmtDashDate(v) {
+  if (typeof v !== "number" || !isFinite(v)) return "—";
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
+}
+
+function renderDashboard(d) {
+  const box = document.getElementById("dash-body");
+  const status = document.getElementById("dash-status");
+  if (!d.configured) {
+    status.textContent = "数据源未配置";
+    box.innerHTML = `
+      <div class="bg-white rounded-xl shadow p-6 text-sm text-gray-600 space-y-3">
+        <p>📊 数据源为飞书多维表格（队员名单 / 任务进度 / 物资台账 / 财务报销），尚未接入。</p>
+        <p>把下面的 Prompt 发给你已接入 nec-hub MCP 的 Agent，即可完成配置：</p>
+        <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="dash-prompt"></pre>
+        <button onclick="copyText('dash-prompt')" class="text-sm text-white px-3 py-1.5 rounded" style="background:var(--navy)">复制配置 Prompt</button>
+      </div>`;
+    document.getElementById("dash-prompt").textContent = DASH_CONFIG_PROMPT;
+    return;
+  }
+
+  const stat = (label, value, extra) => `
+    <div class="bg-white rounded-xl shadow p-5">
+      <div class="text-xs text-gray-400">${label}</div>
+      <div class="text-3xl font-black mt-1" style="color:var(--navy)">${esc(value ?? "—")}</div>
+      ${extra ? `<div class="text-xs text-gray-400 mt-1">${extra}</div>` : ""}
+    </div>`;
+  const errNote = (e) => e ? `<div class="text-xs text-amber-600 mt-2">⚠ ${esc(e)}</div>` : "";
+
+  const finVis = d.finance?.visibility ?? "full"; // 旧版后端无该字段时按 full 处理
+  const cards = [
+    stat("在队队员", d.members?.total, d.members?.byGroup?.slice(0, 3).map(g => `${esc(g.name)} ${g.count}`).join(" · ")),
+    stat("任务总数", d.tasks?.total, d.tasks?.byStatus?.map(s => `${esc(s.name)} ${s.count}`).join(" · ")),
+    stat("物资种类", d.inventory?.kinds, d.inventory?.totalQty != null ? `共 ${esc(String(d.inventory.totalQty))} 件` : ""),
+    finVis === "hidden"
+      ? stat("报销合计", "登录可见", "队员可见汇总 · 明细仅队长/财务")
+      : stat("报销合计（元）", d.finance?.totalAmount, `${d.finance?.records ?? 0} 笔`),
+  ].join("");
+
+  const total = d.tasks?.total ?? 0;
+  const st = d.tasks?.byStatus ?? [];
+  const statusBar = total && st.length ? `
+    <div class="flex h-3 rounded overflow-hidden bg-gray-100">
+      ${st.map(s => `<div style="width:${(s.count / total * 100).toFixed(1)}%;background:${dashStatusColor(s.name)}" title="${esc(s.name)} ${s.count}"></div>`).join("")}
+    </div>
+    <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
+      ${st.map(s => `<span><i class="not-italic inline-block w-2 h-2 rounded-sm mr-1" style="background:${dashStatusColor(s.name)}"></i>${esc(s.name)} ${s.count}</span>`).join("")}
+    </div>` : `<p class="text-sm text-gray-400">暂无任务数据</p>`;
+
+  const upcomingRows = (d.tasks?.upcoming ?? []).map(t => `
+    <tr class="border-t border-gray-100">
+      <td class="py-2 pr-3">${esc(t.title || "—")}</td>
+      <td class="py-2 pr-3 text-gray-500 whitespace-nowrap">${esc(t.owner || "—")}</td>
+      <td class="py-2 pr-3 whitespace-nowrap"><span class="px-2 py-0.5 rounded text-xs text-white" style="background:${dashStatusColor(t.status)}">${esc(t.status || "未标注")}</span></td>
+      <td class="py-2 text-gray-400 mono text-xs whitespace-nowrap">${fmtDashDate(t.deadline)}</td>
+    </tr>`).join("");
+  const upcomingTable = upcomingRows ? `
+    <table class="w-full text-sm mt-3">
+      <thead><tr class="text-left text-xs text-gray-400">
+        <th class="pb-1 font-medium">任务</th><th class="pb-1 font-medium">负责人</th><th class="pb-1 font-medium">状态</th><th class="pb-1 font-medium">截止</th>
+      </tr></thead>
+      <tbody>${upcomingRows}</tbody>
+    </table>` : "";
+
+  const invRows = (d.inventory?.items ?? []).map(it => `
+    <tr class="border-t border-gray-100">
+      <td class="py-2 pr-3">${esc(it.name)}</td>
+      <td class="py-2 pr-3 mono text-xs whitespace-nowrap">${it.qty ?? "—"}</td>
+      <td class="py-2 text-gray-400 text-xs">${esc(it.location || "—")}</td>
+    </tr>`).join("");
+  const invTable = invRows ? `
+    <table class="w-full text-sm mt-3">
+      <thead><tr class="text-left text-xs text-gray-400">
+        <th class="pb-1 font-medium">物料</th><th class="pb-1 font-medium">数量</th><th class="pb-1 font-medium">位置</th>
+      </tr></thead>
+      <tbody>${invRows}</tbody>
+    </table>` : `<p class="text-sm text-gray-400">暂无物资数据</p>`;
+
+  const finList = (d.finance?.recent ?? []).map(f => `
+    <li class="flex justify-between py-1.5 border-t border-gray-100 text-sm">
+      <span>${esc(f.name)}</span><span class="mono text-xs">${f.amount ?? "—"}</span>
+    </li>`).join("");
+  const finBody = finVis === "full"
+    ? (finList ? `<ul>${finList}</ul>` : `<p class="text-sm text-gray-400">暂无报销数据</p>`)
+    : finVis === "summary"
+      ? `<p class="text-sm text-gray-400">报销明细仅队长/财务角色可见。</p>`
+      : `<p class="text-sm text-gray-400">报销数据登录后可见：队员可见汇总，明细仅队长/财务。</p>`;
+
+  status.textContent = `更新于 ${new Date(d.generatedAt).toLocaleTimeString("zh-CN")}${d.stale ? "（缓存快照）" : ""} · 缓存 5 分钟`;
+
+  box.innerHTML = `
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">${cards}</div>
+    ${d.members?.error ? `<div class="text-xs text-amber-600">⚠ 队员名单：${esc(d.members.error)}</div>` : ""}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="bg-white rounded-xl shadow p-5">
+        <h3 class="font-bold mb-3">任务进度</h3>
+        ${statusBar}
+        ${upcomingTable}
+        ${errNote(d.tasks?.error)}
+      </div>
+      <div class="bg-white rounded-xl shadow p-5">
+        <h3 class="font-bold mb-3">物资台账</h3>
+        ${invTable}
+        ${(d.inventory?.kinds ?? 0) > (d.inventory?.items?.length ?? 0) ? `<p class="text-xs text-gray-400 mt-2">仅展示前 50 条</p>` : ""}
+        ${errNote(d.inventory?.error)}
+      </div>
+    </div>
+    <div class="bg-white rounded-xl shadow p-5">
+      <h3 class="font-bold mb-2">最近报销</h3>
+      ${finBody}
+      ${errNote(d.finance?.error)}
+    </div>
+    <p class="text-xs text-gray-400">数据源：飞书多维表格（base ${esc(d.base)}）· 队员名单 / 任务进度 / 物资台账 / 财务报销 · 5 分钟缓存 · 财务区按登录角色脱敏</p>
+  `;
+}
+
+function loadDashboard() {
+  fetch("/api/dashboard").then(r => r.json()).then(renderDashboard).catch(() => {
+    document.getElementById("dash-body").innerHTML =
+      `<div class="bg-white rounded-xl shadow p-6 text-sm text-red-500">看板加载失败，请稍后重试。</div>`;
+  });
+}
+
+bootAuth();
 </script>
 </body>
 </html>

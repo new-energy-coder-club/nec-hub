@@ -1,0 +1,67 @@
+/* ============================================================
+   NEC 品牌设计 Tokens — BUILT TO DAWN
+   版本: v1.0 · 2026-10-12 · 规范见《NEC 主视觉 VI 规范手册》
+   用法: <link rel="stylesheet" href="/brand/nec-tokens.css">
+   ============================================================ */
+
+:root {
+  /* ---- 品牌色 Brand Colors ---- */
+  --nec-royal: #1A2FA0;        /* NEC 蓝：标志主色（渐变/扁平取值用下方阶梯） */
+  --nec-royal-100: #E8ECFB;    /* 极浅 · 背景点缀 */
+  --nec-royal-300: #3449B9;    /* 浅 · 标志顶面 */
+  --nec-royal-500: #1A2FA0;    /* 正色 · 品牌主色 */
+  --nec-royal-700: #10277E;    /* 深 · 标志渐变底 */
+  --nec-navy: #141B5E;         /* NEC 藏青：深色底、标题、强调底 */
+  --nec-ink: #0B1033;          /* 墨青：浅色底上的正文/标题 */
+  --nec-cyan: #1FA9E8;         /* 破晓青：强调、交互、亮点 */
+  --nec-sky: #4FC3F7;          /* 破晓浅青：辅助强调、渐变伴侣 */
+
+  /* ---- 中性色 Neutrals ---- */
+  --nec-paper: #FFFFFF;        /* 纸白 */
+  --nec-fog: #F4F6FB;          /* 雾灰蓝 · 浅色底 */
+  --nec-gray: #5A6472;         /* 次级文字 */
+  --nec-line: #D9DFF0;         /* 描边/分割线 */
+
+  /* ---- 字体族 Typography ---- */
+  --nec-font-cn: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  --nec-font-en: Arial, Helvetica, sans-serif;
+  --nec-font-display: "Arial Black", Arial, "Microsoft YaHei", sans-serif; /* 大标题/口号 */
+  --nec-font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;    /* 编号/代码/数据 */
+
+  /* ---- KV 元素 KV Elements ---- */
+  /* 蓝图网格：工程底纹，浅色面上叠加 */
+  --nec-grid: rgba(31, 169, 232, .13);
+  --nec-grid-fine: rgba(31, 169, 232, .05);
+  --nec-grid-size: 92px;
+  --nec-grid-size-fine: 23px;
+  /* 破晓地平线：页面/区块底部装饰线 */
+  --nec-horizon: linear-gradient(90deg, var(--nec-cyan), var(--nec-sky) 55%, rgba(79, 195, 247, 0));
+  /* 品牌渐变 */
+  --nec-grad-royal: linear-gradient(180deg, #2B3FC2 0%, #10277E 100%);
+  --nec-grad-dawn: linear-gradient(135deg, #4FC3F7 0%, #1FA9E8 100%);
+
+  /* ---- 应用工具类 Utilities ---- */
+  --nec-radius: 12px;
+  --nec-shadow: 0 2px 10px rgba(11, 16, 51, .08);
+  --nec-maxw: 72rem;
+}
+
+/* 蓝图网格背景（加在 hero / 卡片 / 封面容器上） */
+.nec-blueprint {
+  background-color: var(--nec-paper);
+  background-image:
+    linear-gradient(var(--nec-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--nec-grid) 1px, transparent 1px),
+    linear-gradient(var(--nec-grid-fine) 1px, transparent 1px),
+    linear-gradient(90deg, var(--nec-grid-fine) 1px, transparent 1px);
+  background-size:
+    var(--nec-grid-size) var(--nec-grid-size),
+    var(--nec-grid-size) var(--nec-grid-size),
+    var(--nec-grid-size-fine) var(--nec-grid-size-fine),
+    var(--nec-grid-size-fine) var(--nec-grid-size-fine);
+}
+
+/* 破晓地平线装饰条 */
+.nec-horizon-line { height: 3px; background: var(--nec-cyan); }
+.nec-horizon-fade { height: 5px; background: var(--nec-horizon); }
+

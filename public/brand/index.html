@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NEC 品牌主视觉 · Logo / PPT / VI</title>
+<link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+<link rel="stylesheet" href="./nec-tokens.css" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--nec-font-cn); background: var(--nec-fog); color: var(--nec-ink); }
+  .wrap { max-width: var(--nec-maxw); margin: 0 auto; padding: 0 24px; }
+  .mono { font-family: var(--nec-font-mono); }
+
+  /* Hero */
+  .hero { background: var(--nec-navy); color: #fff; position: relative; overflow: hidden; }
+  .hero::before {
+    content: ""; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(31,169,232,.16) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31,169,232,.16) 1px, transparent 1px);
+    background-size: var(--nec-grid-size) var(--nec-grid-size);
+  }
+  .hero .wrap { position: relative; padding-top: 56px; padding-bottom: 64px; }
+  .hero img.lockup { width: min(420px, 80vw); }
+  .hero h1 { font-family: var(--nec-font-display); font-size: clamp(28px, 5vw, 44px); letter-spacing: .04em; margin-top: 28px; }
+  .hero p.sub { color: var(--nec-sky); margin-top: 12px; font-size: 15px; letter-spacing: .18em; }
+  .hero .tags { margin-top: 24px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .hero .tags a {
+    font-family: var(--nec-font-mono); font-size: 13px; text-decoration: none;
+    color: #fff; border: 1.5px solid var(--nec-cyan); padding: 8px 16px; border-radius: 4px;
+    background: rgba(31,169,232,.12); transition: background .15s;
+  }
+  .hero .tags a:hover { background: var(--nec-cyan); color: var(--nec-ink); }
+  .horizon { position: absolute; left: 0; right: 0; bottom: 34px; height: 3px; background: var(--nec-cyan); }
+  .horizon-fade { position: absolute; left: 0; right: 0; bottom: 29px; height: 5px; background: var(--nec-horizon); }
+
+  section { padding: 48px 0 8px; }
+  h2 { font-size: 24px; color: var(--nec-navy); display: flex; align-items: center; gap: 12px; }
+  h2::after { content: ""; flex: 0 0 48px; height: 4px; background: var(--nec-cyan); }
+  h2 small { font-family: var(--nec-font-mono); font-size: 12px; color: var(--nec-gray); letter-spacing: .2em; font-weight: 400; }
+  .note { color: var(--nec-gray); font-size: 13px; margin-top: 8px; }
+
+  .grid { display: grid; gap: 16px; margin-top: 20px; }
+  .grid.c3 { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+  .grid.c4 { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+
+  .card { background: #fff; border: 1px solid var(--nec-line); border-radius: var(--nec-radius); overflow: hidden; display: flex; flex-direction: column; }
+  .card .preview { height: 170px; display: flex; align-items: center; justify-content: center; padding: 18px; }
+  .card .preview.light { background: #fff; }
+  .card .preview.dark { background: var(--nec-navy); }
+  .card .preview.checker { background: repeating-conic-gradient(#f2f4fa 0 25%, #fff 0 50%) 0 0/24px 24px; }
+  .card .preview img { max-height: 130px; max-width: 85%; }
+  .card .meta { padding: 12px 14px; border-top: 1px solid var(--nec-line); }
+  .card .meta b { font-size: 14px; color: var(--nec-ink); }
+  .card .meta span { display: block; font-size: 12px; color: var(--nec-gray); margin-top: 2px; }
+  .card .meta a { font-family: var(--nec-font-mono); font-size: 12px; color: var(--nec-cyan); text-decoration: none; }
+  .card .meta a:hover { text-decoration: underline; }
+
+  .swatch { border-radius: var(--nec-radius); overflow: hidden; border: 1px solid var(--nec-line); background: #fff; cursor: pointer; }
+  .swatch .color { height: 88px; }
+  .swatch .info { padding: 10px 12px; }
+  .swatch b { font-size: 13px; display: block; }
+  .swatch code { font-family: var(--nec-font-mono); font-size: 12px; color: var(--nec-gray); }
+  .swatch:hover { outline: 2px solid var(--nec-cyan); outline-offset: 2px; }
+
+  .kv-demo { background: #fff; border: 1px solid var(--nec-line); border-radius: var(--nec-radius); padding: 24px; margin-top: 16px; }
+  .kv-row { display: flex; gap: 24px; flex-wrap: wrap; align-items: center; }
+  .kv-item { flex: 1 1 220px; }
+  .kv-item h4 { font-size: 13px; color: var(--nec-navy); margin-bottom: 8px; }
+  .kv-item p { font-size: 12px; color: var(--nec-gray); margin-top: 6px; }
+  .demo-grid { height: 110px; border: 1px solid var(--nec-line); }
+  .demo-horizon { height: 44px; border: 1px solid var(--nec-line); position: relative; }
+  .demo-horizon i { position: absolute; left: 0; right: 0; bottom: 12px; height: 3px; background: var(--nec-cyan); }
+  .demo-horizon u { position: absolute; left: 0; right: 0; bottom: 7px; height: 5px; background: var(--nec-horizon); text-decoration: none; }
+  .demo-chip { display: inline-block; border: 1.5px solid var(--nec-navy); color: var(--nec-navy); padding: 5px 12px; font-family: var(--nec-font-mono); font-size: 13px; }
+  .demo-chip i { color: var(--nec-cyan); font-style: normal; margin-right: 6px; }
+  .demo-sun { width: 90px; height: 90px; border: 2.5px solid var(--nec-cyan); border-radius: 50%; position: relative; }
+  .demo-sun::before { content: ""; position: absolute; inset: 8px; border: 1px dashed var(--nec-cyan); border-radius: 50%; }
+  .demo-sun::after { content: "+"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--nec-navy); font-size: 20px; }
+
+  .ppt-cta { display: flex; gap: 20px; flex-wrap: wrap; align-items: stretch; margin-top: 20px; }
+  .ppt-cta .desc { flex: 1 1 320px; background: #fff; border: 1px solid var(--nec-line); border-radius: var(--nec-radius); padding: 20px; font-size: 14px; color: var(--nec-gray); line-height: 1.9; }
+  .ppt-cta .desc b { color: var(--nec-ink); }
+  .ppt-cta .dl { flex: 0 0 260px; background: var(--nec-navy); color: #fff; border-radius: var(--nec-radius); padding: 24px; display: flex; flex-direction: column; justify-content: center; gap: 10px; text-align: center; }
+  .ppt-cta .dl .big { font-size: 40px; }
+  .ppt-cta .dl a { display: block; background: var(--nec-cyan); color: var(--nec-ink); font-weight: 700; text-decoration: none; padding: 12px; border-radius: 6px; }
+  .ppt-cta .dl a:hover { background: var(--nec-sky); }
+
+  .donts { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 16px; }
+  .dont { background: #fff; border: 1px solid var(--nec-line); border-left: 4px solid #E05252; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: var(--nec-gray); }
+  .dont b { display: block; color: var(--nec-ink); font-size: 13px; margin-bottom: 4px; }
+
+  footer { margin-top: 56px; background: var(--nec-navy); color: var(--nec-gray); font-size: 12px; }
+  footer .wrap { padding-top: 24px; padding-bottom: 24px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  footer a { color: var(--nec-sky); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <img class="lockup" src="./nec-lockup-h-white.svg" alt="NEC 常州工学院 NEC 战队" />
+    <h1>品牌主视觉中心</h1>
+    <p class="sub mono">BUILT TO DAWN · 为黎明而造 · KEEP BUILDING</p>
+    <div class="tags">
+      <a href="./nec-logo.svg" download>↓ 标准 Logo</a>
+      <a href="./NEC-PPT-Template_V1.0.pptx" download>↓ PPT 模板</a>
+      <a href="./nec-tokens.css" download>↓ 设计 Tokens</a>
+      <a href="./NEC-VI-Manual_V1.0.md" download>↓ VI 规范手册</a>
+      <a href="/">← 返回 NEC HUB</a>
+    </div>
+  </div>
+  <div class="horizon"></div>
+  <div class="horizon-fade"></div>
+</header>
+
+<main class="wrap">
+
+  <!-- Logo -->
+  <section>
+    <h2>标志下载 <small>LOGO</small></h2>
+    <p class="note">SVG 矢量格式，任意缩放无损。浅色背景用标准版，深色背景用反白版，印刷/单色场景用墨青版。使用规则见 VI 手册第 2 章。</p>
+    <div class="grid c3">
+      <div class="card"><div class="preview light"><img src="./nec-logo.svg" alt="标准版"></div>
+        <div class="meta"><b>标准版</b><span>浅色底专用 · 含品牌渐变</span><a href="./nec-logo.svg" download>↓ nec-logo.svg</a></div></div>
+      <div class="card"><div class="preview dark"><img src="./nec-logo-white.svg" alt="反白版"></div>
+        <div class="meta"><b>反白版</b><span>藏青/深色底专用</span><a href="./nec-logo-white.svg" download>↓ nec-logo-white.svg</a></div></div>
+      <div class="card"><div class="preview light"><img src="./nec-logo-mono.svg" alt="墨青单色版"></div>
+        <div class="meta"><b>墨青单色版</b><span>印刷、雕刻、单色场景</span><a href="./nec-logo-mono.svg" download>↓ nec-logo-mono.svg</a></div></div>
+      <div class="card"><div class="preview light"><img src="./nec-lockup-h.svg" alt="横版组合 浅色"></div>
+        <div class="meta"><b>横版组合 · 浅色</b><span>标志 + 中英文队名，用于封面、页眉</span><a href="./nec-lockup-h.svg" download>↓ nec-lockup-h.svg</a></div></div>
+      <div class="card"><div class="preview dark"><img src="./nec-lockup-h-white.svg" alt="横版组合 深色"></div>
+        <div class="meta"><b>横版组合 · 深色</b><span>深色底封面、海报</span><a href="./nec-lockup-h-white.svg" download>↓ nec-lockup-h-white.svg</a></div></div>
+      <div class="card"><div class="preview checker"><img src="./favicon.svg" alt="站点图标" style="max-height:80px"></div>
+        <div class="meta"><b>站点图标 Favicon</b><span>网页标签页图标（已用于 NEC HUB）</span><a href="./favicon.svg" download>↓ favicon.svg</a></div></div>
+    </div>
+  </section>
+
+  <!-- 色彩 -->
+  <section>
+    <h2>品牌色彩 <small>COLOR</small></h2>
+    <p class="note">点击色块复制 HEX。配色比例建议：藏青 60% · 纸白/雾灰 25% · NEC 蓝 10% · 破晓青 5%。</p>
+    <div class="grid c4" id="swatches"></div>
+  </section>
+
+  <!-- KV 元素 -->
+  <section>
+    <h2>KV 元素 <small>KEY VISUAL</small></h2>
+    <p class="note">「为黎明而造」的视觉语言：工程蓝图 × 破晓地平线。所有队员作品（网页 / PPT / 海报）统一使用以下元素。</p>
+    <div class="kv-demo">
+      <div class="kv-row">
+        <div class="kv-item"><h4>蓝图网格</h4><div class="demo-grid nec-blueprint"></div><p>粗 92px / 细 23px，青色 5%-13% 透明度，仅铺在 Hero 或封面区。</p></div>
+        <div class="kv-item"><h4>破晓地平线</h4><div class="demo-horizon"><u></u><i></i></div><p>页面底部 3px 实线 + 渐变淡出，象征黎明；青 → 浅青 → 透明。</p></div>
+        <div class="kv-item"><h4>破晓太阳</h4><div class="demo-sun"></div><p>双圆环（实线 + 虚线）加十字准星，置于页面右上或地平线中央。</p></div>
+        <div class="kv-item"><h4>编号芯片</h4><div><span class="demo-chip"><i>01</i>找物品</span></div><p>等宽字体编号 + 藏青描边，用于步骤、清单、模块标注。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PPT -->
+  <section>
+    <h2>PPT 标准模板 <small>POWERPOINT</small></h2>
+    <div class="ppt-cta">
+      <div class="desc">
+        <b>内置 7 种版式：</b>封面 / 目录 / 章节过渡 / 内容·要点 / 内容·图文 / 数据表格 / 结尾页。<br/>
+        <b>用法：</b>下载后另存为你的文件 → 复制对应版式页 → 替换文字与图片。<br/>
+        <b>字号规范：</b>封面标题 54 · 页标题 28 · 正文 13 · 注释 10-12；标题微软雅黑 Bold，数字与编号用 Consolas。<br/>
+        <b>注意：</b>不要更换配色、不要拉伸 Logo、不要在标志上加阴影/描边。
+      </div>
+      <div class="dl">
+        <div class="big">📊</div>
+        <b>NEC-PPT-Template_V1.0.pptx</b>
+        <span class="mono" style="color:#9FB4E8">16:9 · 7 页 · 约 60KB</span>
+        <a href="./NEC-PPT-Template_V1.0.pptx" download>下载模板</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 禁忌 -->
+  <section>
+    <h2>使用禁忌 <small>DON'T</small></h2>
+    <div class="donts">
+      <div class="dont"><b>不要拉伸变形</b>等比缩放，不要单独拉宽或压扁。</div>
+      <div class="dont"><b>不要改配色</b>不要给标志换色、加渐变映射或彩虹色。</div>
+      <div class="dont"><b>不要加效果</b>禁止投影、描边、发光、斜切、旋转 3D。</div>
+      <div class="dont"><b>不要换字体</b>队名组合中的字体不可替换为宋体/楷体等。</div>
+      <div class="dont"><b>不要置于杂乱背景</b>背景看不清时换反白版或加纯色底。</div>
+      <div class="dont"><b>不要重排组合</b>横版组合的比例与间距不可自行调整。</div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>NEC · New Energy Coder · 常州工学院 NEC 战队</span>
+    <span class="mono">VI v1.0 · 2026-10 · 维护：NEC AI 中台 · <a href="./NEC-VI-Manual_V1.0.md" download>VI 规范手册</a></span>
+  </div>
+</footer>
+
+<script>
+const COLORS = [
+  ["NEC 蓝", "#1A2FA0", "royal-500 · 品牌主色"],
+  ["藏青", "#141B5E", "navy · 深色底/标题"],
+  ["墨青", "#0B1033", "ink · 正文/标题"],
+  ["破晓青", "#1FA9E8", "cyan · 强调/交互"],
+  ["破晓浅青", "#4FC3F7", "sky · 辅助强调"],
+  ["纸白", "#FFFFFF", "paper · 底色"],
+  ["雾灰蓝", "#F4F6FB", "fog · 浅色底"],
+  ["次级灰", "#5A6472", "gray · 说明文字"],
+];
+const box = document.getElementById("swatches");
+COLORS.forEach(([name, hex, desc]) => {
+  const el = document.createElement("div");
+  el.className = "swatch";
+  el.innerHTML = `<div class="color" style="background:${hex}"></div>
+    <div class="info"><b>${name}</b><code>${hex} · ${desc}</code></div>`;
+  el.onclick = () => {
+    navigator.clipboard.writeText(hex);
+    el.style.outline = "2px solid #1FA9E8";
+    setTimeout(() => el.style.outline = "", 400);
+  };
+  box.appendChild(el);
+});
+</script>
+</body>
+</html>
