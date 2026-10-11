@@ -107,8 +107,7 @@ python scripts/sync-gitee-skills.py --repo owner/name --branch SKill --dir skill
 ## 已配置的生产资源
 
 - 自定义域名：`hub.newenergycoder.club`（custom domain，自动签发证书）
-- Secrets：`FEISHU_APP_ID` / `FEISHU_APP_SECRET`（免登后端）· `VERCEL_TOKEN`（sync_vercel）
-- 待办：`MCP_TOKEN`（应用广场写保护，建议尽早配置）
+- Secrets：`FEISHU_APP_ID` / `FEISHU_APP_SECRET`（免登后端）· `VERCEL_TOKEN`（sync_vercel）· `MCP_TOKEN`（MCP 写保护 + finance 门禁，2026-10-12 生产实测已生效）
 
 ## 待办（第二/三阶段）
 
