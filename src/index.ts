@@ -43,6 +43,10 @@ interface SkillEntry {
   name: string;
   description: string;
   updatedAt: string;
+  /** 外部 SKILL.md 链接（如 Gitee 页面）；为空则用本中台 /skills/<name>/SKILL.md */
+  url?: string;
+  /** 来源标识，如 gitee / hub */
+  source?: string;
 }
 
 const MIME: Record<string, string> = {
@@ -311,6 +315,30 @@ const TOOLS = [
     },
   },
   {
+    name: "import_skills",
+    description:
+      "批量导入外部 Skill 到 Skill 中心（只登记名称/描述/链接，不托管文件）。典型用法：从团队 Gitee/GitHub 仓库批量同步。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        skills: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "Skill 名（会自动转为小写连字符）" },
+              description: { type: "string" },
+              url: { type: "string", description: "SKILL.md 的外部链接" },
+            },
+            required: ["name"],
+          },
+        },
+        source: { type: "string", description: "来源标识，如 gitee，默认 external" },
+      },
+      required: ["skills"],
+    },
+  },
+  {
     name: "publish_skill",
     description: "把一个 SKILL.md 上架到 NEC 团队 Skill 中心，供其他队员一键安装到自己的 Agent。",
     inputSchema: {
@@ -389,6 +417,8 @@ async function callTool(
         return rpc(id, await toolRegisterApp(args, env));
       case "sync_vercel":
         return rpc(id, await toolSyncVercel(args, env));
+      case "import_skills":
+        return rpc(id, await toolImportSkills(args, env));
       case "publish_skill":
         return rpc(id, await toolPublishSkill(args, env));
       case "query_bitable":
@@ -553,6 +583,40 @@ async function toolSyncVercel(args: Record<string, unknown>, env: Env) {
       {
         type: "text",
         text: `${confirm ? "✅ 已同步" : "🔍 预览（confirm=true 才会写入）"}：Vercel 团队 ${team} 共 ${listData.projects.length} 个项目，新增 ${newCount} 个\n\n${lines.join("\n")}`,
+      },
+    ],
+  };
+}
+
+async function toolImportSkills(args: Record<string, unknown>, env: Env) {
+  const skills = (args.skills ?? []) as Array<{ name?: string; description?: string; url?: string }>;
+  if (!Array.isArray(skills) || skills.length === 0) throw new Error("skills 不能为空");
+  if (skills.length > 200) throw new Error("单次最多导入 200 个");
+  const source = String(args.source ?? "external");
+  const list = await readIndex<SkillEntry>(env, "skills:index");
+  const byName = new Map(list.map((s) => [s.name, s]));
+  let added = 0, updated = 0, skipped = 0;
+  for (const s of skills) {
+    const name = String(s.name ?? "").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
+    if (!NAME_RE.test(name)) { skipped++; continue; }
+    const existing = byName.get(name);
+    if (existing && existing.source === "hub") { skipped++; continue; } // 不覆盖中台自托管的 Skill
+    const entry: SkillEntry = {
+      name,
+      description: String(s.description ?? existing?.description ?? ""),
+      url: s.url ? String(s.url) : existing?.url,
+      source,
+      updatedAt: new Date().toISOString(),
+    };
+    if (existing) { byName.set(name, entry); updated++; }
+    else { byName.set(name, entry); added++; }
+  }
+  await env.REGISTRY.put("skills:index", JSON.stringify([...byName.values()]));
+  return {
+    content: [
+      {
+        type: "text",
+        text: `✅ 批量导入完成（来源：${source}）：新增 ${added}，更新 ${updated}，跳过 ${skipped}。Skill 中心现有 ${byName.size} 个。`,
       },
     ],
   };

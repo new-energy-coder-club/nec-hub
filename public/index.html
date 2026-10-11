@@ -209,8 +209,8 @@ fetch("/api/skills").then(r => r.json()).then(skills => {
         <p class="text-sm text-gray-500">${esc(s.description || "")}</p>
         <p class="text-xs text-gray-400 mt-1">更新于 ${new Date(s.updatedAt).toLocaleString("zh-CN")}</p>
       </div>
-      <a href="${ORIGIN}/skills/${encodeURIComponent(s.name)}/SKILL.md" target="_blank"
-         class="text-sm hover:underline" style="color:var(--cyan)">查看 SKILL.md</a>
+      <a href="${s.url || (ORIGIN + '/skills/' + encodeURIComponent(s.name) + '/SKILL.md')}" target="_blank"
+         class="text-sm hover:underline whitespace-nowrap" style="color:var(--cyan)">查看 SKILL.md${s.source === 'gitee' ? ' ⤤' : ''}</a>
     </div>`).join("");
 });
 
