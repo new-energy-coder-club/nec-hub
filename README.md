@@ -40,8 +40,19 @@ wrangler deploy
 - `deploy_app(name, title, author, files[])` — 上传静态文件到 R2 并注册到应用广场
 - `register_app(name, title, url)` — 外部已部署应用（如 Vercel 项目）链接登记
 - `sync_vercel(confirm, exclude, team)` — 自动发现 Vercel 团队项目并批量登记（默认 dry-run 预览，`confirm=true` 写入；需配置 `VERCEL_TOKEN` secret）
-- `publish_skill(name, description, content)` — 上架 SKILL.md 到 Skill 中心
+- `publish_skill(name, description, content)` — 上架 SKILL.md 到 Skill 中心（中台自托管）
+- `import_skills(skills[], source)` — 批量登记外部 Skill（只存名称/描述/链接，不托管文件）；不覆盖中台自托管（`source: "hub"`）的 Skill
 - `query_bitable(table, filter)` — 飞书多维表格查询（占位）
+
+## Skill 同步脚本
+
+`scripts/sync-gitee-skills.py` — 从 Gitee 仓库的 `skills/*/SKILL.md` 批量解析 frontmatter 描述，通过 `import_skills` 登记到 Skill 中心（默认来源标识 `gitee`，门户中显示 ⤤ 外链）。
+
+```bash
+python scripts/sync-gitee-skills.py                 # 预览（不写 hub）
+python scripts/sync-gitee-skills.py --confirm       # 实际导入
+python scripts/sync-gitee-skills.py --repo owner/name --branch SKill --dir skills --hub https://hub.newenergycoder.club
+```
 
 ## 已配置的生产资源
 
@@ -55,4 +66,4 @@ wrangler deploy
 - [ ] `query_bitable` 接入飞书多维表格 API
 - [ ] 飞书工作台入口配置（管理后台将工作台指向本域名）
 - [ ] `wrangler types` 生成权威 Env 类型（当前为手写最小接口）
-- [ ] Skill GitHub 仓库 + CI 校验 frontmatter
+- [ ] Skill 仓库 CI 校验 frontmatter（Gitee 同步脚本已就位，见 `scripts/sync-gitee-skills.py`）
