@@ -2,6 +2,36 @@
 
 单体 Cloudflare Worker：门户 + API + MCP 端点 + 应用托管（R2）+ 注册表（KV）。
 
+- 生产门户：<https://hub.newenergycoder.club>
+- MCP 端点（Agent 接入）：`https://hub.newenergycoder.club/mcp`（streamable HTTP / JSON-RPC）
+- 源码：GitHub [new-energy-coder-club/nec-hub](https://github.com/new-energy-coder-club/nec-hub) · Gitee 镜像 [darrenpig/nec-hub](https://gitee.com/darrenpig/nec-hub)
+
+## 线上内容（截至 2026-10-12）
+
+应用广场 12 个应用（实时列表见 [`GET /api/apps`](https://hub.newenergycoder.club/api/apps)）：
+
+| 应用 | 说明 | 链接 |
+|---|---|---|
+| 擎天塔重建 // NEON PROTOCOL | 战队年度项目门户 | <https://tower.newenergycoder.club> |
+| NEC 仓库作业台 | MES 仓储系统（电控组） | <https://mes.newenergycoder.club> |
+| 物资盘点助手 | R2 自托管小工具 | [/apps/inventory-check/](https://hub.newenergycoder.club/apps/inventory-check/) |
+| NEC 主视觉资产库 | KV 画廊 + 飞书宣传栏 + PNG 物料 | [/apps/kv-assets/](https://hub.newenergycoder.club/apps/kv-assets/) |
+| 常州工NEC · 新人招募海报 | 招募静态页 | [/apps/recruit-poster/](https://hub.newenergycoder.club/apps/recruit-poster/) |
+| club 官网 / solarglyph / gexo / public-beta / r2-web 等 7 个 | Vercel 项目，`sync_vercel` 自动登记 | 见 `/api/apps` |
+
+Skill 中心 19 个（实时列表见 [`GET /api/skills`](https://hub.newenergycoder.club/api/skills)）：
+
+- 中台自托管：[nec-kv-design](https://hub.newenergycoder.club/skills/nec-kv-design/SKILL.md)（主视觉设计系统）· nec-tech-report（技术方案报告）
+- Gitee 同步 17 个：源仓库 [darrenpig/new_energy_coder_club](https://gitee.com/darrenpig/new_energy_coder_club) `SKill` 分支，经 `scripts/sync-gitee-skills.py` 登记（`source: "gitee"`，门户显示 ⤤ 外链）
+
+## 相关仓库与文档
+
+- Skill 源仓库（Gitee）：<https://gitee.com/darrenpig/new_energy_coder_club>（`SKill` 分支，`skills/*/SKILL.md`）
+- 开源组织（GitHub）：<https://github.com/new-energy-coder-club>
+- 搭建方案：[`docs/团队AI中台搭建方案_V1.0.md`](docs/团队AI中台搭建方案_V1.0.md)
+- 飞书工作台上架手册：[`docs/飞书工作台上架手册_NEC仓库作业台.md`](docs/飞书工作台上架手册_NEC仓库作业台.md) · [`docs/飞书定制工作台配置手册.md`](docs/飞书定制工作台配置手册.md)
+- 飞书免登接入：[`docs/飞书免登接入_MES.md`](docs/飞书免登接入_MES.md) · 接入包 [`integrations/mes/feishu-sso.js`](integrations/mes/feishu-sso.js)
+
 ## 本地开发
 
 ```bash
@@ -71,4 +101,5 @@ python scripts/sync-gitee-skills.py --repo owner/name --branch SKill --dir skill
 - [x] `query_bitable` 接入飞书多维表格 API（含 `config_dashboard` 配置工具与 `/api/dashboard` 聚合接口，财务区按角色脱敏）
 - [ ] 飞书工作台入口配置（管理后台将工作台指向本域名）
 - [ ] `wrangler types` 生成权威 Env 类型（当前为手写最小接口）
+- [ ] 部署 `serveApp` 中文路径修复（`4be5456` 已提交未部署；部署后清理 R2 孤儿对象 `apps/kv-assets/assets/` 下 6 个中文名 PNG）
 - [ ] Skill 仓库 CI 校验 frontmatter（Gitee 同步脚本已就位，见 `scripts/sync-gitee-skills.py`）
