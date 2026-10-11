@@ -488,8 +488,13 @@ async function handleLogout(request: Request, env: Env): Promise<Response> {
 // ---------- 应用 / Skill 托管 ----------
 
 async function serveApp(url: URL, env: Env): Promise<Response> {
-  // /apps/<name>/<rest...>
-  const parts = url.pathname.replace(/^\/apps\//, "").split("/").filter(Boolean);
+  // /apps/<name>/<rest...>（url.pathname 是 percent-encoded，需逐段解码才能命中 deploy_app 写入的 R2 键）
+  let parts: string[];
+  try {
+    parts = url.pathname.replace(/^\/apps\//, "").split("/").filter(Boolean).map(decodeURIComponent);
+  } catch {
+    return json({ error: "invalid path encoding" }, 400);
+  }
   if (parts.length === 0) return json({ error: "missing app name" }, 400);
   const name = parts[0];
   let rest = parts.slice(1).join("/") || "index.html";
