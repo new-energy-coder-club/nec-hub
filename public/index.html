@@ -76,6 +76,15 @@
   <div class="base-line"></div>
 </header>
 
+<!-- 待办条（A-01）：登录后显示待我审批 + 逾期任务，点击展开明细 -->
+<div id="todo-bar" class="hidden bg-white border-b border-gray-200 shadow-sm">
+  <div class="max-w-5xl mx-auto px-6 py-2 flex items-center gap-2 flex-wrap cursor-pointer text-sm" onclick="toggleTodos()">
+    <span style="color:var(--navy)">⏰ <b id="todo-summary">待审批</b></span>
+    <span id="todo-more" class="text-xs text-gray-400">（点击展开）</span>
+  </div>
+  <div id="todo-detail" class="hidden max-w-5xl mx-auto px-6 pb-3 text-sm"></div>
+</div>
+
 <nav class="bg-white shadow-sm">
   <div class="max-w-5xl mx-auto px-6 flex gap-6 text-sm font-medium text-gray-500">
     <button data-tab="apps" class="tab-btn py-3 tab-active">应用广场</button>
@@ -268,6 +277,7 @@ async function bootAuth() {
   renderUserBox();
   loadApps();
   loadDashboard(); // 财务区可见性随登录角色变化
+  loadTodos();     // 待办条：待我审批 + 逾期任务
 }
 
 async function refreshMe() {
@@ -308,6 +318,7 @@ async function logout() {
   renderUserBox();
   loadDashboard();
   loadApps();
+  hideTodos();
 }
 
 // 应用广场（在 bootAuth / logout 中调用，保证带登录态语义后再加载）
@@ -329,6 +340,49 @@ function loadApps() {
       <p class="text-xs text-gray-400 mt-2">更新于 ${new Date(a.updatedAt).toLocaleString("zh-CN")}</p>
     </a>`).join("");
 });
+}
+
+// 待办条（A-01）：登录后聚合「待我审批 + 逾期任务」，未登录/空待办隐藏
+function loadTodos() {
+  const bar = document.getElementById("todo-bar");
+  fetch("/api/todos").then(r => {
+    if (r.status === 401) return null;
+    return r.json();
+  }).then(d => {
+    if (!d) { bar.classList.add("hidden"); return; }
+    const LABELS = { reimburse: "报销", drawing: "图纸", hardware: "硬件", compliance: "合规" };
+    const counts = Object.entries(d.by_type ?? {}).map(([t, items]) => ({ t, n: (items ?? []).length }));
+    const total = counts.reduce((s, c) => s + c.n, 0);
+    const overdue = (d.overdue_tasks ?? []).length;
+    if (!total && !overdue) { bar.classList.add("hidden"); return; }
+    document.getElementById("todo-summary").textContent =
+      (total ? "待审批：" + counts.filter(c => c.n).map(c => `${LABELS[c.t] || c.t} ${c.n}`).join(" · ") : "暂无待审批") +
+      (overdue ? ` ｜ 逾期任务 ${overdue}` : "");
+    const rows = [];
+    for (const [t, items] of Object.entries(d.by_type ?? {})) {
+      for (const it of (items ?? [])) {
+        rows.push(`<a href="${esc(it.url)}" target="_blank" class="block py-1 hover:underline" style="color:var(--navy)">
+          <span class="text-[10px] px-1.5 py-0.5 rounded text-white mr-2" style="background:var(--cyan)">${LABELS[t] || esc(t)}</span>${esc(it.title)}</a>`);
+      }
+    }
+    for (const t of (d.overdue_tasks ?? [])) {
+      rows.push(`<div class="py-1 text-gray-500">⏰ 逾期：${esc(t.title)}（负责人：${esc(t.owner || "—")}）</div>`);
+    }
+    document.getElementById("todo-detail").innerHTML = rows.join("");
+    document.getElementById("todo-detail").classList.add("hidden");
+    document.getElementById("todo-more").textContent = "（点击展开）";
+    bar.classList.remove("hidden");
+  }).catch(() => bar.classList.add("hidden"));
+}
+
+function toggleTodos() {
+  const d = document.getElementById("todo-detail");
+  d.classList.toggle("hidden");
+  document.getElementById("todo-more").textContent = d.classList.contains("hidden") ? "（点击展开）" : "（点击收起）";
+}
+
+function hideTodos() {
+  document.getElementById("todo-bar").classList.add("hidden");
 }
 
 // Skill 中心

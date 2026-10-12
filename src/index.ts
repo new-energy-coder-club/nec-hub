@@ -11,6 +11,9 @@
  *   POST /auth/feishu     → 飞书 code 兑换用户信息 + 签发中台会话（MES 免登与本门户登录共用）
  *   POST /auth/logout     → 登出（销毁会话）
  *   GET  /api/repos       → NEC 开源仓库列表（GitHub org + KV 1 小时缓存）
+ *   POST /api/approvals   → 发起审批（4 流程统一入口，flows:config 配置驱动，Plan B 状态机落底表）
+ *   POST /api/approvals/<type>/<单号>/<action> → 审批与流程动作（approve/reject/pay/start/archive/arrive/issue/publish）
+ *   GET  /api/todos       → 我的待办（待我审批的单按流程分组 + 逾期任务，KV 300s 缓存）
  *   GET  /apps/<name>/*   → 队员应用（R2 托管）
  *   GET  /skills/<name>/SKILL.md → Skill 原文（R2）
  *   POST /mcp             → MCP (streamable HTTP, JSON-RPC)
@@ -35,6 +38,17 @@ interface Env {
   GITHUB_TOKEN?: string;
   /** Gitee API（/api/repos 仓库列表用，可选；匿名 60 次/小时，配置后限额更高） */
   GITEE_TOKEN?: string;
+  /** 审批通知群机器人 webhook（PRD V1.1 N-01）；可按流程分流 FEISHU_BOT_WEBHOOK_<TYPE>，加签 secret 为同名 _SECRET 变量 */
+  FEISHU_BOT_WEBHOOK?: string;
+  FEISHU_BOT_WEBHOOK_SECRET?: string;
+  FEISHU_BOT_WEBHOOK_REIMBURSE?: string;
+  FEISHU_BOT_WEBHOOK_REIMBURSE_SECRET?: string;
+  FEISHU_BOT_WEBHOOK_DRAWING?: string;
+  FEISHU_BOT_WEBHOOK_DRAWING_SECRET?: string;
+  FEISHU_BOT_WEBHOOK_HARDWARE?: string;
+  FEISHU_BOT_WEBHOOK_HARDWARE_SECRET?: string;
+  FEISHU_BOT_WEBHOOK_COMPLIANCE?: string;
+  FEISHU_BOT_WEBHOOK_COMPLIANCE_SECRET?: string;
 }
 
 interface AppEntry {
@@ -195,6 +209,16 @@ export default {
         } catch {
           return json({ ran: false, hint: "校验报告损坏，请重新运行 validate_bitable。" });
         }
+      }
+      if (url.pathname === "/api/approvals" && request.method === "POST") {
+        return await handleApprovalSubmit(request, env);
+      }
+      const approvalAction = url.pathname.match(/^\/api\/approvals\/([a-z]+)\/([^/]+)\/(approve|reject|pay|start|archive|arrive|issue|publish)$/);
+      if (approvalAction) {
+        return await handleApprovalAction(request, env, approvalAction[1], approvalAction[2], approvalAction[3]);
+      }
+      if (url.pathname === "/api/todos") {
+        return await handleTodos(env, request);
       }
       if (url.pathname === "/api/dashboard") {
         return json(await buildDashboard(env, request));
@@ -792,6 +816,59 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: "submit_approval",
+    description:
+      "代发起审批申请（Agent 帮队员代提交，需管理端 MCP_TOKEN）。type 限 4 枚举；fields 按 flows:config 的声明式规则校验；applicant_open_id 可指定申请人（缺省 mcp-admin）。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        type: { type: "string", description: "reimburse | drawing | hardware | compliance" },
+        fields: { type: "object", description: "业务字段（与底表字段名一致），如 {\"事项\":\"打样\",\"报销金额\":120}" },
+        applicant_name: { type: "string", description: "可选：申请人姓名（缺省取 fields.applicant_open_id 或 mcp-admin）" },
+      },
+      required: ["type", "fields"],
+    },
+  },
+  {
+    name: "list_todos",
+    description:
+      "拉取指定用户的待办聚合（各流程底表中 审批中 且待其审批的单 + 逾期任务，按流程分组）。需管理端 MCP_TOKEN；角色由 open_id 查队员名单表解析。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        open_id: { type: "string", description: "飞书 open_id（ou 开头）" },
+      },
+      required: ["open_id"],
+    },
+  },
+  {
+    name: "send_notice",
+    description:
+      "向指定流程的飞书群发送机器人通知（需管理端 MCP_TOKEN）。webhook 未配置时返回降级说明；发送失败自动重试 2 次并记录到 notify:failed。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        flow: { type: "string", description: "reimburse | drawing | hardware | compliance（决定用哪个群 webhook，未配置 fallback 主群）" },
+        title: { type: "string", description: "标题" },
+        content: { type: "string", description: "正文" },
+        link: { type: "string", description: "可选：去处理链接" },
+      },
+      required: ["flow", "title", "content"],
+    },
+  },
+  {
+    name: "config_flows",
+    description:
+      "查看/修改审批流程配置 flows:config（底表 tableId/base、单号前缀、审批角色、必填与条件必填校验规则、金额会签阈值）。action=set 深合并写入；tableId 须 tbl 开头或留空。仅管理端（MCP_TOKEN）。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", description: "get（默认）| set" },
+        flows: { type: "object", description: "set 时必填：{ reimburse: { tableId, base, ... } }，只传要改的字段" },
+      },
+    },
+  },
 ];
 
 async function handleMcp(request: Request, env: Env): Promise<Response> {
@@ -819,7 +896,7 @@ async function handleMcp(request: Request, env: Env): Promise<Response> {
         capabilities: { tools: {} },
         serverInfo: { name: "nec-hub-mcp", version: "0.2.0" },
         instructions:
-          "NEC 团队 AI 中台 MCP。deploy_app 部署静态应用到应用广场；publish_skill 上架 Skill；config_dashboard 配置数据看板对接的飞书多维表格；query_bitable 查询多维表格数据（finance 表需 user_token 且角色为队长/财务，或管理端 MCP_TOKEN）；whoami 验证调用者身份（MCP_TOKEN 或 user_token）。",
+          "NEC 团队 AI 中台 MCP。deploy_app 部署静态应用到应用广场；publish_skill 上架 Skill；config_dashboard 配置数据看板对接的飞书多维表格；query_bitable 查询多维表格数据（finance 表需 user_token 且角色为队长/财务，或管理端 MCP_TOKEN）；whoami 验证调用者身份（MCP_TOKEN 或 user_token）；submit_approval 代发起审批、list_todos 查待办、send_notice 发群通知、config_flows 配置审批流程（PRD V1.1 Plan B：状态机落多维表格 + 群机器人 webhook 通知）。",
       });
     case "ping":
       return rpc(id, {});
@@ -871,6 +948,14 @@ async function callTool(
         return rpc(id, await toolValidateBitable(args, env, hasMcpToken));
       case "whoami":
         return rpc(id, await toolWhoami(args, env, hasMcpToken));
+      case "submit_approval":
+        return rpc(id, await toolSubmitApproval(args, env, hasMcpToken));
+      case "list_todos":
+        return rpc(id, await toolListTodos(args, env, hasMcpToken));
+      case "send_notice":
+        return rpc(id, await toolSendNotice(args, env, hasMcpToken));
+      case "config_flows":
+        return rpc(id, await toolConfigFlows(args, env, hasMcpToken));
       default:
         return rpcError(id, -32602, `Unknown tool: ${name}`);
     }
@@ -1322,14 +1407,20 @@ async function toolSetupBitable(args: Record<string, unknown>, env: Env, hasMcpT
   for (const t of want) {
     if (tables[t] && !force) { skipped.push(t); continue; }
     try {
+      const fields = BITABLE_SCHEMAS[t].map((f) => ({
+        field_name: f.name,
+        type: f.type,
+        // 数字字段需 formatter；日期字段需 date_formatter
+        property: f.type === 2 ? { formatter: "0" } : f.type === 5 ? { date_formatter: "yyyy/MM/dd" } : f.property,
+      }));
       const resp = await fetch(`${FEISHU_API}/bitable/v1/apps/${base}/tables`, {
         method: "POST",
         headers: { authorization: `Bearer ${token}`, "content-type": "application/json; charset=utf-8" },
-        body: JSON.stringify({ table: { name: TABLE_DISPLAY_NAMES[t], fields: BITABLE_SCHEMAS[t] } }),
+        body: JSON.stringify({ table: { name: TABLE_DISPLAY_NAMES[t], fields } }),
       });
       const data = (await resp.json()) as { code?: number; msg?: string; data?: { table_id?: string } };
       if (data.code !== 0 || !data.data?.table_id) {
-        throw new Error(data.msg ?? `code ${data.code}`);
+        throw new Error(`${data.msg ?? "unknown"}（code ${data.code}）`);
       }
       tables[t] = data.data.table_id;
       created.push(`${t}=${data.data.table_id}`);
@@ -2115,6 +2206,745 @@ async function runValidation(env: Env, scope: DashTable | "all", detail: boolean
     await env.REGISTRY.put("validate:report", JSON.stringify(report), { expirationTtl: 7 * 24 * 3600 });
   }
   return report;
+}
+
+// ---------- 审批与通知中心（PRD V1.1 Plan B：状态机落多维表格"状态"字段 + 群机器人通知） ----------
+
+/** 审批流程类型（四条业务线；新增流程 = flows:config 加配置 + 建底表，零代码） */
+const APPROVAL_TYPES = ["reimburse", "drawing", "hardware", "compliance"] as const;
+type ApprovalType = (typeof APPROVAL_TYPES)[number];
+
+/** 审批流程配置（KV key: flows:config，由 MCP config_flows 管理） */
+interface FlowConfig {
+  engine: "table" | "feishu";   // 本期全部 table；feishu 为预留（引擎切换只换该字段）
+  tableId: string;              // 底表 table_id（tbl 开头），空 = 未配置
+  base: string;                 // 多维表格 app_token；空则 fallback dashboard:config.base
+  prefix: string;               // 单号前缀 BX/MECH/HW/CP
+  group: string | null;         // 限定提交组别（null=全队）
+  approvers: {
+    roles: string;              // 正则串，如 "队长|财务"
+    groupLeaders?: string[];    // 这些组的组长可审，如 ["机械组"]
+  };
+  /** ≥coSign 金额时额外通知（Plan B 用通知实现会签，两级审批为 Plan A 能力） */
+  thresholds?: { notifyRoles?: string; amountField?: string; coSign?: number };
+  required: string[];           // 必填字段名（与底表字段名一致）
+  conditional?: Array<{ when: { field: string; equals: string }; require: string[] }>;
+}
+
+type FlowsConfig = Record<ApprovalType, FlowConfig>;
+
+/** 默认流程配置（tableId/base 留空待 config_flows 配置；字段与 PRD §6.1 对齐） */
+const DEFAULT_FLOWS: FlowsConfig = {
+  reimburse: {
+    engine: "table",
+    tableId: "",
+    base: "",
+    prefix: "BX",
+    group: null,
+    approvers: { roles: "队长|财务" },
+    required: ["事项", "报销金额", "发票号"],
+    conditional: [{ when: { field: "发票照片", equals: "" }, require: ["无票说明"] }],
+  },
+  drawing: {
+    engine: "table",
+    tableId: "",
+    base: "",
+    prefix: "MECH",
+    group: "机械组",
+    approvers: { roles: "队长", groupLeaders: ["机械组"] },
+    thresholds: { notifyRoles: "队长", amountField: "预估加工费", coSign: 500 },
+    required: ["图纸名称", "图号", "版本", "所属机构", "材料与工艺", "加工方式", "图纸文件"],
+    conditional: [{ when: { field: "加工方式", equals: "外协加工" }, require: ["预估加工费"] }],
+  },
+  hardware: {
+    engine: "table",
+    tableId: "",
+    base: "",
+    prefix: "HW",
+    group: null,
+    approvers: { roles: "队长|指导老师" },
+    thresholds: { notifyRoles: "队长|指导老师", amountField: "预估总价", coSign: 200 },
+    required: ["申请类型", "物料名称", "规格型号", "数量", "预估总价", "用途说明"],
+    conditional: [{ when: { field: "申请类型", equals: "新购" }, require: ["购买链接"] }],
+  },
+  compliance: {
+    engine: "table",
+    tableId: "",
+    base: "",
+    prefix: "CP",
+    group: null,
+    approvers: { roles: "队长|指导老师", groupLeaders: ["运营组", "宣传组"] },
+    required: ["合规类型", "标题", "内容说明", "计划发布时间"],
+    conditional: [{ when: { field: "赞助商相关", equals: "是" }, require: ["赞助商要求"] }],
+  },
+};
+
+/** 读 flows:config；无配置/损坏返回默认值 deep copy；与默认值深合并保证向前兼容 */
+async function getFlowsConfig(env: Env): Promise<FlowsConfig> {
+  const raw = await env.REGISTRY.get("flows:config");
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Partial<FlowsConfig>;
+      const out = {} as FlowsConfig;
+      for (const t of APPROVAL_TYPES) {
+        out[t] = { ...DEFAULT_FLOWS[t], ...(parsed[t] ?? {}) } as FlowConfig;
+      }
+      return out;
+    } catch {
+      /* 配置损坏则回退默认值 */
+    }
+  }
+  return JSON.parse(JSON.stringify(DEFAULT_FLOWS)) as FlowsConfig;
+}
+
+/** 流程底表所在 base：flows 未配则 fallback 看板配置（通常同一个多维表格） */
+async function getFlowBase(env: Env, flow: FlowConfig): Promise<string> {
+  if (flow.base) return flow.base;
+  const cfg = await getDashboardConfig(env);
+  return cfg?.base ?? "";
+}
+
+/** 多维表格新增记录，返回 record_id */
+async function createBitableRecord(
+  token: string,
+  appToken: string,
+  tableId: string,
+  fields: Record<string, unknown>,
+): Promise<string> {
+  const resp = await fetch(`${FEISHU_API}/bitable/v1/apps/${appToken}/tables/${tableId}/records`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json; charset=utf-8" },
+    body: JSON.stringify({ fields }),
+  });
+  const data = (await resp.json()) as { code?: number; msg?: string; data?: { record?: { record_id?: string } } };
+  if (data.code !== 0 || !data.data?.record?.record_id) {
+    throw new Error(`写入多维表格失败（${tableId}）：${data.msg ?? `code ${data.code}`}`);
+  }
+  return data.data.record.record_id;
+}
+
+/** 多维表格更新记录字段（PUT） */
+async function updateBitableRecord(
+  token: string,
+  appToken: string,
+  tableId: string,
+  recordId: string,
+  fields: Record<string, unknown>,
+): Promise<void> {
+  const resp = await fetch(`${FEISHU_API}/bitable/v1/apps/${appToken}/tables/${tableId}/records/${recordId}`, {
+    method: "PUT",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json; charset=utf-8" },
+    body: JSON.stringify({ fields }),
+  });
+  const data = (await resp.json()) as { code?: number; msg?: string };
+  if (data.code !== 0) {
+    throw new Error(`更新多维表格失败（${tableId}/${recordId}）：${data.msg ?? `code ${data.code}`}`);
+  }
+}
+
+/** 底表记录链接（通知与待办跳转到飞书处理） */
+function bitableRecordLink(base: string, tableId: string, recordId: string): string {
+  return `https://www.feishu.cn/base/${base}?table=${tableId}&record=${recordId}`;
+}
+
+/** 审批权限判定：角色正则命中，或（组长 ∧ 组在 groupLeaders 名单）；队长硬编码放行（兜底，PRD §3 代理人） */
+function isApprover(role: UserRole, approvers: FlowConfig["approvers"]): boolean {
+  if (/队长/.test(role.role)) return true;
+  if (new RegExp(approvers.roles).test(role.role)) return true;
+  return role.role === "组长" && !!role.group && (approvers.groupLeaders ?? []).includes(role.group);
+}
+
+/** 声明式字段校验：required + conditional + 数字字段须 >0；返回缺失字段名列表（空=通过） */
+function evalFlowFields(flow: FlowConfig, fields: Record<string, unknown>): string[] {
+  const missing: string[] = [];
+  for (const name of flow.required) {
+    if (!fieldText(fields[name]).trim()) missing.push(name);
+  }
+  for (const cond of flow.conditional ?? []) {
+    if (fieldText(fields[cond.when.field]).trim() === cond.when.equals) {
+      for (const name of cond.require) {
+        if (!fieldText(fields[name]).trim()) missing.push(name);
+      }
+    }
+  }
+  for (const name of ["报销金额", "数量", "预估总价"]) {
+    const v = fieldNum(fields[name]);
+    if (v !== null && v <= 0) missing.push(`${name}（须大于 0）`);
+  }
+  return [...new Set(missing)];
+}
+
+/** 在表记录里按"申请单号"字段定位一行（字段名不固定时模糊匹配） */
+function findRecordByAppId(records: BitableRecord[], appId: string): BitableRecord | null {
+  const key = findFieldKey(records, [/^申请单号$/, /申请单号/, /单号/]);
+  if (!key) return null;
+  return records.find((r) => fieldText(r.fields[key]) === appId) ?? null;
+}
+
+/** 申请单号：<prefix>-<年>-<序号4位>（序号 = 现有记录数 + 1） */
+function nextAppId(prefix: string, existingCount: number): string {
+  return `${prefix}-${new Date().getFullYear()}-${String(existingCount + 1).padStart(4, "0")}`;
+}
+
+/** 审批域错误：带 HTTP 状态码，REST 层直接映射 */
+class ApprovalError extends Error {
+  status: number;
+  constructor(message: string, status = 400) {
+    super(message);
+    this.name = "ApprovalError";
+    this.status = status;
+  }
+}
+
+/** 动态读 Env 字符串变量（webhook 按流程名拼接变量名用） */
+function envSecret(env: Env, key: string): string | undefined {
+  return (env as unknown as Record<string, string | undefined>)[key];
+}
+
+/** 通知失败记录（KV notify:failed，7 天 TTL，截断 100 条，管理端可查） */
+async function recordNotifyFailure(env: Env, flow: string, title: string, detail: string): Promise<void> {
+  try {
+    const raw = await env.REGISTRY.get("notify:failed");
+    let list: Array<{ flow: string; title: string; detail: string; at: string }> = [];
+    try {
+      list = raw ? (JSON.parse(raw) as typeof list) : [];
+    } catch {
+      list = [];
+    }
+    list.unshift({ flow, title, detail, at: new Date().toISOString() });
+    await env.REGISTRY.put("notify:failed", JSON.stringify(list.slice(0, 100)), { expirationTtl: 7 * 24 * 3600 });
+  } catch {
+    /* 记录失败不阻断主流程 */
+  }
+}
+
+/** 飞书加签：HMAC-SHA256(`${timestamp}\n${secret}`) → Base64 */
+async function feishuBotSign(secret: string, timestamp: number): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${timestamp}\n${secret}`));
+  return btoa(String.fromCharCode(...new Uint8Array(sig)));
+}
+
+/**
+ * 飞书群机器人 webhook 通知（N-01）。
+ * webhook 选择：FEISHU_BOT_WEBHOOK_<FLOW> ?? FEISHU_BOT_WEBHOOK；secret 同名 _SECRET 后缀。
+ * 失败（网络异常/code!==0）重试 2 次（1s、4s），仍失败写 KV notify:failed；调用方不抛错。
+ */
+async function notifyFeishu(env: Env, flow: string, title: string, content: string, link?: string): Promise<{ ok: boolean; detail: string }> {
+  const flowKey = flow.toUpperCase();
+  const webhook = envSecret(env, `FEISHU_BOT_WEBHOOK_${flowKey}`) ?? env.FEISHU_BOT_WEBHOOK;
+  if (!webhook) return { ok: false, detail: "未配置 webhook" };
+  const secret = envSecret(env, `FEISHU_BOT_WEBHOOK_${flowKey}_SECRET`) ?? env.FEISHU_BOT_WEBHOOK_SECRET;
+  const text = title + "\n" + content + (link ? "\n去处理：" + link : "");
+  let attempt = 0;
+  let lastErr = "";
+  while (attempt < 3) {
+    attempt++;
+    try {
+      const body: Record<string, unknown> = { msgtype: "text", text: { content: text } };
+      if (secret) {
+        const timestamp = Math.floor(Date.now() / 1000);
+        body.timestamp = timestamp;
+        body.sign = await feishuBotSign(secret, timestamp);
+      }
+      const resp = await fetch(webhook, {
+        method: "POST",
+        headers: { "content-type": "application/json; charset=utf-8" },
+        body: JSON.stringify(body),
+      });
+      const data = (await resp.json()) as { code?: number; msg?: string };
+      if (data.code === 0) return { ok: true, detail: "ok" };
+      lastErr = data.msg ?? `code ${data.code}`;
+    } catch (err) {
+      lastErr = err instanceof Error ? err.message : String(err);
+    }
+    if (attempt < 3) await new Promise((r) => setTimeout(r, attempt === 1 ? 1000 : 4000));
+  }
+  await recordNotifyFailure(env, flow, title, lastErr);
+  return { ok: false, detail: `发送失败（重试 2 次）：${lastErr}` };
+}
+
+const APPROVAL_LABELS: Record<ApprovalType, string> = {
+  reimburse: "报销申请",
+  drawing: "图纸审批",
+  hardware: "硬件申请",
+  compliance: "合规申请",
+};
+
+/** 通知标题：📋 新报销申请 BX-2026-0001（张三 ¥120） */
+function approvalNotifyTitle(type: ApprovalType, applicationId: string, applicant: string, fields: Record<string, unknown>): string {
+  let extra = "";
+  if (type === "reimburse") {
+    const amount = fieldNum(fields["报销金额"]);
+    if (amount !== null) extra = ` ¥${amount}`;
+  }
+  return `📋 新${APPROVAL_LABELS[type]} ${applicationId}（${applicant}${extra}）`;
+}
+
+/** 通知正文：取前几个非空业务字段（key：value 逐行） */
+function approvalNotifyContent(fields: Record<string, unknown>): string {
+  const parts: string[] = [];
+  for (const k of Object.keys(fields)) {
+    if (k === "applicant_open_id") continue;
+    const v = fieldText(fields[k]).trim();
+    if (!v) continue;
+    parts.push(`${k}：${v.length > 60 ? v.slice(0, 60) + "…" : v}`);
+    if (parts.length >= 4) break;
+  }
+  return parts.join("\n") || "（无附加信息）";
+}
+
+// ---------- 审批引擎（REST 与 MCP 共用的核心） ----------
+
+interface ApprovalSubmitInput {
+  type: ApprovalType;
+  fields: Record<string, unknown>;
+  /** 门户提交：当前登录用户；MCP 代提交：null */
+  user: HubUser | null;
+  /** 当前用户角色（门户路径）；MCP 代提交为 null（组别写空） */
+  role: UserRole | null;
+  /** MCP 代提交的申请人姓名（门户路径忽略） */
+  applicantName?: string;
+  source: "portal" | "mcp";
+}
+
+/** 发起审批：校验 → 写底表（状态=审批中）→ 单号回填 → KV 映射 → 通知审批人群 */
+async function submitApprovalCore(env: Env, input: ApprovalSubmitInput): Promise<{ application_id: string; status: string }> {
+  const cfg = await getFlowsConfig(env);
+  const flow = cfg[input.type];
+  if (!flow.tableId) {
+    throw new ApprovalError(`流程未配置：先用 MCP config_flows 配置 ${input.type} 的 tableId`);
+  }
+  const applicant = input.user?.name ?? (input.applicantName ?? "").trim();
+  if (!applicant) {
+    throw new ApprovalError("申请人姓名为空：门户提交需登录，MCP 代提交需 applicant_name");
+  }
+  const applicantOpenId = input.user?.open_id ??
+    (String(input.fields.applicant_open_id ?? "").trim() || "mcp-admin");
+  const missing = evalFlowFields(flow, input.fields);
+  if (missing.length) {
+    throw new ApprovalError(`字段校验未通过，缺少：${missing.join("、")}`);
+  }
+  const base = await getFlowBase(env, flow);
+  if (!base) {
+    throw new ApprovalError("流程未配置 base：先用 config_flows 配置 base（或 config_dashboard 配置看板 base）");
+  }
+  const token = await getTenantAccessToken(env);
+  const existing = await listBitableRecords(token, base, flow.tableId);
+  const applicationId = nextAppId(flow.prefix, existing.length);
+  const row: Record<string, unknown> = {
+    ...input.fields,
+    申请人: applicant,
+    "申请人 open_id": applicantOpenId,
+    组别: input.role?.group ?? "",
+    状态: "审批中",
+    提交时间: Date.now(),
+    申请单号: applicationId,
+  };
+  const recordId = await createBitableRecord(token, base, flow.tableId, row);
+  await env.REGISTRY.put(
+    `approval:map:${applicationId}`,
+    JSON.stringify({ type: input.type, record_id: recordId }),
+    { expirationTtl: 90 * 24 * 3600 },
+  );
+  const link = bitableRecordLink(base, flow.tableId, recordId);
+  await notifyFeishu(env, input.type, approvalNotifyTitle(input.type, applicationId, applicant, input.fields), approvalNotifyContent(input.fields), link);
+  // Plan B 会签：金额达阈值时额外提醒（两级审批为 Plan A 能力，Plan B 用通知实现）
+  const coField = flow.thresholds?.amountField ?? "";
+  const coSign = flow.thresholds?.coSign ?? 0;
+  const amount = coField ? fieldNum(input.fields[coField]) : null;
+  if (coSign > 0 && amount !== null && amount >= coSign && flow.thresholds?.notifyRoles) {
+    await notifyFeishu(
+      env,
+      input.type,
+      `⚠️ 金额会签提醒 ${applicationId}：${coField} ¥${amount} ≥ ${coSign}`,
+      `请 ${flow.thresholds.notifyRoles} 复核`,
+      link,
+    );
+  }
+  return { application_id: applicationId, status: "审批中" };
+}
+
+// ---------- 审批 REST 处理器 ----------
+
+async function handleApprovalSubmit(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "POST") return json({ error: "method not allowed" }, 405);
+  const session = await resolveSession(env, request);
+  if (!session) return json({ error: "unauthorized" }, 401);
+  const role = await resolveUserRole(env, session.user);
+  if (role.role === "external") return json({ error: "forbidden", role: role.role }, 403);
+  const body = (await request.json().catch(() => ({}))) as { type?: string; fields?: Record<string, unknown> };
+  const type = String(body.type ?? "") as ApprovalType;
+  if (!APPROVAL_TYPES.includes(type)) {
+    return json({ error: `type 必须是：${APPROVAL_TYPES.join(" | ")}` }, 400);
+  }
+  const cfg = await getFlowsConfig(env);
+  const flow = cfg[type];
+  if (!flow.tableId) {
+    return json({ error: `流程未配置：先用 MCP config_flows 配置 ${type} 的 tableId` }, 400);
+  }
+  if (flow.group && role.group !== flow.group && !/队长/.test(role.role)) {
+    return json({ error: "forbidden", role: role.role, hint: `该流程仅限 ${flow.group} 提交` }, 403);
+  }
+  try {
+    return json(await submitApprovalCore(env, { type, fields: body.fields ?? {}, user: session.user, role, source: "portal" }));
+  } catch (err) {
+    if (err instanceof ApprovalError) return json({ error: err.message }, err.status);
+    throw err;
+  }
+}
+
+const APPROVAL_ACTIONS = ["approve", "reject", "pay", "start", "archive", "arrive", "issue", "publish"] as const;
+type ApprovalAction = (typeof APPROVAL_ACTIONS)[number];
+
+/** 动作 → 目标状态与前置状态（幂等：目标状态=当前状态直接返回成功） */
+const ACTION_TARGET: Record<ApprovalAction, { from: RegExp; to: string }> = {
+  approve: { from: /^审批中$/, to: "已通过" },
+  reject: { from: /^审批中$/, to: "已驳回" },
+  pay: { from: /^已通过$/, to: "已打款" },
+  start: { from: /^已通过$/, to: "加工中" },
+  archive: { from: /^加工中$/, to: "已归档" },
+  arrive: { from: /^已通过$/, to: "已到货" },
+  issue: { from: /^已通过$/, to: "已领用" },
+  publish: { from: /^已通过$/, to: "已发布" },
+};
+
+interface ApprovalActionInput {
+  type: ApprovalType;
+  appId: string;
+  action: ApprovalAction;
+  comment?: string;
+  link?: string;
+  user: HubUser;
+  role: UserRole;
+}
+
+async function runApprovalAction(env: Env, input: ApprovalActionInput): Promise<{ application_id: string; status: string }> {
+  const cfg = await getFlowsConfig(env);
+  const flow = cfg[input.type];
+  if (!flow.tableId) {
+    throw new ApprovalError(`流程未配置：先用 MCP config_flows 配置 ${input.type} 的 tableId`);
+  }
+  const base = await getFlowBase(env, flow);
+  if (!base) throw new ApprovalError("流程未配置 base");
+  const token = await getTenantAccessToken(env);
+  const records = await listBitableRecords(token, base, flow.tableId);
+  const record = findRecordByAppId(records, input.appId);
+  if (!record) throw new ApprovalError(`底表中未找到申请单号 ${input.appId}`, 404);
+
+  const statusKey = findFieldKey(records, [/^状态$/, /状态/, /进度/]) ?? "状态";
+  const current = fieldText(record.fields[statusKey]);
+  const target = ACTION_TARGET[input.action].to;
+
+  // 角色前置校验
+  if (input.action === "approve" || input.action === "reject" || input.action === "arrive" || input.action === "issue") {
+    if (!isApprover(input.role, flow.approvers)) {
+      throw new ApprovalError(`当前角色（${input.role.role}）无权执行 ${input.action}`, 403);
+    }
+  } else if (input.action === "pay") {
+    if (!/财务|队长/.test(input.role.role)) {
+      throw new ApprovalError("已打款仅财务/队长可标记", 403);
+    }
+  } else {
+    // start / archive / publish：仅申请人本人
+    const applicantKey = findFieldKey(records, [/^申请人$/, /申请人/, /报销人/]);
+    const openIdKey = findFieldKey(records, [/open_?id|飞书/i]);
+    const isOwner =
+      (openIdKey && fieldText(record.fields[openIdKey]) === input.user.open_id) ||
+      (applicantKey && fieldText(record.fields[applicantKey]) === input.user.name);
+    if (!isOwner) throw new ApprovalError("仅申请人本人可执行该动作", 403);
+  }
+
+  // 幂等：目标状态=当前状态 → 直接返回当前状态
+  if (current === target) return { application_id: input.appId, status: current };
+  if (!ACTION_TARGET[input.action].from.test(current)) {
+    throw new ApprovalError(`当前状态为「${current || "空"}」，不能执行 ${input.action} →「${target}」`, 409);
+  }
+  if (input.action === "reject" && !(input.comment ?? "").trim()) {
+    throw new ApprovalError("驳回必须填写审批意见（comment）");
+  }
+  if (input.action === "publish" && !(input.link ?? "").trim()) {
+    throw new ApprovalError("publish 必须提供发布链接（link）");
+  }
+
+  const patch: Record<string, unknown> = { [statusKey]: target };
+  if (input.action === "approve" || input.action === "reject") {
+    patch["审批人"] = input.user.name;
+    patch["审批意见"] = input.comment ?? "";
+    patch["审批完成时间"] = Date.now();
+  }
+  if (input.action === "publish") patch["发布后链接"] = (input.link ?? "").trim();
+  await updateBitableRecord(token, base, flow.tableId, record.record_id, patch);
+
+  const link = bitableRecordLink(base, flow.tableId, record.record_id);
+  if (input.action === "approve" || input.action === "reject") {
+    const verdict = input.action === "approve" ? "✅ 已通过" : "❌ 已驳回";
+    await notifyFeishu(
+      env,
+      input.type,
+      `${verdict} ${input.appId}`,
+      `审批人：${input.user.name}${input.comment ? `\n审批意见：${input.comment}` : ""}`,
+      link,
+    );
+  } else {
+    await notifyFeishu(env, input.type, `📌 ${input.appId} 状态更新：${target}`, `操作人：${input.user.name}`, link);
+  }
+  return { application_id: input.appId, status: target };
+}
+
+async function handleApprovalAction(
+  request: Request,
+  env: Env,
+  type: string,
+  appId: string,
+  action: string,
+): Promise<Response> {
+  if (request.method !== "POST") return json({ error: "method not allowed" }, 405);
+  const session = await resolveSession(env, request);
+  if (!session) return json({ error: "unauthorized" }, 401);
+  if (!APPROVAL_TYPES.includes(type as ApprovalType)) return json({ error: `未知流程 type：${type}` }, 400);
+  if (!APPROVAL_ACTIONS.includes(action as ApprovalAction)) return json({ error: `未知动作：${action}` }, 400);
+  const body = (await request.json().catch(() => ({}))) as { comment?: string; link?: string };
+  try {
+    return json(
+      await runApprovalAction(env, {
+        type: type as ApprovalType,
+        appId,
+        action: action as ApprovalAction,
+        comment: body.comment,
+        link: body.link,
+        user: session.user,
+        role: await resolveUserRole(env, session.user),
+      }),
+    );
+  } catch (err) {
+    if (err instanceof ApprovalError) return json({ error: err.message }, err.status);
+    throw err;
+  }
+}
+
+// ---------- 待办聚合（GET /api/todos + MCP list_todos 共用） ----------
+
+const TODO_CACHE_TTL_SEC = 300;
+
+/**
+ * 待办聚合：4 张流程底表中 状态="审批中" 且当前角色可审的行（按 type 分组）+ 逾期任务前 8 条。
+ * 缓存键 todo:tbl:<type> 存全量列表（不带用户过滤，过滤在内存做，保证各角色角标一致）。
+ */
+async function aggregateTodos(env: Env, role: UserRole): Promise<unknown> {
+  const cfg = await getFlowsConfig(env);
+  const dashCfg = await getDashboardConfig(env);
+  const token = await getTenantAccessToken(env).catch(() => "");
+  const byType: Record<string, unknown> = {};
+  let cachedAt = "";
+
+  for (const type of APPROVAL_TYPES) {
+    const flow = cfg[type];
+    if (!flow.tableId) continue;
+    const base = flow.base || dashCfg?.base || "";
+    if (!base) continue;
+    const cacheKey = `todo:tbl:${type}`;
+    const cached = await env.REGISTRY.get(cacheKey, "json") as
+      | { data: BitableRecord[]; cachedAt: number }
+      | null;
+    const fresh = cached && cached.cachedAt > Date.now() - TODO_CACHE_TTL_SEC * 1000;
+    let records: BitableRecord[];
+    let at: string;
+    if (fresh) {
+      records = cached.data;
+      at = new Date(cached.cachedAt).toISOString();
+    } else if (token) {
+      try {
+        records = await listBitableRecords(token, base, flow.tableId);
+        at = new Date().toISOString();
+        await env.REGISTRY.put(cacheKey, JSON.stringify({ data: records, cachedAt: Date.now() }), { expirationTtl: TODO_CACHE_TTL_SEC });
+      } catch {
+        records = cached?.data ?? [];
+        at = cached ? new Date(cached.cachedAt).toISOString() : "";
+      }
+    } else {
+      records = cached?.data ?? [];
+      at = cached ? new Date(cached.cachedAt).toISOString() : "";
+    }
+    if (!cachedAt && at) cachedAt = at;
+    if (!isApprover(role, flow.approvers)) continue;
+    const statusKey = findFieldKey(records, [/^状态$/, /状态/, /进度/]) ?? "状态";
+    const idKey = findFieldKey(records, [/^申请单号$/, /申请单号/, /单号/]);
+    const timeKey = findFieldKey(records, [/提交时间/, /创建时间/]);
+    const pending = records.filter((r) => fieldText(r.fields[statusKey]) === "审批中");
+    if (!pending.length) continue;
+    byType[type] = pending.map((r) => ({
+      application_id: idKey ? fieldText(r.fields[idKey]) : r.record_id,
+      title: ((idKey ? fieldText(r.fields[idKey]) : "") + " " + firstFieldText(r)).trim(),
+      url: bitableRecordLink(base, flow.tableId, r.record_id),
+      submitted_at: timeKey ? fieldText(r.fields[timeKey]) : "",
+    }));
+  }
+
+  // 逾期任务（复用看板 tasks 表 + 5 分钟缓存）：截止 < 今天 且状态未完成，前 8 条
+  const overdueTasks: Array<{ title: string; owner: string; deadline: string }> = [];
+  if (dashCfg?.tables?.tasks && token) {
+    const t = await fetchTableCached(env, dashCfg, "tasks");
+    const tTitleKey = findFieldKey(t.records, [/^任务/, /任务/, /事项/, /标题/, /title/i]);
+    const tOwnerKey = findFieldKey(t.records, [/负责人/, /执行人/, /owner/i, /assignee/i]);
+    const tStatusKey = findFieldKey(t.records, [/^状态/, /状态/, /进度/, /status/i]);
+    const tDeadlineKey = findFieldKey(t.records, [/截止/, /deadline/i, /完成时间/, /日期/]);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    overdueTasks.push(
+      ...t.records
+        .filter((r) => {
+          const s = tStatusKey ? fieldText(r.fields[tStatusKey]) : "";
+          const d = tDeadlineKey ? fieldNum(r.fields[tDeadlineKey]) : null;
+          return !!s && !TASK_DONE_RE.test(s) && d !== null && d < today.getTime();
+        })
+        .sort((a, b) => (fieldNum(a.fields[tDeadlineKey ?? ""]) ?? Infinity) - (fieldNum(b.fields[tDeadlineKey ?? ""]) ?? Infinity))
+        .slice(0, 8)
+        .map((r) => ({
+          title: (tTitleKey ? fieldText(r.fields[tTitleKey]) : "") || firstFieldText(r),
+          owner: tOwnerKey ? fieldText(r.fields[tOwnerKey]) : "",
+          deadline: tDeadlineKey ? fieldText(r.fields[tDeadlineKey]) : "",
+        })),
+    );
+  }
+  return { by_type: byType, overdue_tasks: overdueTasks, cached_at: cachedAt || new Date().toISOString() };
+}
+
+async function handleTodos(env: Env, request: Request): Promise<Response> {
+  const session = await resolveSession(env, request);
+  if (!session) return json({ error: "unauthorized" }, 401);
+  const role = await resolveUserRole(env, session.user);
+  return json(await aggregateTodos(env, role));
+}
+
+// ---------- 审批相关 MCP 工具实现 ----------
+
+/** submit_approval：代发起审批（需 MCP_TOKEN） */
+async function toolSubmitApproval(args: Record<string, unknown>, env: Env, hasMcpToken: boolean) {
+  if (!hasMcpToken) throw new Error("submit_approval 仅管理端可用（需 MCP_TOKEN）");
+  const type = String(args.type ?? "") as ApprovalType;
+  if (!APPROVAL_TYPES.includes(type)) {
+    throw new Error(`type 必须是：${APPROVAL_TYPES.join(" | ")}`);
+  }
+  const fields = (args.fields ?? {}) as Record<string, unknown>;
+  if (typeof fields !== "object" || Array.isArray(fields)) throw new Error("fields 必须是对象");
+  const result = await submitApprovalCore(env, {
+    type,
+    fields,
+    user: null,
+    role: null,
+    applicantName: String(args.applicant_name ?? ""),
+    source: "mcp",
+  });
+  return {
+    content: [
+      { type: "text", text: `✅ 已代提交：${result.application_id}（${result.status}）` },
+    ],
+  };
+}
+
+/** list_todos：按 open_id 聚合待办（需 MCP_TOKEN） */
+async function toolListTodos(args: Record<string, unknown>, env: Env, hasMcpToken: boolean) {
+  if (!hasMcpToken) throw new Error("list_todos 仅管理端可用（需 MCP_TOKEN）");
+  const openId = String(args.open_id ?? "").trim();
+  if (!openId) throw new Error("open_id 不能为空");
+  const role = await resolveUserRole(env, { name: "", open_id: openId });
+  const todos = await aggregateTodos(env, role);
+  return {
+    content: [
+      {
+        type: "text",
+        text:
+          `待办聚合（角色：${role.role}${role.group ? " · " + role.group : ""}${role.matched ? "" : "，未匹配名单"}）：\n` +
+          JSON.stringify(todos, null, 2),
+      },
+    ],
+  };
+}
+
+/** send_notice：向流程群发机器人通知（需 MCP_TOKEN） */
+async function toolSendNotice(args: Record<string, unknown>, env: Env, hasMcpToken: boolean) {
+  if (!hasMcpToken) throw new Error("send_notice 仅管理端可用（需 MCP_TOKEN）");
+  const flow = String(args.flow ?? "").trim();
+  const title = String(args.title ?? "").trim();
+  const content = String(args.content ?? "").trim();
+  if (!title) throw new Error("title 不能为空");
+  if (!content) throw new Error("content 不能为空");
+  const link = String(args.link ?? "").trim();
+  const result = await notifyFeishu(env, flow, title, content, link || undefined);
+  if (!result.ok) {
+    return { content: [{ type: "text", text: `⚠️ 通知未送达：${result.detail}（已按降级处理，业务不受影响）` }] };
+  }
+  return { content: [{ type: "text", text: `✅ 已发送（flow=${flow || "default"}）` }] };
+}
+
+/** config_flows：查看/修改 flows:config（需 MCP_TOKEN）；set 时深合并 + 校验 */
+async function toolConfigFlows(args: Record<string, unknown>, env: Env, hasMcpToken: boolean) {
+  if (!hasMcpToken) throw new Error("config_flows 仅管理端可用（需 MCP_TOKEN）");
+  const action = String(args.action ?? "get");
+  if (action === "get") {
+    const cfg = await getFlowsConfig(env);
+    return {
+      content: [
+        { type: "text", text: `当前 flows:config：\n${JSON.stringify(cfg, null, 2)}` },
+      ],
+    };
+  }
+  if (action !== "set") throw new Error("action 必须是 get | set");
+  const raw = (args.flows ?? {}) as Record<string, unknown>;
+  if (typeof raw !== "object" || Array.isArray(raw)) throw new Error("flows 必须是对象");
+  const current = await getFlowsConfig(env);
+  for (const t of APPROVAL_TYPES) {
+    const patch = raw[t] as Record<string, unknown> | undefined;
+    if (!patch) continue;
+    if (typeof patch !== "object" || Array.isArray(patch)) throw new Error(`flows.${t} 必须是对象`);
+    if (patch.approvers !== undefined &&
+        (typeof patch.approvers !== "object" ||
+         typeof (patch.approvers as FlowConfig["approvers"]).roles !== "string")) {
+      throw new Error(`approvers 不合法（${t}）：应为 { roles: "队长|财务", groupLeaders?: [...] }`);
+    }
+    if (patch.thresholds !== undefined && (typeof patch.thresholds !== "object" || Array.isArray(patch.thresholds))) {
+      throw new Error(`thresholds 不合法（${t}）：应为 { notifyRoles?, amountField?, coSign? }`);
+    }
+    if (patch.required !== undefined && !Array.isArray(patch.required)) {
+      throw new Error(`required 不合法（${t}）：应为字段名数组`);
+    }
+    if (patch.conditional !== undefined && !Array.isArray(patch.conditional)) {
+      throw new Error(`conditional 不合法（${t}）：应为 [{ when: { field, equals }, require: [...] }]`);
+    }
+    const merged = { ...current[t], ...patch } as FlowConfig;
+    if (merged.tableId && !/^tbl[A-Za-z0-9]+$/.test(merged.tableId)) {
+      throw new Error(`table_id 不合法（${t}）：应以 tbl 开头或留空`);
+    }
+    if (merged.base && !/^[A-Za-z0-9]{10,}$/.test(merged.base)) {
+      throw new Error(`base 不合法（${t}）：应为多维表格 URL 中 /base/ 后的 app_token`);
+    }
+    try {
+      new RegExp(merged.approvers?.roles ?? "");
+    } catch {
+      throw new Error(`approvers.roles 不是合法正则（${t}）`);
+    }
+    current[t] = merged;
+  }
+  await env.REGISTRY.put("flows:config", JSON.stringify(current));
+  // 配置变更后清待办缓存，下一次拉取按新配置走
+  await Promise.all(APPROVAL_TYPES.map((t) => env.REGISTRY.delete(`todo:tbl:${t}`)));
+  return {
+    content: [
+      {
+        type: "text",
+        text:
+          `✅ flows:config 已保存（${APPROVAL_TYPES.join(" / ")}）。\n` +
+          `tableId/base 为空的流程会在发起与待办时提示先配置（config_flows set 或 config_dashboard）。`,
+      },
+    ],
+  };
 }
 
 // ---------- 工具函数 ----------

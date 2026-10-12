@@ -87,6 +87,7 @@ wrangler deploy
 - `publish_doc(name, title, category, url, maintainer?, visibility?)` — 上架资料页条目（分类：品牌规范/文档模板/制度SOP/培训材料）
 - `remove_docs(names[])` — 从资料页移除条目（只删索引）
 - `validate_bitable(scope?, user_token?)` — 数据健康校验：12 条内置声明式规则扫 4 张表，输出异常清单（记录直链飞书 + 修复建议）；明细仅管理端/队长/组长，无身份只返回计数；详细报告写入 `/api/validate` 供门户「数据健康」展示。规则可用 KV `validate:rules` 覆盖
+- `setup_bitable(base, tables?, force?)` — 数据基建一键建表：按标准 schema 在指定 base 创建四张逻辑表并写入看板配置（仅管理端）
 
 ## 登录态与角色（FE-01）
 
@@ -113,8 +114,9 @@ python scripts/sync-gitee-skills.py --repo owner/name --branch SKill --dir skill
 
 > 完整需求、优先级与验收标准见 `docs/团队AI中台PRD_V2.0.md`（M1 地基 → M2 资产与智能 → M3 个性化与自动化）。
 
-- [x] 飞书 OAuth 登录 + 权限角色（FE-01：会话 Cookie 滑动续期、`/api/whoami`、`/api/apps` 按角色过滤、看板与 `query_bitable` 财务区按角色脱敏；**工作区已落地待部署验证**）
+- [x] 飞书 OAuth 登录 + 权限角色（FE-01：会话 Cookie 滑动续期、`/api/whoami`、`/api/apps` 按角色过滤、看板与 `query_bitable` 财务区按角色脱敏；已部署生产，真实登录待名单表录入后验证）
 - [x] `query_bitable` 接入飞书多维表格 API（含 `config_dashboard` 配置工具与 `/api/dashboard` 聚合接口，财务区按角色脱敏）
+- [x] **FE-02 数据基建落地（2026-10-12）**：base `PsXnbEG2naCGdCsMuhDcQu3bn7d`（飞书云文档「NEC 战队数据中台」），4 张标准表已由 `setup_bitable` 建成——members `tblVBn3EE4RyfWHi` / tasks `tblXQgCriKe3KW22` / inventory `tblsfQanKxg6F740` / finance `tblaP0OEzTCSatxh`。应用权限：`bitable:app` + `bitable:app:readonly`（已开通）；重定向 URL 含 `https://hub.newenergycoder.club/`。看板/查询/校验已读真实数据。待团队录入数据：base 里默认的「数据表1」可删；队员名单需填 姓名/飞书ID/组别/权限角色 后登录角色判定才生效
 - [x] FE-03 资料页（第六 Tab + `publish_doc` / `remove_docs` MCP 工具 + `/api/docs`；内容填充为团队任务，每类 ≥3 条）
 - [x] FE-05 数据校验 Agent（`validate_bitable` 规则引擎 + `/api/validate` + 门户「数据健康」卡片；规则可 KV 覆盖，周一自动推送待配 `FEISHU_WEBHOOK` 后启用）
 - [ ] 飞书工作台入口配置（管理后台将工作台指向本域名）
