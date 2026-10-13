@@ -3,6 +3,7 @@
  *
  * 负责把业务对象 ↔ Base 记录字段做双向映射。
  * 字段名不强制固定，通过配置项指定；未配置时使用常见同义词自动匹配。
+ * 通用 CRUD 骨架继承自 shared/FeishuTableAdapter。
  */
 
 import {
@@ -11,10 +12,8 @@ import {
   fieldNum,
   fieldText,
   fieldTs,
-  getTenantAccessToken,
-  listBitableRecords,
-  updateBitableRecord,
 } from "../feishu/bitable";
+import { FeishuTableAdapter } from "../shared/feishu-table-adapter";
 import type {
   BOM,
   BOMItem,
@@ -28,42 +27,12 @@ import type {
   ReviewStatus,
 } from "./types";
 
-export interface TableAdapter<T> {
-  list(): Promise<T[]>;
-  get(recordId: string): Promise<T | null>;
-  create(item: Omit<T, "recordId" | "id">): Promise<T>;
-  update(recordId: string, item: Partial<T>): Promise<T>;
-}
+// TableAdapter 接口已收敛至 shared/feishu-table-adapter，此处 re-export 保持既有 import 路径
+export type { TableAdapter } from "../shared/feishu-table-adapter";
 
-export class BaseAdapter {
-  constructor(
-    private env: Env,
-    private cfg: DrawingReviewConfig,
-  ) {}
-
-  private async token(): Promise<string> {
-    return getTenantAccessToken(this.env);
-  }
-
-  private tableId(name: DrawingReviewTable): string {
-    const id = this.cfg.tables[name];
-    if (!id) throw new Error(`新增机图纸评审流程未配置 ${name} 表`);
-    return id;
-  }
-
-  async listRecords(table: DrawingReviewTable): Promise<BitableRecord[]> {
-    const token = await this.token();
-    return listBitableRecords(token, this.cfg.base, this.tableId(table));
-  }
-
-  async createRecord(table: DrawingReviewTable, fields: Record<string, unknown>): Promise<BitableRecord> {
-    const token = await this.token();
-    return createBitableRecord(token, this.cfg.base, this.tableId(table), fields);
-  }
-
-  async updateRecord(table: DrawingReviewTable, recordId: string, fields: Record<string, unknown>): Promise<BitableRecord> {
-    const token = await this.token();
-    return updateBitableRecord(token, this.cfg.base, this.tableId(table), recordId, fields);
+export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig, DrawingReviewTable> {
+  constructor(env: Env, cfg: DrawingReviewConfig) {
+    super(env, cfg, "新增机图纸评审流程");
   }
 
   // ---------- 图纸评审单 ----------
@@ -97,7 +66,7 @@ export class BaseAdapter {
   }): Promise<Array<DrawingReview & { recordId: string }>> {
     const records = await this.listRecords("reviews");
     const limit = pattern.limit || 10;
-    
+
     return records
       .filter(r => {
         if (pattern.projectId && !fieldText(r.fields["项目编号"]).toLowerCase().includes(pattern.projectId.toLowerCase())) {
@@ -124,14 +93,14 @@ export class BaseAdapter {
   async getProjectSuggestions(query: string, limit: number = 5): Promise<string[]> {
     const records = await this.listRecords("reviews");
     const projects = new Set<string>();
-    
+
     records.forEach(r => {
       const projectId = fieldText(r.fields["项目编号"]);
       if (projectId && projectId.toLowerCase().includes(query.toLowerCase())) {
         projects.add(projectId);
       }
     });
-    
+
     return Array.from(projects).slice(0, limit);
   }
 
@@ -141,14 +110,14 @@ export class BaseAdapter {
   async getMachineSuggestions(query: string, limit: number = 5): Promise<string[]> {
     const records = await this.listRecords("reviews");
     const machines = new Set<string>();
-    
+
     records.forEach(r => {
       const machineName = fieldText(r.fields["机型名称"]);
       if (machineName && machineName.toLowerCase().includes(query.toLowerCase())) {
         machines.add(machineName);
       }
     });
-    
+
     return Array.from(machines).slice(0, limit);
   }
 
@@ -391,7 +360,7 @@ export class BaseAdapter {
     return records
       .map((r) => {
         const f = r.fields;
-        const ts = fieldTs(f["操作时间"] ?? f["createdAt"]);
+        const ts = parseTimeValue(f["操作时间"] ?? f["createdAt"]);
         let payload: Record<string, unknown> | undefined;
         const rawPayload = fieldText(f["附加信息"] ?? f["payload"]);
         if (rawPayload) {
@@ -414,4 +383,14 @@ export class BaseAdapter {
       })
       .filter((e) => !reviewId || e.reviewId === reviewId);
   }
+}
+
+/** 时间字段解析：优先 Date.parse（ISO），失败回退 fieldTs 的中文/斜杠格式归一化 */
+function parseTimeValue(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const s = fieldText(v).trim();
+  if (!s) return null;
+  const t = Date.parse(s);
+  if (!Number.isNaN(t)) return t;
+  return fieldTs(v);
 }

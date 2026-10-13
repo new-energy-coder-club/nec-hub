@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NEC 评分看板 · NEC HUB</title>
+<link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+<link rel="stylesheet" href="/brand/nec-tokens.css" />
+<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin />
+<link rel="dns-prefetch" href="https://cdn.tailwindcss.com" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // VI 规范：把 NEC 品牌 tokens 映射进 Tailwind，不使用默认蓝/青色系
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          nec: {
+            royal: "#1A2FA0",
+            "royal-light": "#3449B9",
+            "royal-dark": "#10277E",
+            "royal-100": "#E8ECFB",
+            navy: "#141B5E",
+            ink: "#0B1033",
+            cyan: "#1FA9E8",
+            sky: "#4FC3F7",
+            fog: "#F4F6FB",
+            gray: "#5A6472",
+            line: "#D9DFF0",
+          },
+        },
+        fontFamily: {
+          sans: ["Source Han Sans SC", "思源黑体 CN", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "system-ui", "sans-serif"],
+          mono: ["IBM Plex Mono", "ui-monospace", "Consolas", "monospace"],
+        },
+      },
+    },
+  };
+</script>
+<style>
+  body { font-family: var(--nec-font-cn); background: var(--nec-fog); color: var(--nec-ink); }
+  .mono { font-family: var(--nec-font-mono); }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .status-badge {
+    @apply text-xs px-2 py-1 rounded-full font-medium;
+  }
+
+  /* KV：蓝图网格 Hero（只铺在头部区域） */
+  .hero {
+    position: relative; overflow: hidden;
+    background-color: var(--nec-paper);
+    background-image:
+      linear-gradient(var(--nec-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--nec-grid) 1px, transparent 1px),
+      linear-gradient(var(--nec-grid-fine) 1px, transparent 1px),
+      linear-gradient(90deg, var(--nec-grid-fine) 1px, transparent 1px);
+    background-size: 92px 92px, 92px 92px, 23px 23px, 23px 23px;
+  }
+  .hero-title { font-weight: 900; letter-spacing: -.015em; color: var(--nec-ink); }
+  .hero-title .accent { color: var(--nec-cyan); }
+  .horizon { position: absolute; left: 0; right: 0; bottom: 30px; height: 3px; background: var(--nec-cyan); }
+  .base-line { height: 5px; background: var(--nec-horizon); }
+
+  /* 卡片：NEC 圆角与阴影 */
+  .nec-card {
+    background: var(--nec-paper);
+    border: 1px solid var(--nec-line);
+    border-radius: var(--nec-radius);
+    box-shadow: var(--nec-shadow);
+  }
+
+  /* 导航按钮 */
+  .nav-btn { border: 1.5px solid var(--nec-line); color: var(--nec-gray); background: var(--nec-paper); }
+  .nav-btn:hover { border-color: var(--nec-cyan); color: var(--nec-navy); }
+  .nav-btn.on { border-color: var(--nec-navy); color: #fff; background: var(--nec-navy); }
+
+  /* 链接与交互统一破晓青 */
+  a, .link { color: var(--nec-cyan); }
+  a:hover { color: #1891c9; }
+
+  /* 评分标尺刻度 */
+  .scale-tick { width: 1px; height: 8px; background: var(--nec-line); }
+  .scale-tick.major { height: 14px; background: var(--nec-gray); }
+
+  /* Hotfix 代码块 */
+  .code-block {
+    background: var(--nec-ink); color: #E8ECFB;
+    font-family: var(--nec-font-mono);
+    font-size: 12px; line-height: 1.6;
+    padding: 10px 14px; border-radius: 8px;
+    overflow-x: auto; white-space: pre;
+  }
+  .code-block .before { color: #F5A97F; }
+  .code-block .after { color: #8BD5CA; }
+
+  /* 治理徽章 */
+  .gov-badge {
+    font-family: var(--nec-font-mono);
+    font-size: 11px; letter-spacing: .04em;
+    padding: 3px 8px; border-radius: 3px;
+    background: var(--nec-ink); color: var(--nec-cyan);
+    border: 1px solid #26306B;
+  }
+</style>
+</head>
+<body class="min-h-screen">
+  <!-- KV Hero：蓝图 × 破晓（embedded 模式隐藏） -->
+  <header id="app-header" class="hero">
+    <div class="max-w-5xl mx-auto px-6 pt-6 pb-12 relative">
+      <div class="flex items-center gap-3 relative z-10">
+        <img src="/brand/nec-logo.svg" alt="NEC" class="h-8 w-auto" />
+        <div class="leading-tight">
+          <div class="font-black text-base text-nec-navy">常州工NEC <span class="text-sm font-extrabold text-nec-cyan">in CIT</span></div>
+          <div class="mono text-[11px] text-nec-gray tracking-wider">newenergycoder.club</div>
+        </div>
+      </div>
+
+      <div class="mt-8 relative z-10">
+        <p class="mono text-xs tracking-[.22em] mb-3 text-nec-navy"><b>NEC HUB</b> · 评分看板 · ASPIEC-DCB</p>
+        <h1 class="hero-title text-4xl sm:text-5xl">NEC <span class="accent">评分</span>看板</h1>
+        <p class="mono mt-3 text-xs text-nec-gray tracking-widest">ASPIEC-DCB v0.1.0 · A416::REVIEW 模式 · 终端视觉合规标准</p>
+        <div class="mt-5 flex flex-wrap gap-2 text-sm">
+          <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">01</i>诊断</span>
+          <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">02</i>方案</span>
+          <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">03</i>Hotfix</span>
+          <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">04</i>归档</span>
+        </div>
+      </div>
+
+      <!-- 破晓太阳 -->
+      <svg class="absolute right-2 sm:right-8 top-16 w-32 sm:w-44 opacity-90 z-0" viewBox="0 0 800 800" fill="none" aria-hidden="true">
+        <defs><linearGradient id="sunG" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#4FC3F7"/><stop offset="1" stop-color="#1FA9E8"/></linearGradient></defs>
+        <circle cx="400" cy="400" r="330" stroke="url(#sunG)" stroke-width="10"/>
+        <circle cx="400" cy="400" r="282" stroke="#1FA9E8" stroke-width="2.5" stroke-dasharray="3 14" opacity=".85"/>
+        <g stroke="#141B5E" stroke-width="2"><line x1="400" y1="368" x2="400" y2="432"/><line x1="368" y1="400" x2="432" y2="400"/></g>
+        <circle cx="400" cy="400" r="7" fill="#141B5E"/>
+      </svg>
+    </div>
+    <div class="horizon"></div>
+    <div class="base-line"></div>
+  </header>
+
+  <!-- embedded 模式下的紧凑导航 -->
+  <div id="embed-nav" class="hidden max-w-5xl mx-auto px-4 pt-4">
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-lg font-black text-nec-ink">NEC 评分看板</h1>
+      <span class="mono text-xs text-nec-gray">ASPIEC-DCB v0.1.0</span>
+    </div>
+  </div>
+
+  <main class="max-w-5xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- 01 总览 stat 卡 -->
+    <section id="stats" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3"></section>
+
+    <!-- 02 评分标尺 -->
+    <section class="nec-card p-5">
+      <div class="mb-4">
+        <h2 class="text-lg font-bold text-nec-ink">10 分制评分标尺</h2>
+        <p class="mono text-xs text-nec-gray tracking-wider">SCORING SCALE</p>
+      </div>
+      <div id="scale-ruler" class="relative select-none"></div>
+      <div id="scale-legend" class="mt-4 grid grid-cols-2 md:grid-cols-5 gap-2"></div>
+    </section>
+
+    <!-- 03 迭代轨迹 -->
+    <section class="nec-card p-5">
+      <div class="mb-4">
+        <h2 class="text-lg font-bold text-nec-ink">迭代轨迹</h2>
+        <p class="mono text-xs text-nec-gray tracking-wider">ITERATION TRAJECTORY</p>
+      </div>
+      <div id="trajectory-chart" class="w-full overflow-x-auto"></div>
+      <div id="trajectory-notes" class="mt-3 space-y-2"></div>
+    </section>
+
+    <!-- 04 六大评分维度 -->
+    <section class="nec-card p-5">
+      <div class="mb-4 flex items-baseline justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-nec-ink">六大评分维度</h2>
+          <p class="mono text-xs text-nec-gray tracking-wider">SIX SCORING DIMENSIONS</p>
+        </div>
+        <span class="text-xs text-nec-gray">文档未留存分项得分，仅列规则</span>
+      </div>
+      <div id="dimension-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+    </section>
+
+    <!-- 05 A416::REVIEW 评审流程 -->
+    <section class="nec-card p-5">
+      <div class="mb-4">
+        <h2 class="text-lg font-bold text-nec-ink">A416::REVIEW 三段式评审流程</h2>
+        <p class="mono text-xs text-nec-gray tracking-wider">DIAGNOSE → PLAN → HOTFIX LOOP</p>
+      </div>
+      <div id="review-flow" class="w-full overflow-x-auto"></div>
+      <p class="mt-3 text-sm text-nec-gray">
+        固定三段式循环：每轮输出 <span class="mono text-nec-navy">Residual Issues</span> →
+        优化方案（含 <span class="mono text-nec-navy">A/B/C</span> 备选）→ 立即可执行的
+        <span class="mono text-nec-navy">Hotfix</span> 清单（含具体参数值）。
+      </p>
+    </section>
+
+    <!-- 06 色彩规范 -->
+    <section class="nec-card p-5">
+      <div class="mb-4">
+        <h2 class="text-lg font-bold text-nec-ink">色彩规范（xterm-256 四级灰度）</h2>
+        <p class="mono text-xs text-nec-gray tracking-wider">L1–L4 GRAYSCALE SYSTEM · L4 须比 L3 至少退后两级</p>
+      </div>
+      <div id="color-table" class="overflow-x-auto"></div>
+    </section>
+
+    <!-- 07 Hotfix 执行范式 -->
+    <section class="nec-card p-5">
+      <div class="mb-4">
+        <h2 class="text-lg font-bold text-nec-ink">Hotfix 执行范式</h2>
+        <p class="mono text-xs text-nec-gray tracking-wider">HOTFIX PLAYBOOK · 每条必须含具体参数值</p>
+      </div>
+      <div id="hotfix-list" class="space-y-4"></div>
+    </section>
+
+    <!-- 08 页脚：治理徽章 + 认证签名 -->
+    <footer class="nec-card p-5" style="border-top:3px solid var(--nec-cyan)">
+      <div id="gov-badges" class="flex flex-wrap gap-2"></div>
+      <p class="mono mt-4 text-sm text-nec-navy">Verified by NEC-PI5 · ASPIEC-DCB v0.1.0</p>
+      <p class="mt-2 text-xs text-nec-gray leading-relaxed">
+        数据来源：本看板内容复原自 NEC-Pi5 备份（<span class="mono">darrenpig/.bash_history</span> 第 60–247 行）
+        中一次终端启动横幅的多轮 AI 设计评审会话。A416 / DCB / ASPIEC 的英文全称未在备份片段中给出，
+        现行用法为社区约定俗成的内部标准。备份中无原始横幅成品代码，6.0 → 9.0 之间的中间轮次（7.x / 8.x）未留存。
+      </p>
+      <div class="mt-4 pt-3 flex flex-wrap gap-2" style="border-top:1px dashed var(--nec-line)">
+        <span class="gov-badge">AUTH=宿主设备 PI5</span>
+        <span class="gov-badge">MGMT=管理面 CLAW/openClaw</span>
+        <span class="gov-badge">STD=遵循标准 ASPIEC</span>
+        <span class="gov-badge">DCB=标准运行状态 ACTIVE</span>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    // embedded 模式：被 hub 主界面 iframe 嵌入时隐藏 Hero、改用紧凑导航
+    (function () {
+      const params = new URLSearchParams(location.search);
+      const embedded = params.get("embedded") === "1" || window.parent !== window;
+      if (embedded) {
+        document.getElementById("app-header").style.display = "none";
+        document.getElementById("embed-nav").classList.remove("hidden");
+        document.body.style.background = "var(--nec-paper)";
+      }
+    })();
+
+    /* ========== 数据层（全部源自 ASPIEC-DCB-framework.md v0.1.0，结构可扩展） ========== */
+
+    const STANDARD = {
+      name: "ASPIEC-DCB",
+      version: "v0.1.0",
+      nature: "NEC-PI5 终端视觉合规标准（社区内部标准）",
+      reviewMode: "A416::REVIEW",
+      signature: "Verified by NEC-PI5 · ASPIEC-DCB v0.1.0",
+      targetScore: 9.6,
+      targetNote: "色彩和谐度 + 字距舒适度极限打磨",
+      applicableTo: "终端启动横幅 / 字符画类视觉作品",
+    };
+
+    // 评分标尺关键节点（§2）
+    const SCALE_MILESTONES = [
+      { score: 6.0, grade: "工业级", note: "功能正确，视觉粗糙", current: false },
+      { score: 9.0, grade: "专业标准", note: "画廊级候选，进入微雕阶段", current: false },
+      { score: 9.3, grade: "博物馆级", note: "官方模板候选（当前最高记录）", current: true },
+      { score: 9.6, grade: "终局目标", note: "色彩和谐度 + 字距舒适度极限打磨", current: false },
+      { score: 10.0, grade: "满分", note: "—", current: false },
+    ];
+
+    // 迭代轨迹：已留存评审轮次（§1）。追加新轮次时向数组尾部添加对象即可。
+    const REVIEWS = [
+      { round: "锐评", score: 6.0, stage: "工业级 → 画廊级", note: "包豪斯三层：信息 / 展示 / 操作" },
+      { round: "终局微雕", score: 9.0, stage: "专业标准", note: "剩余：色彩和谐 + 字距呼吸" },
+      { round: "博物馆级", score: 9.3, stage: "官方标准终端模板候选", note: "当前最高记录 9.3/10", current: true },
+    ];
+
+    // 六大评分维度（§3）——文档未留存分项得分，只记录规则
+    const DIMENSIONS = [
+      { name: "信息架构", rule: "框体分层：标题 / 标语 / 技术栈不得挤在单层框内" },
+      { name: "字距排版", rule: "单词内部禁插空格；词间距 2–3 字符" },
+      { name: "垂直节奏", rule: "8px（半行）基准网格；关键区之间 1–1.5 行呼吸" },
+      { name: "色彩和谐", rule: "禁冷暖两极并置（如青 81 + 纯白 255）；推荐同色系渐变" },
+      { name: "提示符语义", rule: "不得出现双重 Prompt；说明行必须注释化" },
+      { name: "视觉锚定", rule: "底部须有底线 / 签名锚定，禁止“悬空草稿感”" },
+    ];
+
+    // 色彩规范 L1–L4（§5），hex 为 xterm-256 近似色
+    const COLOR_LEVELS = [
+      { level: "L1", usage: "主视觉 · NEC PI5 大字", codes: ["青 81（终局方案）", "橙 208（早期方案）"], swatches: [
+        { label: "xterm 81 青", hex: "#5FD7FF" }, { label: "xterm 208 橙", hex: "#FF8700" } ] },
+      { level: "L2", usage: "信息框 · 标题 / 技术栈", codes: ["250", "245"], swatches: [
+        { label: "xterm 250", hex: "#BCBCBC" }, { label: "xterm 245", hex: "#8A8A8A" } ] },
+      { level: "L3", usage: "操作提示 · 提示行", codes: ["242"], swatches: [
+        { label: "xterm 242", hex: "#6C6C6C" } ] },
+      { level: "L4", usage: "元数据签名 · DarrenPig · v0.1.0", codes: ["238 或斜体 + 240"], swatches: [
+        { label: "xterm 238", hex: "#444444" }, { label: "xterm 240", hex: "#585858" } ] },
+    ];
+
+    // Hotfix 执行范式（§7 三条示例）
+    const HOTFIXES = [
+      { title: "合并字距", desc: "删除字母间空格",
+        before: "A S P I E C", after: "ASPIEC" },
+      { title: "降级 PI5 白", desc: "纯白 255 过曝，降级为浅灰 251 或浅青 195",
+        before: "\\x1b[38;5;255m", after: "\\x1b[38;5;251m 或 \\x1b[38;5;195m" },
+      { title: "注释化提示行", desc: "禁止伪装成 Prompt，规范化为注释形式",
+        before: "[A416::REVIEW] >", after: "# A416::REVIEW" },
+    ];
+
+    /* ========== 渲染层 ========== */
+
+    const BEST = REVIEWS[REVIEWS.length - 1];
+
+    // 01 总览 stat 卡
+    function renderStats() {
+      const stats = [
+        { label: "当前最高分", value: `${BEST.score}`, unit: "/10", sub: "博物馆级", highlight: true },
+        { label: "已留存评审轮次", value: `${REVIEWS.length}`, unit: "轮", sub: "7.x / 8.x 未留存" },
+        { label: "终局目标", value: `${STANDARD.targetScore}`, unit: "/10", sub: STANDARD.targetNote },
+        { label: "标准版本", value: STANDARD.version, unit: "", sub: STANDARD.name },
+        { label: "审核模式", value: STANDARD.reviewMode, unit: "", sub: "三段式循环", mono: true },
+      ];
+      document.getElementById("stats").innerHTML = stats.map(s => `
+        <div class="nec-card p-4" ${s.highlight ? 'style="border-top:3px solid var(--nec-cyan)"' : ""}>
+          <p class="mono text-[11px] text-nec-gray tracking-wider">${s.label}</p>
+          <p class="mt-1 font-black text-2xl ${s.highlight ? "text-nec-cyan" : "text-nec-navy"} ${s.mono ? "mono text-base leading-8" : ""}">
+            ${s.value}<span class="text-sm font-bold text-nec-gray">${s.unit}</span>
+          </p>
+          <p class="text-xs text-nec-gray mt-1">${s.sub}</p>
+        </div>
+      `).join("");
+    }
+
+    // 02 评分标尺（纯 DOM + 手绘定位指针）
+    function renderScale() {
+      const ruler = document.getElementById("scale-ruler");
+      const ticks = [];
+      for (let i = 0; i <= 100; i += 10) {
+        ticks.push(`
+          <div class="flex flex-col items-center" style="position:absolute;left:${i}%;transform:translateX(-50%)">
+            <div class="scale-tick major"></div>
+            <span class="mono text-[10px] text-nec-gray mt-1">${(i / 10).toFixed(0)}</span>
+          </div>
+        `);
+      }
+      const markers = SCALE_MILESTONES.map(m => `
+        <div style="position:absolute;left:${m.score * 10}%;transform:translateX(-50%);top:-6px" class="flex flex-col items-center">
+          <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;
+            border-top:9px solid ${m.current ? "var(--nec-cyan)" : "var(--nec-navy)"}"></div>
+          <span class="mono text-[10px] mt-1 font-bold" style="color:${m.current ? "var(--nec-cyan)" : "var(--nec-navy)"}">
+            ${m.score.toFixed(1)}
+          </span>
+        </div>
+      `).join("");
+      ruler.innerHTML = `
+        <div class="relative" style="height:76px">
+          ${markers}
+          <div class="absolute left-0 right-0" style="top:44px;height:6px;border-radius:3px;
+            background:linear-gradient(90deg,var(--nec-line) 0%,var(--nec-cyan) 93%,var(--nec-ink) 100%)"></div>
+          <div style="position:absolute;top:38px;height:18px;width:3px;border-radius:2px;
+            background:var(--nec-cyan);left:${BEST.score * 10}%;transform:translateX(-50%);
+            box-shadow:0 0 0 4px rgba(31,169,232,.25)"></div>
+          <div class="relative" style="top:52px">${ticks.join("")}</div>
+        </div>
+      `;
+      document.getElementById("scale-legend").innerHTML = SCALE_MILESTONES.map(m => `
+        <div class="rounded-lg p-3" style="border:1px solid var(--nec-line);background:${m.current ? "var(--nec-royal-100)" : "var(--nec-fog)"}">
+          <p class="mono text-sm font-black" style="color:${m.current ? "var(--nec-cyan)" : "var(--nec-navy)"}">
+            ${m.score.toFixed(1)} ${m.current ? "◀ 当前" : ""}
+          </p>
+          <p class="text-sm font-bold text-nec-ink">${m.grade}</p>
+          <p class="text-xs text-nec-gray mt-0.5">${m.note}</p>
+        </div>
+      `).join("");
+    }
+
+    // 03 迭代轨迹（手绘 SVG 折线图）
+    function renderTrajectory() {
+      const W = 720, H = 260, PAD = { l: 56, r: 24, t: 36, b: 44 };
+      const x = i => PAD.l + (i * (W - PAD.l - PAD.r)) / Math.max(REVIEWS.length - 1, 1);
+      const y = s => PAD.t + (10 - s) * (H - PAD.t - PAD.b) / 10;
+      const pts = REVIEWS.map((r, i) => `${x(i)},${y(r.score)}`).join(" ");
+      const grid = [];
+      for (let s = 6; s <= 10; s += 1) {
+        grid.push(`
+          <line x1="${PAD.l}" y1="${y(s)}" x2="${W - PAD.r}" y2="${y(s)}" stroke="var(--nec-line)" stroke-width="1" ${s % 2 ? 'stroke-dasharray="3 6"' : ""}/>
+          <text x="${PAD.l - 10}" y="${y(s) + 4}" text-anchor="end" font-size="11" fill="var(--nec-gray)" font-family="ui-monospace,Consolas,monospace">${s}.0</text>
+        `);
+      }
+      const nodes = REVIEWS.map((r, i) => `
+        <circle cx="${x(i)}" cy="${y(r.score)}" r="${r.current ? 8 : 5.5}"
+          fill="${r.current ? "var(--nec-cyan)" : "var(--nec-navy)"}"
+          ${r.current ? 'stroke="rgba(31,169,232,.3)" stroke-width="6"' : 'stroke="#fff" stroke-width="2"'}/>
+        <text x="${x(i)}" y="${y(r.score) - 16}" text-anchor="middle" font-size="13" font-weight="800"
+          fill="${r.current ? "var(--nec-cyan)" : "var(--nec-navy)"}" font-family="ui-monospace,Consolas,monospace">${r.score.toFixed(1)}</text>
+        <text x="${x(i)}" y="${H - 22}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--nec-ink)">${r.round}</text>
+        <text x="${x(i)}" y="${H - 6}" text-anchor="middle" font-size="10" fill="var(--nec-gray)">${r.stage}</text>
+      `).join("");
+      document.getElementById("trajectory-chart").innerHTML = `
+        <svg viewBox="0 0 ${W} ${H}" class="w-full" style="min-width:520px" role="img" aria-label="评分迭代轨迹折线图">
+          ${grid.join("")}
+          <line x1="${PAD.l}" y1="${y(6)}" x2="${W - PAD.r}" y2="${y(6)}" stroke="var(--nec-gray)" stroke-width="1.5"/>
+          <polyline points="${pts}" fill="none" stroke="var(--nec-royal)" stroke-width="2.5"
+            stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6 4"/>
+          <line x1="${PAD.l}" y1="${y(STANDARD.targetScore)}" x2="${W - PAD.r}" y2="${y(STANDARD.targetScore)}"
+            stroke="var(--nec-cyan)" stroke-width="1.5" stroke-dasharray="8 6"/>
+          <text x="${W - PAD.r}" y="${y(STANDARD.targetScore) - 6}" text-anchor="end" font-size="11" font-weight="700"
+            fill="var(--nec-cyan)" font-family="ui-monospace,Consolas,monospace">终局目标 9.6</text>
+          ${nodes}
+        </svg>
+      `;
+      document.getElementById("trajectory-notes").innerHTML =
+        REVIEWS.map(r => `
+          <div class="flex items-start gap-2 text-sm">
+            <span class="status-badge" style="${r.current ? "background:#E8ECFB;color:#1A2FA0" : "background:#EEF1F8;color:#5A6472"}">${r.score.toFixed(1)}</span>
+            <span class="text-nec-gray"><b class="text-nec-ink">${r.round}</b> · ${r.stage} —— ${r.note}</span>
+          </div>
+        `).join("") + `
+          <p class="text-xs text-nec-gray pt-1" style="border-top:1px dashed var(--nec-line)">
+            注：6.0 → 9.0 之间的中间轮次（7.x / 8.x）未留存，折线仅连接已留存的三轮记录。
+          </p>
+        `;
+    }
+
+    // 04 六大评分维度
+    function renderDimensions() {
+      document.getElementById("dimension-grid").innerHTML = DIMENSIONS.map((d, i) => `
+        <div class="rounded-lg p-4" style="border:1px solid var(--nec-line);background:var(--nec-paper)">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="mono text-xs font-black text-nec-cyan">${String(i + 1).padStart(2, "0")}</span>
+            <h3 class="text-sm font-bold text-nec-navy">${d.name}</h3>
+          </div>
+          <p class="text-xs text-nec-gray leading-relaxed">${d.rule}</p>
+        </div>
+      `).join("");
+    }
+
+    // 05 A416::REVIEW 循环图示（手绘 SVG）
+    function renderReviewFlow() {
+      const W = 720, H = 200;
+      const steps = [
+        { x: 120, title: "诊断", sub: "Residual Issues", code: "01" },
+        { x: 360, title: "方案", sub: "A / B / C 备选", code: "02" },
+        { x: 600, title: "Hotfix", sub: "具体改法 + 参数值", code: "03" },
+      ];
+      const arrows = `
+        <line x1="185" y1="100" x2="295" y2="100" stroke="var(--nec-cyan)" stroke-width="2" stroke-dasharray="6 4"/>
+        <path d="M295 100 l-8 -5 v10 z" fill="var(--nec-cyan)"/>
+        <line x1="425" y1="100" x2="535" y2="100" stroke="var(--nec-cyan)" stroke-width="2" stroke-dasharray="6 4"/>
+        <path d="M535 100 l-8 -5 v10 z" fill="var(--nec-cyan)"/>
+        <path d="M600 132 C 600 178, 120 178, 120 132" fill="none" stroke="var(--nec-line)" stroke-width="1.5" stroke-dasharray="4 5"/>
+        <path d="M120 132 l-5 -8 h10 z" fill="var(--nec-gray)"/>
+      `;
+      const nodes = steps.map(s => `
+        <circle cx="${s.x}" cy="100" r="46" fill="var(--nec-paper)" stroke="var(--nec-navy)" stroke-width="2"/>
+        <circle cx="${s.x}" cy="100" r="38" fill="none" stroke="var(--nec-cyan)" stroke-width="1" stroke-dasharray="3 5"/>
+        <text x="${s.x}" y="95" text-anchor="middle" font-size="15" font-weight="800" fill="var(--nec-ink)">${s.title}</text>
+        <text x="${s.x}" y="113" text-anchor="middle" font-size="9" fill="var(--nec-gray)" font-family="ui-monospace,Consolas,monospace">${s.sub}</text>
+        <text x="${s.x - 30}" y="66" text-anchor="middle" font-size="11" font-weight="800" fill="var(--nec-cyan)" font-family="ui-monospace,Consolas,monospace">${s.code}</text>
+      `).join("");
+      document.getElementById("review-flow").innerHTML = `
+        <svg viewBox="0 0 ${W} ${H}" class="w-full" style="min-width:480px" role="img" aria-label="A416 REVIEW 三段式评审循环">
+          ${arrows}${nodes}
+          <text x="${W / 2}" y="196" text-anchor="middle" font-size="10" fill="var(--nec-gray)" font-family="ui-monospace,Consolas,monospace"># A416::REVIEW mode | kimi &lt;target&gt; | help | status —— 循环至达标为止</text>
+        </svg>
+      `;
+    }
+
+    // 06 色彩规范表
+    function renderColorTable() {
+      document.getElementById("color-table").innerHTML = `
+        <table class="w-full text-sm" style="min-width:520px">
+          <thead>
+            <tr class="text-left mono text-xs text-nec-gray" style="border-bottom:1.5px solid var(--nec-line)">
+              <th class="py-2 pr-3">级别</th><th class="py-2 pr-3">用途</th><th class="py-2 pr-3">色号</th><th class="py-2">色块（xterm-256 近似）</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${COLOR_LEVELS.map(c => `
+              <tr style="border-bottom:1px solid var(--nec-line)">
+                <td class="py-3 pr-3 mono font-black text-nec-navy">${c.level}</td>
+                <td class="py-3 pr-3 text-nec-ink">${c.usage}</td>
+                <td class="py-3 pr-3 mono text-xs text-nec-gray">${c.codes.join(" / ")}</td>
+                <td class="py-3">
+                  <div class="flex flex-wrap gap-2">
+                    ${c.swatches.map(s => `
+                      <span class="inline-flex items-center gap-1.5">
+                        <span style="display:inline-block;width:22px;height:22px;border-radius:5px;background:${s.hex};border:1px solid var(--nec-line)"></span>
+                        <span class="mono text-[10px] text-nec-gray">${s.label}</span>
+                      </span>
+                    `).join("")}
+                  </div>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+        <p class="mt-3 text-xs text-nec-gray">
+          终局色彩方案（9.0→9.6 的关键一跃）：青蓝单色渐变 NEC(81) + PI5(195 极浅青 或 117 淡青)，
+          消除“正常 vs 禁用”式冷暖割裂；PI5 禁用纯白 255（过曝），降级为 251 浅灰或 195 浅青；
+          底线灰 238/240，与顶部线呼应形成“信封”包围感。
+        </p>
+      `;
+    }
+
+    // 07 Hotfix 执行范式
+    function renderHotfixes() {
+      document.getElementById("hotfix-list").innerHTML = HOTFIXES.map((h, i) => `
+        <div class="rounded-lg p-4" style="border:1px solid var(--nec-line);background:var(--nec-fog)">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="mono text-xs font-black text-nec-cyan">HOTFIX-${String(i + 1).padStart(2, "0")}</span>
+            <h3 class="text-sm font-bold text-nec-navy">${h.title}</h3>
+          </div>
+          <p class="text-xs text-nec-gray mb-2">${h.desc}</p>
+          <div class="code-block"><span class="before">- ${h.before}</span>
+<span class="after">+ ${h.after}</span></div>
+        </div>
+      `).join("");
+    }
+
+    // 08 治理徽章
+    function renderBadges() {
+      document.getElementById("gov-badges").innerHTML =
+        ["[AUTH:PI5]", "[MGMT:CLAW]", "[STD:ASPIEC]", "[DCB:ACTIVE]"]
+          .map(b => `<span class="gov-badge">${b}</span>`).join("");
+    }
+
+    renderStats();
+    renderScale();
+    renderTrajectory();
+    renderDimensions();
+    renderReviewFlow();
+    renderColorTable();
+    renderHotfixes();
+    renderBadges();
+  </script>
+</body>
+</html>

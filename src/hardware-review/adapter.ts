@@ -3,16 +3,14 @@
  *
  * 负责把业务对象 ↔ Base 记录字段做双向映射。
  * 字段名不强制固定，通过中文字段名 + 英文别名兜底匹配（同 drawing-review 适配器模式）。
+ * 通用 CRUD 骨架继承自 shared/FeishuTableAdapter。
  */
 
 import {
   BitableRecord,
-  createBitableRecord,
   fieldText,
-  getTenantAccessToken,
-  listBitableRecords,
-  updateBitableRecord,
 } from "../feishu/bitable";
+import { FeishuTableAdapter } from "../shared/feishu-table-adapter";
 import type {
   HardwareReview,
   HardwareReviewConfig,
@@ -25,35 +23,9 @@ import type {
   ReviewStatus,
 } from "./types";
 
-export class BaseAdapter {
-  constructor(
-    private env: Env,
-    private cfg: HardwareReviewConfig,
-  ) {}
-
-  private async token(): Promise<string> {
-    return getTenantAccessToken(this.env);
-  }
-
-  private tableId(name: HardwareReviewTable): string {
-    const id = this.cfg.tables[name];
-    if (!id) throw new Error(`硬件评审流程未配置 ${name} 表`);
-    return id;
-  }
-
-  async listRecords(table: HardwareReviewTable): Promise<BitableRecord[]> {
-    const token = await this.token();
-    return listBitableRecords(token, this.cfg.base, this.tableId(table));
-  }
-
-  async createRecord(table: HardwareReviewTable, fields: Record<string, unknown>): Promise<BitableRecord> {
-    const token = await this.token();
-    return createBitableRecord(token, this.cfg.base, this.tableId(table), fields);
-  }
-
-  async updateRecord(table: HardwareReviewTable, recordId: string, fields: Record<string, unknown>): Promise<BitableRecord> {
-    const token = await this.token();
-    return updateBitableRecord(token, this.cfg.base, this.tableId(table), recordId, fields);
+export class HardwareReviewAdapter extends FeishuTableAdapter<HardwareReviewConfig, HardwareReviewTable> {
+  constructor(env: Env, cfg: HardwareReviewConfig) {
+    super(env, cfg, "硬件评审流程");
   }
 
   // ---------- 硬件评审单 ----------

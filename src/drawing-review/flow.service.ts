@@ -2,7 +2,7 @@
  * 新增机图纸评审流程 — 主流程编排服务（状态机）
  */
 
-import type { BaseAdapter } from "./adapter";
+import type { DrawingReviewAdapter } from "./adapter";
 import type {
   Assessment,
   BOM,
@@ -81,7 +81,7 @@ export interface UserPreferences {
 export class ReviewFlowService {
   constructor(
     private env: Env,
-    private adapter: BaseAdapter,
+    private adapter: DrawingReviewAdapter,
   ) {}
 
   /**

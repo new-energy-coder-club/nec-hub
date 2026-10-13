@@ -5,7 +5,7 @@
  * 二期：接入 CAD 图纸解析或标准件库自动识别。
  */
 
-import type { BaseAdapter } from "./adapter";
+import type { DrawingReviewAdapter } from "./adapter";
 import type { BOM, BOMItem, BOMProcess, BOMSource } from "./types";
 
 export interface GenerateBOMInput {
@@ -13,7 +13,7 @@ export interface GenerateBOMInput {
 }
 
 export class BOMService {
-  constructor(private adapter: BaseAdapter) {}
+  constructor(private adapter: DrawingReviewAdapter) {}
 
   async generate(reviewId: string, input: GenerateBOMInput): Promise<{ bom: BOM & { recordId: string }; items: Array<BOMItem & { recordId: string }> }> {
     // 1. 创建 BOM 头

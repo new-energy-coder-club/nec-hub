@@ -2,6 +2,11 @@
  * 新增机图纸评审流程 — 核心类型定义
  */
 
+import type { Attachment, ModuleConfigFeatures, ReviewConclusion } from "../shared/types";
+
+// 跨模块逐字重复的通用类型统一由 ../shared/types 提供，此处 re-export 保持既有 import 路径
+export type { ActionItem, Attachment, ReviewConclusion, ReviewIssue, ReviewMinutes, UserRef } from "../shared/types";
+
 export type ReviewStatus =
   | "draft" // 待提交
   | "pending_review" // 待评审
@@ -13,25 +18,11 @@ export type ReviewStatus =
   | "procuring" // 采购中
   | "archived"; // 已归档
 
-export type ReviewConclusion = "passed" | "conditional" | "rejected";
-
 export type AssessmentType = "electrical" | "wiring";
 export type AssessmentResult = "pass" | "fail";
 
 export type BOMSource = "self-made" | "purchased" | "standard";
 export type BOMProcess = "machining" | "sheet-metal" | "welding" | "injection" | "standard" | "purchased";
-
-export interface Attachment {
-  name: string;
-  token: string;
-  url?: string;
-  size?: number;
-}
-
-export interface UserRef {
-  open_id: string;
-  name?: string;
-}
 
 export interface DrawingReview {
   reviewId: string;
@@ -49,35 +40,6 @@ export interface DrawingReview {
   conclusionNotes?: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface ReviewIssue {
-  issueId: string;
-  description: string;
-  raisedBy: UserRef;
-  owner?: UserRef;
-  dueDate?: string;
-  severity?: "low" | "medium" | "high";
-  status: "open" | "closed";
-}
-
-export interface ActionItem {
-  action: string;
-  owner: UserRef;
-  dueDate?: string;
-}
-
-export interface ReviewMinutes {
-  minutesId: string;
-  reviewId: string;
-  meetingTime: string;
-  attendees: UserRef[];
-  topics: string[];
-  discussion: string;
-  issues: ReviewIssue[];
-  conclusion: ReviewConclusion;
-  nextActions: ActionItem[];
-  attachments: Attachment[];
 }
 
 export interface BOM {
@@ -197,11 +159,7 @@ export interface DrawingReviewConfig {
   base: string;
   tables: Partial<Record<DrawingReviewTable, string>>;
   updatedAt: string;
-  features?: {
-    autoDefaultFilling?: boolean;
-    versionIncrement?: "minor" | "major";
-    designNotesTemplate?: string;
-  };
+  features?: ModuleConfigFeatures;
 }
 
 export type DrawingReviewTable =

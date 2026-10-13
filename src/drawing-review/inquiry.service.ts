@@ -5,7 +5,7 @@
  *       → compare 输出比价建议书，并按 selections 置 selected/rejected。
  */
 
-import type { BaseAdapter } from "./adapter";
+import type { DrawingReviewAdapter } from "./adapter";
 import type { BOMSource, Inquiry } from "./types";
 
 /** 比价规则：价格优先；交期晚于需求日期的报价按惩罚系数折算后再比较 */
@@ -68,7 +68,7 @@ function generateInquiryId(existing: Set<string>): string {
 export class InquiryService {
   constructor(
     private env: Env,
-    private adapter: BaseAdapter,
+    private adapter: DrawingReviewAdapter,
   ) {}
 
   /** 从评审单 BOM 筛外购/标准件物料生成询价单；已生成过的物料跳过（幂等） */

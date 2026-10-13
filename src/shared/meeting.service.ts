@@ -1,8 +1,12 @@
 /**
- * 新增机图纸评审流程 — 腾讯会议集成服务
+ * 会议集成服务 — drawing-review / hardware-review 共用
+ *
+ * 调用飞书视频会议 API 创建会议；未开通 vc:meeting:write 权限（或网络失败）时
+ * 降级返回 mock 会议信息。两模块差异仅在会议主题文案，由调用方参数化传入。
  */
 
-import type { DrawingReview } from "./types";
+import { getTenantAccessToken } from "../feishu/bitable";
+import { json } from "./http";
 
 const FEISHU_MEETING_API = "https://open.feishu.cn/open-apis/vc/v1";
 
@@ -88,11 +92,15 @@ export class MeetingService {
   }
 }
 
-/** 根据评审单构造默认会议主题与时段 */
-export function defaultMeetingInput(review: DrawingReview, attendeeOpenIds: string[]): CreateMeetingInput {
+/** 根据评审单构造默认会议主题与时段；主题文案由调用方给（各流程不同） */
+export function defaultMeetingInput(
+  review: { meetingStartTime?: string },
+  topic: string,
+  attendeeOpenIds: string[],
+): CreateMeetingInput {
   const start = review.meetingStartTime ?? defaultNextWorkdaySlot();
   return {
-    topic: `新增机图纸评审 - ${review.machineName} - ${review.drawingVersion}`,
+    topic,
     startTime: start,
     durationMinutes: 60,
     attendeeOpenIds,
@@ -105,4 +113,55 @@ function defaultNextWorkdaySlot(): string {
   // 默认明天 14:00
   tomorrow.setHours(14, 0, 0, 0);
   return tomorrow.toISOString();
+}
+
+// ---------- 会议预约路由（drawing-review / hardware-review 共用） ----------
+
+/** 会议预约共用的最小依赖：流程服务的评审单读写 + 适配器的评审单回写 */
+export interface ScheduleMeetingDeps<R extends { recordId: string; designerId: string; meetingStartTime?: string }> {
+  flow: {
+    getReview(reviewId: string): Promise<R | null>;
+    startMeeting(reviewId: string, actorId: string): Promise<unknown>;
+  };
+  adapter: {
+    updateReview(
+      recordId: string,
+      patch: { meetingId: string; meetingLink: string; meetingStartTime: string; updatedAt: string },
+    ): Promise<unknown>;
+  };
+  /** 会议主题文案（各流程不同，如 新增机图纸评审 - 机型 - 版本） */
+  topic: (review: R) => string;
+}
+
+/** 会议预约：建会 → 回写评审单会议信息 → 状态从 pending_review → in_review */
+export async function handleScheduleMeeting<R extends { recordId: string; designerId: string; meetingStartTime?: string }>(
+  request: Request,
+  env: Env,
+  deps: ScheduleMeetingDeps<R>,
+  reviewId: string,
+  actorId: string,
+): Promise<Response> {
+  const review = await deps.flow.getReview(reviewId);
+  if (!review) return json({ error: "评审单不存在" }, 404);
+
+  const body = (await request.json()) as { startTime?: string; durationMinutes?: number; attendeeOpenIds?: string[] };
+  const attendeeOpenIds = body.attendeeOpenIds ?? [review.designerId];
+  const meetingInput = defaultMeetingInput(review, deps.topic(review), attendeeOpenIds);
+  if (body.startTime) meetingInput.startTime = body.startTime;
+  if (body.durationMinutes) meetingInput.durationMinutes = body.durationMinutes;
+
+  const meetingService = new MeetingService(env, () => getTenantAccessToken(env));
+  const info = await meetingService.createMeeting(meetingInput);
+
+  await deps.adapter.updateReview(review.recordId, {
+    meetingId: info.meetingId,
+    meetingLink: info.meetingLink,
+    meetingStartTime: info.startTime,
+    updatedAt: new Date().toISOString(),
+  });
+
+  // 会议预约后，状态从 pending_review → in_review
+  const updated = await deps.flow.startMeeting(reviewId, actorId);
+
+  return json({ meeting: info, review: updated });
 }

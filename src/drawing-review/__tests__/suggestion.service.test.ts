@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SuggestionService } from '../suggestion.service';
-import { BaseAdapter } from '../adapter';
+import { DrawingReviewAdapter } from '../adapter';
 
 // Mock adapter
 const mockAdapter = {

@@ -14,12 +14,28 @@ export interface BitableFieldMeta {
   ui_type: string;
 }
 
-/** tenant_access_token 缓存（KV 提前 5 分钟过期） */
+/** 实例内 token 缓存：命中时连 KV 都不用读 */
+let tenantTokenMem: { token: string; expireAt: number } | null = null;
+/** in-flight 去重：缓存过期瞬间的并发调用共享同一次飞书请求 */
+let tenantTokenInflight: Promise<string> | null = null;
+
+/** tenant_access_token 缓存（实例内存 + KV，均提前 5 分钟过期） */
 export async function getTenantAccessToken(env: Env): Promise<string> {
+  if (tenantTokenMem && tenantTokenMem.expireAt > Date.now()) return tenantTokenMem.token;
+  tenantTokenInflight ??= fetchTenantAccessToken(env).finally(() => {
+    tenantTokenInflight = null;
+  });
+  return tenantTokenInflight;
+}
+
+async function fetchTenantAccessToken(env: Env): Promise<string> {
   const cached = await env.REGISTRY.get("feishu:tenant_access_token", "json") as
     | { token: string; expireAt: number }
     | null;
-  if (cached && cached.expireAt > Date.now()) return cached.token;
+  if (cached && cached.expireAt > Date.now()) {
+    tenantTokenMem = cached;
+    return cached.token;
+  }
 
   if (!env.FEISHU_APP_ID || !env.FEISHU_APP_SECRET) {
     throw new Error("飞书自建应用未配置：请先配置 FEISHU_APP_ID / FEISHU_APP_SECRET");
@@ -40,7 +56,8 @@ export async function getTenantAccessToken(env: Env): Promise<string> {
     throw new Error(`获取 tenant_access_token 失败：${data.msg ?? "unknown"}`);
   }
   const expireAt = Date.now() + ((data.expire ?? 7200) - 300) * 1000;
-  await env.REGISTRY.put("feishu:tenant_access_token", JSON.stringify({ token: data.tenant_access_token, expireAt }));
+  tenantTokenMem = { token: data.tenant_access_token, expireAt };
+  await env.REGISTRY.put("feishu:tenant_access_token", JSON.stringify(tenantTokenMem));
   return data.tenant_access_token;
 }
 

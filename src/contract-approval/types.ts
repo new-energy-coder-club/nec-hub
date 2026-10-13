@@ -2,6 +2,11 @@
  * 合同审批流程 — 核心类型定义
  */
 
+import type { Attachment } from "../shared/types";
+
+// 通用附件类型统一由 ../shared/types 提供，此处 re-export 保持既有 import 路径
+export type { Attachment } from "../shared/types";
+
 export type ContractApprovalStatus =
   | "draft" // 草稿（预留，当前提交即进入待审批）
   | "pending_approval" // 待审批
@@ -16,13 +21,6 @@ export type ApprovalLevel = "team_lead" | "department_head" | "finance" | "legal
 export type ContractType = "purchase" | "sales" | "service" | "partnership" | "nda";
 
 export type ApproverDecision = "pending" | "approved" | "rejected" | "not_required";
-
-export interface Attachment {
-  name: string;
-  token: string;
-  url?: string;
-  size?: number;
-}
 
 export interface Approver {
   level: ApprovalLevel;

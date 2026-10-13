@@ -7,12 +7,9 @@
 
 import {
   BitableRecord,
-  createBitableRecord,
   fieldText,
-  getTenantAccessToken,
-  listBitableRecords,
-  updateBitableRecord,
 } from "../feishu/bitable";
+import { FeishuTableAdapter } from "../shared/feishu-table-adapter";
 import type {
   ApprovalComment,
   Approver,
@@ -81,39 +78,12 @@ function parseStringList(raw: string): string[] {
     .filter(Boolean);
 }
 
-export class ContractApprovalAdapter implements ApprovalStore {
-  constructor(
-    private env: Env,
-    private cfg: ContractApprovalConfig,
-  ) {}
-
-  private async token(): Promise<string> {
-    return getTenantAccessToken(this.env);
-  }
-
-  private tableId(name: ContractApprovalTable): string {
-    const id = this.cfg.tables[name];
-    if (!id) throw new Error(`合同审批流程未配置 ${name} 表`);
-    return id;
-  }
-
-  async listRecords(table: ContractApprovalTable): Promise<BitableRecord[]> {
-    const token = await this.token();
-    return listBitableRecords(token, this.cfg.base, this.tableId(table));
-  }
-
-  async createRecord(table: ContractApprovalTable, fields: Record<string, unknown>): Promise<BitableRecord> {
-    const token = await this.token();
-    return createBitableRecord(token, this.cfg.base, this.tableId(table), fields);
-  }
-
-  async updateRecord(
-    table: ContractApprovalTable,
-    recordId: string,
-    fields: Record<string, unknown>,
-  ): Promise<BitableRecord> {
-    const token = await this.token();
-    return updateBitableRecord(token, this.cfg.base, this.tableId(table), recordId, fields);
+export class ContractApprovalAdapter
+  extends FeishuTableAdapter<ContractApprovalConfig, ContractApprovalTable>
+  implements ApprovalStore
+{
+  constructor(env: Env, cfg: ContractApprovalConfig) {
+    super(env, cfg, "合同审批流程");
   }
 
   // ---------- 合同审批单 ----------

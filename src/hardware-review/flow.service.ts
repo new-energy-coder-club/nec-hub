@@ -5,7 +5,7 @@
  *   评审通过 → 生成评审报告 → 评估 → 通过（approved）→ 归档
  */
 
-import type { BaseAdapter } from "./adapter";
+import type { HardwareReviewAdapter } from "./adapter";
 import type {
   HardwareReview,
   HardwareType,
@@ -67,7 +67,7 @@ export interface ConclusionInput {
 export class ReviewFlowService {
   constructor(
     private env: Env,
-    private adapter: BaseAdapter,
+    private adapter: HardwareReviewAdapter,
   ) {}
 
   /**

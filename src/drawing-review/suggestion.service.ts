@@ -3,7 +3,7 @@
  * 提供项目编号、机型名称等字段的智能联想功能
  */
 
-import type { BaseAdapter } from "./adapter";
+import type { DrawingReviewAdapter } from "./adapter";
 import type { DrawingReview } from "./types";
 
 export interface SuggestionResult {
@@ -21,7 +21,7 @@ export interface SuggestionContext {
 }
 
 export class SuggestionService {
-  constructor(private adapter: BaseAdapter) {}
+  constructor(private adapter: DrawingReviewAdapter) {}
 
   /**
    * 获取综合联想建议

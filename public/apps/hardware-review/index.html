@@ -3,56 +3,173 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>硬件评审流程</title>
+<title>硬件评审流程 · NEC HUB</title>
+<link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+<link rel="stylesheet" href="/brand/nec-tokens.css" />
+<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin />
+<link rel="dns-prefetch" href="https://cdn.tailwindcss.com" />
 <script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // VI 规范：把 NEC 品牌 tokens 映射进 Tailwind，不使用默认蓝/青色系
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          nec: {
+            royal: "#1A2FA0",
+            "royal-light": "#3449B9",
+            "royal-dark": "#10277E",
+            "royal-100": "#E8ECFB",
+            navy: "#141B5E",
+            ink: "#0B1033",
+            cyan: "#1FA9E8",
+            sky: "#4FC3F7",
+            fog: "#F4F6FB",
+            gray: "#5A6472",
+            line: "#D9DFF0",
+          },
+        },
+        fontFamily: {
+          sans: ["Source Han Sans SC", "思源黑体 CN", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "system-ui", "sans-serif"],
+          mono: ["IBM Plex Mono", "ui-monospace", "Consolas", "monospace"],
+        },
+      },
+    },
+  };
+</script>
 <style>
-  body { font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+  body { font-family: var(--nec-font-cn); background: var(--nec-fog); color: var(--nec-ink); }
+  .mono { font-family: var(--nec-font-mono); }
   .view { display: none; }
   .view.active { display: block; }
+
   .status-badge {
     @apply text-xs px-2 py-1 rounded-full font-medium;
   }
+
+  /* KV：蓝图网格 Hero（只铺在头部区域） */
+  .hero {
+    position: relative; overflow: hidden;
+    background-color: var(--nec-paper);
+    background-image:
+      linear-gradient(var(--nec-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--nec-grid) 1px, transparent 1px),
+      linear-gradient(var(--nec-grid-fine) 1px, transparent 1px),
+      linear-gradient(90deg, var(--nec-grid-fine) 1px, transparent 1px);
+    background-size: 92px 92px, 92px 92px, 23px 23px, 23px 23px;
+  }
+  .hero-title { font-weight: 900; letter-spacing: -.015em; color: var(--nec-ink); }
+  .hero-title .accent { color: var(--nec-cyan); }
+  .horizon { position: absolute; left: 0; right: 0; bottom: 30px; height: 3px; background: var(--nec-cyan); }
+  .base-line { height: 5px; background: var(--nec-horizon); }
+
+  /* 卡片：NEC 圆角与阴影 */
+  .nec-card {
+    background: var(--nec-paper);
+    border: 1px solid var(--nec-line);
+    border-radius: var(--nec-radius);
+    box-shadow: var(--nec-shadow);
+  }
+
+  /* 导航按钮 */
+  .nav-btn { border: 1.5px solid var(--nec-line); color: var(--nec-gray); background: var(--nec-paper); }
+  .nav-btn:hover { border-color: var(--nec-cyan); color: var(--nec-navy); }
+  .nav-btn.on { border-color: var(--nec-navy); color: #fff; background: var(--nec-navy); }
+
+  /* 主按钮 */
+  .btn-primary { background: var(--nec-royal); color: #fff; }
+  .btn-primary:hover { background: var(--nec-royal-700, #10277E); }
+  .btn-accent { background: var(--nec-cyan); color: #fff; }
+  .btn-accent:hover { background: #1891c9; }
+
+  /* 链接与交互统一破晓青 */
+  a, .link { color: var(--nec-cyan); }
+  a:hover { color: #1891c9; }
+
+  input:focus, textarea:focus, select:focus {
+    outline: none; border-color: var(--nec-cyan) !important;
+    box-shadow: 0 0 0 3px rgba(31, 169, 232, .15);
+  }
 </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-  <div class="max-w-5xl mx-auto px-4 py-6">
-    <!-- 顶部导航（embedded 模式隐藏） -->
-    <header id="app-header" class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 class="text-xl font-black text-slate-800">硬件评审流程</h1>
-          <p class="text-xs text-gray-500">提交硬件评审单 → 预约会议 → 保存纪要 → 生成评审报告</p>
+<body class="min-h-screen">
+  <!-- KV Hero：蓝图 × 破晓（embedded 模式隐藏） -->
+  <header id="app-header" class="hero">
+    <div class="max-w-5xl mx-auto px-6 pt-6 pb-12 relative">
+      <div class="flex items-center gap-3 relative z-10">
+        <img src="/brand/nec-logo.svg" alt="NEC" class="h-8 w-auto" />
+        <div class="leading-tight">
+          <div class="font-black text-base text-nec-navy">常州工NEC <span class="text-sm font-extrabold text-nec-cyan">in CIT</span></div>
+          <div class="mono text-[11px] text-nec-gray tracking-wider">newenergycoder.club</div>
         </div>
-        <nav class="flex gap-2">
-          <button onclick="router('list')" class="nav-btn px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50" data-view="list">评审单</button>
-          <button onclick="router('submit')" class="nav-btn px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50" data-view="submit">提交</button>
+        <nav class="ml-auto flex gap-2">
+          <button onclick="router('list')" class="nav-btn mono px-3 py-1.5 text-sm rounded-lg" data-view="list">评审单</button>
+          <button onclick="router('submit')" class="nav-btn mono px-3 py-1.5 text-sm rounded-lg" data-view="submit">提交</button>
         </nav>
       </div>
-    </header>
 
+      <div class="mt-8 relative z-10">
+        <p class="mono text-xs tracking-[.22em] mb-3 text-nec-navy"><b>NEC HUB</b> · 硬件评审 · KEEP BUILDING</p>
+        <h1 class="hero-title text-4xl sm:text-5xl">硬件<span class="accent">评审</span>流程</h1>
+        <p class="mono mt-3 text-xs text-nec-gray tracking-widest">提交评审单 → 预约会议 → 保存纪要 → 生成评审报告 → 评估归档</p>
+        <div class="mt-5 flex flex-wrap gap-2 text-sm">
+          <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">01</i>提交</span>
+          <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">02</i>评审</span>
+          <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">03</i>报告</span>
+          <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">04</i>归档</span>
+        </div>
+      </div>
+
+      <!-- 破晓太阳 -->
+      <svg class="absolute right-2 sm:right-8 top-16 w-32 sm:w-44 opacity-90 z-0" viewBox="0 0 800 800" fill="none" aria-hidden="true">
+        <defs><linearGradient id="sunG" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#4FC3F7"/><stop offset="1" stop-color="#1FA9E8"/></linearGradient></defs>
+        <circle cx="400" cy="400" r="330" stroke="url(#sunG)" stroke-width="10"/>
+        <circle cx="400" cy="400" r="282" stroke="#1FA9E8" stroke-width="2.5" stroke-dasharray="3 14" opacity=".85"/>
+        <g stroke="#141B5E" stroke-width="2"><line x1="400" y1="368" x2="400" y2="432"/><line x1="368" y1="400" x2="432" y2="400"/></g>
+        <circle cx="400" cy="400" r="7" fill="#141B5E"/>
+      </svg>
+    </div>
+    <div class="horizon"></div>
+    <div class="base-line"></div>
+  </header>
+
+  <!-- embedded 模式下的紧凑导航 -->
+  <div id="embed-nav" class="hidden max-w-5xl mx-auto px-4 pt-4">
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-lg font-black text-nec-ink">硬件评审流程</h1>
+      <nav class="flex gap-2">
+        <button onclick="router('list')" class="nav-btn mono px-3 py-1.5 text-sm rounded-lg" data-view="list">评审单</button>
+        <button onclick="router('submit')" class="nav-btn mono px-3 py-1.5 text-sm rounded-lg" data-view="submit">提交</button>
+      </nav>
+    </div>
+  </div>
+
+  <div class="max-w-5xl mx-auto px-4 py-6">
     <!-- 未配置提示 -->
-    <div id="not-configured" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-      <p class="text-yellow-800 font-medium">流程尚未配置</p>
-      <p class="text-sm text-yellow-700">请先让 Agent 调用 MCP 的 config_hardware_review 配置 Base 表。</p>
+    <div id="not-configured" class="hidden rounded-lg p-4 mb-6" style="background:#FFF8E6;border:1px solid #F5D876">
+      <p class="font-medium" style="color:#8A6D1A">流程尚未配置</p>
+      <p class="text-sm" style="color:#A8892E">请先让 Agent 调用 MCP 的 <span class="mono">config_hardware_review</span> 配置 Base 表。</p>
     </div>
 
     <!-- 提交视图 -->
     <section id="view-submit" class="view">
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-        <h2 class="text-lg font-bold text-slate-800 mb-4">提交硬件评审单</h2>
+      <div class="nec-card p-5">
+        <h2 class="text-lg font-bold text-nec-ink mb-1">提交硬件评审单</h2>
+        <p class="mono text-xs text-nec-gray mb-4 tracking-wider">HARDWARE REVIEW SUBMISSION</p>
         <form id="submit-form" class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">项目编号</label>
-              <input type="text" name="projectId" required class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm" placeholder="PRJ-2026-001" />
+              <label class="block text-sm font-medium text-nec-navy mb-1">项目编号</label>
+              <input type="text" name="projectId" required class="mono w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="PRJ-2026-001" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">硬件名称</label>
-              <input type="text" name="hardwareName" required class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm" placeholder="主控板 / 激光雷达 / 驱动电机" />
+              <label class="block text-sm font-medium text-nec-navy mb-1">硬件名称</label>
+              <input type="text" name="hardwareName" required class="w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="主控板 / 激光雷达 / 驱动电机" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">硬件类型</label>
-              <select name="hardwareType" class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm">
+              <label class="block text-sm font-medium text-nec-navy mb-1">硬件类型</label>
+              <select name="hardwareType" class="w-full rounded-lg border border-nec-line px-3 py-2 text-sm bg-white">
                 <option value="controller">控制器</option>
                 <option value="sensor">传感器</option>
                 <option value="actuator">执行器</option>
@@ -64,24 +181,24 @@
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">硬件版本</label>
-              <input type="text" name="hardwareVersion" required class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm" placeholder="V1.0" />
+              <label class="block text-sm font-medium text-nec-navy mb-1">硬件版本</label>
+              <input type="text" name="hardwareVersion" required class="mono w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="V1.0" />
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">设计负责人 open_id</label>
-              <input type="text" name="designerId" required class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm" placeholder="ou_xxx" />
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-nec-navy mb-1">设计负责人 open_id</label>
+              <input type="text" name="designerId" required class="mono w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="ou_xxx" />
             </div>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">规格参数</label>
-            <textarea name="specification" rows="2" class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm" placeholder="电压 / 电流 / 功率 / 接口 / 防护等级等"></textarea>
+            <label class="block text-sm font-medium text-nec-navy mb-1">规格参数</label>
+            <textarea name="specification" rows="2" class="w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="电压 / 电流 / 功率 / 接口 / 防护等级等"></textarea>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">设计说明</label>
-            <textarea name="designNotes" rows="3" required class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm" placeholder="选型理由、关键设计点、风险与验证计划"></textarea>
+            <label class="block text-sm font-medium text-nec-navy mb-1">设计说明</label>
+            <textarea name="designNotes" rows="3" required class="w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="选型理由、关键设计点、风险与验证计划"></textarea>
           </div>
           <div class="flex justify-end">
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-lg">提交评审单</button>
+            <button type="submit" class="btn-primary text-sm font-medium px-5 py-2 rounded-lg">提交评审单</button>
           </div>
         </form>
         <p id="submit-result" class="mt-3 text-sm"></p>
@@ -90,19 +207,22 @@
 
     <!-- 评审单视图（列表 / 看板 一体） -->
     <section id="view-list" class="view active">
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <div class="nec-card p-5">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-bold text-slate-800">评审单</h2>
+          <div>
+            <h2 class="text-lg font-bold text-nec-ink">评审单</h2>
+            <p class="mono text-xs text-nec-gray tracking-wider">REVIEW PIPELINE</p>
+          </div>
           <div class="flex items-center gap-2">
-            <div class="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
-              <button id="mode-board" onclick="setDisplayMode('board')" class="px-3 py-1.5">看板</button>
-              <button id="mode-table" onclick="setDisplayMode('table')" class="px-3 py-1.5 border-l border-gray-200">列表</button>
+            <div class="flex rounded-lg overflow-hidden text-sm" style="border:1.5px solid var(--nec-line)">
+              <button id="mode-board" onclick="setDisplayMode('board')" class="mono px-3 py-1.5">看板</button>
+              <button id="mode-table" onclick="setDisplayMode('table')" class="mono px-3 py-1.5" style="border-left:1.5px solid var(--nec-line)">列表</button>
             </div>
-            <button onclick="loadReviews()" class="text-sm text-blue-600 hover:text-blue-700 font-medium px-2">刷新</button>
+            <button onclick="loadReviews()" class="text-sm font-medium px-2 link">刷新</button>
           </div>
         </div>
         <div id="dashboard" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <p class="text-sm text-gray-400 md:col-span-3 lg:col-span-4">加载中…</p>
+          <p class="text-sm text-nec-gray md:col-span-3 lg:col-span-4">加载中…</p>
         </div>
         <div id="review-list" class="space-y-3 hidden">
         </div>
@@ -112,38 +232,36 @@
     <!-- 详情视图 -->
     <section id="view-detail" class="view">
       <div class="mb-4">
-        <button onclick="router('list')" class="text-sm text-blue-600 hover:underline">← 返回评审单</button>
+        <button onclick="router('list')" class="text-sm link hover:underline mono">← 返回评审单</button>
       </div>
       <div id="detail-content" class="space-y-4">
-        <p class="text-sm text-gray-400">加载中…</p>
+        <p class="text-sm text-nec-gray">加载中…</p>
       </div>
     </section>
   </div>
 
   <script>
-    // embedded 模式：被 hub 主界面 iframe 嵌入时隐藏自身顶栏、收窄边距
+    // embedded 模式：被 hub 主界面 iframe 嵌入时隐藏 Hero、改用紧凑导航
     (function () {
       const params = new URLSearchParams(location.search);
       const embedded = params.get("embedded") === "1" || window.parent !== window;
       if (embedded) {
-        const header = document.getElementById("app-header");
-        if (header) header.style.display = "none";
-        document.body.classList.remove("bg-gray-50");
-        const wrap = document.querySelector("body > div.max-w-5xl");
-        if (wrap) wrap.classList.remove("px-4", "py-6");
+        document.getElementById("app-header").style.display = "none";
+        document.getElementById("embed-nav").classList.remove("hidden");
+        document.body.style.background = "var(--nec-paper)";
       }
     })();
 
     const API = "";
     const statusMap = {
-      draft: { label: "待提交", color: "bg-gray-100 text-gray-700" },
-      pending_review: { label: "待评审", color: "bg-blue-50 text-blue-700" },
-      in_review: { label: "评审中", color: "bg-yellow-50 text-yellow-700" },
-      rectifying: { label: "待整改", color: "bg-orange-50 text-orange-700" },
-      report_generating: { label: "报告生成中", color: "bg-purple-50 text-purple-700" },
-      assessing: { label: "评估中", color: "bg-indigo-50 text-indigo-700" },
-      approved: { label: "已通过", color: "bg-green-50 text-green-700" },
-      archived: { label: "已归档", color: "bg-slate-100 text-slate-600" },
+      draft: { label: "待提交", color: "background:#EEF1F8;color:#5A6472" },
+      pending_review: { label: "待评审", color: "background:#E8ECFB;color:#1A2FA0" },
+      in_review: { label: "评审中", color: "background:#FFF4DB;color:#92610B" },
+      rectifying: { label: "待整改", color: "background:#FDEADD;color:#B04A0F" },
+      report_generating: { label: "报告生成中", color: "background:#EFE9FB;color:#6A3FB5" },
+      assessing: { label: "评估中", color: "background:#E7EAFB;color:#3D4BA8" },
+      approved: { label: "已通过", color: "background:#E3F6EC;color:#177A4C" },
+      archived: { label: "已归档", color: "background:#EDF0F7;color:#141B5E" },
     };
     const typeMap = {
       controller: "控制器",
@@ -160,8 +278,7 @@
       document.querySelectorAll(".view").forEach(el => el.classList.remove("active"));
       document.getElementById(`view-${view}`).classList.add("active");
       document.querySelectorAll(".nav-btn").forEach(btn => {
-        btn.classList.toggle("bg-blue-50", btn.dataset.view === view);
-        btn.classList.toggle("border-blue-200", btn.dataset.view === view);
+        btn.classList.toggle("on", btn.dataset.view === view);
       });
       if (view === "list") loadReviews();
       if (view === "detail" && params.id) loadDetail(params.id);
@@ -174,9 +291,9 @@
       document.getElementById("review-list").classList.toggle("hidden", mode !== "table");
       for (const m of ["board", "table"]) {
         const btn = document.getElementById(`mode-${m}`);
-        btn.classList.toggle("bg-blue-50", m === mode);
-        btn.classList.toggle("text-blue-700", m === mode);
-        btn.classList.toggle("font-medium", m === mode);
+        const on = m === mode;
+        btn.style.background = on ? "var(--nec-navy)" : "var(--nec-paper)";
+        btn.style.color = on ? "#fff" : "var(--nec-gray)";
       }
     }
 
@@ -192,8 +309,8 @@
     }
 
     function renderStatus(status) {
-      const s = statusMap[status] || { label: status, color: "bg-gray-100 text-gray-700" };
-      return `<span class="status-badge ${s.color}">${s.label}</span>`;
+      const s = statusMap[status] || { label: status, color: "background:#EEF1F8;color:#5A6472" };
+      return `<span class="status-badge" style="${s.color}">${s.label}</span>`;
     }
 
     function renderType(t) {
@@ -208,31 +325,38 @@
         renderList(data);
         renderBoard(data);
       } catch (err) {
-        const msg = `<p class="text-sm text-red-500">加载失败：${err.message}</p>`;
+        const unconfigured = /尚未配置/.test(err.message);
+        const guide = `<div class="rounded-lg p-6 text-center" style="background:var(--nec-fog);border:1px dashed var(--nec-line)">
+          <p class="mono text-xs tracking-widest text-nec-cyan mb-2">WAITING FOR CONFIG</p>
+          <p class="text-sm text-nec-gray">完成 Base 表配置后，评审单将在这里以看板形式流转。</p>
+        </div>`;
+        const msg = unconfigured ? guide : `<p class="text-sm" style="color:#C22E2E">加载失败：${err.message}</p>`;
         listEl.innerHTML = msg;
-        boardEl.innerHTML = `<p class="text-sm text-red-500 md:col-span-3 lg:col-span-4">加载失败：${err.message}</p>`;
+        boardEl.innerHTML = unconfigured
+          ? `<div class="md:col-span-3 lg:col-span-4">${guide}</div>`
+          : `<p class="text-sm md:col-span-3 lg:col-span-4" style="color:#C22E2E">加载失败：${err.message}</p>`;
       }
     }
 
     function renderList(data) {
       const listEl = document.getElementById("review-list");
       if (!data.length) {
-        listEl.innerHTML = `<p class="text-sm text-gray-400">暂无评审单</p>`;
+        listEl.innerHTML = `<p class="text-sm text-nec-gray">暂无评审单</p>`;
         return;
       }
       listEl.innerHTML = data.map(r => `
-          <div class="border border-gray-100 rounded-lg p-4 hover:bg-gray-50 cursor-pointer" onclick="router('detail', {id:'${r.reviewId}'})">
+          <div class="rounded-lg p-4 cursor-pointer transition-shadow hover:shadow-md" style="border:1px solid var(--nec-line);background:var(--nec-paper)" onclick="router('detail', {id:'${r.reviewId}'})">
             <div class="flex items-center justify-between">
               <div>
-                <p class="font-bold text-slate-800">${r.reviewId} · ${r.hardwareName}</p>
-                <p class="text-xs text-gray-500">项目：${r.projectId} · 类型：${renderType(r.hardwareType)} · 版本：${r.hardwareVersion}</p>
+                <p class="font-bold text-nec-ink"><span class="mono text-nec-royal">${r.reviewId}</span> · ${r.hardwareName}</p>
+                <p class="mono text-xs text-nec-gray mt-0.5">项目 ${r.projectId} · ${renderType(r.hardwareType)} · ${r.hardwareVersion}</p>
               </div>
               ${renderStatus(r.status)}
             </div>
-            <p class="text-sm text-gray-600 mt-2 line-clamp-2">${r.designNotes}</p>
-            <div class="mt-3 flex gap-2 text-xs">
-              <span class="text-gray-400">负责人：${r.designerId}</span>
-              ${r.meetingLink ? `<a href="${r.meetingLink}" target="_blank" class="text-blue-600 hover:underline" onclick="event.stopPropagation()">会议链接</a>` : ""}
+            <p class="text-sm text-nec-gray mt-2 line-clamp-2">${r.designNotes}</p>
+            <div class="mt-3 flex gap-3 text-xs items-center">
+              <span class="text-nec-gray">负责人：<span class="mono">${r.designerId}</span></span>
+              ${r.meetingLink ? `<a href="${r.meetingLink}" target="_blank" class="link hover:underline" onclick="event.stopPropagation()">会议链接 →</a>` : ""}
             </div>
           </div>
         `).join("");
@@ -251,18 +375,18 @@
         items: groups[status] || []
       }));
       el.innerHTML = columns.map(col => `
-          <div class="bg-gray-50 rounded-lg p-3">
+          <div class="rounded-lg p-3" style="background:var(--nec-fog);border:1px solid var(--nec-line)">
             <div class="flex items-center justify-between mb-3">
-              <span class="text-sm font-bold text-slate-700">${col.label}</span>
-              <span class="text-xs text-gray-500">${col.items.length}</span>
+              <span class="text-sm font-bold text-nec-navy">${col.label}</span>
+              <span class="mono text-xs font-bold text-nec-cyan">${String(col.items.length).padStart(2, "0")}</span>
             </div>
             <div class="space-y-2">
               ${col.items.map(r => `
-                <div class="bg-white border border-gray-100 rounded p-3 cursor-pointer hover:shadow-sm" onclick="router('detail', {id:'${r.reviewId}'})">
-                  <p class="text-sm font-medium text-slate-800 truncate">${r.hardwareName}</p>
-                  <p class="text-xs text-gray-500">${r.reviewId}</p>
+                <div class="rounded p-3 cursor-pointer transition-shadow hover:shadow-sm" style="background:var(--nec-paper);border:1px solid var(--nec-line)" onclick="router('detail', {id:'${r.reviewId}'})">
+                  <p class="text-sm font-medium text-nec-ink truncate">${r.hardwareName}</p>
+                  <p class="mono text-xs text-nec-gray">${r.reviewId}</p>
                 </div>
-              `).join("") || `<p class="text-xs text-gray-400 text-center py-4">无</p>`}
+              `).join("") || `<p class="text-xs text-nec-gray text-center py-4">无</p>`}
             </div>
           </div>
         `).join("");
@@ -273,99 +397,100 @@
       try {
         const r = await api(`/api/hardware-review/${reviewId}`);
         el.innerHTML = `
-          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+          <div class="nec-card p-5" style="border-top:3px solid var(--nec-cyan)">
             <div class="flex items-start justify-between">
               <div>
-                <h2 class="text-xl font-bold text-slate-800">${r.hardwareName}</h2>
-                <p class="text-sm text-gray-500">${r.reviewId} · 项目 ${r.projectId} · ${renderType(r.hardwareType)} · 版本 ${r.hardwareVersion}</p>
+                <p class="mono text-xs text-nec-cyan tracking-widest mb-1">${r.reviewId}</p>
+                <h2 class="text-xl font-bold text-nec-ink">${r.hardwareName}</h2>
+                <p class="mono text-xs text-nec-gray mt-1">项目 ${r.projectId} · ${renderType(r.hardwareType)} · ${r.hardwareVersion}</p>
               </div>
               ${renderStatus(r.status)}
             </div>
             <div class="mt-4 grid grid-cols-2 gap-4 text-sm">
-              <div><span class="text-gray-500">设计负责人：</span>${r.designerId}</div>
-              <div><span class="text-gray-500">创建时间：</span>${new Date(r.createdAt).toLocaleString()}</div>
-              ${r.meetingId ? `<div><span class="text-gray-500">会议号：</span>${r.meetingId}</div>` : ""}
-              ${r.meetingStartTime ? `<div><span class="text-gray-500">会议时间：</span>${new Date(r.meetingStartTime).toLocaleString()}</div>` : ""}
+              <div><span class="text-nec-gray">设计负责人：</span><span class="mono">${r.designerId}</span></div>
+              <div><span class="text-nec-gray">创建时间：</span><span class="mono">${new Date(r.createdAt).toLocaleString()}</span></div>
+              ${r.meetingId ? `<div><span class="text-nec-gray">会议号：</span><span class="mono">${r.meetingId}</span></div>` : ""}
+              ${r.meetingStartTime ? `<div><span class="text-nec-gray">会议时间：</span><span class="mono">${new Date(r.meetingStartTime).toLocaleString()}</span></div>` : ""}
             </div>
-            ${r.specification ? `<div class="mt-4"><h3 class="text-sm font-bold text-slate-700 mb-2">规格参数</h3><p class="text-sm text-gray-600 whitespace-pre-wrap">${r.specification}</p></div>` : ""}
+            ${r.specification ? `<div class="mt-4"><h3 class="text-sm font-bold text-nec-navy mb-2">规格参数</h3><p class="text-sm text-nec-gray whitespace-pre-wrap">${r.specification}</p></div>` : ""}
             <div class="mt-4">
-              <h3 class="text-sm font-bold text-slate-700 mb-2">设计说明</h3>
-              <p class="text-sm text-gray-600 whitespace-pre-wrap">${r.designNotes}</p>
+              <h3 class="text-sm font-bold text-nec-navy mb-2">设计说明</h3>
+              <p class="text-sm text-nec-gray whitespace-pre-wrap">${r.designNotes}</p>
             </div>
-            ${r.meetingLink ? `<div class="mt-4"><a href="${r.meetingLink}" target="_blank" class="text-sm text-blue-600 hover:underline">加入腾讯会议 →</a></div>` : ""}
+            ${r.meetingLink ? `<div class="mt-4"><a href="${r.meetingLink}" target="_blank" class="text-sm link hover:underline mono">加入会议 →</a></div>` : ""}
           </div>
 
           <!-- 操作区 -->
-          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h3 class="text-sm font-bold text-slate-700 mb-3">状态操作</h3>
+          <div class="nec-card p-5">
+            <h3 class="text-sm font-bold text-nec-navy mb-3">状态操作</h3>
             <div class="flex flex-wrap gap-2">
               ${renderActionButtons(r)}
             </div>
           </div>
 
           <!-- 会议纪要 -->
-          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h3 class="text-sm font-bold text-slate-700 mb-3">保存会议纪要</h3>
+          <div class="nec-card p-5">
+            <h3 class="text-sm font-bold text-nec-navy mb-3">保存会议纪要</h3>
             <form onsubmit="saveMinutes(event, '${r.reviewId}')" class="space-y-3">
               <div>
-                <label class="block text-xs text-gray-500 mb-1">会议时间</label>
-                <input type="datetime-local" name="meetingTime" required class="w-full rounded border-gray-300 border px-3 py-2 text-sm" />
+                <label class="block text-xs text-nec-gray mb-1">会议时间</label>
+                <input type="datetime-local" name="meetingTime" required class="mono w-full rounded border border-nec-line px-3 py-2 text-sm" />
               </div>
               <div>
-                <label class="block text-xs text-gray-500 mb-1">讨论记录</label>
-                <textarea name="discussion" rows="3" required class="w-full rounded border-gray-300 border px-3 py-2 text-sm"></textarea>
+                <label class="block text-xs text-nec-gray mb-1">讨论记录</label>
+                <textarea name="discussion" rows="3" required class="w-full rounded border border-nec-line px-3 py-2 text-sm"></textarea>
               </div>
               <div>
-                <label class="block text-xs text-gray-500 mb-1">评审结论</label>
-                <select name="conclusion" class="w-full rounded border-gray-300 border px-3 py-2 text-sm">
+                <label class="block text-xs text-nec-gray mb-1">评审结论</label>
+                <select name="conclusion" class="w-full rounded border border-nec-line px-3 py-2 text-sm bg-white">
                   <option value="passed">通过</option>
                   <option value="conditional">有条件通过</option>
                   <option value="rejected">不通过</option>
                 </select>
               </div>
-              <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg">保存纪要并提交结论</button>
+              <button type="submit" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg">保存纪要并提交结论</button>
             </form>
             <p id="minutes-result" class="mt-2 text-sm"></p>
           </div>
 
           <!-- 评审报告生成 -->
-          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h3 class="text-sm font-bold text-slate-700 mb-3">生成评审报告</h3>
+          <div class="nec-card p-5">
+            <h3 class="text-sm font-bold text-nec-navy mb-3">生成评审报告</h3>
             <form onsubmit="generateReport(event, '${r.reviewId}')" class="space-y-3">
               <div>
-                <label class="block text-xs text-gray-500 mb-1">总结</label>
-                <textarea name="summary" rows="2" class="w-full rounded border-gray-300 border px-3 py-2 text-sm" placeholder="评审总结"></textarea>
+                <label class="block text-xs text-nec-gray mb-1">总结</label>
+                <textarea name="summary" rows="2" class="w-full rounded border border-nec-line px-3 py-2 text-sm" placeholder="评审总结"></textarea>
               </div>
               <div>
-                <label class="block text-xs text-gray-500 mb-1">检查清单 JSON</label>
-                <textarea name="checklist" rows="4" required class="w-full rounded border-gray-300 border px-3 py-2 text-sm font-mono" placeholder='[{"item":"电气安全","category":"安全","result":"pass"},{"item":"接口兼容性","result":"na"}]'></textarea>
+                <label class="block text-xs text-nec-gray mb-1">检查清单 JSON</label>
+                <textarea name="checklist" rows="4" required class="mono w-full rounded border border-nec-line px-3 py-2 text-sm" placeholder='[{"item":"电气安全","category":"安全","result":"pass"},{"item":"接口兼容性","result":"na"}]'></textarea>
               </div>
-              <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-4 py-2 rounded-lg">生成报告</button>
+              <button type="submit" class="btn-accent text-sm font-medium px-4 py-2 rounded-lg">生成报告</button>
             </form>
             <p id="report-result" class="mt-2 text-sm"></p>
           </div>
         `;
       } catch (err) {
-        el.innerHTML = `<p class="text-sm text-red-500">加载失败：${err.message}</p>`;
+        el.innerHTML = `<p class="text-sm" style="color:#C22E2E">加载失败：${err.message}</p>`;
       }
     }
 
     function renderActionButtons(r) {
       const buttons = [];
       if (r.status === "pending_review") {
-        buttons.push(`<button onclick="scheduleMeeting('${r.reviewId}')" class="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg">预约会议</button>`);
+        buttons.push(`<button onclick="scheduleMeeting('${r.reviewId}')" class="btn-primary text-xs px-3 py-1.5 rounded-lg">预约会议</button>`);
       }
       if (r.status === "rectifying") {
-        buttons.push(`<button onclick="completeRectify('${r.reviewId}')" class="bg-orange-600 text-white text-xs px-3 py-1.5 rounded-lg">整改完成</button>`);
+        buttons.push(`<button onclick="completeRectify('${r.reviewId}')" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:#B04A0F">整改完成</button>`);
       }
       if (r.status === "assessing") {
-        buttons.push(`<button onclick="assess('${r.reviewId}', 'pass')" class="bg-green-600 text-white text-xs px-3 py-1.5 rounded-lg">评估通过</button>`);
-        buttons.push(`<button onclick="assess('${r.reviewId}', 'fail')" class="bg-red-600 text-white text-xs px-3 py-1.5 rounded-lg">评估不通过</button>`);
+        buttons.push(`<button onclick="assess('${r.reviewId}', 'pass')" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:#177A4C">评估通过</button>`);
+        buttons.push(`<button onclick="assess('${r.reviewId}', 'fail')" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:#C22E2E">评估不通过</button>`);
       }
       if (r.status === "approved") {
-        buttons.push(`<button onclick="archive('${r.reviewId}')" class="bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg">归档</button>`);
+        buttons.push(`<button onclick="archive('${r.reviewId}')" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:var(--nec-navy)">归档</button>`);
       }
-      return buttons.join("") || `<span class="text-xs text-gray-400">当前状态无可用操作</span>`;
+      return buttons.join("") || `<span class="text-xs text-nec-gray">当前状态无可用操作</span>`;
     }
 
     async function scheduleMeeting(reviewId) {
@@ -444,11 +569,13 @@
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ conclusion: form.conclusion.value }),
         });
-        document.getElementById("minutes-result").className = "mt-2 text-sm text-green-600";
+        document.getElementById("minutes-result").className = "mt-2 text-sm";
+        document.getElementById("minutes-result").style.color = "#177A4C";
         document.getElementById("minutes-result").textContent = "纪要与结论已保存";
         loadDetail(reviewId);
       } catch (err) {
-        document.getElementById("minutes-result").className = "mt-2 text-sm text-red-600";
+        document.getElementById("minutes-result").className = "mt-2 text-sm";
+        document.getElementById("minutes-result").style.color = "#C22E2E";
         document.getElementById("minutes-result").textContent = "失败：" + err.message;
       }
     }
@@ -463,11 +590,13 @@
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ summary: form.summary.value, checklist }),
         });
-        document.getElementById("report-result").className = "mt-2 text-sm text-green-600";
+        document.getElementById("report-result").className = "mt-2 text-sm";
+        document.getElementById("report-result").style.color = "#177A4C";
         document.getElementById("report-result").textContent = `报告已生成：${data.reportId}，结果 ${data.result}`;
         loadDetail(reviewId);
       } catch (err) {
-        document.getElementById("report-result").className = "mt-2 text-sm text-red-600";
+        document.getElementById("report-result").className = "mt-2 text-sm";
+        document.getElementById("report-result").style.color = "#C22E2E";
         document.getElementById("report-result").textContent = "失败：" + err.message;
       }
     }
@@ -491,12 +620,14 @@
             specification: form.specification.value,
           }),
         });
-        resultEl.className = "mt-3 text-sm text-green-600";
+        resultEl.className = "mt-3 text-sm";
+        resultEl.style.color = "#177A4C";
         resultEl.textContent = `提交成功：${data.reviewId}`;
         form.reset();
         router("list");
       } catch (err) {
-        resultEl.className = "mt-3 text-sm text-red-600";
+        resultEl.className = "mt-3 text-sm";
+        resultEl.style.color = "#C22E2E";
         resultEl.textContent = "失败：" + err.message;
       }
     });

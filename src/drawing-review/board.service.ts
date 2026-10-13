@@ -6,8 +6,18 @@
  */
 
 import { fieldText, fieldTs } from "../feishu/bitable";
-import type { BaseAdapter } from "./adapter";
+import type { DrawingReviewAdapter } from "./adapter";
 import type { DrawingReview, ProcessEvent, ReviewStatus } from "./types";
+
+/** 时间解析：优先 Date.parse（ISO），失败回退 fieldTs 的中文/斜杠格式归一化 */
+function parseTime(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const s = fieldText(v).trim();
+  if (!s) return null;
+  const t = Date.parse(s);
+  if (!Number.isNaN(t)) return t;
+  return fieldTs(v);
+}
 
 /** 状态滞留超时规则（小时） */
 export const BLOCKER_RULES = [
@@ -63,7 +73,7 @@ const MILESTONE_ACTIONS: Record<keyof BoardGanttRow["milestones"], (e: ProcessEv
 };
 
 export class BoardService {
-  constructor(private adapter: BaseAdapter) {}
+  constructor(private adapter: DrawingReviewAdapter) {}
 
   async build(now: number = Date.now()): Promise<BoardData> {
     const warnings: string[] = [];
@@ -170,7 +180,7 @@ export class BoardService {
 }
 
 function hoursSince(iso: string, now: number): number | null {
-  const ts = fieldTs(iso);
+  const ts = parseTime(iso);
   if (ts == null) return null;
   return (now - ts) / HOUR_MS;
 }
@@ -179,7 +189,7 @@ function latestEventTime(events: ProcessEvent[], reviewId: string, match: (e: Pr
   let latest: number | null = null;
   for (const e of events) {
     if (e.reviewId !== reviewId || !match(e)) continue;
-    const ts = fieldTs(e.createdAt);
+    const ts = parseTime(e.createdAt);
     if (ts != null && (latest == null || ts > latest)) latest = ts;
   }
   return latest != null ? new Date(latest).toISOString() : null;
@@ -189,7 +199,7 @@ function earliestEventTime(events: ProcessEvent[], reviewId: string, match: (e: 
   let earliest: number | null = null;
   for (const e of events) {
     if (e.reviewId !== reviewId || !match(e)) continue;
-    const ts = fieldTs(e.createdAt);
+    const ts = parseTime(e.createdAt);
     if (ts != null && (earliest == null || ts < earliest)) earliest = ts;
   }
   return earliest != null ? new Date(earliest).toISOString() : undefined;

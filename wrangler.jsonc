@@ -31,6 +31,9 @@
       "custom_domain": true
     }
   ],
+  "triggers": {
+    "crons": ["*/4 * * * *", "23 * * * *", "0 0 * * 1"]
+  },
   "vars": {
     "HUB_NAME": "NEC 团队 AI 中台"
   }

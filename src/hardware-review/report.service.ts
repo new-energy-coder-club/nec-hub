@@ -5,7 +5,7 @@
  * 结果由清单自动汇总：存在 fail → fail，否则 pass。
  */
 
-import type { BaseAdapter } from "./adapter";
+import type { HardwareReviewAdapter } from "./adapter";
 import type { ReportChecklistItem, ReviewReport } from "./types";
 
 export interface GenerateReportInput {
@@ -14,7 +14,7 @@ export interface GenerateReportInput {
 }
 
 export class ReportService {
-  constructor(private adapter: BaseAdapter) {}
+  constructor(private adapter: HardwareReviewAdapter) {}
 
   async generate(reviewId: string, input: GenerateReportInput): Promise<ReviewReport & { recordId: string }> {
     const checklist: ReportChecklistItem[] = (input.checklist ?? []).map((it) => ({

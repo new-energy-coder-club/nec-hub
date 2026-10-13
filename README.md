@@ -62,6 +62,8 @@ CI/CD（`.github/workflows/ci-cd.yml`）：PR 跑类型检查；push 到 `main` 
 ./scripts/deploy-hub.sh   # 创建 KV/R2 → 回填 wrangler.jsonc → wrangler deploy → 健康检查
 ```
 
+Cron 预热（`wrangler.jsonc` triggers）：每 4 分钟后台刷新看板缓存、每小时刷新开源仓库缓存，用户请求始终命中热缓存。
+
 ## 路由
 
 | 路径 | 说明 |

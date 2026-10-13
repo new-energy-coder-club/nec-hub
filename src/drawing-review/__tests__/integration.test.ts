@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ReviewFlowService } from '../flow.service';
 import { SuggestionService } from '../suggestion.service';
-import { BaseAdapter } from '../adapter';
+import { DrawingReviewAdapter } from '../adapter';
 
 // Mock environment
 const mockEnv = {

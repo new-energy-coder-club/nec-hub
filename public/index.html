@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>NEC 团队 AI 中台</title>
 <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin />
+<link rel="dns-prefetch" href="https://cdn.tailwindcss.com" />
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   :root {
@@ -35,6 +37,9 @@
     .mono { font-family: var(--nec-font-mono); }
     .tab-active { border-bottom: 3px solid var(--nec-cyan); color: var(--nec-navy); }
     pre.prompt { white-space: pre-wrap; word-break: break-all; }
+
+    /* OCR 自动回填高亮：用户手动编辑时移除（见 oninput） */
+    .ocr-filled { border-color: var(--nec-cyan) !important; background: #EAF7FD; transition: background 1.2s ease, border-color 1.2s ease; }
 
   /* KV V2 — 蓝图网格 Hero */
   .hero {
@@ -115,8 +120,9 @@
 
 <nav class="bg-white shadow-sm">
   <div class="max-w-5xl mx-auto px-6 flex gap-6 text-sm font-medium text-gray-500">
+    <button data-tab="home" class="tab-btn py-3 tab-active">我的首页</button>
     <button data-tab="drawing-review" id="tab-btn-drawing-review" class="tab-btn py-3 hidden">📐 图纸评审</button>
-    <button data-tab="apps" class="tab-btn py-3 tab-active">应用广场</button>
+    <button data-tab="apps" class="tab-btn py-3">应用广场</button>
     <button data-tab="skills" class="tab-btn py-3">Skill 中心</button>
     <button data-tab="docs" class="tab-btn py-3">资料页</button>
     <button data-tab="repos" class="tab-btn py-3">开源仓库</button>
@@ -125,7 +131,46 @@
   </div>
 </nav>
 
+<!-- FE-04：赛季目标关键节点 T-7 提醒条（renderDashboard 按 goals 数据填充，无临近节点时隐藏） -->
+<div id="goal-banner" class="hidden">
+  <div class="max-w-5xl mx-auto px-6 py-2.5 flex items-center gap-3 text-sm text-white" style="background:var(--nec-navy)">
+    <span class="shrink-0">📌</span>
+    <div id="goal-banner-text" class="flex-1 leading-snug"></div>
+    <button onclick="document.getElementById('goal-banner').classList.add('hidden')" class="text-white/60 hover:text-white shrink-0">✕</button>
+  </div>
+</div>
+
+<!-- FE-09：待办条（登录后有待办时显示；逾期任务/待确认报销/飞书审批聚合，可展开清单） -->
+<div id="todo-bar" class="hidden">
+  <div class="max-w-5xl mx-auto px-6 py-2.5 text-sm text-white" style="background:#B45309">
+    <div class="flex items-center gap-3">
+      <span class="shrink-0">✅</span>
+      <button onclick="toggleTodoList()" class="flex-1 text-left leading-snug hover:underline" id="todo-bar-text"></button>
+      <button onclick="document.getElementById('todo-bar').classList.add('hidden')" class="text-white/60 hover:text-white shrink-0">✕</button>
+    </div>
+    <div id="todo-list" class="hidden mt-2 pt-2 border-t border-white/20"></div>
+  </div>
+</div>
+
 <main class="max-w-5xl mx-auto px-6 py-8">
+
+  <!-- FE-06/07 我的首页：白名单组件按布局配置渲染（个人 > 组 > 全员默认） -->
+  <section id="tab-home">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+      <h2 class="text-lg font-bold">我的首页<span id="home-source" class="text-xs font-normal text-gray-400 ml-2"></span></h2>
+      <div class="flex items-center gap-2">
+        <button onclick="resetHome()" id="home-reset-btn" class="hidden text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600">恢复默认</button>
+        <button onclick="toggleHomePrompt()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--nec-cyan)">✨ 改我的首页</button>
+      </div>
+    </div>
+    <div id="home-prompt-box" class="hidden mb-6 bg-white rounded-xl shadow p-5">
+      <h3 class="font-bold mb-2">一句话改首页（复制 Prompt 发给你的 Agent）</h3>
+      <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="home-prompt"></pre>
+      <button onclick="copyText('home-prompt')" class="mt-3 text-sm text-white px-3 py-1.5 rounded" style="background:var(--nec-navy)">复制</button>
+      <p class="text-xs text-gray-400 mt-3">布局为白名单组件制（禁止自由 HTML），组件顺序即渲染顺序，配置绑定飞书账号、换设备/重新登录都保持。组长/队长把 Prompt 里的 scope 改成 group 可配置本组默认首页。</p>
+    </div>
+    <div id="home-widgets" class="space-y-4"></div>
+  </section>
 
   <!-- 图纸评审（原生集成，登录后可见） -->
   <section id="tab-drawing-review" class="hidden">
@@ -197,7 +242,7 @@
   </section>
 
   <!-- 应用广场 -->
-  <section id="tab-apps">
+  <section id="tab-apps" class="hidden">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-bold">应用广场</h2>
       <button onclick="showPublishPrompt()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--nec-cyan)">＋ 发布我的应用</button>
@@ -264,6 +309,9 @@
     <div id="dash-body" class="space-y-4">
       <div class="bg-white rounded-xl shadow p-6 text-sm text-gray-400">加载中…</div>
     </div>
+
+    <!-- FE-05 数据健康：按类型分组的异常清单（renderValidateHealth 填充） -->
+    <div id="dash-health" class="mt-4"></div>
   </section>
 
   <!-- 资料页 -->
@@ -406,7 +454,7 @@ const ORIGIN = location.origin;
 document.getElementById("mcp-endpoint").textContent = ORIGIN + "/mcp";
 
 document.getElementById("join-prompt").textContent =
-`🚀 接入 NEC-MCP 智能协作中枢（v0.3.0）：
+`🚀 接入 NEC-MCP 智能协作中枢（v0.4.0）：
 
 1. 安装 MCP 客户端（Claude Code / Kimi CLI / Codex）
 2. 添加 NEC-MCP 服务器：
@@ -444,7 +492,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("tab-active"));
     btn.classList.add("tab-active");
-    ["drawing-review","apps","skills","docs","repos","dashboard","agent"].forEach(t =>
+    ["home","drawing-review","apps","skills","docs","repos","dashboard","agent"].forEach(t =>
       document.getElementById("tab-"+t).classList.toggle("hidden", t !== btn.dataset.tab));
   });
 });
@@ -527,6 +575,9 @@ async function bootAuth() {
   await refreshMe();
   renderUserBox();
   loadDashboard(); // 财务区可见性随登录角色变化
+  loadValidateHealth();
+  loadTodos(); // FE-09 待办条（未登录/无待办自动隐藏）
+  loadHome(); // FE-06/07 我的首页（未登录渲染默认布局）
 }
 
 async function refreshMe() {
@@ -557,8 +608,10 @@ function renderUserBox() {
   updateDrawingReviewGate();
 }
 
+// Cookie 名转义正则为常量：避免每次 readCookie 调用重建
+const COOKIE_NAME_ESC_RE = /[.*+?^${}()|[\]\\]/g;
 function readCookie(name) {
-  const m = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "=([^;]*)"));
+  const m = document.cookie.match(new RegExp("(?:^|; )" + name.replace(COOKIE_NAME_ESC_RE, "\\$&") + "=([^;]*)"));
   return m ? decodeURIComponent(m[1]) : null;
 }
 
@@ -586,7 +639,255 @@ async function logout() {
   ME = { authenticated: false, user: null };
   renderUserBox();
   loadDashboard();
+  loadValidateHealth();
+  loadTodos();
+  loadHome();
 }
+
+// ===== FE-09 待办条：聚合逾期任务 / 待确认报销 / 飞书审批（GET /api/todos，5 分钟缓存） =====
+let TODO_DATA = null;
+async function loadTodos() {
+  const bar = document.getElementById("todo-bar");
+  if (!bar) return;
+  if (!ME.authenticated) { bar.classList.add("hidden"); return; }
+  try {
+    const resp = await fetch("/api/todos");
+    if (!resp.ok) { bar.classList.add("hidden"); return; }
+    TODO_DATA = await resp.json();
+  } catch { bar.classList.add("hidden"); return; }
+  if (!TODO_DATA || !TODO_DATA.total) { bar.classList.add("hidden"); return; }
+  const t = TODO_DATA.tasks?.length ?? 0;
+  const f = TODO_DATA.finance?.count ?? 0;
+  const a = TODO_DATA.approvals?.count ?? 0;
+  const parts = [];
+  if (t) parts.push(`逾期任务 ${t}`);
+  if (f) parts.push(`待确认报销 ${f}`);
+  if (a) parts.push(`飞书审批 ${a}`);
+  document.getElementById("todo-bar-text").textContent =
+    `你有 ${TODO_DATA.total} 项待办（${parts.join(" · ")}），点击展开处理`;
+  const taskRows = (TODO_DATA.tasks ?? []).map(x => `
+    <li class="py-1.5 flex items-baseline gap-2 flex-wrap">
+      <span class="text-xs px-1.5 py-0.5 rounded bg-white/15 shrink-0">任务</span>
+      <a href="${esc(x.link)}" target="_blank" class="hover:underline font-medium">${esc(x.title)}</a>
+      <span class="text-xs text-white/70">逾期 ${x.daysOverdue ?? "?"} 天 · ${esc(x.status)}</span>
+    </li>`).join("");
+  const finRows = (TODO_DATA.finance?.items ?? []).map(x => `
+    <li class="py-1.5 flex items-baseline gap-2 flex-wrap">
+      <span class="text-xs px-1.5 py-0.5 rounded bg-white/15 shrink-0">报销</span>
+      <a href="${esc(x.link)}" target="_blank" class="hover:underline font-medium">${esc(x.name)}</a>
+      <span class="text-xs text-white/70">${x.amount ?? "—"} 元 · ${esc(x.applicant || "—")} · ${esc(x.status)}</span>
+    </li>`).join("");
+  const apRows = (TODO_DATA.approvals?.items ?? []).map(x => `
+    <li class="py-1.5 flex items-baseline gap-2 flex-wrap">
+      <span class="text-xs px-1.5 py-0.5 rounded bg-white/15 shrink-0">审批</span>
+      <a href="${esc(x.link)}" target="_blank" class="hover:underline font-medium">${esc(x.title)}</a>
+    </li>`).join("");
+  const warnRows = (TODO_DATA.warnings ?? []).map(w => `<p class="text-xs text-white/60 mt-1">⚠ ${esc(w)}</p>`).join("");
+  document.getElementById("todo-list").innerHTML =
+    `<ul class="divide-y divide-white/10">${taskRows}${finRows}${apRows}</ul>${warnRows}`;
+  bar.classList.remove("hidden");
+}
+function toggleTodoList() {
+  document.getElementById("todo-list")?.classList.toggle("hidden");
+}
+
+// ===== FE-06/07 我的首页：白名单组件渲染引擎（布局来自 GET /api/home；未登录用内置默认布局） =====
+const HOME_WIDGET_DEFS = {
+  "my-apps": { title: "我的应用快捷区" },
+  "my-tasks": { title: "我的任务" },
+  "my-reimburse": { title: "我的报销状态" },
+  "docs": { title: "常用资料" },
+  "goals": { title: "赛季目标" },
+  "inventory": { title: "物资查询" },
+};
+/** 与后端 DEFAULT_HOME_LAYOUT 保持一致（未登录访客与 /api/home 失败时的兜底） */
+const HOME_DEFAULT_WIDGETS = ["my-tasks", "goals", "my-apps", "docs"];
+const HOME_SOURCE_LABEL = { personal: "个人定制", group: "组默认", default: "全员默认" };
+
+document.getElementById("home-prompt").textContent =
+`请按我的要求调整 NEC 中台「我的首页」布局：
+1. 用 lark-cli 拿我的飞书 user_access_token（user 身份）
+2. 调用 NEC-MCP 的 set_home_layout 工具：
+   - action=set，scope=user（绑定我本人；user_token 必填）
+   - widgets 为白名单组件 id 数组，顺序即首页渲染顺序
+   - 白名单组件：my-apps 我的应用快捷区 / my-tasks 我的任务 / my-reimburse 我的报销状态 / docs 常用资料 / goals 赛季目标 / inventory 物资查询
+   - 例如我说「把物资查询放到最上面，加我的未完成任务」→ widgets: ["inventory", "my-tasks", ...其余保留项]
+3. 可先 action=get 查看我当前布局再增量调整；我说「恢复默认」时用 action=reset
+4. 完成后告诉我刷新门户「我的首页」Tab 查看效果`;
+
+function toggleHomePrompt() {
+  document.getElementById("home-prompt-box").classList.toggle("hidden");
+}
+
+async function loadHome() {
+  const box = document.getElementById("home-widgets");
+  if (!box) return;
+  let widgets = HOME_DEFAULT_WIDGETS.map(id => ({ id }));
+  let source = "default", group = "";
+  if (ME.authenticated) {
+    try {
+      const resp = await fetch("/api/home");
+      if (resp.ok) {
+        const d = await resp.json();
+        const list = (d.layout?.widgets ?? []).filter(w => HOME_WIDGET_DEFS[w.id]);
+        if (list.length) widgets = list;
+        source = d.source || "default";
+        group = d.group || "";
+      }
+    } catch { /* 布局读取失败按默认渲染 */ }
+  }
+  const srcEl = document.getElementById("home-source");
+  if (srcEl) srcEl.textContent = `（${HOME_SOURCE_LABEL[source] || source}${source === "group" && group ? " · " + group : ""}）`;
+  document.getElementById("home-reset-btn").classList.toggle("hidden", !ME.authenticated);
+  renderHomeWidgets(box, widgets);
+}
+
+async function resetHome() {
+  if (!confirm("恢复默认首页？你的个人布局将被删除（回落到组默认/全员默认）。")) return;
+  try {
+    const resp = await fetch("/api/home/reset", { method: "POST" });
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    await loadHome();
+  } catch (e) {
+    alert("恢复默认失败：" + (e.message || e));
+  }
+}
+
+function renderHomeWidgets(box, widgets) {
+  // 同一次渲染内共享数据请求，避免多组件重复拉同一接口
+  const shared = {
+    _p: {},
+    load(name) {
+      if (!this._p[name]) this._p[name] = fetch("/api/" + name).then(r => r.ok ? r.json() : null).catch(() => null);
+      return this._p[name];
+    },
+  };
+  box.innerHTML = widgets.map((w, i) => {
+    const def = HOME_WIDGET_DEFS[w.id];
+    return def ? `
+      <div class="bg-white rounded-xl shadow p-5">
+        <h3 class="font-bold mb-3">${esc(w.title || def.title)}</h3>
+        <div id="home-w-${i}" class="text-sm text-gray-400">加载中…</div>
+      </div>` : "";
+  }).join("");
+  widgets.forEach((w, i) => {
+    const slot = document.getElementById(`home-w-${i}`);
+    const fn = HOME_RENDERERS[w.id];
+    if (slot && fn) fn(slot, shared).catch(() => { slot.innerHTML = `<p class="text-sm text-gray-400">加载失败，请刷新重试。</p>`; });
+  });
+}
+
+/** 名字字段按多人分隔符拆分后精确比对（与后端 splitNames 同口径） */
+function nameHits(raw, name) {
+  if (!raw || !name) return false;
+  return String(raw).split(/[、,，;；\/\s]+/).map(s => s.trim()).includes(name);
+}
+
+const HOME_RENDERERS = {
+  "my-apps": async (slot, shared) => {
+    const apps = (await shared.load("apps")) || [];
+    if (!apps.length) { slot.innerHTML = `<p class="text-sm text-gray-400">还没有应用上架，去「应用广场」发布第一个。</p>`; return; }
+    slot.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">` + apps.slice(0, 6).map(a => `
+      <a href="${esc(a.url)}" target="_blank" class="block border border-gray-100 rounded-lg p-3 hover:shadow-md transition">
+        <p class="font-bold text-slate-800 text-sm truncate">${esc(a.title)}</p>
+        <p class="text-xs text-gray-400 mt-0.5">${esc(a.name)} · ${esc(a.author)}</p>
+      </a>`).join("") + `</div>`;
+  },
+  "my-tasks": async (slot, shared) => {
+    const d = await shared.load("dashboard");
+    const all = d?.tasks?.upcoming ?? [];
+    const myName = ME.authenticated ? ME.user?.name : "";
+    const list = myName ? all.filter(t => nameHits(t.owner, myName)) : all;
+    if (!list.length) {
+      slot.innerHTML = `<p class="text-sm text-gray-400">${myName ? "暂无与你相关的未完成任务 🎉" : "登录后只看你的任务"}</p>`;
+      return;
+    }
+    slot.innerHTML = `<ul class="divide-y divide-gray-100">` + list.slice(0, 8).map(t => `
+      <li class="py-1.5 flex items-baseline gap-2 flex-wrap">
+        <span class="flex-1 min-w-0 truncate">${esc(t.title || "—")}</span>
+        <span class="text-xs px-1.5 py-0.5 rounded text-white shrink-0" style="background:${dashStatusColor(t.status)}">${esc(t.status || "未标注")}</span>
+        <span class="text-xs text-gray-400 mono shrink-0">${fmtDashDate(t.deadline)}</span>
+      </li>`).join("") + `</ul>`
+      + (myName ? "" : `<p class="text-xs text-gray-400 mt-2">当前为全队视角，登录后只看你的任务</p>`);
+  },
+  "my-reimburse": async (slot, shared) => {
+    const d = await shared.load("dashboard");
+    const fin = d?.finance;
+    if (!fin || fin.visibility === "hidden") {
+      slot.innerHTML = `<p class="text-sm text-gray-400">登录后可见报销汇总；明细仅队长/财务角色可见。</p>`;
+      return;
+    }
+    const mine = (fin.recent ?? []).filter(f => ME.user?.name && f.applicant === ME.user.name);
+    slot.innerHTML = `
+      <p class="text-sm text-gray-600">全队报销 ${fin.records ?? 0} 笔 · 合计 <b style="color:var(--nec-navy)">¥${fin.totalAmount ?? "—"}</b></p>
+      ${fin.recent
+        ? (mine.length
+          ? `<ul class="divide-y divide-gray-100 mt-2">` + mine.slice(0, 6).map(f => `
+              <li class="py-1.5 flex items-baseline gap-2">
+                <span class="text-xs text-gray-400 mono shrink-0">${fmtDashDate(f.date)}</span>
+                <span class="flex-1 min-w-0 truncate">${esc(f.name)}</span>
+                <span class="text-xs mono shrink-0">¥${f.amount ?? "—"}</span>
+              </li>`).join("") + `</ul>`
+          : `<p class="text-xs text-gray-400 mt-2">最近报销里没有你的记录</p>`)
+        : `<p class="text-xs text-gray-400 mt-2">报销明细仅队长/财务角色可见</p>`}`;
+  },
+  "docs": async (slot, shared) => {
+    const docs = (await shared.load("docs")) || [];
+    if (!docs.length) { slot.innerHTML = `<p class="text-sm text-gray-400">资料页暂无条目。</p>`; return; }
+    slot.innerHTML = `<ul class="divide-y divide-gray-100">` + docs.slice(0, 6).map(d => `
+      <li class="py-1.5">
+        <a href="${esc(d.url)}" target="_blank" class="hover:underline font-medium" style="color:var(--nec-navy)">${esc(d.title)}</a>
+        <p class="text-xs text-gray-400 truncate">${esc(d.description || "")}</p>
+      </li>`).join("") + `</ul>`;
+  },
+  "goals": async (slot, shared) => {
+    const d = await shared.load("dashboard");
+    const g = d?.goals;
+    if (!g || !g.configured) { slot.innerHTML = `<p class="text-sm text-gray-400">赛季目标表未配置。</p>`; return; }
+    const items = (g.items ?? []).slice(0, 5);
+    if (!items.length) { slot.innerHTML = `<p class="text-sm text-gray-400">赛季目标表暂无数据。</p>`; return; }
+    slot.innerHTML = items.map(it => `
+      <a href="${esc(it.link)}" target="_blank" class="block py-1.5 border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-gray-400 mono shrink-0">${fmtDashDate(it.deadline)}</span>
+          <span class="flex-1 min-w-0 truncate">${esc(it.title)}</span>
+          ${it.overdue ? `<span class="text-xs text-red-600 font-bold shrink-0">已逾期</span>` : ""}
+          <span class="text-xs text-gray-500 mono shrink-0">${it.progress === null ? "—" : Math.round(it.progress) + "%"}</span>
+        </div>
+        <div class="h-1.5 rounded bg-gray-100 overflow-hidden mt-1">
+          <div style="width:${(it.progress ?? 0).toFixed(0)}%;height:100%;background:${goalBarColor(it)}"></div>
+        </div>
+      </a>`).join("");
+  },
+  "inventory": async (slot, shared) => {
+    const d = await shared.load("dashboard");
+    const items = d?.inventory?.items ?? [];
+    if (!items.length) { slot.innerHTML = `<p class="text-sm text-gray-400">暂无物资数据。</p>`; return; }
+    const uid = "home-inv-q";
+    slot.innerHTML = `
+      <input id="${uid}" placeholder="🔍 输入关键字筛选物资…" class="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm mb-2"
+             oninput="filterHomeInventory(this.value)">
+      <div id="home-inv-list" class="max-h-64 overflow-y-auto"></div>`;
+    window._homeInvItems = items;
+    filterHomeInventory("");
+  },
+};
+
+function filterHomeInventory(q) {
+  const kw = (q || "").trim().toLowerCase(); // 关键字规范化一次，不在每项上重复 trim/toLowerCase
+  const items = (window._homeInvItems || []).filter(it => !kw || it.name.toLowerCase().includes(kw));
+  const box = document.getElementById("home-inv-list");
+  if (!box) return;
+  box.innerHTML = items.length
+    ? items.slice(0, 30).map(it => `
+      <div class="py-1.5 border-b border-gray-100 last:border-0 flex items-baseline gap-2 text-sm">
+        <span class="flex-1 min-w-0 truncate">${esc(it.name)}</span>
+        <span class="text-xs mono text-gray-500 shrink-0">× ${it.qty ?? "—"}</span>
+        <span class="text-xs text-gray-400 shrink-0">${esc(it.location || "—")}</span>
+      </div>`).join("")
+    : `<p class="text-sm text-gray-400 py-2">没有匹配的物资。</p>`;
+}
+
 
 // 应用广场
 fetch("/api/apps").then(r => r.json()).then(apps => {
@@ -724,10 +1025,11 @@ function renderRepos() {
     return;
   }
   const val = r => key === "name" ? r.name : key === "host" ? r.host : key === "pushedAt" ? (Date.parse(r.pushedAt) || 0) : (r[key] || 0);
-  const rows = [...data].sort((a, b) => {
-    const va = val(a), vb = val(b);
-    return (typeof va === "string" ? va.localeCompare(vb) : va - vb) * dir;
-  });
+  // 先取排序键再排序（装饰-排序-去装饰）：避免比较器里 O(n log n) 次重复取值/Date.parse
+  const rows = data
+    .map(r => ({ v: val(r), r }))
+    .sort((a, b) => (typeof a.v === "string" ? a.v.localeCompare(b.v) : a.v - b.v) * dir)
+    .map(x => x.r);
   const arrow = k => reposSort.key === k ? (reposSort.dir > 0 ? " ↑" : " ↓") : "";
   const hostBadge = h => h === "gitee"
     ? ' <span class="text-[10px] text-red-500 border border-red-200 rounded px-1 ml-1">Gitee</span>'
@@ -759,8 +1061,11 @@ function renderRepos() {
     </div>`;
 }
 
+// 转义表与正则提升为常量：esc 在每次列表渲染中被逐项调用，避免每次调用重建正则与映射对象
+const ESC_RE = /[&<>"']/g;
+const ESC_MAP = {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
 function esc(s) {
-  return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  return String(s ?? "").replace(ESC_RE, c => ESC_MAP[c]);
 }
 
 // ---------- 图纸评审（原生集成，登录后可见） ----------
@@ -1065,8 +1370,11 @@ function renderDrBoard(data, counts) {
     boardEl.innerHTML = `<p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center sm:col-span-2 lg:col-span-3">暂无评审单，点击右上角「＋ 提交评审单」开始</p>`;
     return;
   }
+  // 单次遍历分组，替代每列一次 data.filter 的 O(列数×行数) 重复扫描
+  const groups = {};
+  for (const r of data) (groups[r.status] ||= []).push(r);
   boardEl.innerHTML = cols.map(([k, v]) => {
-    const items = data.filter(r => r.status === k);
+    const items = groups[k];
     return `
       <div class="bg-gray-100/70 rounded-xl p-3">
         <div class="flex items-center justify-between mb-2 px-1">
@@ -1170,18 +1478,269 @@ function drBom(id) {
   drAct(id, "/bom/generate", { items }, "BOM 已生成，进入评估");
 }
 
+// ---------- 图纸评审 · 询价流转与比价 ----------
+const DR_INQ_STATUS = {
+  sent: { label: "已发出", cls: "bg-blue-50 text-blue-700" },
+  quoted: { label: "已报价", cls: "bg-amber-50 text-amber-700" },
+  selected: { label: "已选定", cls: "bg-green-50 text-green-700" },
+  rejected: { label: "未中选", cls: "bg-gray-100 text-gray-400" },
+};
+
+async function drGenerateInquiries(reviewId) {
+  const tip = document.getElementById(`dr-act-${reviewId}`);
+  const requiredDate = prompt("需求日期（YYYY-MM-DD，可留空）：", "");
+  if (requiredDate === null) return;
+  try {
+    const data = await apiDr(`/${reviewId}/inquiries/generate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ requiredDate: requiredDate.trim() || undefined }),
+    });
+    if (tip) {
+      tip.className = "text-xs text-green-600";
+      tip.textContent = `已生成 ${data.created.length} 张询价单` + (data.skipped.length ? `，跳过已存在 ${data.skipped.length} 项` : "");
+    }
+    loadDrInquiries(reviewId);
+  } catch (err) {
+    if (tip) { tip.className = "text-xs text-red-500"; tip.textContent = "生成失败：" + err.message; }
+  }
+}
+
+async function loadDrInquiries(reviewId) {
+  const box = document.getElementById(`dr-inq-${reviewId}`);
+  if (!box) return;
+  try {
+    const list = await apiDr(`/${reviewId}/inquiries`);
+    box.innerHTML = renderDrInquiries(reviewId, list);
+  } catch (err) {
+    box.innerHTML = `<p class="text-xs text-red-500">询价单加载失败：${esc(err.message)}</p>`;
+  }
+}
+
+function renderDrInquiries(reviewId, list) {
+  if (!list.length) return `<p class="text-xs text-gray-400">暂无询价单，点击「生成询价单」从 BOM 外购/标准件物料生成</p>`;
+  return list.map(q => {
+    const st = DR_INQ_STATUS[q.status] || DR_INQ_STATUS.sent;
+    const quoteForm = q.status === "sent" ? `
+      <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+        <input id="dr-q-s-${q.inquiryId}" placeholder="供应商" value="${esc(q.supplierName === "待定" ? "" : q.supplierName)}" class="text-xs border border-gray-200 rounded px-2 py-1 w-24">
+        <input id="dr-q-p-${q.inquiryId}" placeholder="报价(元)" type="number" min="0" step="0.01" class="text-xs border border-gray-200 rounded px-2 py-1 w-20">
+        <input id="dr-q-d-${q.inquiryId}" placeholder="交期" type="date" class="text-xs border border-gray-200 rounded px-2 py-1">
+        <button onclick="drQuoteSubmit('${reviewId}','${q.inquiryId}')" class="text-xs px-2 py-1 rounded text-white" style="background:var(--nec-cyan)">回填报价</button>
+      </div>` : "";
+    const selectBtn = q.status === "quoted" ? `
+      <button onclick="drSelectSupplier('${reviewId}','${esc(q.materialCode || q.bomItemId)}','${q.inquiryId}')" class="text-xs px-2 py-1 rounded text-white bg-green-600">选定</button>` : "";
+    return `
+      <div class="border border-gray-100 rounded-lg p-2.5 bg-gray-50/50">
+        <div class="flex items-start justify-between gap-2 flex-wrap">
+          <p class="text-xs">
+            <span class="font-bold text-slate-700">${esc(q.inquiryId)}</span>
+            <span class="text-gray-500"> ${esc(q.materialName || q.bomItemId)}${q.materialCode ? `（${esc(q.materialCode)}）` : ""}${q.specification ? " · " + esc(q.specification) : ""}</span>
+          </p>
+          <span class="text-[10px] px-2 py-0.5 rounded-full ${st.cls}">${st.label}</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">
+          供应商 ${esc(q.supplierName)} · 数量 ${q.quantity}${q.requiredDate ? " · 需求 " + esc(q.requiredDate) : ""}
+          ${q.price != null ? ` · <span class="font-bold text-slate-700">¥${q.price}</span>` : ""}${q.deliveryDate ? " · 交期 " + esc(q.deliveryDate) : ""}
+        </p>
+        ${quoteForm}${selectBtn}
+      </div>`;
+  }).join("");
+}
+
+async function drQuoteSubmit(reviewId, inquiryId) {
+  const tip = document.getElementById(`dr-act-${reviewId}`);
+  const supplier = document.getElementById(`dr-q-s-${inquiryId}`).value.trim();
+  const price = parseFloat(document.getElementById(`dr-q-p-${inquiryId}`).value);
+  const deliveryDate = document.getElementById(`dr-q-d-${inquiryId}`).value || undefined;
+  if (!supplier || !(price > 0)) {
+    if (tip) { tip.className = "text-xs text-red-500"; tip.textContent = "请填写供应商与大于 0 的报价"; }
+    return;
+  }
+  try {
+    await apiDr(`/inquiries/${inquiryId}/quote`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ supplier, price, deliveryDate }),
+    });
+    if (tip) { tip.className = "text-xs text-green-600"; tip.textContent = `询价单 ${inquiryId} 报价已回填`; }
+    loadDrInquiries(reviewId);
+  } catch (err) {
+    if (tip) { tip.className = "text-xs text-red-500"; tip.textContent = "报价失败：" + err.message; }
+  }
+}
+
+async function drCompare(reviewId) {
+  const box = document.getElementById(`dr-inq-compare-${reviewId}`);
+  const tip = document.getElementById(`dr-act-${reviewId}`);
+  try {
+    const data = await apiDr(`/${reviewId}/inquiries/compare`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    if (box) box.innerHTML = renderDrCompare(data);
+  } catch (err) {
+    if (tip) { tip.className = "text-xs text-red-500"; tip.textContent = "比价失败：" + err.message; }
+  }
+}
+
+function renderDrCompare(data) {
+  if (!data.materials || !data.materials.length) return `<p class="text-xs text-gray-400">暂无询价数据可比价</p>`;
+  return `
+    <div class="border border-indigo-100 rounded-lg bg-indigo-50/40 p-3 space-y-2">
+      <p class="text-xs font-bold text-indigo-800">比价建议书（价格优先，交期超需求日期按 1.2 倍折算）</p>
+      ${data.materials.map(m => `
+        <div class="text-xs border-t border-indigo-100 pt-1.5">
+          <p class="font-bold text-slate-700">${esc(m.materialName || m.bomItemId)}${m.materialCode ? `（${esc(m.materialCode)}）` : ""}</p>
+          ${m.quotes.map(q => `
+            <p class="text-gray-600 pl-2">
+              ${esc(q.supplierName)}：${q.price != null ? "¥" + q.price : "未报价"}${q.deliveryDate ? " · 交期 " + esc(q.deliveryDate) : ""}${q.late ? ' <span class="text-red-500">超期</span>' : ""}
+              ${q.inquiryId === m.recommendedInquiryId ? ' <span class="text-green-600 font-bold">★ 推荐</span>' : ""}
+              ${q.inquiryId === m.lowestPriceInquiryId && q.inquiryId !== m.recommendedInquiryId ? ' <span class="text-blue-600">最低价</span>' : ""}
+              ${q.inquiryId === m.shortestDeliveryInquiryId ? ' <span class="text-teal-600">最短交期</span>' : ""}
+            </p>`).join("")}
+          ${m.reason ? `<p class="text-indigo-700 pl-2 mt-0.5">建议：${esc(m.reason)}</p>` : ""}
+        </div>`).join("")}
+    </div>`;
+}
+
+async function drSelectSupplier(reviewId, materialKey, inquiryId) {
+  const tip = document.getElementById(`dr-act-${reviewId}`);
+  if (!confirm(`确认选定询价单 ${inquiryId} 的供应商？同物料其他报价将置为未中选`)) return;
+  try {
+    await apiDr(`/${reviewId}/inquiries/compare`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ selections: { [materialKey]: inquiryId } }),
+    });
+    if (tip) { tip.className = "text-xs text-green-600"; tip.textContent = `已选定 ${inquiryId}`; }
+    loadDrInquiries(reviewId);
+    drCompare(reviewId);
+  } catch (err) {
+    if (tip) { tip.className = "text-xs text-red-500"; tip.textContent = "选定失败：" + err.message; }
+  }
+}
+
+// ---------- 图纸评审 · 流程看板（阻塞预警 + 甘特图） ----------
+const DR_GANTT_MS = { submit: "提交", meeting: "会议", conclusion: "结论", bom: "BOM", archived: "归档" };
+
+async function loadDrFlowBoard() {
+  let el = document.getElementById("dr-flow-board");
+  if (!el) {
+    const stats = document.getElementById("dr-stats");
+    if (!stats) return;
+    stats.insertAdjacentHTML("beforebegin", '<div id="dr-flow-board" class="mb-4 space-y-3"></div>');
+    el = document.getElementById("dr-flow-board");
+  }
+  try {
+    const data = await apiDr("/board");
+    renderDrFlowBoard(el, data);
+  } catch (err) {
+    el.innerHTML = `<div class="bg-white rounded-xl shadow p-4 text-xs text-gray-400">流程看板加载失败：${esc(err.message)}</div>`;
+  }
+}
+
+function renderDrFlowBoard(el, data) {
+  const parts = [];
+
+  // 状态计数条
+  const counts = Object.entries(DR_STATUS)
+    .filter(([k]) => data.statusCounts && data.statusCounts[k])
+    .map(([k, v]) => `<span class="text-[10px] px-2 py-0.5 rounded-full ${v.cls}">${v.label} ${data.statusCounts[k]}</span>`)
+    .join("");
+  parts.push(`
+    <div class="bg-white rounded-xl shadow p-4">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <p class="text-sm font-bold text-slate-800">流程看板</p>
+        <div class="flex flex-wrap gap-1.5">${counts || '<span class="text-xs text-gray-400">暂无数据</span>'}</div>
+      </div>
+      ${(data.warnings || []).map(w => `<p class="text-[10px] text-amber-600">⚠ ${esc(w)}</p>`).join("")}
+      ${renderDrBlockers(data.blockers || [])}
+    </div>`);
+
+  // 甘特图
+  parts.push(renderDrGantt(data.gantt || []));
+
+  el.innerHTML = parts.join("");
+}
+
+function renderDrBlockers(blockers) {
+  if (!blockers.length) return `<p class="text-xs text-gray-400 mt-1">暂无阻塞预警</p>`;
+  return `
+    <div class="mt-2 space-y-1.5">
+      <p class="text-xs font-bold text-red-600">阻塞预警（${blockers.length}）</p>
+      ${blockers.map(b => `
+        <div class="flex items-center justify-between gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 cursor-pointer hover:bg-red-100/60" onclick="drOpen('${esc(b.reviewId)}')">
+          <p class="text-xs text-red-700"><span class="font-bold">${esc(b.machineName || b.reviewId)}</span> · ${esc(b.message)}</p>
+          ${b.hoursBlocked ? `<span class="text-[10px] text-red-400 whitespace-nowrap">${b.hoursBlocked}h</span>` : ""}
+        </div>`).join("")}
+    </div>`;
+}
+
+function renderDrGantt(rows) {
+  const entries = rows
+    .map(r => {
+      const pts = Object.entries(DR_GANTT_MS)
+        .map(([k, label]) => ({ key: k, label, ts: Date.parse(r.milestones[k] || "") }))
+        .filter(p => !Number.isNaN(p.ts));
+      return { ...r, pts };
+    })
+    .filter(r => r.pts.length);
+  if (!entries.length) {
+    return `<div class="bg-white rounded-xl shadow p-4"><p class="text-sm font-bold text-slate-800 mb-2">进度甘特图</p><p class="text-xs text-gray-400">暂无进行中的评审单节点数据</p></div>`;
+  }
+  const minT = Math.min(...entries.flatMap(r => r.pts.map(p => p.ts)));
+  const maxT = Math.max(...entries.flatMap(r => r.pts.map(p => p.ts)));
+  const span = Math.max(maxT - minT, 86400000);
+  const fmt = ts => new Date(ts).toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" });
+  const rowsHtml = entries.map(r => {
+    const start = r.pts[0].ts, end = r.pts[r.pts.length - 1].ts;
+    const left = ((start - minT) / span * 100).toFixed(1);
+    const width = Math.max((end - start) / span * 100, 1.5).toFixed(1);
+    const dots = r.pts.map(p => {
+      const x = ((p.ts - minT) / span * 100).toFixed(1);
+      return `<span title="${p.label} ${esc(new Date(p.ts).toLocaleString("zh-CN"))}" style="position:absolute;left:${x}%;top:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:var(--nec-navy);border:1.5px solid #fff"></span>`;
+    }).join("");
+    return `
+      <div class="flex items-center gap-2">
+        <p class="text-xs text-gray-600 w-28 truncate shrink-0 cursor-pointer hover:underline" onclick="drOpen('${esc(r.reviewId)}')">${esc(r.machineName || r.reviewId)}</p>
+        <div style="position:relative;flex:1;height:18px;background:#f1f5f9;border-radius:6px">
+          <div style="position:absolute;left:${left}%;width:${width}%;top:5px;height:8px;border-radius:4px;background:var(--nec-cyan);opacity:.45"></div>
+          ${dots}
+        </div>
+      </div>`;
+  }).join("");
+  return `
+    <div class="bg-white rounded-xl shadow p-4">
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-sm font-bold text-slate-800">进度甘特图</p>
+        <p class="text-[10px] text-gray-400">${fmt(minT)} → ${fmt(maxT)}</p>
+      </div>
+      <div class="space-y-1.5">${rowsHtml}</div>
+      <p class="text-[10px] text-gray-400 mt-2">节点：${Object.values(DR_GANTT_MS).join(" / ")}（悬停圆点查看时间，点击行名跳详情）</p>
+    </div>`;
+}
+
 // 数据看板
 const DASH_CONFIG_PROMPT = `请帮我配置 NEC 中台的数据看板（飞书多维表格）：
 1. 打开飞书多维表格，从浏览器地址栏复制 app_token 与各表的 table_id：
    URL 形如 https://xxx.feishu.cn/base/<app_token>?table=<table_id>&view=...
-2. 调用 NEC-MCP 的 config_dashboard（action=set），传入 base 与 tables（tasks / inventory / members / finance → table_id）
+2. 调用 NEC-MCP 的 config_dashboard（action=set），传入 base 与 tables（tasks / inventory / members / finance / goals → table_id；goals 为赛季目标表，可选）
 3. 配置完成后打开门户「数据看板」Tab 确认数据渲染`;
 
+// 状态匹配正则提升为常量：dashStatusColor 在每个任务行/图例渲染时调用，避免每次重建 4 个正则
+const DASH_STATUS_RE = {
+  doing: /进行|doing|progress/i,
+  done: /完成|done|完结/i,
+  todo: /未开始|待|todo|pending/i,
+  cancel: /取消|cancel|关闭|close/i,
+};
 function dashStatusColor(name) {
-  if (/进行|doing|progress/i.test(name)) return "#1FA9E8";
-  if (/完成|done|完结/i.test(name)) return "#141B5E";
-  if (/未开始|待|todo|pending/i.test(name)) return "#9CA3AF";
-  if (/取消|cancel|关闭|close/i.test(name)) return "#D1D5DB";
+  if (DASH_STATUS_RE.doing.test(name)) return "#1FA9E8";
+  if (DASH_STATUS_RE.done.test(name)) return "#141B5E";
+  if (DASH_STATUS_RE.todo.test(name)) return "#9CA3AF";
+  if (DASH_STATUS_RE.cancel.test(name)) return "#D1D5DB";
   return "#4FC3F7";
 }
 
@@ -1191,10 +1750,92 @@ function fmtDashDate(v) {
   return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
 }
 
+// ===== FE-04 赛季目标面板：里程碑时间线 + 各组完成度条形图 + 逾期红色告警 + T-7 顶部提醒条 =====
+function goalBarColor(it) {
+  if (it.overdue) return "#DC2626";
+  if (it.done) return "#141B5E";
+  return "#1FA9E8";
+}
+
+function goalStatusBadge(it) {
+  if (it.overdue) return `<span class="px-2 py-0.5 rounded text-xs text-white" style="background:#DC2626">已逾期 ${Math.abs(it.daysLeft)} 天</span>`;
+  if (it.done) return `<span class="px-2 py-0.5 rounded text-xs text-white" style="background:var(--nec-navy)">${esc(it.status || "已完成")}</span>`;
+  if (it.daysLeft !== null && it.daysLeft <= 7) return `<span class="px-2 py-0.5 rounded text-xs text-white" style="background:#D97706">T-${it.daysLeft} 天</span>`;
+  return `<span class="px-2 py-0.5 rounded text-xs text-white" style="background:var(--nec-cyan)">${esc(it.status || "进行中")}</span>`;
+}
+
+function goalsSection(g) {
+  if (!g || !g.configured) return "";
+  const items = g.items ?? [];
+  const timeline = items.length ? items.map(it => `
+    <a href="${esc(it.link)}" target="_blank" class="block border rounded-lg p-3 hover:shadow-md transition ${it.overdue ? "border-red-300 bg-red-50" : "border-gray-100"}">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="mono text-xs ${it.overdue ? "text-red-600 font-bold" : "text-gray-400"} whitespace-nowrap">${fmtDashDate(it.deadline)}</span>
+        <span class="font-medium text-sm flex-1 min-w-0 truncate">${esc(it.title)}</span>
+        ${goalStatusBadge(it)}
+      </div>
+      ${it.kr ? `<p class="text-xs text-gray-500 mt-1 truncate">关键结果：${esc(it.kr)}</p>` : ""}
+      <div class="flex items-center gap-2 mt-2">
+        <span class="text-xs text-gray-400 w-16 shrink-0">${esc(it.group)}</span>
+        <div class="flex-1 h-2 rounded bg-gray-100 overflow-hidden">
+          <div style="width:${(it.progress ?? 0).toFixed(0)}%;height:100%;background:${goalBarColor(it)}"></div>
+        </div>
+        <span class="mono text-xs text-gray-500 w-10 text-right shrink-0">${it.progress === null ? "—" : Math.round(it.progress) + "%"}</span>
+      </div>
+    </a>`).join("") : `<p class="text-sm text-gray-400">赛季目标表暂无数据</p>`;
+
+  const byGroup = (g.byGroup ?? []).map(b => `
+    <div class="flex items-center gap-2">
+      <span class="text-xs text-gray-500 w-16 shrink-0 truncate">${esc(b.name)}</span>
+      <div class="flex-1 h-3 rounded bg-gray-100 overflow-hidden">
+        <div style="width:${b.avg}%;height:100%;background:${b.avg >= 100 ? "var(--nec-navy)" : "var(--nec-cyan)"}"></div>
+      </div>
+      <span class="mono text-xs text-gray-500 w-16 shrink-0">${b.avg}% · ${b.count} 项</span>
+    </div>`).join("");
+
+  return `
+    <div class="bg-white rounded-xl shadow p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold">赛季目标</h3>
+        <div class="text-xs">
+          ${g.overdueCount ? `<span class="px-2 py-0.5 rounded text-white font-bold" style="background:#DC2626">⚠ ${g.overdueCount} 项逾期未达标</span>` : ""}
+          <span class="text-gray-400 ml-2">${g.total ?? 0} 项目标</span>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div>
+          <p class="text-xs text-gray-400 mb-2">里程碑时间线（按截止升序，点击跳转多维表格原始行）</p>
+          <div class="space-y-2 max-h-96 overflow-y-auto pr-1">${timeline}</div>
+        </div>
+        <div>
+          <p class="text-xs text-gray-400 mb-2">各组平均完成度</p>
+          <div class="space-y-2">${byGroup || '<p class="text-sm text-gray-400">暂无分组数据</p>'}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+/** T-7 关键节点顶部提醒条：未达标且 0 ≤ 剩余天数 ≤ 7 的目标；逾期目标一并红色置顶 */
+function renderGoalBanner(g) {
+  const banner = document.getElementById("goal-banner");
+  if (!banner) return;
+  const items = (g && g.configured ? g.items ?? [] : []).filter(it => !it.done && it.daysLeft !== null && it.daysLeft <= 7);
+  if (!items.length) { banner.classList.add("hidden"); return; }
+  const text = document.getElementById("goal-banner-text");
+  text.innerHTML = items.map(it => {
+    const label = it.overdue
+      ? `<b style="color:#FCA5A5">已逾期 ${Math.abs(it.daysLeft)} 天</b>`
+      : `<b>T-${it.daysLeft} 天</b>`;
+    return `<a href="${esc(it.link)}" target="_blank" class="hover:underline">${label} · ${esc(it.title)}（${esc(it.group)} ${it.progress === null ? "" : Math.round(it.progress) + "%"}）</a>`;
+  }).join('<span class="mx-2 text-white/30">｜</span>');
+  banner.classList.remove("hidden");
+}
+
 function renderDashboard(d) {
   const box = document.getElementById("dash-body");
   const status = document.getElementById("dash-status");
   if (!d.configured) {
+    renderGoalBanner(null);
     status.textContent = "数据源未配置";
     box.innerHTML = `
       <div class="bg-white rounded-xl shadow p-6 text-sm text-gray-600 space-y-3">
@@ -1279,6 +1920,7 @@ function renderDashboard(d) {
   status.textContent = `更新于 ${new Date(d.generatedAt).toLocaleTimeString("zh-CN")}${d.stale ? "（缓存快照）" : ""} · 缓存 5 分钟`;
 
   box.innerHTML = `
+    ${goalsSection(d.goals)}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">${cards}</div>
     ${d.members?.error ? `<div class="text-xs text-amber-600">⚠ 队员名单：${esc(d.members.error)}</div>` : ""}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1301,9 +1943,10 @@ function renderDashboard(d) {
       ${errNote(d.finance?.error)}
     </div>
     ${reimburseCard()}
-    <p class="text-xs text-gray-400">数据源：飞书多维表格（base ${esc(d.base)}）· 队员名单 / 任务进度 / 物资台账 / 财务报销 · 5 分钟缓存 · 财务区按登录角色脱敏</p>
+    <p class="text-xs text-gray-400">数据源：飞书多维表格（base ${esc(d.base)}）· 队员名单 / 任务进度 / 物资台账 / 财务报销${d.goals?.configured ? " / 赛季目标" : ""} · 5 分钟缓存 · 财务区按登录角色脱敏</p>
   `;
   mountReimburse();
+  renderGoalBanner(d.goals);
 }
 
 
@@ -1336,16 +1979,16 @@ function reimburseFormHtml() {
     '<h3 class="font-bold mb-3">提交报销</h3>',
     '<form id="reimburse-form" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm" onsubmit="return submitReimburse(event)">',
     F('事项', '<input id="r-item" required class="mt-1 w-full border rounded px-2 py-1.5" placeholder="如：元器件采购" />'),
-    F('金额（元）', '<input id="r-amount" required inputmode="decimal" class="mt-1 w-full border rounded px-2 py-1.5" placeholder="上传凭证后自动识别，可修改" oninput="this.dataset.ocr=\'\'" />'),
-    // data-ocr="1" 表示当前值是自动生成的（默认可被 OCR 覆盖），用户一旦手动编辑即清除该标记
-    F('报销时间', '<input id="r-date" type="date" required class="mt-1 w-full border rounded px-2 py-1.5" data-ocr="1" value=' + today + ' oninput="this.dataset.ocr=\'\'" />'),
-    F('发票号（选填）', '<input id="r-invno" class="mt-1 w-full border rounded px-2 py-1.5" placeholder="上传发票后自动识别，可修改" oninput="this.dataset.ocr=\'\'" />'),
+    F('金额（元）', '<input id="r-amount" required inputmode="decimal" class="mt-1 w-full border rounded px-2 py-1.5" placeholder="上传凭证后自动识别，可修改" oninput="this.dataset.ocr=\'\';this.classList.remove(\'ocr-filled\')" />'),
+    // data-ocr="1" 表示当前值是自动生成的（默认可被 OCR 覆盖），用户一旦手动编辑即清除该标记与高亮
+    F('报销时间', '<input id="r-date" type="date" required class="mt-1 w-full border rounded px-2 py-1.5" data-ocr="1" value=' + today + ' oninput="this.dataset.ocr=\'\';this.classList.remove(\'ocr-filled\')" />'),
+    F('发票号（选填）', '<input id="r-invno" class="mt-1 w-full border rounded px-2 py-1.5" placeholder="上传发票后自动识别，可修改" oninput="this.dataset.ocr=\'\';this.classList.remove(\'ocr-filled\')" />'),
     F('备注（选填）', '<input id="r-note" class="mt-1 w-full border rounded px-2 py-1.5" />'),
-    F('上传单据', '<input id="r-receipt" type="file" class="mt-1 w-full text-xs" accept="image/*,application/pdf" onchange="recognizeFile(this, 1)">' + '<div id=r-receipt-status class="text-xs text-gray-400 mt-1">发票/收据图片或 PDF 自动识别金额、日期与发票号</div>'),
-    F('付款凭证', '<input id="r-payment" type="file" class="mt-1 w-full text-xs" accept="image/*,application/pdf" onchange="recognizeFile(this, 2)">' + '<div id=r-payment-status class="text-xs text-gray-400 mt-1">微信/支付宝付款截图可识别金额</div>'),
+    F('上传单据', '<input id="r-receipt" type="file" class="mt-1 w-full text-xs" accept="image/*,application/pdf" onchange="recognizeFile(this, 1)">' + '<div id=r-receipt-status aria-live="polite" class="text-xs text-gray-400 mt-1">发票/收据图片或 PDF 自动识别金额、日期与发票号（≤10MB）</div>'),
+    F('付款凭证', '<input id="r-payment" type="file" class="mt-1 w-full text-xs" accept="image/*,application/pdf" onchange="recognizeFile(this, 2)">' + '<div id=r-payment-status aria-live="polite" class="text-xs text-gray-400 mt-1">微信/支付宝付款截图可识别金额（≤10MB）</div>'),
     '<div class="md:col-span-2" style="display:flex;gap:12px;align-items:center">',
-      '<button id="r-submit-btn" style="background:var(--nec-navy);color:#fff;padding:8px 16px;border-radius:6px">提交报销</button>',
-      '<span id=r-submit-status class="text-xs text-gray-400"></span>',
+      '<button id="r-submit-btn" class="hover:opacity-90 disabled:opacity-50 transition-opacity" style="background:var(--nec-navy);color:#fff;padding:8px 16px;border-radius:6px">提交报销</button>',
+      '<span id=r-submit-status aria-live="polite" class="text-xs text-gray-400"></span>',
     '</div>',
     '</form>',
   '</div>'];
@@ -1355,17 +1998,32 @@ function F(label, inner) {
   return '<label class="block" style="font-size:14px">' + label + '<div style="margin-top:4px">' + inner + '</div></label>';
 }
 
+// OCR 依赖的 CDN：jsdelivr 主站在部分网络下被重置，默认走 fastly 镜像，失败再回退主站
+const CDN_FASTLY = 'https://fastly.jsdelivr.net/npm';
+const CDN_JSDELIVR = 'https://cdn.jsdelivr.net/npm';
+const TESS_OPTS = {
+  workerPath: CDN_FASTLY + '/tesseract.js@5/dist/worker.min.js',
+  corePath: CDN_FASTLY + '/tesseract.js-core@5',
+  langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+};
+function injectScript(url) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = url;
+    s.onload = res;
+    s.onerror = () => { s.remove(); rej(new Error(url)); };
+    document.head.appendChild(s);
+  });
+}
+
 let _tessLoading = null;
 function loadTesseract() {
   if (window.Tesseract) return Promise.resolve(window.Tesseract);
   if (!_tessLoading) {
-    _tessLoading = new Promise((res, rej) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-      s.onload = () => res(window.Tesseract);
-      s.onerror = () => rej(new Error('识别引擎加载失败（网络）'));
-      document.head.appendChild(s);
-    });
+    _tessLoading = injectScript(CDN_FASTLY + '/tesseract.js@5/dist/tesseract.min.js')
+      .catch(() => injectScript(CDN_JSDELIVR + '/tesseract.js@5/dist/tesseract.min.js'))
+      .then(() => window.Tesseract)
+      .catch(() => { _tessLoading = null; throw new Error('识别引擎加载失败（网络）'); });
   }
   return _tessLoading;
 }
@@ -1374,16 +2032,13 @@ let _pdfLoading = null;
 function loadPdfJs() {
   if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
   if (!_pdfLoading) {
-    _pdfLoading = new Promise((res, rej) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
-      s.onload = () => {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
-        res(window.pdfjsLib);
-      };
-      s.onerror = () => rej(new Error('PDF 解析组件加载失败（网络）'));
-      document.head.appendChild(s);
-    });
+    _pdfLoading = injectScript(CDN_FASTLY + '/pdfjs-dist@3.11.174/build/pdf.min.js')
+      .catch(() => injectScript(CDN_JSDELIVR + '/pdfjs-dist@3.11.174/build/pdf.min.js'))
+      .then(() => {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = CDN_FASTLY + '/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+        return window.pdfjsLib;
+      })
+      .catch(() => { _pdfLoading = null; throw new Error('PDF 解析组件加载失败（网络）'); });
   }
   return _pdfLoading;
 }
@@ -1402,7 +2057,7 @@ async function ocrPdfText(file, Tesseract, st) {
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-    const res = await Tesseract.recognize(canvas, 'chi_sim+eng');
+    const res = await Tesseract.recognize(canvas, 'chi_sim+eng', TESS_OPTS);
     text += '\n' + ((res && res.data && res.data.text) || '');
   }
   return text;
@@ -1434,13 +2089,21 @@ function ocrFill(id, value) {
   if (el.value && el.dataset.ocr !== '1') return false;
   el.value = value;
   el.dataset.ocr = '1';
+  el.classList.add('ocr-filled');
   return true;
 }
 
+let _ocrRunning = 0; // 进行中的 OCR 任务数，提交时用于拦截
 async function recognizeFile(input, kind) {
   const st = document.getElementById(kind === 1 ? 'r-receipt-status' : 'r-payment-status');
   const f = input.files && input.files[0];
   if (!f) return;
+  if (f.size > 10 * 1024 * 1024) {
+    st.textContent = '⚠ 文件超过 10MB 上限，请压缩后再上传';
+    input.value = '';
+    return;
+  }
+  _ocrRunning++;
   st.textContent = '🔍 识别中（首次需加载识别引擎，约十几秒）…';
   try {
     const Tesseract = await loadTesseract();
@@ -1448,9 +2111,9 @@ async function recognizeFile(input, kind) {
     if (f.type === 'application/pdf') {
       text = await ocrPdfText(f, Tesseract, st);
     } else {
-      const res = await Tesseract.recognize(f, 'chi_sim+eng', {
+      const res = await Tesseract.recognize(f, 'chi_sim+eng', Object.assign({}, TESS_OPTS, {
         logger: m => { if (m.status === 'recognizing text') st.textContent = '🔍 识别中 ' + Math.round(m.progress * 100) + '%…'; }
-      });
+      }));
       text = res && res.data && res.data.text;
     }
     const found = parseFinanceText(text);
@@ -1464,6 +2127,8 @@ async function recognizeFile(input, kind) {
       + (hints.length || skipped.length ? '（可手动修改）' : '⚠ 未识别到有效信息，请手动填写');
   } catch (e) {
     st.textContent = '⚠ 识别失败：' + (e.message || e) + '，请手动填写';
+  } finally {
+    _ocrRunning--;
   }
 }
 
@@ -1472,9 +2137,19 @@ async function submitReimburse(ev) {
   const st = document.getElementById('r-submit-status');
   const btn = document.getElementById('r-submit-btn');
   if (btn.disabled) return;
+  if (_ocrRunning > 0) {
+    st.textContent = '⏳ 凭证识别仍在进行，请稍候几秒再提交';
+    return false;
+  }
+  const amountStr = document.getElementById('r-amount').value.trim();
+  if (!/^\d{1,7}(\.\d{1,2})?$/.test(amountStr)) {
+    st.textContent = '⚠ 金额格式不正确：应为数字，最多两位小数';
+    document.getElementById('r-amount').focus();
+    return false;
+  }
   const fd = new FormData();
   fd.set('item', document.getElementById('r-item').value.trim());
-  fd.set('amount', document.getElementById('r-amount').value.trim());
+  fd.set('amount', amountStr);
   fd.set('date', document.getElementById('r-date').value);
   fd.set('note', document.getElementById('r-note').value.trim());
   fd.set('invno', document.getElementById('r-invno').value.trim());
@@ -1491,9 +2166,17 @@ async function submitReimburse(ev) {
     if (!resp.ok || data.error) throw new Error(data.error || ('HTTP ' + resp.status));
     st.textContent = '✅ 已提交' + (data.recordId ? '，已写入财务报销表' : '') + (data.warning ? '；⚠ ' + data.warning : '');
     document.getElementById('reimburse-form').reset();
+    ['r-amount', 'r-invno'].forEach(id => {
+      const el = document.getElementById(id);
+      el.dataset.ocr = '';
+      el.classList.remove('ocr-filled');
+    });
     const dateEl = document.getElementById('r-date');
     dateEl.value = new Date().toLocaleDateString('sv-SE');
     dateEl.dataset.ocr = '1';
+    dateEl.classList.remove('ocr-filled');
+    document.getElementById('r-receipt-status').textContent = '发票/收据图片或 PDF 自动识别金额、日期与发票号（≤10MB）';
+    document.getElementById('r-payment-status').textContent = '微信/支付宝付款截图可识别金额（≤10MB）';
     loadDashboard();
   } catch (e) {
     st.textContent = '❌ 提交失败：' + (e.message || e);
@@ -1509,6 +2192,94 @@ function loadDashboard() {
     document.getElementById("dash-body").innerHTML =
       `<div class="bg-white rounded-xl shadow p-6 text-sm text-red-500">看板加载失败，请稍后重试。</div>`;
   });
+}
+
+// ===== FE-05 数据健康：最新校验报告展示 + 手动触发（mine 所有登录用户 / all 仅队长·组长） =====
+function isLeader() {
+  return !!(ME.authenticated && ME.user && /队长|组长/.test(ME.user.role || ""));
+}
+
+async function loadValidateHealth() {
+  const box = document.getElementById("dash-health");
+  if (!box) return;
+  if (!ME.authenticated) {
+    box.innerHTML = `<div class="bg-white rounded-xl shadow p-5 text-sm text-gray-500">🩺 数据健康：登录后可查看校验报告并触发校验（队员校验自己的数据，队长/组长可全量校验）。</div>`;
+    return;
+  }
+  let report = null;
+  try {
+    const resp = await fetch("/api/validate/report");
+    if (resp.ok) report = await resp.json();
+  } catch { /* 报告读取失败按空处理 */ }
+  renderValidateHealth(report && !report.empty ? report : null);
+}
+
+function renderValidateHealth(report) {
+  const box = document.getElementById("dash-health");
+  if (!box) return;
+  const btns = `
+    <button onclick="runValidate('mine')" id="vh-btn-mine" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600">校验我的数据</button>
+    ${isLeader() ? `<button onclick="runValidate('all')" id="vh-btn-all" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:var(--nec-navy)">全量校验</button>` : ""}`;
+  if (!report) {
+    box.innerHTML = `
+      <div class="bg-white rounded-xl shadow p-5">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-bold">数据健康</h3>
+          <div class="flex gap-2">${btns}</div>
+        </div>
+        <p class="text-sm text-gray-400">暂无校验报告：点「校验我的数据」立即跑一次，或等每周一 08:00 自动巡检（摘要推送飞书群）。</p>
+      </div>`;
+    return;
+  }
+  const groups = (report.byType ?? []).map(t => {
+    const items = report.violations.filter(v => v.type === t.type).slice(0, 20).map(v => `
+      <li class="py-1.5 border-t border-gray-100 text-sm">
+        <div class="flex items-baseline gap-2 flex-wrap">
+          <span class="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">${esc(v.table)}</span>
+          <span class="text-gray-600">字段「${esc(v.field)}」${v.value ? `=${esc(v.value)}` : "为空"}</span>
+          <a href="${esc(v.link)}" target="_blank" class="text-xs hover:underline" style="color:var(--nec-cyan)">打开记录 →</a>
+        </div>
+        <p class="text-xs text-gray-400 mt-0.5">建议：${esc(v.suggestion)}</p>
+      </li>`).join("");
+    return `
+      <div class="mt-3">
+        <p class="text-sm font-medium text-slate-700">${esc(t.type)} <span class="text-xs text-gray-400">× ${t.count}</span></p>
+        <ul>${items}</ul>
+      </div>`;
+  }).join("");
+  box.innerHTML = `
+    <div class="bg-white rounded-xl shadow p-5">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="font-bold">数据健康</h3>
+        <div class="flex gap-2">${btns}</div>
+      </div>
+      <p class="text-xs text-gray-400 mb-1">上次全量校验：${report.generatedAt ? new Date(report.generatedAt).toLocaleString("zh-CN") : "—"} · 共 <b class="${report.total ? "text-red-600" : ""}" style="${report.total ? "" : "color:var(--nec-cyan)"}">${report.total}</b> 条异常 · 每周一 08:00 自动巡检</p>
+      ${groups || '<p class="text-sm text-gray-400 mt-2">🎉 未发现异常，4 张底表数据全绿。</p>'}
+      ${report.errors ? `<p class="text-xs text-amber-600 mt-2">⚠ ${Object.entries(report.errors).map(([t, e]) => `${esc(t)}：${esc(e)}`).join("；")}</p>` : ""}
+    </div>`;
+}
+
+async function runValidate(scope) {
+  const btn = document.getElementById(scope === "all" ? "vh-btn-all" : "vh-btn-mine");
+  if (btn) { btn.disabled = true; btn.textContent = "校验中…"; }
+  try {
+    const resp = await fetch("/api/validate/run", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ scope }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || ("HTTP " + resp.status));
+    if (scope === "all") {
+      renderValidateHealth(data);
+    } else {
+      alert(data.total ? `发现与你相关的 ${data.total} 条异常：\n` + data.violations.slice(0, 10).map(v => `· [${v.type}] ${v.table} 表「${v.field}」→ ${v.suggestion}`).join("\n") + (data.total > 10 ? `\n… 另有 ${data.total - 10} 条` : "") : "🎉 你的数据没有异常");
+    }
+  } catch (e) {
+    alert("校验失败：" + (e.message || e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = scope === "all" ? "全量校验" : "校验我的数据"; }
+  }
 }
 
 bootAuth();

@@ -5,6 +5,11 @@
  * 提交硬件评审单 → 预约评审会 → 保存纪要与结论 → 生成评审报告 → 评估 → 归档。
  */
 
+import type { Attachment, ModuleConfigFeatures, ReviewConclusion } from "../shared/types";
+
+// 跨模块逐字重复的通用类型统一由 ../shared/types 提供，此处 re-export 保持既有 import 路径
+export type { ActionItem, Attachment, ReviewConclusion, ReviewIssue, ReviewMinutes, UserRef } from "../shared/types";
+
 export type ReviewStatus =
   | "draft" // 待提交
   | "pending_review" // 待评审
@@ -15,8 +20,6 @@ export type ReviewStatus =
   | "approved" // 已通过
   | "archived"; // 已归档
 
-export type ReviewConclusion = "passed" | "conditional" | "rejected";
-
 export type HardwareType =
   | "controller" // 控制器
   | "sensor" // 传感器
@@ -26,18 +29,6 @@ export type HardwareType =
   | "communication" // 通信模块
   | "structure" // 结构件
   | "other"; // 其他
-
-export interface Attachment {
-  name: string;
-  token: string;
-  url?: string;
-  size?: number;
-}
-
-export interface UserRef {
-  open_id: string;
-  name?: string;
-}
 
 export interface HardwareReview {
   reviewId: string;
@@ -58,35 +49,6 @@ export interface HardwareReview {
   conclusionNotes?: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface ReviewIssue {
-  issueId: string;
-  description: string;
-  raisedBy: UserRef;
-  owner?: UserRef;
-  dueDate?: string;
-  severity?: "low" | "medium" | "high";
-  status: "open" | "closed";
-}
-
-export interface ActionItem {
-  action: string;
-  owner: UserRef;
-  dueDate?: string;
-}
-
-export interface ReviewMinutes {
-  minutesId: string;
-  reviewId: string;
-  meetingTime: string;
-  attendees: UserRef[];
-  topics: string[];
-  discussion: string;
-  issues: ReviewIssue[];
-  conclusion: ReviewConclusion;
-  nextActions: ActionItem[];
-  attachments: Attachment[];
 }
 
 export interface ReportChecklistItem {
@@ -125,11 +87,7 @@ export interface HardwareReviewConfig {
   base: string;
   tables: Partial<Record<HardwareReviewTable, string>>;
   updatedAt: string;
-  features?: {
-    autoDefaultFilling?: boolean;
-    versionIncrement?: "minor" | "major";
-    designNotesTemplate?: string;
-  };
+  features?: ModuleConfigFeatures;
 }
 
 export type HardwareReviewTable = "reviews" | "minutes" | "rectifications" | "reports" | "events";

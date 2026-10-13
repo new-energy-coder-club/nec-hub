@@ -1,245 +1,246 @@
 /**
  * 新增机图纸评审流程 — 路由注册
+ *
+ * 入口骨架（配置接口 / 503 / 会话 / 401 / 500 兜底）统一由 shared/module-gateway 提供。
  */
 
-import { getTenantAccessToken } from "../feishu/bitable";
-import { resolveUserRole } from "../index";
-import { BaseAdapter } from "./adapter";
+import { resolveUserRole } from "../auth/role";
+import { json } from "../shared/http";
+import { handleScheduleMeeting } from "../shared/meeting.service";
+import { withModuleGate, type ModuleRouteContext } from "../shared/module-gateway";
+import { DrawingReviewAdapter } from "./adapter";
 import { BoardService } from "./board.service";
 import { BOMService } from "./bom.service";
-import { getDrawingReviewConfig, requireConfig } from "./config";
+import { getDrawingReviewConfig } from "./config";
 import { ReviewFlowService, type SubmitReviewInput } from "./flow.service";
 import { InquiryService } from "./inquiry.service";
-import { defaultMeetingInput, MeetingService } from "./meeting.service";
 import { SuggestionService } from "./suggestion.service";
 import type { DrawingReviewConfig } from "./types";
 
 export async function handleDrawingReview(request: Request, env: Env, pathname: string): Promise<Response | null> {
-  const cfg = await getDrawingReviewConfig(env);
+  return withModuleGate(
+    {
+      configPath: "/api/drawing-review/config",
+      label: "新增机图纸评审流程",
+      logTag: "drawing-review",
+      getConfig: getDrawingReviewConfig,
+      handleConfig,
+      handler: handleAuthed,
+    },
+    request,
+    env,
+    pathname,
+  );
+}
 
-  // 配置接口无需登录
-  if (pathname === "/api/drawing-review/config") {
-    if (request.method === "GET") return json({ configured: !!cfg, base: cfg?.base ?? null, tables: cfg?.tables ?? {} });
-    if (request.method === "POST") return handleConfig(request, env);
-    return json({ error: "method not allowed" }, 405);
+async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promise<Response | null> {
+  const { request, env, cfg, session, pathname } = ctx;
+  const adapter = new DrawingReviewAdapter(env, cfg);
+  const flow = new ReviewFlowService(env, adapter);
+
+  // 评审单
+  if (pathname === "/api/drawing-review/submit" && request.method === "POST") {
+    const body = (await request.json()) as Partial<SubmitReviewInput>;
+    // Apply automatic default filling for missing fields
+    const input: SubmitReviewInput = {
+      projectId: body.projectId,
+      machineName: body.machineName,
+      drawingVersion: body.drawingVersion,
+      designerId: body.designerId,
+      drawingFiles: body.drawingFiles || [],
+      designNotes: body.designNotes,
+    };
+    const review = await flow.submit(input, session.open_id);
+    return json(review);
   }
 
-  // 未配置时返回友好提示
-  if (!cfg) {
-    return json(
+  if (pathname === "/api/drawing-review" && request.method === "GET") {
+    const list = await flow.listReviews();
+    return json(list);
+  }
+
+  // 流程看板（须放在 /{id} 详情匹配之前，否则 "board" 会被当作评审单号）
+  if (pathname === "/api/drawing-review/board" && request.method === "GET") {
+    const board = new BoardService(adapter);
+    return json(await board.build());
+  }
+
+  // 询价单：生成（幂等）
+  const inqGenMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/inquiries\/generate$/);
+  if (inqGenMatch && request.method === "POST") {
+    const body = (await request.json().catch(() => ({}))) as import("./inquiry.service").GenerateInquiriesInput;
+    const svc = new InquiryService(env, adapter);
+    return json(await svc.generate(inqGenMatch[1], body, session.open_id));
+  }
+
+  // 询价单：比价建议书 + 可选选定（selections: {物料编码|物料项ID: inquiryId}）
+  const inqCmpMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/inquiries\/compare$/);
+  if (inqCmpMatch && request.method === "POST") {
+    const body = (await request.json().catch(() => ({}))) as { selections?: Record<string, string> };
+    const svc = new InquiryService(env, adapter);
+    if (body.selections && Object.keys(body.selections).length > 0) {
+      const role = await resolveUserRole(env, session);
+      // 名单表未配置/未匹配时降级为仅登录校验，操作人已记入事件日志
+      if (role.matched && !/队长|采购|项目经理/.test(role.role)) {
+        return json({ error: `权限不足：选定供应商仅队长/采购/项目经理可执行（当前角色：${role.role}）` }, 403);
+      }
+    }
+    return json(await svc.compare(inqCmpMatch[1], body.selections, session.open_id));
+  }
+
+  // 询价单：供应商报价回填（任何登录用户，模拟供应商）
+  const inqQuoteMatch = pathname.match(/^\/api\/drawing-review\/inquiries\/([^/]+)\/quote$/);
+  if (inqQuoteMatch && request.method === "POST") {
+    const body = (await request.json()) as import("./inquiry.service").QuoteInput;
+    const svc = new InquiryService(env, adapter);
+    return json(await svc.quote(inqQuoteMatch[1], body, session.open_id));
+  }
+
+  // 询价单：按评审单查询
+  const inqListMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/inquiries$/);
+  if (inqListMatch && request.method === "GET") {
+    return json(await adapter.listInquiries(inqListMatch[1]));
+  }
+
+  const detailMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)$/);
+  if (detailMatch && request.method === "GET") {
+    const review = await flow.getReview(detailMatch[1]);
+    if (!review) return json({ error: "评审单不存在" }, 404);
+    return json(review);
+  }
+
+  // 会议预约
+  const meetingMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/meeting$/);
+  if (meetingMatch && request.method === "POST") {
+    return handleScheduleMeeting(
+      request,
+      env,
       {
-        error: "新增机图纸评审流程尚未配置",
-        hint: "请先调用 POST /api/drawing-review/config 设置 base 与 tables",
+        flow,
+        adapter,
+        topic: (review) => `新增机图纸评审 - ${review.machineName} - ${review.drawingVersion}`,
       },
-      503,
+      meetingMatch[1],
+      session.open_id,
     );
   }
 
-  // 后续接口要求登录态
-  const session = await resolveSessionForDrawingReview(request, env);
-  if (!session) return json({ error: "请先登录" }, 401);
-
-  const adapter = new BaseAdapter(env, cfg);
-  const flow = new ReviewFlowService(env, adapter);
-
-  try {
-    // 评审单
-    if (pathname === "/api/drawing-review/submit" && request.method === "POST") {
-      const body = (await request.json()) as Partial<SubmitReviewInput>;
-      // Apply automatic default filling for missing fields
-      const input: SubmitReviewInput = {
-        projectId: body.projectId,
-        machineName: body.machineName,
-        drawingVersion: body.drawingVersion,
-        designerId: body.designerId,
-        drawingFiles: body.drawingFiles || [],
-        designNotes: body.designNotes,
-      };
-      const review = await flow.submit(input, session.open_id);
-      return json(review);
-    }
-
-    if (pathname === "/api/drawing-review" && request.method === "GET") {
-      const list = await flow.listReviews();
-      return json(list);
-    }
-
-    // 流程看板（须放在 /{id} 详情匹配之前，否则 "board" 会被当作评审单号）
-    if (pathname === "/api/drawing-review/board" && request.method === "GET") {
-      const board = new BoardService(adapter);
-      return json(await board.build());
-    }
-
-    // 询价单：生成（幂等）
-    const inqGenMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/inquiries\/generate$/);
-    if (inqGenMatch && request.method === "POST") {
-      const body = (await request.json().catch(() => ({}))) as import("./inquiry.service").GenerateInquiriesInput;
-      const svc = new InquiryService(env, adapter);
-      return json(await svc.generate(inqGenMatch[1], body, session.open_id));
-    }
-
-    // 询价单：比价建议书 + 可选选定（selections: {物料编码|物料项ID: inquiryId}）
-    const inqCmpMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/inquiries\/compare$/);
-    if (inqCmpMatch && request.method === "POST") {
-      const body = (await request.json().catch(() => ({}))) as { selections?: Record<string, string> };
-      const svc = new InquiryService(env, adapter);
-      if (body.selections && Object.keys(body.selections).length > 0) {
-        const role = await resolveUserRole(env, session);
-        // 名单表未配置/未匹配时降级为仅登录校验，操作人已记入事件日志
-        if (role.matched && !/队长|采购|项目经理/.test(role.role)) {
-          return json({ error: `权限不足：选定供应商仅队长/采购/项目经理可执行（当前角色：${role.role}）` }, 403);
-        }
-      }
-      return json(await svc.compare(inqCmpMatch[1], body.selections, session.open_id));
-    }
-
-    // 询价单：供应商报价回填（任何登录用户，模拟供应商）
-    const inqQuoteMatch = pathname.match(/^\/api\/drawing-review\/inquiries\/([^/]+)\/quote$/);
-    if (inqQuoteMatch && request.method === "POST") {
-      const body = (await request.json()) as import("./inquiry.service").QuoteInput;
-      const svc = new InquiryService(env, adapter);
-      return json(await svc.quote(inqQuoteMatch[1], body, session.open_id));
-    }
-
-    // 询价单：按评审单查询
-    const inqListMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/inquiries$/);
-    if (inqListMatch && request.method === "GET") {
-      return json(await adapter.listInquiries(inqListMatch[1]));
-    }
-
-    const detailMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)$/);
-    if (detailMatch && request.method === "GET") {
-      const review = await flow.getReview(detailMatch[1]);
-      if (!review) return json({ error: "评审单不存在" }, 404);
-      return json(review);
-    }
-
-    // 会议预约
-    const meetingMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/meeting$/);
-    if (meetingMatch && request.method === "POST") {
-      return handleScheduleMeeting(request, env, cfg, adapter, flow, meetingMatch[1], session.open_id);
-    }
-
-    // 会议纪要
-    const minutesMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/minutes$/);
-    if (minutesMatch && request.method === "POST") {
-      const body = await request.json() as Parameters<ReviewFlowService["saveMinutes"]>[1];
-      const minutes = await flow.saveMinutes(minutesMatch[1], body, session.open_id);
-      return json(minutes);
-    }
-
-    // 评审结论
-    const conclusionMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/conclusion$/);
-    if (conclusionMatch && request.method === "POST") {
-      const body = await request.json() as import("./flow.service").ConclusionInput;
-      const review = await flow.conclude(conclusionMatch[1], body, session.open_id);
-      return json(review);
-    }
-
-    // 整改完成
-    const rectifyMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/rectify$/);
-    if (rectifyMatch && request.method === "POST") {
-      const review = await flow.completeRectification(rectifyMatch[1], session.open_id);
-      return json(review);
-    }
-
-    // BOM 生成
-    const bomMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/bom\/generate$/);
-    if (bomMatch && request.method === "POST") {
-      const body = await request.json() as import("./bom.service").GenerateBOMInput;
-      const bomService = new BOMService(adapter);
-      const result = await bomService.generate(bomMatch[1], body);
-      // BOM 生成后自动流转到 assessing
-      await flow.transitionTo(bomMatch[1], "generated", session.open_id);
-      return json(result);
-    }
-
-    // BOM 查询
-    const bomGetMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/bom$/);
-    if (bomGetMatch && request.method === "GET") {
-      const data = await adapter.getBOMByReview(bomGetMatch[1]);
-      if (!data) return json({ error: "BOM 不存在" }, 404);
-      return json(data);
-    }
-
-    // 机械加工件 BOM
-    const machiningMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/bom\/machining$/);
-    if (machiningMatch && request.method === "GET") {
-      const bomService = new BOMService(adapter);
-      const items = await bomService.extractMachiningItems(machiningMatch[1]);
-      return json(items);
-    }
-
-    // 开始填写（方便填写）
-    if (pathname === "/api/drawing-review/start" && request.method === "GET") {
-      const defaults = await flow.getDefaultSubmissionValues({ drawingFiles: [] }, session.open_id);
-      return json({
-        ok: true,
-        defaults,
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // 联想建议 API
-    if (pathname === "/api/drawing-review/suggestions" && request.method === "GET") {
-      const url = new URL(request.url);
-      const query = url.searchParams.get("q") || "";
-      const type = url.searchParams.get("type") || "all"; // project | machine | all
-      const projectId = url.searchParams.get("projectId") || undefined;
-      const machineName = url.searchParams.get("machineName") || undefined;
-      
-      const suggestionService = new SuggestionService(adapter);
-      const context = { projectId, machineName };
-      
-      let suggestions;
-      if (type === "all") {
-        suggestions = await suggestionService.getSuggestions(context, query);
-      } else {
-        // 特定类型的联想
-        if (type === "project") {
-          const projectSuggestions = await adapter.getProjectSuggestions(query, 10);
-          suggestions = projectSuggestions.map(p => ({
-            type: "project" as const,
-            value: p,
-            label: `项目: ${p}`,
-          }));
-        } else if (type === "machine") {
-          const machineSuggestions = await adapter.getMachineSuggestions(query, 10);
-          suggestions = machineSuggestions.map(m => ({
-            type: "machine" as const,
-            value: m,
-            label: `机型: ${m}`,
-          }));
-        }
-      }
-      
-      return json({
-        ok: true,
-        suggestions,
-        query,
-        type,
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // 基于任务的智能联想
-    const taskSuggestionMatch = pathname.match(/^\/api\/drawing-review\/([^\/]+)\/task-suggestions$/);
-    if (taskSuggestionMatch && request.method === "GET") {
-      const suggestionService = new SuggestionService(adapter);
-      const suggestions = await suggestionService.getTaskBasedSuggestions(taskSuggestionMatch[1]);
-      return json({
-        ok: true,
-        reviewId: taskSuggestionMatch[1],
-        suggestions,
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    return null;
-  } catch (err) {
-    console.error(`[drawing-review] ${pathname} error:`, err);
-    return json({ error: err instanceof Error ? err.message : String(err) }, 500);
+  // 会议纪要
+  const minutesMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/minutes$/);
+  if (minutesMatch && request.method === "POST") {
+    const body = await request.json() as Parameters<ReviewFlowService["saveMinutes"]>[1];
+    const minutes = await flow.saveMinutes(minutesMatch[1], body, session.open_id);
+    return json(minutes);
   }
+
+  // 评审结论
+  const conclusionMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/conclusion$/);
+  if (conclusionMatch && request.method === "POST") {
+    const body = await request.json() as import("./flow.service").ConclusionInput;
+    const review = await flow.conclude(conclusionMatch[1], body, session.open_id);
+    return json(review);
+  }
+
+  // 整改完成
+  const rectifyMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/rectify$/);
+  if (rectifyMatch && request.method === "POST") {
+    const review = await flow.completeRectification(rectifyMatch[1], session.open_id);
+    return json(review);
+  }
+
+  // BOM 生成
+  const bomMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/bom\/generate$/);
+  if (bomMatch && request.method === "POST") {
+    const body = await request.json() as import("./bom.service").GenerateBOMInput;
+    const bomService = new BOMService(adapter);
+    const result = await bomService.generate(bomMatch[1], body);
+    // BOM 生成后自动流转到 assessing
+    await flow.transitionTo(bomMatch[1], "generated", session.open_id);
+    return json(result);
+  }
+
+  // BOM 查询
+  const bomGetMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/bom$/);
+  if (bomGetMatch && request.method === "GET") {
+    const data = await adapter.getBOMByReview(bomGetMatch[1]);
+    if (!data) return json({ error: "BOM 不存在" }, 404);
+    return json(data);
+  }
+
+  // 机械加工件 BOM
+  const machiningMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/bom\/machining$/);
+  if (machiningMatch && request.method === "GET") {
+    const bomService = new BOMService(adapter);
+    const items = await bomService.extractMachiningItems(machiningMatch[1]);
+    return json(items);
+  }
+
+  // 开始填写（方便填写）
+  if (pathname === "/api/drawing-review/start" && request.method === "GET") {
+    const defaults = await flow.getDefaultSubmissionValues({ drawingFiles: [] }, session.open_id);
+    return json({
+      ok: true,
+      defaults,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // 联想建议 API
+  if (pathname === "/api/drawing-review/suggestions" && request.method === "GET") {
+    const url = new URL(request.url);
+    const query = url.searchParams.get("q") || "";
+    const type = url.searchParams.get("type") || "all"; // project | machine | all
+    const projectId = url.searchParams.get("projectId") || undefined;
+    const machineName = url.searchParams.get("machineName") || undefined;
+
+    const suggestionService = new SuggestionService(adapter);
+    const context = { projectId, machineName };
+
+    let suggestions;
+    if (type === "all") {
+      suggestions = await suggestionService.getSuggestions(context, query);
+    } else {
+      // 特定类型的联想
+      if (type === "project") {
+        const projectSuggestions = await adapter.getProjectSuggestions(query, 10);
+        suggestions = projectSuggestions.map(p => ({
+          type: "project" as const,
+          value: p,
+          label: `项目: ${p}`,
+        }));
+      } else if (type === "machine") {
+        const machineSuggestions = await adapter.getMachineSuggestions(query, 10);
+        suggestions = machineSuggestions.map(m => ({
+          type: "machine" as const,
+          value: m,
+          label: `机型: ${m}`,
+        }));
+      }
+    }
+
+    return json({
+      ok: true,
+      suggestions,
+      query,
+      type,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // 基于任务的智能联想
+  const taskSuggestionMatch = pathname.match(/^\/api\/drawing-review\/([^\/]+)\/task-suggestions$/);
+  if (taskSuggestionMatch && request.method === "GET") {
+    const suggestionService = new SuggestionService(adapter);
+    const suggestions = await suggestionService.getTaskBasedSuggestions(taskSuggestionMatch[1]);
+    return json({
+      ok: true,
+      reviewId: taskSuggestionMatch[1],
+      suggestions,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  return null;
 }
 
 async function handleConfig(request: Request, env: Env): Promise<Response> {
@@ -254,85 +255,4 @@ async function handleConfig(request: Request, env: Env): Promise<Response> {
   const { setDrawingReviewConfig } = await import("./config");
   const cfg = await setDrawingReviewConfig(env, { base: body.base, tables: body.tables as DrawingReviewConfig["tables"] });
   return json({ ok: true, config: cfg });
-}
-
-async function handleScheduleMeeting(
-  request: Request,
-  env: Env,
-  cfg: DrawingReviewConfig,
-  adapter: BaseAdapter,
-  flow: ReviewFlowService,
-  reviewId: string,
-  actorId: string,
-): Promise<Response> {
-  const review = await flow.getReview(reviewId);
-  if (!review) return json({ error: "评审单不存在" }, 404);
-
-  const body = (await request.json()) as { startTime?: string; durationMinutes?: number; attendeeOpenIds?: string[] };
-  const attendeeOpenIds = body.attendeeOpenIds ?? [review.designerId];
-  const meetingInput = defaultMeetingInput(review, attendeeOpenIds);
-  if (body.startTime) meetingInput.startTime = body.startTime;
-  if (body.durationMinutes) meetingInput.durationMinutes = body.durationMinutes;
-
-  const meetingService = new MeetingService(env, () => getTenantAccessToken(env));
-  const info = await meetingService.createMeeting(meetingInput);
-
-  await adapter.updateReview(review.recordId, {
-    meetingId: info.meetingId,
-    meetingLink: info.meetingLink,
-    meetingStartTime: info.startTime,
-    updatedAt: new Date().toISOString(),
-  });
-
-  // 会议预约后，状态从 pending_review → in_review
-  const updated = await flow.startMeeting(reviewId, actorId);
-
-  return json({ meeting: info, review: updated });
-}
-
-// ---------- 复用 index.ts 的会话解析 ----------
-
-interface HubUser {
-  name: string;
-  open_id: string;
-  avatar_url?: string;
-}
-
-interface SessionData extends HubUser {
-  createdAt: string;
-  expiresAt: number;
-}
-
-function parseCookies(request: Request): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const part of (request.headers.get("cookie") ?? "").split(";")) {
-    const i = part.indexOf("=");
-    if (i > 0) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
-  }
-  return out;
-}
-
-async function resolveSessionForDrawingReview(request: Request, env: Env): Promise<HubUser | null> {
-  const sid = parseCookies(request)["nec_session"];
-  if (!sid) return null;
-  const raw = await env.REGISTRY.get(`session:${sid}`);
-  if (!raw) return null;
-  let data: SessionData;
-  try {
-    data = JSON.parse(raw) as SessionData;
-  } catch {
-    return null;
-  }
-  if (!data.open_id || data.expiresAt <= Date.now()) {
-    await env.REGISTRY.delete(`session:${sid}`);
-    return null;
-  }
-  return { name: data.name, open_id: data.open_id, avatar_url: data.avatar_url };
-}
-
-function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data, null, 2), {
-    status,
-    headers: { "content-type": "application/json; charset=utf-8" },
-  });
 }

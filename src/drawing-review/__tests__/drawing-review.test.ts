@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ReviewFlowService, SubmitReviewInput } from '../flow.service';
-import { BaseAdapter } from '../adapter';
+import { DrawingReviewAdapter } from '../adapter';
 import { DrawingReviewConfig } from '../types';
 
 // Mock environment
