@@ -38,6 +38,8 @@ interface Env {
   GITHUB_TOKEN?: string;
   /** Gitee API（/api/repos 仓库列表用，可选；匿名 60 次/小时，配置后限额更高） */
   GITEE_TOKEN?: string;
+  /** GitHub Webhook secret（/api/hooks/github 验签用；未配置时拒绝接收推送） */
+  GITHUB_WEBHOOK_SECRET?: string;
   /** 审批通知群机器人 webhook（PRD V1.1 N-01）；可按流程分流 FEISHU_BOT_WEBHOOK_<TYPE>，加签 secret 为同名 _SECRET 变量 */
   FEISHU_BOT_WEBHOOK?: string;
   FEISHU_BOT_WEBHOOK_SECRET?: string;
@@ -138,11 +140,8 @@ const GITHUB_ORG = "new-energy-coder-club";
 /** NEC 开源仓库的 Gitee 账号（组织无 Gitee 版，用队长账号兜底；/api/repos 数据源之一） */
 const GITEE_USER = "darrenpig";
 
-/** 仓库列表缓存 TTL（秒）。两源合计单次刷新约 40+ 次请求（GitHub/Gitee 匿名均 60 次/小时），建议配置 GITHUB_TOKEN / GITEE_TOKEN */
+/** 仓库列表缓存 TTL（秒），即刷新频次：每小时一次。两源合计单次刷新约 30+ 次请求（GitHub/Gitee 匿名均 60 次/小时），建议配置 GITHUB_TOKEN / GITEE_TOKEN */
 const REPOS_CACHE_TTL_SEC = 3600;
-
-/** 部分源失败时的缓存 TTL（秒）：缩短重试间隔，尽快补全缺失源 */
-const REPOS_PARTIAL_CACHE_TTL_SEC = 600;
 
 const MIME: Record<string, string> = {
   html: "text/html; charset=utf-8",
@@ -209,6 +208,12 @@ export default {
         } catch {
           return json({ ran: false, hint: "校验报告损坏，请重新运行 validate_bitable。" });
         }
+      }
+      if (url.pathname === "/api/prd") {
+        return json(await buildPrdBoard(env));
+      }
+      if (url.pathname === "/api/hooks/github" && request.method === "POST") {
+        return await handleGithubPush(request, env);
       }
       if (url.pathname === "/api/approvals" && request.method === "POST") {
         return await handleApprovalSubmit(request, env);
@@ -484,7 +489,7 @@ async function lookupRoleFresh(env: Env, user: HubUser): Promise<UserRole> {
   };
 }
 
-/** 在名单表记录里定位当前用户：优先 open_id 精确匹配，其次姓名精确匹配 */
+/** 在名单表记录里定位当前用户：优先 open_id 精确匹配，其次姓名精确匹配，最后姓名互相包含（≥2 字，兼容"前缀+姓名"式飞书昵称） */
 function matchMemberRecord(records: BitableRecord[], user: HubUser): BitableRecord | null {
   const idKeys = new Set<string>();
   const nameKeys = new Set<string>();
@@ -499,11 +504,23 @@ function matchMemberRecord(records: BitableRecord[], user: HubUser): BitableReco
       if (fieldText(r.fields[k]) === user.open_id) return r;
     }
   }
+  const candidates: Array<{ rec: BitableRecord; name: string }> = [];
   if (user.name) {
     for (const r of records) {
       for (const k of nameKeys) {
-        if (fieldText(r.fields[k]) === user.name) return r;
+        const text = fieldText(r.fields[k]);
+        if (text === user.name) return r;
+        if (text) candidates.push({ rec: r, name: text });
       }
+    }
+    // 包含匹配：名单"朱佩韦" vs 飞书昵称"DarrenPig 朱佩韦"；要求至少 2 个汉字/字符，避免单字误配
+    const who = user.name.replace(/[\s·•]+/g, "");
+    if (who.length >= 2) {
+      const hit = candidates.find(({ name }) => {
+        const n = name.replace(/[\s·•]+/g, "");
+        return n.length >= 2 && (who.includes(n) || n.includes(who));
+      });
+      if (hit) return hit.rec;
     }
   }
   return null;
@@ -741,6 +758,19 @@ const TOOLS = [
     },
   },
   {
+    name: "add_records",
+    description:
+      "往飞书多维表格追加记录（飞书字段名 → 值；数字/日期字段传数字，日期为毫秒时间戳）。仅管理端（MCP_TOKEN）可用。典型用法：报销回写财务表、任务批量导入。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        table: { type: "string", description: "表名：members | tasks | inventory | finance" },
+        records: { type: "array", items: { type: "object" }, description: "记录数组，每条为 {字段名: 值}，如 [{\"姓名\":\"张三\",\"组别\":\"机械\"}]" },
+      },
+      required: ["table", "records"],
+    },
+  },
+  {
     name: "setup_bitable",
     description:
       "数据基建一键建表：在指定飞书多维表格 base 里按标准字段 schema 创建 队员名单/任务进度/物资台账/财务报销 四张表，并把 table_id 写入看板配置。需先在飞书云文档新建空白多维表格，把 URL 中 /base/ 后的 app_token 传给 base 参数。仅管理端（MCP_TOKEN）可用。",
@@ -764,6 +794,20 @@ const TOOLS = [
         scope: { type: "string", description: "all（默认）| members | tasks | inventory | finance" },
         user_token: { type: "string", description: "可选：飞书 user_access_token；无 MCP_TOKEN 时用于角色判定（队长/组长可看明细）" },
       },
+    },
+  },
+  {
+    name: "update_prd",
+    description:
+      "更新 PRD 看板需求状态（done | partial | pending | todo），门户「PRD 看板」Tab 实时同步；状态变化会推飞书群（webhook 已配置时）。仅管理端（MCP_TOKEN）可用。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "需求编号：FE-01 ~ FE-13" },
+        status: { type: "string", description: "done | partial | pending | todo" },
+        note: { type: "string", description: "可选：备注（覆盖旧备注）" },
+      },
+      required: ["id", "status"],
     },
   },
   {
@@ -944,8 +988,12 @@ async function callTool(
         return rpc(id, await toolConfigDashboard(args, env));
       case "setup_bitable":
         return rpc(id, await toolSetupBitable(args, env, hasMcpToken));
+      case "add_records":
+        return rpc(id, await toolAddRecords(args, env, hasMcpToken));
       case "validate_bitable":
         return rpc(id, await toolValidateBitable(args, env, hasMcpToken));
+      case "update_prd":
+        return rpc(id, await toolUpdatePrd(args, env, hasMcpToken));
       case "whoami":
         return rpc(id, await toolWhoami(args, env, hasMcpToken));
       case "submit_approval":
@@ -1377,6 +1425,84 @@ const TABLE_DISPLAY_NAMES: Record<DashTable, string> = {
 };
 
 /**
+ * 往指定表里追加记录（飞书字段名 → 值；数字/日期字段传数字，日期为毫秒时间戳）。
+ * 仅管理端（MCP_TOKEN）可用——写操作会改变团队底表。
+ */
+async function toolAddRecords(args: Record<string, unknown>, env: Env, hasMcpToken: boolean) {
+  if (!hasMcpToken) {
+    throw new Error("add_records 仅管理端可用（需 MCP_TOKEN）：写操作会改变团队底表");
+  }
+  if (!env.FEISHU_APP_ID || !env.FEISHU_APP_SECRET) {
+    throw new Error("飞书自建应用未配置（FEISHU_APP_ID / FEISHU_APP_SECRET）");
+  }
+  const table = String(args.table ?? "") as DashTable;
+  if (!DASH_TABLES.includes(table)) {
+    throw new Error(`table 必须是：${DASH_TABLES.join(" | ")}`);
+  }
+  const records = (args.records ?? []) as Array<Record<string, unknown>>;
+  if (!Array.isArray(records) || records.length === 0) throw new Error("records 不能为空");
+  if (records.length > 100) throw new Error("单次最多写入 100 条");
+  for (const [i, r] of records.entries()) {
+    if (!r || typeof r !== "object" || Array.isArray(r) || Object.keys(r).length === 0) {
+      throw new Error(`第 ${i + 1} 条记录为空或非法`);
+    }
+  }
+
+  const cfg = await getDashboardConfig(env);
+  const tableId = cfg?.tables?.[table];
+  if (!cfg || !tableId) {
+    throw new Error(`尚未配置 ${table} 表：先调用 setup_bitable 或 config_dashboard`);
+  }
+  const token = await getTenantAccessToken(env);
+
+  // 先取字段清单校验字段名，避免飞书报含义不清的 FieldNameNotFound
+  const fieldsResp = await fetch(`${FEISHU_API}/bitable/v1/apps/${cfg.base}/tables/${tableId}/fields`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  const fieldsData = (await fieldsResp.json()) as {
+    code?: number;
+    msg?: string;
+    data?: { items?: Array<{ field_name?: string }> };
+  };
+  if (fieldsData.code !== 0) {
+    throw new Error(`读取 ${table} 字段失败：${fieldsData.msg ?? `code ${fieldsData.code}`}`);
+  }
+  const validNames = new Set((fieldsData.data?.items ?? []).map((f) => f.field_name));
+  const badKeys = new Set<string>();
+  for (const r of records) {
+    for (const k of Object.keys(r)) if (!validNames.has(k)) badKeys.add(k);
+  }
+  if (badKeys.size > 0) {
+    throw new Error(
+      `字段不存在：${[...badKeys].join("、")}。${table} 现有字段：${[...validNames].join("、")}`,
+    );
+  }
+
+  const resp = await fetch(`${FEISHU_API}/bitable/v1/apps/${cfg.base}/tables/${tableId}/records/batch_create`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json; charset=utf-8" },
+    body: JSON.stringify({ records: records.map((fields) => ({ fields })) }),
+  });
+  const data = (await resp.json()) as {
+    code?: number;
+    msg?: string;
+    data?: { records?: Array<{ record_id?: string }> };
+  };
+  if (data.code !== 0) {
+    throw new Error(`飞书写入失败：${data.msg ?? `code ${data.code}`}`);
+  }
+  const ids = (data.data?.records ?? []).map((r) => r.record_id).filter(Boolean);
+  return {
+    content: [
+      {
+        type: "text",
+        text: `✅ 已写入 ${ids.length} 条记录到 ${table}：\n${ids.join("\n")}`,
+      },
+    ],
+  };
+}
+
+/**
  * 在指定多维表格 base 里按标准 schema 建表，并把 table_id 写入看板配置。
  * 需在飞书里先建好空白多维表格（云文档 → 新建多维表格），把 URL 中 /base/ 后的 app_token 传给本工具。
  */
@@ -1538,10 +1664,8 @@ async function buildRepos(env: Env): Promise<unknown> {
     return { github: GITHUB_ORG, gitee: GITEE_USER, cachedAt: new Date(cached.cachedAt).toISOString(), repos: cached.data };
   }
   try {
-    const { repos, errors, partial } = await fetchAllRepos(env);
-    // 部分源失败时缩短缓存（10 分钟），尽快补全缺失源
-    const ttl = partial ? REPOS_PARTIAL_CACHE_TTL_SEC : REPOS_CACHE_TTL_SEC;
-    await env.REGISTRY.put(cacheKey, JSON.stringify({ data: repos, cachedAt: Date.now() }), { expirationTtl: ttl });
+    const { repos, errors } = await fetchAllRepos(env);
+    await env.REGISTRY.put(cacheKey, JSON.stringify({ data: repos, cachedAt: Date.now() }), { expirationTtl: REPOS_CACHE_TTL_SEC });
     await Promise.all(legacyKeys.map((k) => env.REGISTRY.delete(k)));
     return { github: GITHUB_ORG, gitee: GITEE_USER, cachedAt: new Date().toISOString(), errors, repos };
   } catch (err) {
@@ -1564,8 +1688,6 @@ interface FetchReposResult {
   repos: RepoEntry[];
   /** 单源失败的原因（成功的源不受影响） */
   errors: Record<string, string>;
-  /** true = 有源失败，缓存应缩短以便尽快补全 */
-  partial: boolean;
 }
 
 /** 双源拉取合并：单源失败不阻断另一源，失败原因透传给前端；双源均失败才抛错走缓存降级 */
@@ -1581,7 +1703,7 @@ async function fetchAllRepos(env: Env): Promise<FetchReposResult> {
     ...(gh.status === "fulfilled" ? gh.value : []),
     ...(gj.status === "fulfilled" ? gj.value : []),
   ].sort((a, b) => b.stars - a.stars || b.forks - a.forks || a.name.localeCompare(b.name));
-  return { repos, errors, partial: Object.keys(errors).length > 0 };
+  return { repos, errors };
 }
 
 async function fetchOrgRepos(env: Env): Promise<RepoEntry[]> {
@@ -2420,14 +2542,15 @@ async function recordNotifyFailure(env: Env, flow: string, title: string, detail
 
 /** 飞书加签：HMAC-SHA256(`${timestamp}\n${secret}`) → Base64 */
 async function feishuBotSign(secret: string, timestamp: number): Promise<string> {
+  // 飞书官方算法：把 `${timestamp}\n${secret}` 作为 HMAC 密钥，对空内容签名（官方 Python 示例即 hmac.new(string_to_sign, digestmod=sha256)）
   const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(secret),
+    new TextEncoder().encode(`${timestamp}\n${secret}`),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
   );
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${timestamp}\n${secret}`));
+  const sig = await crypto.subtle.sign("HMAC", key, new Uint8Array(0));
   return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
 
@@ -2945,6 +3068,162 @@ async function toolConfigFlows(args: Record<string, unknown>, env: Env, hasMcpTo
       },
     ],
   };
+}
+
+// ---------- 动态 PRD 看板（状态经 MCP update_prd 维护；git 提交经 /api/hooks/github 推送） ----------
+
+const PRD_STATUSES = ["done", "partial", "pending", "todo"] as const;
+type PrdStatus = (typeof PRD_STATUSES)[number];
+
+interface PrdItem {
+  title: string;
+  priority: "P0" | "P1" | "P2";
+  status: PrdStatus;
+  note?: string;
+}
+
+/** 初始看板 = PRD V2.0 §5 盘点基线（2026-10-12）；后续用 update_prd 维护，KV prd:status 覆盖本默认值 */
+const DEFAULT_PRD_ITEMS: Record<string, PrdItem> = {
+  "FE-01": { title: "飞书 OAuth 登录态与权限角色", priority: "P0", status: "done", note: "真实队长登录已验证" },
+  "FE-02": { title: "数据基建落地与看板接入", priority: "P0", status: "partial", note: "4 表建成读真实数据；待团队录数据过验收" },
+  "FE-11": { title: "飞书工作台入口切换", priority: "P1", status: "pending", note: "免费版路径：改应用 URL 为 hub，差发版" },
+  "FE-03": { title: "资料页", priority: "P1", status: "partial", note: "功能上线；待填充内容（每类 ≥3 条）" },
+  "FE-04": { title: "赛季目标可视化面板", priority: "P1", status: "todo" },
+  "FE-05": { title: "数据校验 Agent", priority: "P1", status: "partial", note: "规则引擎上线；定时推送待配群机器人" },
+  "FE-08": { title: "报销助手标杆应用", priority: "P1", status: "todo", note: "add_records 回写已就位" },
+  "FE-10": { title: "品牌规范 Skill", priority: "P1", status: "partial", note: "nec-vi / nec-ppt 已上架" },
+  "FE-06": { title: "千人千面「改我的首页」", priority: "P2", status: "todo" },
+  "FE-07": { title: "组别默认首页", priority: "P2", status: "todo" },
+  "FE-09": { title: "审批/待办聚合", priority: "P2", status: "partial", note: "并行会话已建 Plan B 审批引擎 v1" },
+  "FE-12": { title: "Skill 仓库 CI", priority: "P2", status: "todo" },
+  "FE-13": { title: "运营配置自动化复查（lark-cli）", priority: "P2", status: "todo" },
+};
+
+const PRD_MILESTONES = [
+  { id: "M1", title: "地基", items: ["FE-01", "FE-02", "FE-11"] },
+  { id: "M2", title: "资产与智能", items: ["FE-03", "FE-04", "FE-05", "FE-08", "FE-10"] },
+  { id: "M3", title: "个性化与自动化", items: ["FE-06", "FE-07", "FE-09", "FE-12", "FE-13"] },
+];
+
+async function buildPrdBoard(env: Env): Promise<unknown> {
+  const raw = await env.REGISTRY.get("prd:status");
+  let items = { ...DEFAULT_PRD_ITEMS };
+  let updatedAt = "2026-10-12T00:00:00.000Z";
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as { items?: Record<string, PrdItem>; updatedAt?: string };
+      if (parsed.items) items = { ...DEFAULT_PRD_ITEMS, ...parsed.items };
+      if (parsed.updatedAt) updatedAt = parsed.updatedAt;
+    } catch { /* 用默认 */ }
+  }
+  const lastCommitRaw = await env.REGISTRY.get("prd:last_commit");
+  let lastCommit: unknown = null;
+  try {
+    lastCommit = lastCommitRaw ? JSON.parse(lastCommitRaw) : null;
+  } catch { lastCommit = null; }
+
+  const milestones = PRD_MILESTONES.map((m) => ({
+    ...m,
+    done: m.items.filter((id) => items[id]?.status === "done").length,
+    total: m.items.length,
+    cards: m.items.map((id) => ({ id, ...(items[id] ?? { title: id, priority: "P2" as const, status: "todo" as const }) })),
+  }));
+  const all = Object.values(items);
+  return {
+    doc: "docs/团队AI中台PRD_V2.0.md",
+    updatedAt,
+    progress: { done: all.filter((i) => i.status === "done").length, total: all.length },
+    milestones,
+    lastCommit,
+  };
+}
+
+async function toolUpdatePrd(args: Record<string, unknown>, env: Env, hasMcpToken: boolean) {
+  if (!hasMcpToken) throw new Error("update_prd 仅管理端可用（需 MCP_TOKEN）");
+  const id = String(args.id ?? "").trim().toUpperCase();
+  const status = String(args.status ?? "").trim() as PrdStatus;
+  if (!DEFAULT_PRD_ITEMS[id]) throw new Error(`未知需求 id：${id}（FE-01 ~ FE-13）`);
+  if (!PRD_STATUSES.includes(status)) {
+    throw new Error(`status 必须是：${PRD_STATUSES.join(" | ")}`);
+  }
+  const note = args.note != null ? String(args.note) : undefined;
+
+  const raw = await env.REGISTRY.get("prd:status");
+  let data: { items: Record<string, PrdItem>; updatedAt: string };
+  try {
+    data = raw ? (JSON.parse(raw) as typeof data) : { items: {}, updatedAt: "" };
+  } catch {
+    data = { items: {}, updatedAt: "" };
+  }
+  const prev = data.items[id]?.status;
+  data.items[id] = { ...DEFAULT_PRD_ITEMS[id], ...data.items[id], status, ...(note !== undefined ? { note } : {}) };
+  data.updatedAt = new Date().toISOString();
+  await env.REGISTRY.put("prd:status", JSON.stringify(data));
+
+  // 状态变化推群（未配置 webhook 时静默跳过，由 notifyFeishu 内部留痕）
+  if (prev !== status) {
+    await notifyFeishu(env, "prd", `📋 PRD 状态变更：${id} → ${status}`,
+      `${data.items[id].title}${note ? `\n备注：${note}` : ""}`,
+      "https://hub.newenergycoder.club");
+  }
+  return {
+    content: [{ type: "text", text: `✅ ${id} 状态已更新：${prev ?? "-"} → ${status}（看板 /api/prd 与门户「PRD 看板」Tab 已同步）` }],
+  };
+}
+
+/** GitHub push webhook：验签 → 记录最近提交 → 推群通知 */
+async function handleGithubPush(request: Request, env: Env): Promise<Response> {
+  if (!env.GITHUB_WEBHOOK_SECRET) {
+    return json({ error: "未配置 GITHUB_WEBHOOK_SECRET：先用 wrangler secret put GITHUB_WEBHOOK_SECRET 设置后，再在 GitHub 仓库 Settings → Webhooks 添加 https://hub.newenergycoder.club/api/hooks/github（Content type: application/json，secret 同上）" }, 500);
+  }
+  const bodyText = await request.text();
+  const sig = request.headers.get("x-hub-signature-256") ?? "";
+  const expected = "sha256=" + (await hmacSha256Hex(env.GITHUB_WEBHOOK_SECRET, bodyText));
+  if (!(await timingSafeEqual(sig, expected))) {
+    return json({ error: "signature mismatch" }, 401);
+  }
+  if (request.headers.get("x-github-event") !== "push") {
+    return json({ ok: true, ignored: "not a push event" });
+  }
+  let payload: {
+    ref?: string;
+    repository?: { full_name?: string; html_url?: string };
+    head_commit?: { message?: string; author?: { name?: string }; url?: string; timestamp?: string } | null;
+    commits?: Array<{ message?: string; author?: { name?: string }; url?: string; timestamp?: string }>;
+  };
+  try {
+    payload = JSON.parse(bodyText);
+  } catch {
+    return json({ error: "invalid json" }, 400);
+  }
+  const branch = (payload.ref ?? "").replace("refs/heads/", "") || "main";
+  const commit = payload.head_commit ?? payload.commits?.[payload.commits.length - 1] ?? null;
+  if (!commit) return json({ ok: true, ignored: "no commit" });
+
+  const shortMsg = String(commit.message ?? "").split("\n")[0].slice(0, 80);
+  const author = commit.author?.name ?? "unknown";
+  const repo = payload.repository?.full_name ?? "nec-hub";
+  const entry = {
+    repo, branch, message: shortMsg, author,
+    url: commit.url ?? payload.repository?.html_url ?? "",
+    at: new Date().toISOString(),
+  };
+  await env.REGISTRY.put("prd:last_commit", JSON.stringify(entry), { expirationTtl: 30 * 24 * 3600 });
+  const pushResult = await notifyFeishu(env, "prd", `🔀 ${repo} 新提交（${branch}）`, `${shortMsg} — ${author}`, entry.url);
+  return json({ ok: true, commit: entry, notified: pushResult.ok, notifyDetail: pushResult.detail });
+}
+
+/** HMAC-SHA256 → 小写 hex（GitHub webhook 验签用） */
+async function hmacSha256Hex(secret: string, text: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const buf = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 // ---------- 工具函数 ----------

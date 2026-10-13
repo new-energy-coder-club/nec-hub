@@ -70,6 +70,8 @@ wrangler deploy
 | `POST /auth/logout` | 登出（销毁会话并清除 Cookie） |
 | `GET /api/docs` | 资料页索引（KV，含分类/维护人/可见范围） |
 | `GET /api/validate` | 最近一次数据健康校验报告（由 `validate_bitable` 详细模式写入） |
+| `GET /api/prd` | 动态 PRD 看板（M1/M2/M3 需求状态 + 总进度 + 最近 git 提交；状态经 MCP `update_prd` 维护） |
+| `POST /api/hooks/github` | GitHub push webhook（验签 → 记录最近提交 → 推飞书群机器人） |
 | `GET /apps/<name>/` | 队员应用（R2） |
 | `GET /skills/<name>/SKILL.md` | Skill 原文 |
 
@@ -88,6 +90,16 @@ wrangler deploy
 - `remove_docs(names[])` — 从资料页移除条目（只删索引）
 - `validate_bitable(scope?, user_token?)` — 数据健康校验：12 条内置声明式规则扫 4 张表，输出异常清单（记录直链飞书 + 修复建议）；明细仅管理端/队长/组长，无身份只返回计数；详细报告写入 `/api/validate` 供门户「数据健康」展示。规则可用 KV `validate:rules` 覆盖
 - `setup_bitable(base, tables?, force?)` — 数据基建一键建表：按标准 schema 在指定 base 创建四张逻辑表并写入看板配置（仅管理端）
+- `add_records(table, records[])` — 往飞书多维表格追加记录（字段名预检，人话报错；仅管理端）。典型用法：报销回写财务表、任务批量导入、名单录入
+- `update_prd(id, status, note?)` — 更新 PRD 看板需求状态（done/partial/pending/todo），看板实时同步、状态变化推群（仅管理端）
+
+## PRD 看板与提交推送（2026-10-12）
+
+- 门户第 8 个 Tab「PRD 看板」：`GET /api/prd` 输出 M1/M2/M3 三列卡片、总进度条、最近 git 提交；初始状态为 PRD V2.0 盘点基线（`src/index.ts` 内 `DEFAULT_PRD_ITEMS`），之后由 Agent 调 `update_prd` 维护（覆盖存 KV `prd:status`）。
+- 提交推送：`POST /api/hooks/github` 接收 GitHub push webhook（HMAC-SHA256 验签），记录最近提交到看板并推送飞书群（复用通知中心 `notifyFeishu`，可用 `FEISHU_BOT_WEBHOOK_PRD` 分流）。
+- 待配置两步：
+  1. **GitHub 侧**：仓库 Settings → Webhooks → Add webhook → `https://hub.newenergycoder.club/api/hooks/github`，Content type 选 `application/json`，secret 用 `GITHUB_WEBHOOK_SECRET` 的值（已写入 CF secret）。
+  2. **飞书群机器人**：战队群 → 群设置 → 群机器人 → 添加「自定义机器人」→ 把 webhook 地址写入 `FEISHU_BOT_WEBHOOK` secret（加签 secret 写 `FEISHU_BOT_WEBHOOK_SECRET`）。未配置时推送静默跳过，失败留痕 `notify:failed`。
 
 ## 登录态与角色（FE-01）
 

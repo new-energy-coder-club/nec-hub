@@ -93,6 +93,7 @@
     <button data-tab="repos" class="tab-btn py-3">开源仓库</button>
     <button data-tab="dashboard" class="tab-btn py-3">数据看板</button>
     <button data-tab="agent" class="tab-btn py-3">我的 Agent</button>
+    <button data-tab="prd" class="tab-btn py-3">PRD 看板</button>
   </div>
 </nav>
 
@@ -178,6 +179,20 @@
     </div>
   </section>
 
+  <!-- PRD 看板（动态：状态经 MCP update_prd 维护；git 提交经 webhook 推送） -->
+  <section id="tab-prd" class="hidden">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">PRD 看板</h2>
+      <span id="prd-status" class="text-xs text-gray-400"></span>
+    </div>
+    <div id="prd-progress" class="mb-4"></div>
+    <div id="prd-last-commit" class="mb-4"></div>
+    <div id="prd-board" class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="bg-white rounded-xl shadow p-6 text-sm text-gray-400">加载中…</div>
+    </div>
+    <p class="text-xs text-gray-400 mt-3">状态由 Agent 经 nec-hub MCP 的 update_prd 维护（done / partial / pending / todo）；每次 git 提交会推送飞书群并在上方显示最近提交。</p>
+  </section>
+
 </main>
 
 <footer class="max-w-5xl mx-auto px-6 py-8 text-xs text-gray-400">
@@ -208,7 +223,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("tab-active"));
     btn.classList.add("tab-active");
-    ["apps","skills","docs","repos","dashboard","agent"].forEach(t =>
+    ["apps","skills","docs","repos","dashboard","agent","prd"].forEach(t =>
       document.getElementById("tab-"+t).classList.toggle("hidden", t !== btn.dataset.tab));
   });
 });
@@ -436,6 +451,63 @@ fetch("/api/docs").then(r => r.json()).then(docs => {
     `<div class="bg-white rounded-xl shadow p-8 text-center text-red-500 text-sm">资料页加载失败，请稍后重试。</div>`;
 });
 
+// PRD 看板（动态）：里程碑三列卡片 + 总进度 + 最近提交
+const PRD_STATUS_META = {
+  done:     { label: "已完成", color: "#16A34A", bg: "#ECFDF5" },
+  partial:  { label: "进行中", color: "#1FA9E8", bg: "#EFF8FF" },
+  pending:  { label: "待验收", color: "#D97706", bg: "#FFFBEB" },
+  todo:     { label: "未开始", color: "#9CA3AF", bg: "#F9FAFB" },
+};
+function renderPrd(board) {
+  const status = document.getElementById("prd-status");
+  const total = board.progress?.total ?? 0;
+  const done = board.progress?.done ?? 0;
+  const pct = total ? Math.round(done / total * 100) : 0;
+  status.textContent = `更新于 ${new Date(board.updatedAt).toLocaleString("zh-CN")}`;
+  document.getElementById("prd-progress").innerHTML = `
+    <div class="bg-white rounded-xl shadow p-5">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-bold">总进度</span>
+        <span class="text-sm font-black" style="color:var(--navy)">${done} / ${total}（${pct}%）</span>
+      </div>
+      <div class="h-3 rounded overflow-hidden bg-gray-100">
+        <div class="h-3 rounded" style="width:${pct}%;background:linear-gradient(90deg,var(--cyan),var(--cyan-lt))"></div>
+      </div>
+    </div>`;
+  document.getElementById("prd-last-commit").innerHTML = board.lastCommit ? `
+    <div class="bg-white rounded-xl shadow p-4 flex items-center gap-3 text-sm">
+      <span class="px-2 py-0.5 rounded text-xs text-white" style="background:var(--navy)">最近提交</span>
+      <a href="${esc(board.lastCommit.url)}" target="_blank" class="hover:underline truncate" style="color:var(--cyan)">${esc(board.lastCommit.message)}</a>
+      <span class="text-xs text-gray-400 whitespace-nowrap">${esc(board.lastCommit.branch)} · ${esc(board.lastCommit.author)} · ${new Date(board.lastCommit.at).toLocaleString("zh-CN")}</span>
+    </div>` : "";
+  document.getElementById("prd-board").innerHTML = (board.milestones ?? []).map((m) => `
+    <div class="bg-white rounded-xl shadow p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold">${esc(m.id)} · ${esc(m.title)}</h3>
+        <span class="text-xs text-gray-400">${m.done}/${m.total}</span>
+      </div>
+      <div class="h-1.5 rounded bg-gray-100 mb-4"><div class="h-1.5 rounded" style="width:${m.total ? m.done / m.total * 100 : 0}%;background:var(--cyan)"></div></div>
+      <div class="space-y-2">
+        ${m.cards.map((c) => {
+          const meta = PRD_STATUS_META[c.status] ?? PRD_STATUS_META.todo;
+          return `
+          <div class="rounded-lg p-3 border border-gray-100" style="background:${meta.bg}">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-bold text-sm" style="color:var(--navy)">${esc(c.id)}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded text-white" style="background:${meta.color}">${meta.label}</span>
+            </div>
+            <p class="text-xs mt-1" style="color:var(--ink)">${esc(c.title)}</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">${esc(c.priority)}${c.note ? " · " + esc(c.note) : ""}</p>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`).join("");
+}
+fetch("/api/prd").then(r => r.json()).then(renderPrd).catch(() => {
+  document.getElementById("prd-board").innerHTML =
+    `<div class="bg-white rounded-xl shadow p-6 text-sm text-red-500">PRD 看板加载失败，请稍后重试。</div>`;
+});
+
 // NEC 开源仓库（GitHub org + Gitee 账号合并，点击表头按 Star/Fork/Commit 等排序）
 let reposData = [];
 let reposSort = { key: "stars", dir: -1 };
@@ -468,7 +540,7 @@ fetch("/api/repos").then(r => r.json()).then(d => {
   const missing = d.errors ? [d.errors.github ? "GitHub" : "", d.errors.gitee ? "Gitee" : ""].filter(Boolean).join("/") : "";
   document.getElementById("repos-meta").textContent =
     `共 ${reposData.length} 个开源仓库（GitHub ${d.github || ""} + Gitee ${d.gitee || ""}） · 数据更新于 ${time}` +
-    `${d.stale ? "（上游暂不可用，展示缓存快照）" : ""}${missing ? `（${missing} 源暂时缺数据，稍后自动补全）` : ""}`;
+    `${d.stale ? "（上游暂不可用，展示缓存快照）" : ""}${missing ? `（${missing} 源暂时缺数据，每小时自动重试）` : ""}`;
   renderRepos();
 }).catch(() => {
   document.getElementById("repos-box").innerHTML =
