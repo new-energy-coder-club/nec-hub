@@ -15,26 +15,26 @@
  *   GET  /skills/<name>/SKILL.md → Skill 原文（R2）
  *   POST /mcp             → MCP (streamable HTTP, JSON-RPC)
  *
- * 注意：Env 接口为手写最小集。部署前请运行 `wrangler types` 生成权威类型。
+ * 类型：运行 `npx wrangler types` 生成 worker-configuration.d.ts 后，下面的声明合并会把
+ * secrets 补到 Cloudflare.Env 上。wrangler.jsonc 变更后请重新生成类型。
  */
 
-interface Env {
-  ASSETS: Fetcher;
-  REGISTRY: KVNamespace;
-  APPS_BUCKET: R2Bucket;
-  HUB_NAME?: string;
-  /** 设置后，/mcp 写操作需携带 Authorization: Bearer <token>（用 wrangler secret put MCP_TOKEN 配置） */
-  MCP_TOKEN?: string;
-  /** 飞书自建应用凭证（第二阶段接入 query_bitable 时启用） */
-  FEISHU_APP_ID?: string;
-  FEISHU_APP_SECRET?: string;
-  /** Vercel 同步（sync_vercel 工具用） */
-  VERCEL_TOKEN?: string;
-  VERCEL_TEAM?: string;
-  /** GitHub API（/api/repos 仓库列表用，可选；配置后限额更高） */
-  GITHUB_TOKEN?: string;
-  /** Gitee API（/api/repos 仓库列表用，可选；匿名 60 次/小时，配置后限额更高） */
-  GITEE_TOKEN?: string;
+// 通过 wrangler secret put 配置的 secrets，wrangler types 不会自动生成。
+declare global {
+  interface Env {
+    /** 设置后，/mcp 写操作需携带 Authorization: Bearer <token>（用 wrangler secret put MCP_TOKEN 配置） */
+    MCP_TOKEN?: string;
+    /** 飞书自建应用凭证（第二阶段接入 query_bitable 时启用） */
+    FEISHU_APP_ID?: string;
+    FEISHU_APP_SECRET?: string;
+    /** Vercel 同步（sync_vercel 工具用） */
+    VERCEL_TOKEN?: string;
+    VERCEL_TEAM?: string;
+    /** GitHub API（/api/repos 仓库列表用，可选；配置后限额更高） */
+    GITHUB_TOKEN?: string;
+    /** Gitee API（/api/repos 仓库列表用，可选；匿名 60 次/小时，配置后限额更高） */
+    GITEE_TOKEN?: string;
+  }
 }
 
 interface AppEntry {
@@ -138,6 +138,7 @@ const NAME_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    console.log(`[nec-hub] ${request.method} ${url.pathname}`);
     try {
       if (url.pathname === "/mcp" && request.method === "POST") {
         return await handleMcp(request, env);
@@ -180,6 +181,7 @@ export default {
       }
       return await env.ASSETS.fetch(request);
     } catch (err) {
+      console.error(`[nec-hub] ${request.method} ${url.pathname} error:`, err);
       return json({ error: err instanceof Error ? err.message : String(err) }, 500);
     }
   },
@@ -193,8 +195,9 @@ function corsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("origin") ?? "*";
   return {
     "access-control-allow-origin": origin,
-    "access-control-allow-methods": "POST, OPTIONS",
-    "access-control-allow-headers": "content-type",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
+    "access-control-allow-headers": "content-type, authorization",
+    "access-control-max-age": "86400",
     vary: "origin",
   };
 }
