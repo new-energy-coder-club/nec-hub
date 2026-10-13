@@ -52,7 +52,7 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 - **报销链路（FE-08）**：OCR 识别、凭证 R2 存档、回写财务表，详见 §5 FE-08 进展记录
 - **图纸评审（FE-14）**：`src/drawing-review/` 模块 + `/api/drawing-review` 路由 + 门户图纸评审 Tab 已上线，详见 §5 FE-14
 
-**缺口（本 PRD 覆盖）**：数据基建真实灌数、赛季目标面板、数据校验 Agent、个性化首页、审批聚合、品牌 Skill、工作台 Level 3 切换、Skill CI、运营配置自动化、图纸评审全流程集成（腾讯会议/ERP/MES）。
+**缺口（本 PRD 覆盖）**：数据基建真实灌数（任务/物资/报销三表仍 0 记录、队员名单 53 人待补组别）、品牌 Skill、工作台 Level 3 切换、图纸评审全流程集成（腾讯会议/ERP/MES）。赛季目标面板、数据校验 Agent、个性化首页、审批聚合已于 2026-10-14 上线（见各 FE 进展）。
 
 ## 5. 功能需求
 
@@ -101,6 +101,13 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 3. 连续刷新看板 30 次不出现飞书 API 限流错误。
 4. 财务概览对队员角色只显示汇总数字，不显示个人报销明细。
 
+**进展（2026-10-14）**：
+
+- ✅ 正式 Base `PsXnbEG2naCGdCsMuhDcQu3bn7d` 已接入生产（队员名单 53 条真实记录，任务/物资/报销表结构齐全）。
+- ✅ 新增「赛季目标」表（`tblbb26svrrU6ZS8`，字段：目标/关键结果/负责组/截止日期/完成度/状态），已配入生产 `dashboard:config` 的 goals 键。
+- ✅ 经 lark-cli 实测确认：建表/字段/记录全流程可 Agent 化（见《lark-cli能力边界验证报告》）。
+- 待办（需团队人工灌数，非代码缺口）：任务进度/物资台账/财务报销三表灌入当前赛季数据；队员名单 53 人补录「组别」；验收 1/2/3 走查。
+
 ### FE-03 资料页（P1）——对标卡兹克"中台资料页"
 
 **用户故事**：作为新队员/宣传组，队标怎么用、PPT 模板在哪、报销怎么走，在中台一个页面全找到，永远是最新版。
@@ -146,6 +153,20 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 2. 完成度回写后，面板 ≤ 1 分钟刷新。
 3. 创建一个截止日期为明天的测试目标，门户顶部出现告警条。
 
+**进展（2026-10-14，已上线）**：
+
+- ✅ 「赛季目标」表已建并配入 `dashboard:config`（goals 键）；`buildDashboard` 新增 goals 聚合：里程碑时间线 + 各组完成度条形图 + 逾期红色告警 + 记录直链。
+- ✅ MCP `update_progress`（record_id + progress 0-100 / status；MCP_TOKEN 或 user_token 鉴权；写后清 goals 缓存 ≤1 分钟刷新）；飞书进度字段 0-1 自动换算。
+- ✅ 门户顶部 `#goal-banner`：T-7 未达标与逾期目标提醒，可点击跳多维表格、可关闭。
+- 待办：灌入真实赛季目标后走查验收 1/3；进度字段换算在真实表验证一次。
+
+**进展（2026-10-14，目标面板已上线）**：
+
+- ✅ `config_dashboard` 支持 `tables.goals`（赛季目标表）；看板 `goals` 区块输出里程碑时间线（按截止升序、逾期红色）、各组平均完成度、逾期未达标计数；表未配置时区块 `configured=false` 前端自动隐藏。
+- ✅ MCP `update_progress`：支持 `record_id` 精确指定或 `goal` 目标名称/关键词模糊匹配（唯一匹配才写入，多匹配返回候选列表），可带 `note` 写入备注/进展字段；按字段 ui_type 序列化（Progress 字段 0-1），写后清 `dashboard:cache:goals`，面板 ≤1 分钟刷新。
+- ✅ 门户「数据看板 → 赛季目标」区块（时间线 + 各组横向条形图）+ 顶部 T-7 提醒条（`#goal-banner`，多条并列展示，逾期红色置顶）。
+- 待办：真实赛季目标表建表与数据录入（验收 1/3 需真表走查）。
+
 ### FE-05 数据校验 Agent（P1）——对标卡兹克"Agent 扫出一千多条绑定错误"
 
 **用户故事**：作为队长，Agent 定期帮我扫 4 张底表，把脏数据按类型列成清单，我照着清就行。
@@ -167,6 +188,23 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 2. 每条异常带多维表格记录直链，点开即可修。
 3. 每周一 8:00 队长收到飞书群校验摘要（本周新增/已清零/持续异常数）。
 
+**进展（2026-10-14，已上线）**：
+
+- ✅ `src/validation/` 模块上线：声明式规则引擎（8 种算子，内置 11 条默认规则覆盖 4 表）、KV `validate:rules` 零代码增改规则（MCP `config_validate_rules` get/set/reset）。
+- ✅ MCP `validate_bitable`（scope=mine/all；all 仅队长/组长）；API `GET /api/validate/report`、`POST /api/validate/run`（401/403 门禁）；门户看板「数据健康」区块按类型分组展示异常 + 记录直链 + 修复建议。
+- ✅ Cron Trigger `0 0 * * 1`（周一 08:00 UTC+8）自动全量校验 + 周报 diff（新增/已清零/持续），推送飞书群 webhook（secret `FEISHU_WEBHOOK_URL`，未配置静默跳过）。
+- ✅ 18 条 vitest 用例覆盖规则引擎/分组/diff/权限分支。
+- 待办：`wrangler secret put FEISHU_WEBHOOK_URL` 后走查验收 3；真实表字段名/组别枚举用 `config_validate_rules` 校准后走查验收 1/2；记录直链域名按租户实际确认。
+
+**进展（2026-10-14，校验 Agent 已上线）**：
+
+- ✅ MCP `validate_bitable(scope=mine|all)` + `config_validate_rules`（get/set/reset）；规则引擎为声明式 JSON（KV `validate:rules` 覆盖内置 12 条默认规则，无 eval），覆盖队员名单/任务进度/物资台账/财务报销 4 张底表；字段名模糊匹配，字段缺失时该规则跳过不误报。
+- ✅ 异常清单含 `ruleId/table/recordId/recordLink/message/suggestion`，记录直链形如 `https://feishu.cn/base/{app_token}?table={table_id}&record={record_id}`。
+- ✅ 权限：scope=mine 任何登录用户（user_token）校验自己的记录；scope=all 仅队长/组长；MCP_TOKEN 管理通道放行。
+- ✅ 门户「数据看板 → 数据健康」区块（按类型分组 + 可展开清单 + 记录直链）；触发端点 `GET /api/validate?scope=...` 与 `POST /api/validate/run`（登录门禁同上）。
+- ✅ Cron Trigger 每周一 08:00（UTC+8，`0 0 * * 1` UTC）自动全量校验，快照存 KV `validate:report:weekly-prev` 做 diff（新增/已清零/持续），摘要推飞书群机器人 webhook（secret `FEISHU_WEBHOOK_URL`，未配置则跳过不报错）。
+- 待办：预埋 10 条脏数据的验收走查（验收 1）、配置真实 `FEISHU_WEBHOOK_URL` 验证群推送（验收 3）。
+
 ### FE-06 千人千面"改我的首页"（P2）
 
 **用户故事**：作为队员，我右下角点"改我的首页"，用一句话告诉 Agent 我想要什么，它生成并绑定到我的账号。
@@ -185,6 +223,13 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 
 *依赖：FE-01。此功能即文章所说的"不会用 Agent 的同事寸步难行"的引导器，也是低代码实践的展示窗口。*
 
+**进展（2026-10-14，已上线）**：
+
+- ✅ `src/home/` 模块：白名单 6 组件（my-apps/my-tasks/my-reimburse/docs/goals/inventory），布局 schema `{version, widgets[]}`（≤8 个、去重保序、非白名单直接丢弃，禁止自由 HTML）。
+- ✅ API `GET/POST /api/home`、`POST /api/home/reset`（均需登录）；MCP `set_home_layout`（user_token 绑本人，或 MCP_TOKEN 管理端）。
+- ✅ 门户新增默认落地 Tab「我的首页」+ 渲染引擎（同次渲染共享 /api 请求）+「改我的首页」引导 Prompt 生成器 +「恢复默认」按钮。
+- ✅ 20 条 vitest 用例。待办：真实账号走查验收 1/2/3（自然语言→Agent→布局保持、账号隔离、恢复默认）。
+
 ### FE-07 组别默认首页（P2）
 
 **用户故事**：机械组打开中台默认看到机械的任务和物资，视觉组默认看到视觉的——不用自己翻。
@@ -200,6 +245,12 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 1. 两个组配置不同首页后，组员登录分别看到本组内容。
 2. 用户做过个人定制后，组首页不再覆盖。
 3. 未登录访客始终看到默认首页。
+
+**进展（2026-10-14，已上线）**：
+
+- ✅ 三层回退渲染：KV `home:<open_id>`（个人）> `home:group:<组名>`（组）> 代码内置默认；组别复用角色判定的 60s 缓存。
+- ✅ `set_home_layout scope=group` 限组长/队长，组长只能配本组；个人配置存在时组配置不外溢（单测覆盖）。
+- 待办：组长账号真实走查验收 1/2。
 
 ### FE-08 标杆应用：报销助手（P1）——对标卡兹克"商务助手 1 小时开发"
 
@@ -241,6 +292,18 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 1. 存在待审批事项时，对应角色登录可见待办条且数量正确。
 2. 点击审批项跳转飞书后返回，待办数刷新（≤ 5 分钟缓存）。
 3. 无待办时该区域自动隐藏。
+
+**进展（2026-10-14，已上线）**：
+
+- ✅ `src/todos.ts` + `GET /api/todos`（需登录）+ 门户顶部 `#todo-bar`：聚合飞书审批待办（tenant token + approval API，无 scope/报错优雅降级并在前端标注原因）、逾期未完成任务（按负责人匹配）、待确认报销（仅队长/财务角色）。
+- 待办：确认自建应用 approval scope 后走查验收 1/2；线上观察降级提示是否正常。
+
+**进展（2026-10-14，待办聚合已上线）**：
+
+- ✅ `GET /api/todos`（需登录）：聚合 ①任务表逾期任务（负责人=当前用户 且 截止<今天 且 状态≠完成，带多维表格记录直链）；②财务报销表待确认/进行中记录（队员只见自己，队长/财务见全部，复用看板角色判定）。
+- ✅ 飞书审批待办：尝试调飞书审批 API（`/approval/v4/instances/search`）；**审批 scope 未开通时静默降级**——不报错，仅在 `warnings` 字段说明，待办条退化为任务/报销聚合。待办：飞书自建应用开通审批 API scope 后自动生效。
+- ✅ 门户顶部待办条（`#todo-bar`）：登录且有待办时显示计数 + 可展开清单（任务/报销跳记录直链），无待办或未登录自动隐藏；与 FE-04 的 `#goal-banner` 提醒条并存互不干扰。
+- ✅ 结果按用户缓存（KV `todos:{open_id}`，TTL 5 分钟）。
 
 ### FE-10 品牌规范 Skill 扩充（P1）
 
@@ -286,11 +349,15 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 
 **验收标准**：缺 frontmatter 的提交被 CI 拦下并评论原因；`sync-gitee-skills.py` 同步失败的条目门户不展示。
 
+**进展（2026-10-14，确认已满足）**：`new_energy_coder_club` 仓库已有 `.github/workflows/quality-check.yml`：`scripts/validate_skills.py` 强制校验 SKILL.md 存在性、frontmatter name/description、name 与目录一致（失败阻断合并），PR 自动评论质量报告。验收达成。
+
 ### FE-13 运营配置自动化复查（P2，调研项）
 
 **需求描述**：复查 lark-cli 当前覆盖度（文章称已开源、覆盖 700+ 功能点、成功率 95%），验证三件事能否自动化：① 定制工作台创建/发布/启用；② 网页应用版本发布；③ 多维表格读写。能则把《配置手册》的手动步骤改写为 Agent 可执行的 CLI 流程；不能则更新手册注明边界。
 
 **验收标准**：输出一份《lark-cli 能力边界验证报告》归档 docs/；手册相应更新。
+
+**进展（2026-10-14，已完成）**：报告已归档 `docs/lark-cli能力边界验证报告.md`。结论：多维表格读写 ✅ 全自动化（本次建表/灌数据实测）；应用版本发布 ⚠️ 可走 api 逃生舱（未实测）；定制工作台 ❌ 无 OpenAPI，手册手动步骤保留。
 
 ### FE-14 标杆业务：新增机图纸评审流程（P1）
 
@@ -304,7 +371,13 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 - ✅ 数据落飞书多维表格：10 张逻辑表（评审单/会议纪要/整改项/BOM/评估报告/库存查询/发货清单/排期任务/询价单/事件日志），MCP `config_drawing_review` 工具完成 base 与 table_id 配置。
 - ✅ 门户新增"图纸评审" Tab（登录后可见，嵌入独立应用页 `public/apps/drawing-review/`）。
 - ✅ `src/feishu/bitable.ts` 多维表格读写封装（数据看板与图纸评审共用）。
-- 待办：腾讯会议 OpenAPI 自动预约联调、ERP/MES 库存与库位接口对接（未就绪前用手动导入模板兜底）、三家询价单流转与比价、看板阻塞预警与甘特图。
+
+**进展（2026-10-14 二更，询价比价与看板已上线）**：
+
+- ✅ 三家询价单流转与比价：`inquiry.service.ts` + 路由 `POST /{id}/inquiries/generate`（幂等）、`GET /{id}/inquiries`、`POST /inquiries/{inquiryId}/quote`、`POST /{id}/inquiries/compare`；比价规则为价格优先、晚交期 1.2 倍折算，select 联动置 selected/rejected 并写事件日志；选定操作校验 队长/采购/项目经理 角色。
+- ✅ 流程看板：`GET /api/drawing-review/board` 输出状态计数、阻塞预警（待评审>48h / 待整改>72h / 询价>72h 未报价 / 缺料）与甘特图数据（取自事件日志时间戳）；门户图纸评审 Tab 顶部渲染预警红条与纯 HTML/CSS 甘特图。
+- ✅ 专项 PRD 补齐第 12-18 章（用户故事/验收标准/UX/测试策略/上线部署/培训支持/合规）。
+- 待办：腾讯会议 OpenAPI 自动预约联调、ERP/MES 库存与库位接口对接（未就绪前用手动导入模板兜底）、`public/apps/drawing-review/` 独立应用页同步询价/看板增强。
 
 **验收标准**（对齐专项 PRD §8 里程碑）：MVP 跑通"提交 → 评审 → 纪要结论 → BOM → 归档"单流程实例；腾讯会议/ERP/MES 集成联调通过；试点新增机项目全链路跑通。
 
@@ -375,6 +448,7 @@ M2 结束、工作台切换 2 周后，按对标文章建议发**飞书问卷**�
 | V2.0 | 2026-10-12 | 由搭建方案演进为产品化 PRD：对照卡兹克中台文章补齐差距，新增 FE-01 ~ FE-13，定义指标、角色、里程碑 |
 | V2.0 修订 | 2026-10-13 | FE-10 主视觉 VI 字体修订（思源黑体统一 + 东亚字体补设）；FE-08 报销 OCR（单据/付款凭证 Tesseract.js 本地识别）与看板报销界面优化上线 |
 | V2.0 修订 | 2026-10-14 | 同步 FE-01（登录态与角色）/FE-03（资料页）/FE-08/FE-14 最新进展；新增 FE-14 标杆业务并引用专项 PRD；补充 §11-§14 章节 |
+| V2.0 修订 | 2026-10-14 晚 | FE-04/FE-05/FE-06/FE-07/FE-09 上线（赛季目标面板+update_progress、数据校验 Agent+周报 cron、三层回退个性化首页+set_home_layout、待办聚合条）；FE-02 接入正式 Base 并建赛季目标表（灌数/补组别待团队）；FE-12 确认已满足；FE-13 报告归档；生产部署修复半新状态，vitest 114 用例全绿 |
 
 ### 11.2 变更流程
 
