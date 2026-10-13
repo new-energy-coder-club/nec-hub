@@ -25,7 +25,7 @@ import {
   matchField,
   updateBitableRecord,
 } from "../feishu/bitable";
-import { readIndex, upsertIndex, type AppEntry, type SkillEntry } from "../hosting";
+import { readIndex, upsertIndex, inferSkillCategory, normalizeSkillCategory, normalizeSkillTags, type AppEntry, type SkillEntry } from "../hosting";
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
 
@@ -198,7 +198,7 @@ export async function toolSyncVercel(args: Record<string, unknown>, env: Env) {
 }
 
 export async function toolImportSkills(args: Record<string, unknown>, env: Env) {
-  const skills = (args.skills ?? []) as Array<{ name?: string; description?: string; url?: string }>;
+  const skills = (args.skills ?? []) as Array<{ name?: string; description?: string; url?: string; category?: string; tags?: unknown[] }>;
   if (!Array.isArray(skills) || skills.length === 0) throw new Error("skills 不能为空");
   if (skills.length > 200) throw new Error("单次最多导入 200 个");
   const source = String(args.source ?? "external");
@@ -210,12 +210,15 @@ export async function toolImportSkills(args: Record<string, unknown>, env: Env) 
     if (!NAME_RE.test(name)) { skipped++; continue; }
     const existing = byName.get(name);
     if (existing && existing.source === "hub") { skipped++; continue; } // 不覆盖中台自托管的 Skill
+    const description = String(s.description ?? existing?.description ?? "");
     const entry: SkillEntry = {
       name,
-      description: String(s.description ?? existing?.description ?? ""),
+      description,
       url: s.url ? String(s.url) : existing?.url,
       source,
       updatedAt: new Date().toISOString(),
+      category: normalizeSkillCategory(s.category) ?? existing?.category ?? inferSkillCategory(name, description),
+      tags: normalizeSkillTags(s.tags) ?? existing?.tags,
     };
     if (existing) { byName.set(name, entry); updated++; }
     else { byName.set(name, entry); added++; }
@@ -265,11 +268,14 @@ export async function toolPublishSkill(args: Record<string, unknown>, env: Env, 
   // 让边缘缓存里的旧版本立即失效
   const origin = new URL(request.url).origin;
   await caches.default.delete(new Request(`${origin}/skills/${skillName}/SKILL.md`, { method: "GET" }));
+  const description = String(args.description ?? "");
   const entry: SkillEntry = {
     name: skillName,
-    description: String(args.description ?? ""),
+    description,
     source: "hub", // 标记为中台自托管，import_skills 同步外部来源时不覆盖
     updatedAt: new Date().toISOString(),
+    category: normalizeSkillCategory(args.category) ?? inferSkillCategory(skillName, description),
+    tags: normalizeSkillTags(args.tags),
   };
   const list = await upsertIndex(env, "skills:index", entry);
   return {

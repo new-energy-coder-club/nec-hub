@@ -61,6 +61,8 @@
   .host-btn.on { border-color: var(--nec-navy); color: #fff; background: var(--nec-navy); }
   .doc-cat-btn { border: 1.5px solid var(--nec-line); color: var(--nec-gray); background: var(--nec-paper); }
   .doc-cat-btn.on { border-color: var(--nec-navy); color: #fff; background: var(--nec-navy); }
+  .skill-cat-btn { border: 1.5px solid var(--nec-line); color: var(--nec-gray); background: var(--nec-paper); }
+  .skill-cat-btn.on { border-color: var(--nec-navy); color: #fff; background: var(--nec-navy); }
 
   /* NEC-MCP 特效：渐变流光标题 + 呼吸光晕 */
   @keyframes nec-flow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
@@ -274,7 +276,19 @@
 
   <!-- Skill 中心 -->
   <section id="tab-skills" class="hidden">
-    <h2 class="text-lg font-bold mb-4">Skill 中心</h2>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">Skill 中心</h2>
+      <span id="skills-count" class="text-xs text-gray-400"></span>
+    </div>
+    <input id="skill-q" type="search" placeholder="🔍 搜索名称 / 描述 / 标签…"
+           class="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm mb-3">
+    <div class="flex items-center gap-2 mb-4 text-xs flex-wrap">
+      <span id="skill-cat-btns" class="contents"></span>
+      <select id="skill-sort" class="ml-auto border border-gray-200 rounded-full px-2 py-1 bg-white text-gray-500">
+        <option value="updated">按更新时间</option>
+        <option value="name">按名称</option>
+      </select>
+    </div>
     <div id="skills-list" class="space-y-3"></div>
   </section>
 
@@ -908,23 +922,113 @@ fetch("/api/apps").then(r => r.json()).then(apps => {
     </a>`).join("");
 });
 
-// Skill 中心
-fetch("/api/skills").then(r => r.json()).then(skills => {
-  const box = document.getElementById("skills-list");
-  if (!skills.length) {
-    box.innerHTML = `<div class="bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">还没有 Skill 上架。</div>`;
-    return;
-  }
-  box.innerHTML = skills.map(s => `
+// Skill 中心：分类 + 检索
+let skillsData = [];
+let skillCat = "all";
+let skillKw = "";
+let skillSort = "updated";
+// 与后端 src/hosting.ts 的 SKILL_CATEGORY_LABELS / 推断规则保持一致（静态页无法 import worker 代码）
+const SKILL_CAT_LABEL = { dev: "开发工具", docs: "文档办公", design: "设计创意", media: "音视频", data: "数据分析", lark: "飞书协同", agent: "Agent 基建", life: "生活效率", other: "其他" };
+const SKILL_CAT_ORDER = ["dev", "docs", "design", "media", "data", "lark", "agent", "life", "other"];
+const SKILL_CAT_RULES = [
+  ["lark", /^lark-|飞书|多维表格|妙记/i],
+  ["media", /video|audio|music|剪辑|视频|音频|音乐|字幕|ffmpeg|whisper|gif|混剪/i],
+  ["design", /design|canvas|poster|brand|海报|视觉|排版|theme|插画/i],
+  ["data", /data|analy|chart|sql|financial|数据|可视化|财报|股票|评分/i],
+  ["docs", /docx|xlsx|excel|word|pdf|markdown|ppt|slide|文档|论文|thesis|paper|写作|手册/i],
+  ["dev", /code|debug|git|review|test|deploy|refactor|代码|调试|commit|cli/i],
+  ["agent", /mcp|skill|agent|persona|memory|claude|kimi|gemini|browser|prompt/i],
+  ["life", /weather|travel|news|mail|todo|日程|天气|新闻|旅行|提醒|邮件/i],
+];
+
+function skillCategoryOf(s) {
+  const c = (s.category || "").toLowerCase();
+  if (SKILL_CAT_LABEL[c]) return c;
+  const text = `${s.name} ${s.description || ""}`;
+  for (const [cat, re] of SKILL_CAT_RULES) if (re.test(text)) return cat;
+  return "other";
+}
+
+function renderSkillCatBar() {
+  const counts = {};
+  skillsData.forEach(s => { const c = skillCategoryOf(s); counts[c] = (counts[c] || 0) + 1; });
+  document.getElementById("skill-cat-btns").innerHTML =
+    [`<button data-skill-cat="all" class="skill-cat-btn ${skillCat === "all" ? "on" : ""} px-3 py-1 rounded-full">全部 ${skillsData.length}</button>`]
+      .concat(SKILL_CAT_ORDER.filter(c => counts[c]).map(c =>
+        `<button data-skill-cat="${c}" class="skill-cat-btn ${skillCat === c ? "on" : ""} px-3 py-1 rounded-full">${SKILL_CAT_LABEL[c]} ${counts[c]}</button>`))
+      .join("");
+}
+
+function skillCard(s) {
+  const cat = skillCategoryOf(s);
+  const tags = (s.tags || []).slice(0, 5).map(t =>
+    `<span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">#${esc(t)}</span>`).join(" ");
+  return `
     <div class="bg-white rounded-xl shadow p-5 flex items-center gap-4">
-      <div class="flex-1">
-        <h3 class="font-bold">${esc(s.name)}</h3>
-        <p class="text-sm text-gray-500">${esc(s.description || "")}</p>
-        <p class="text-xs text-gray-400 mt-1">更新于 ${new Date(s.updatedAt).toLocaleString("zh-CN")}</p>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="font-bold">${esc(s.name)}</h3>
+          <span class="text-[10px] px-1.5 py-0.5 rounded" style="background:var(--nec-paper);color:var(--nec-gray);border:1px solid var(--nec-line)">${SKILL_CAT_LABEL[cat]}</span>
+          ${s.source === "gitee" ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-500">Gitee</span>' : ""}
+          ${s.source === "hub" ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-500">中台自托管</span>' : ""}
+        </div>
+        <p class="text-sm text-gray-500 mt-1">${esc(s.description || "")}</p>
+        ${tags ? `<div class="flex gap-1 mt-1.5 flex-wrap">${tags}</div>` : ""}
+        <p class="text-xs text-gray-400 mt-1.5">更新于 ${new Date(s.updatedAt).toLocaleString("zh-CN")}</p>
       </div>
       <a href="${s.url || (ORIGIN + '/skills/' + encodeURIComponent(s.name) + '/SKILL.md')}" target="_blank"
          class="text-sm hover:underline whitespace-nowrap" style="color:var(--nec-cyan)">查看 SKILL.md${s.source === 'gitee' ? ' ⤤' : ''}</a>
-    </div>`).join("");
+    </div>`;
+}
+
+function renderSkills() {
+  const box = document.getElementById("skills-list");
+  let list = skillsData.filter(s =>
+    (skillCat === "all" || skillCategoryOf(s) === skillCat) &&
+    (!skillKw || s.name.toLowerCase().includes(skillKw) ||
+      (s.description || "").toLowerCase().includes(skillKw) ||
+      (s.tags || []).some(t => t.toLowerCase().includes(skillKw))));
+  list = [...list].sort(skillSort === "name"
+    ? (a, b) => a.name.localeCompare(b.name)
+    : (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  document.getElementById("skills-count").textContent = skillsData.length ? `共 ${list.length} / ${skillsData.length} 个` : "";
+  if (!list.length) {
+    box.innerHTML = `<div class="bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">${skillsData.length ? "没有匹配的 Skill，换个关键字或分类试试。" : "还没有 Skill 上架。"}</div>`;
+    return;
+  }
+  // 全部 + 无搜索词时按分类分组展示；筛选状态下用平铺结果列表
+  if (skillCat === "all" && !skillKw) {
+    const groups = SKILL_CAT_ORDER.map(cat => ({ cat, items: list.filter(s => skillCategoryOf(s) === cat) })).filter(g => g.items.length);
+    box.innerHTML = groups.map(g => `
+      <div>
+        <h3 class="text-sm font-bold text-slate-700 mb-3">${SKILL_CAT_LABEL[g.cat]}<span class="text-xs font-normal text-gray-400 ml-2">${g.items.length}</span></h3>
+        <div class="space-y-3">${g.items.map(skillCard).join("")}</div>
+      </div>`).join("");
+    return;
+  }
+  box.innerHTML = list.map(skillCard).join("");
+}
+
+document.getElementById("skill-q").addEventListener("input", e => {
+  skillKw = e.target.value.trim().toLowerCase();
+  renderSkills();
+});
+document.getElementById("skill-sort").addEventListener("change", e => {
+  skillSort = e.target.value;
+  renderSkills();
+});
+document.getElementById("skill-cat-btns").addEventListener("click", e => {
+  const b = e.target.closest(".skill-cat-btn");
+  if (!b) return;
+  skillCat = b.dataset.skillCat;
+  renderSkillCatBar();
+  renderSkills();
+});
+
+fetch("/api/skills").then(r => r.json()).then(skills => {
+  skillsData = skills || [];
+  renderSkillCatBar();
+  renderSkills();
 });
 
 // 资料页

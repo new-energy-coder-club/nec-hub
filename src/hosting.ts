@@ -29,6 +29,58 @@ export interface SkillEntry {
   url?: string;
   /** 来源标识，如 gitee / hub */
   source?: string;
+  /** 分类（见 SKILL_CATEGORY_LABELS）；缺省时由前端/导入逻辑按名称与描述推断 */
+  category?: string;
+  /** 自由标签，最多 8 个 */
+  tags?: string[];
+}
+
+/** Skill 分类标签（value 存 KV，label 用于展示；前端 public/index.html 有一份对应副本） */
+export const SKILL_CATEGORY_LABELS: Record<string, string> = {
+  dev: "开发工具",
+  docs: "文档办公",
+  design: "设计创意",
+  media: "音视频",
+  data: "数据分析",
+  lark: "飞书协同",
+  agent: "Agent 基建",
+  life: "生活效率",
+  other: "其他",
+};
+
+export const SKILL_CATEGORY_ORDER = ["dev", "docs", "design", "media", "data", "lark", "agent", "life", "other"] as const;
+
+// 推断规则按优先级从上到下命中即止；关键词同时匹配 name 与 description
+const SKILL_CATEGORY_RULES: Array<[string, RegExp]> = [
+  ["lark", /^lark-|飞书|多维表格|妙记/i],
+  ["media", /video|audio|music|剪辑|视频|音频|音乐|字幕|ffmpeg|whisper|gif|混剪/i],
+  ["design", /design|canvas|poster|brand|海报|视觉|排版|theme|插画/i],
+  ["data", /data|analy|chart|sql|financial|数据|可视化|财报|股票|评分/i],
+  ["docs", /docx|xlsx|excel|word|pdf|markdown|ppt|slide|文档|论文|thesis|paper|写作|手册/i],
+  ["dev", /code|debug|git|review|test|deploy|refactor|代码|调试|commit|cli/i],
+  ["agent", /mcp|skill|agent|persona|memory|claude|kimi|gemini|browser|prompt/i],
+  ["life", /weather|travel|news|mail|todo|日程|天气|新闻|旅行|提醒|邮件/i],
+];
+
+/** 未登记分类时按名称与描述推断分类（与前端 inferSkillCategoryJS 保持同一套规则） */
+export function inferSkillCategory(name: string, description: string): string {
+  const text = `${name} ${description}`;
+  for (const [cat, re] of SKILL_CATEGORY_RULES) {
+    if (re.test(text)) return cat;
+  }
+  return "other";
+}
+
+/** 只接受受支持的分类值，其余视为未提供 */
+export function normalizeSkillCategory(value: unknown): string | undefined {
+  const v = String(value ?? "").trim().toLowerCase();
+  return v && v in SKILL_CATEGORY_LABELS ? v : undefined;
+}
+
+export function normalizeSkillTags(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const tags = value.map((t) => String(t).trim()).filter(Boolean).slice(0, 8);
+  return tags.length ? tags : undefined;
 }
 
 const MIME: Record<string, string> = {
