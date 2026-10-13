@@ -502,8 +502,10 @@ function renderDashboard(d) {
     </table>` : `<p class="text-sm text-gray-400">暂无物资数据</p>`;
 
   const finList = (d.finance?.recent ?? []).map(f => `
-    <li class="flex justify-between py-1.5 border-t border-gray-100 text-sm">
-      <span>${esc(f.name)}</span><span class="mono text-xs">${f.amount ?? "—"}</span>
+    <li class="flex items-baseline gap-2 py-1.5 border-t border-gray-100 text-sm">
+      <span class="text-gray-400 mono text-xs whitespace-nowrap">${fmtDashDate(f.date)}</span>
+      <span class="flex-1 truncate">${esc(f.name)}${f.applicant ? `<i class="not-italic text-xs text-gray-400 ml-1">${esc(f.applicant)}</i>` : ""}</span>
+      <span class="mono text-xs whitespace-nowrap">${f.amount ?? "—"}</span>
     </li>`).join("");
   const finBody = finVis === "full"
     ? (finList ? `<ul>${finList}</ul>` : `<p class="text-sm text-gray-400">暂无报销数据</p>`)
@@ -535,8 +537,113 @@ function renderDashboard(d) {
       ${finBody}
       ${errNote(d.finance?.error)}
     </div>
+    ${reimburseCard()}
     <p class="text-xs text-gray-400">数据源：飞书多维表格（base ${esc(d.base)}）· 队员名单 / 任务进度 / 物资台账 / 财务报销 · 5 分钟缓存 · 财务区按登录角色脱敏</p>
   `;
+}
+
+
+// ===== 报销提交：报销时间 + 单据/付款凭证 OCR 识别（Tesseract.js 本地识别，不上传第三方） =====
+function reimburseCard() {
+  if (!ME || !ME.authenticated) {
+    return '<div class="bg-white rounded-xl shadow p-5 text-sm text-gray-500">🔐 登录后可在线提交报销：选择报销时间，上传单据与付款凭证可自动识别金额/日期。</div>';
+  }
+  const today = new Date().toLocaleDateString('sv-SE'); // 本地时区 YYYY-MM-DD
+  const rows = [
+  '<div class="bg-white rounded-xl shadow p-5">',
+    '<h3 class="font-bold mb-3">提交报销</h3>',
+    '<form id="reimburse-form" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm" onsubmit="return submitReimburse(event)">',
+    F('事项', '<input id="r-item" required class="mt-1 w-full border rounded px-2 py-1.5" placeholder="如：元器件采购" />'),
+    F('金额（元）', '<input id="r-amount" required inputmode="decimal" class="mt-1 w-full border rounded px-2 py-1.5" placeholder="上传凭证后自动识别，可修改" />'),
+    F('报销时间', '<input id="r-date" type="date" required class="mt-1 w-full border rounded px-2 py-1.5" value=' + today + ' />'),
+    F('备注（选填）', '<input id="r-note" class="mt-1 w-full border rounded px-2 py-1.5" />'),
+    F('上传单据', '<input id="r-receipt" type="file" class="mt-1 w-full text-xs" accept="image/*,application/pdf" onchange="recognizeFile(this, 1)">' + '<div id=r-receipt-status class="text-xs text-gray-400 mt-1">发票/收据图片自动识别金额与日期；PDF 仅存档</div>'),
+    F('付款凭证', '<input id="r-payment" type="file" class="mt-1 w-full text-xs" accept="image/*,application/pdf" onchange="recognizeFile(this, 2)">' + '<div id=r-payment-status class="text-xs text-gray-400 mt-1">微信/支付宝付款截图可识别金额</div>'),
+    '<div class="md:col-span-2" style="display:flex;gap:12px;align-items:center">',
+      '<button style="background:var(--navy);color:#fff;padding:8px 16px;border-radius:6px">提交报销</button>',
+      '<span id=r-submit-status class="text-xs text-gray-400"></span>',
+    '</div>',
+    '</form>',
+  '</div>'];
+  return rows.join('');
+}
+function F(label, inner) {
+  return '<label class="block" style="font-size:14px">' + label + '<div style="margin-top:4px">' + inner + '</div></label>';
+}
+
+let _tessLoading = null;
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  if (!_tessLoading) {
+    _tessLoading = new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      s.onload = () => res(window.Tesseract);
+      s.onerror = () => rej(new Error('识别引擎加载失败（网络）'));
+      document.head.appendChild(s);
+    });
+  }
+  return _tessLoading;
+}
+
+/** 从 OCR 文本里提取金额与日期（收据/付款截图的常见版式） */
+function parseFinanceText(text) {
+  const t = String(text || '').replace(/[，\s]/g, '');
+  const out = {};
+  const m = t.match(/(?:金额|合计|总计|实付|付款|支付|[¥￥])\D{0,6}(\d{1,7}(?:\.\d{1,2})?)/);
+  if (m) out.amount = m[1];
+  const d = t.match(/(20\d{2})[-\/年.](\d{1,2})[-\/月.](\d{1,2})/);
+  if (d) out.date = d[1] + '-' + String(d[2]).padStart(2, '0') + '-' + String(d[3]).padStart(2, '0');
+  return out;
+}
+
+async function recognizeFile(input, kind) {
+  const st = document.getElementById(kind === 1 ? 'r-receipt-status' : 'r-payment-status');
+  const f = input.files && input.files[0];
+  if (!f) return;
+  if (f.type === 'application/pdf') {
+    st.textContent = '已选择 ' + f.name + '（PDF 不做识别，提交时一并存档）';
+    return;
+  }
+  st.textContent = '🔍 识别中（首次需加载识别引擎，约十几秒）…';
+  try {
+    const Tesseract = await loadTesseract();
+    const res = await Tesseract.recognize(f, 'chi_sim+eng');
+    const found = parseFinanceText(res && res.data && res.data.text);
+    const hints = [];
+    if (found.amount) { document.getElementById('r-amount').value = found.amount; hints.push('金额 ¥' + found.amount); }
+    if (found.date) { document.getElementById('r-date').value = found.date; hints.push('日期 ' + found.date); }
+    st.textContent = hints.length ? '✅ 已识别：' + hints.join(' · ') + '（可手动修改）' : '⚠ 未识别到金额/日期，请手动填写';
+  } catch (e) {
+    st.textContent = '⚠ 识别失败：' + (e.message || e) + '，请手动填写';
+  }
+}
+
+async function submitReimburse(ev) {
+  ev.preventDefault();
+  const st = document.getElementById('r-submit-status');
+  const fd = new FormData();
+  fd.set('item', document.getElementById('r-item').value.trim());
+  fd.set('amount', document.getElementById('r-amount').value.trim());
+  fd.set('date', document.getElementById('r-date').value);
+  fd.set('note', document.getElementById('r-note').value.trim());
+  const r1 = document.getElementById('r-receipt').files[0];
+  const r2 = document.getElementById('r-payment').files[0];
+  if (r1) fd.set('receipt', r1);
+  if (r2) fd.set('payment', r2);
+  st.textContent = '提交中…';
+  try {
+    const resp = await fetch('/api/reimburse', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || ('HTTP ' + resp.status));
+    st.textContent = '✅ 已提交' + (data.recordId ? '，已写入财务报销表' : '') + (data.warning ? '；⚠ ' + data.warning : '');
+    document.getElementById('reimburse-form').reset();
+    document.getElementById('r-date').value = new Date().toLocaleDateString('sv-SE');
+    loadDashboard();
+  } catch (e) {
+    st.textContent = '❌ 提交失败：' + (e.message || e);
+  }
+  return false;
 }
 
 function loadDashboard() {

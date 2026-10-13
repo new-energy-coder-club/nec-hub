@@ -170,6 +170,9 @@ export default {
       if (url.pathname === "/api/dashboard") {
         return json(await buildDashboard(env, request));
       }
+      if (url.pathname === "/api/reimburse" && request.method === "POST") {
+        return await handleReimburse(request, env);
+      }
       if (url.pathname === "/api/repos") {
         return json(await buildRepos(env));
       }
@@ -1432,6 +1435,16 @@ function fieldNum(v: unknown): number | null {
   return m ? Number(m[0]) : null;
 }
 
+/** 字段值 → 时间戳（ms）。数字按 ms 计；字符串兼容 2026-10-13 / 2026/10/13 / 2026年10月13日 */
+function fieldTs(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const s = fieldText(v).trim();
+  if (!s) return null;
+  const norm = s.replace(/[年月/.]/g, "-").replace(/日/g, "");
+  const t = Date.parse(norm);
+  return Number.isNaN(t) ? null : t;
+}
+
 /** 在记录样本里按正则找第一个匹配的字段名（字段名不固定，做模糊匹配） */
 function findFieldKey(records: BitableRecord[], patterns: RegExp[]): string | null {
   const keys = new Set<string>();
@@ -1518,16 +1531,21 @@ async function buildDashboard(env: Env, request: Request): Promise<unknown> {
     .slice(0, 50);
   const inventoryTotalQty = inventoryItems.reduce((sum, it) => sum + (it.qty ?? 0), 0);
 
-  // 财务报销：笔数 + 金额合计 + 最近条目
+  // 财务报销：笔数 + 金额合计 + 最近条目（含报销时间，按时间倒序）
   const fin = fetched.finance;
   const fAmountKey = findFieldKey(fin.records, [/报销金额/, /^金额/, /金额/, /费用/, /amount/i]);
   const fItemKey = findFieldKey(fin.records, [/^事项/, /事项/, /用途/, /摘要/]);
+  const fDateKey = findFieldKey(fin.records, [/报销时间/, /报销日期/, /^日期/, /日期/, /时间/, /^date/i]);
+  const fApplicantKey = findFieldKey(fin.records, [/申请人/, /报销人/, /经手人/, /提交人/]);
   const financeRecent = fin.records
     .map((r) => ({
       name: (fItemKey ? fieldText(r.fields[fItemKey]) : "") || firstFieldText(r),
       amount: fAmountKey ? fieldNum(r.fields[fAmountKey]) : null,
+      date: fDateKey ? fieldTs(r.fields[fDateKey]) : null,
+      applicant: fApplicantKey ? fieldText(r.fields[fApplicantKey]) : "",
     }))
     .filter((it) => it.name)
+    .sort((a, b) => (b.date ?? 0) - (a.date ?? 0))
     .slice(0, 8);
   const financeTotal = fin.records.reduce(
     (sum, r) => sum + (fAmountKey ? (fieldNum(r.fields[fAmountKey]) ?? 0) : 0),
@@ -1575,6 +1593,136 @@ async function buildDashboard(env: Env, request: Request): Promise<unknown> {
           }),
     }),
   };
+}
+
+// ---------- 报销提交（上传单据/付款凭证 → R2；按字段类型写入财务报销表） ----------
+
+interface BitableFieldMeta {
+  field_name: string;
+  ui_type: string;
+}
+
+/** 拉取表字段元数据（field_name + ui_type），用于按类型序列化写入值 */
+async function listBitableFields(token: string, appToken: string, tableId: string): Promise<BitableFieldMeta[]> {
+  const out: BitableFieldMeta[] = [];
+  let pageToken = "";
+  do {
+    const u = new URL(FEISHU_API + "/bitable/v1/apps/" + appToken + "/tables/" + tableId + "/fields");
+    u.searchParams.set("page_size", "100");
+    if (pageToken) u.searchParams.set("page_token", pageToken);
+    const resp = await fetch(u.toString(), { headers: { authorization: "Bearer " + token } });
+    const data = (await resp.json()) as {
+      code?: number;
+      msg?: string;
+      data?: { items?: BitableFieldMeta[]; has_more?: boolean; page_token?: string };
+    };
+    if (data.code !== 0) throw new Error("读取表字段失败：" + (data.msg ?? ("code " + data.code)));
+    out.push(...(data.data?.items ?? []));
+    pageToken = data.data?.has_more ? (data.data?.page_token ?? "") : "";
+  } while (pageToken);
+  return out;
+}
+
+/** 按字段名正则 + 可选 ui_type 正则挑字段 */
+function matchField(fields: BitableFieldMeta[], patterns: RegExp[], types?: RegExp): BitableFieldMeta | null {
+  for (const re of patterns) {
+    for (const f of fields) {
+      if (re.test(f.field_name) && (!types || types.test(f.ui_type))) return f;
+    }
+  }
+  return null;
+}
+
+/**
+ * POST /api/reimburse（multipart/form-data，需登录）
+ * 字段：item / amount / date(YYYY-MM-DD) / note / receipt(单据文件) / payment(付款凭证文件)
+ * 流程：文件 → R2 receipts/ 存档；再按字段名模糊匹配写入飞书「财务报销」表并清看板缓存。
+ * 表的字段类型不同（日期 vs 文本），先读 fields 元数据按 ui_type 序列化。
+ */
+async function handleReimburse(request: Request, env: Env): Promise<Response> {
+  const session = await resolveSession(env, request);
+  if (!session) return json({ error: "请先登录后再提交报销" }, 401);
+
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return json({ error: "请求必须是 multipart/form-data" }, 400);
+  }
+
+  const item = String(form.get("item") ?? "").trim();
+  const amount = Number(String(form.get("amount") ?? "").replace(/[,，¥￥\s]/g, ""));
+  const dateStr = String(form.get("date") ?? "").trim();
+  const note = String(form.get("note") ?? "").trim();
+  if (!item) return json({ error: "请填写报销事项" }, 400);
+  if (!Number.isFinite(amount) || amount <= 0) return json({ error: "请填写有效金额" }, 400);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return json({ error: "请选择报销时间" }, 400);
+
+  // 1. 单据与付款凭证 → R2（10MB 上限）
+  const day = dateStr.replace(/-/g, "");
+  const files: Record<string, string> = {};
+  for (const [field, label] of [["receipt", "单据"], ["payment", "付款凭证"]] as const) {
+    const f = form.get(field);
+    if (f instanceof File && f.size > 0) {
+      if (f.size > 10 * 1024 * 1024) return json({ error: label + "超过 10MB 上限" }, 400);
+      const safe = (f.name || field).replace(/[^\w.\-一-龥]+/g, "_").slice(-60);
+      const key = "receipts/" + day + "/" + crypto.randomUUID() + "-" + safe;
+      await env.APPS_BUCKET.put(key, await f.arrayBuffer(), {
+        httpMetadata: { contentType: f.type || "application/octet-stream" },
+      });
+      files[field] = key;
+    }
+  }
+
+  const result: Record<string, unknown> = { ok: true, files };
+
+  // 2. 写入财务报销表（字段名模糊匹配；写失败不影响已存档的凭证）
+  const cfg = await getDashboardConfig(env);
+  if (cfg?.tables.finance && env.FEISHU_APP_ID && env.FEISHU_APP_SECRET) {
+    try {
+      const token = await getTenantAccessToken(env);
+      const metas = await listBitableFields(token, cfg.base, cfg.tables.finance);
+      const record: Record<string, unknown> = {};
+
+      const fItem = matchField(metas, [/^事项/, /事项/, /用途/, /摘要/], /Text/i);
+      if (fItem) record[fItem.field_name] = note ? item + "（" + note + "）" : item;
+      const fAmount = matchField(metas, [/报销金额/, /^金额/, /金额/, /费用/, /amount/i], /Number|Currency/i);
+      if (fAmount) record[fAmount.field_name] = amount;
+      const fDate = matchField(metas, [/报销时间/, /报销日期/, /^日期/, /日期/, /时间/, /^date/i]);
+      if (fDate) {
+        record[fDate.field_name] = /DateTime/i.test(fDate.ui_type)
+          ? Date.parse(dateStr + "T00:00:00+08:00")
+          : dateStr;
+      }
+      const fApplicant = matchField(metas, [/申请人/, /报销人/, /经手人/, /提交人/], /Text/i);
+      if (fApplicant) record[fApplicant.field_name] = session.user.name;
+      const fAttach = matchField(metas, [/凭证/, /单据/, /附件/, /票据/], /Text/i);
+      const keys = Object.values(files);
+      if (fAttach && keys.length) record[fAttach.field_name] = keys.join("\n");
+
+      if (Object.keys(record).length === 0) {
+        result.warning = "财务报销表未匹配到可写字段（事项/金额/报销时间），已仅存档凭证文件";
+      } else {
+        const resp = await fetch(
+          FEISHU_API + "/bitable/v1/apps/" + cfg.base + "/tables/" + cfg.tables.finance + "/records",
+          {
+            method: "POST",
+            headers: { authorization: "Bearer " + token, "content-type": "application/json" },
+            body: JSON.stringify({ fields: record }),
+          },
+        );
+        const data = (await resp.json()) as { code?: number; msg?: string; data?: { record?: { record_id?: string } } };
+        if (data.code !== 0) throw new Error(data.msg ?? ("code " + data.code));
+        result.recordId = data.data?.record?.record_id;
+        await env.REGISTRY.delete("dashboard:cache:finance");
+      }
+    } catch (err) {
+      result.warning = "凭证已存档，但写入财务报销表失败：" + (err instanceof Error ? err.message : String(err));
+    }
+  } else {
+    result.warning = "未配置财务报销表或飞书应用，已仅存档凭证文件";
+  }
+  return json(result);
 }
 
 /** 记录里第一个非空文本字段（兜底当标题用） */

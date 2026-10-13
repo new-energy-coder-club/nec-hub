@@ -112,9 +112,9 @@
 
 | 层级 | 中文字体 | 西文/数字 | 场景 |
 |---|---|---|---|
-| 展示标题 | 微软雅黑 Bold / 思源黑体 Bold | Arial Black | 封面主标题、口号、章节数字 |
-| 标题 | 微软雅黑 Bold | Arial Bold | 页标题、卡片标题 |
-| 正文 | 微软雅黑 Regular | Arial Regular | 段落、列表 |
+| 展示标题 | 思源黑体 Bold（首选）/ 微软雅黑 Bold（兜底） | Arial Black | 封面主标题、口号、章节数字 |
+| 标题 | 思源黑体 Bold | Arial Bold | 页标题、卡片标题 |
+| 正文 | 思源黑体 Regular | Arial Regular | 段落、列表 |
 | 等宽 | — | Consolas / IBM Plex Mono | 编号、代码、数据、英文小标签 |
 
 规则：
