@@ -607,6 +607,30 @@ const DR_STATUS = {
 };
 let DR_FILTER = "";
 let DR_DATA = {};
+let DR_MODE = "board";
+
+/** 看板 / 列表 切换（共用同一份数据与状态筛选） */
+function setDrMode(mode) {
+  DR_MODE = mode;
+  document.getElementById("dr-board").classList.toggle("hidden", mode !== "board");
+  document.getElementById("dr-list").classList.toggle("hidden", mode !== "list");
+  for (const m of ["board", "list"]) {
+    const btn = document.getElementById(`dr-mode-${m}`);
+    const on = m === mode;
+    btn.classList.toggle("text-white", on);
+    btn.classList.toggle("text-gray-600", !on);
+    btn.style.background = on ? "var(--navy)" : "";
+  }
+}
+
+/** 看板卡片点击 → 切到列表并展开该评审单详情 */
+function drOpen(reviewId) {
+  setDrMode("list");
+  const box = document.getElementById(`dr-detail-${reviewId}`);
+  if (box && box.classList.contains("hidden")) toggleDrDetail(reviewId);
+  const card = box && box.closest(".bg-white");
+  if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
+}
 
 /** 登录门控：显示/隐藏「图纸评审」Tab 并加载数据 */
 function updateDrawingReviewGate() {
@@ -617,13 +641,16 @@ function updateDrawingReviewGate() {
   if (authed) {
     const dn = document.getElementById("dr-designer-name");
     if (dn) dn.value = `${ME.user.name}（${ME.user.open_id}）`;
+    setDrMode(DR_MODE);
     loadDrawingReviews();
   } else {
     if (!section.classList.contains("hidden")) {
       document.querySelector('[data-tab="apps"]').click();
     }
+    setDrMode("list");
     document.getElementById("dr-list").innerHTML =
       `<p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center">登录后可使用图纸评审流程</p>`;
+    document.getElementById("dr-board").innerHTML = "";
     document.getElementById("dr-stats").innerHTML = "";
     document.getElementById("dr-form-box").classList.add("hidden");
   }
@@ -670,7 +697,6 @@ async function submitDr(e) {
 }
 
 async function loadDrawingReviews() {
-  const listEl = document.getElementById("dr-list");
   const statsEl = document.getElementById("dr-stats");
   try {
     const data = await apiDr("");
@@ -688,11 +714,51 @@ async function loadDrawingReviews() {
     DR_DATA = Object.fromEntries(data.map(r => [r.reviewId, r]));
 
     const shown = DR_FILTER ? data.filter(r => r.status === DR_FILTER) : data;
-    if (!shown.length) {
-      listEl.innerHTML = `<p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center">暂无评审单，点击右上角「＋ 提交评审单」开始</p>`;
-      return;
-    }
-    listEl.innerHTML = shown.map(r => `
+    renderDrList(shown);
+    renderDrBoard(data, counts);
+  } catch (err) {
+    const msg = `<p class="text-sm text-red-500 bg-white rounded-xl shadow p-8 text-center">加载失败：${esc(err.message)}</p>`;
+    document.getElementById("dr-list").innerHTML = msg;
+    document.getElementById("dr-board").innerHTML = `<p class="text-sm text-red-500 bg-white rounded-xl shadow p-8 text-center sm:col-span-2 lg:col-span-3">加载失败：${esc(err.message)}</p>`;
+  }
+}
+
+/** 看板：按状态分列，列内为评审单卡片（点击切列表展开详情） */
+function renderDrBoard(data, counts) {
+  const boardEl = document.getElementById("dr-board");
+  const cols = Object.entries(DR_STATUS)
+    .filter(([k]) => counts[k] && (!DR_FILTER || DR_FILTER === k));
+  if (!cols.length) {
+    boardEl.innerHTML = `<p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center sm:col-span-2 lg:col-span-3">暂无评审单，点击右上角「＋ 提交评审单」开始</p>`;
+    return;
+  }
+  boardEl.innerHTML = cols.map(([k, v]) => {
+    const items = data.filter(r => r.status === k);
+    return `
+      <div class="bg-gray-100/70 rounded-xl p-3">
+        <div class="flex items-center justify-between mb-2 px-1">
+          <span class="text-xs font-bold text-slate-700">${v.label}</span>
+          <span class="text-xs text-gray-400">${items.length}</span>
+        </div>
+        <div class="space-y-2">
+          ${items.map(r => `
+            <div class="bg-white rounded-lg shadow-sm p-3 cursor-pointer hover:shadow-md transition" onclick="drOpen('${r.reviewId}')">
+              <p class="text-sm font-bold text-slate-800 truncate">${esc(r.machineName)}</p>
+              <p class="text-xs text-gray-400 mt-0.5">${esc(r.reviewId)} · ${esc(r.drawingVersion)}</p>
+              <p class="text-xs text-gray-500 mt-1 line-clamp-2">${esc(r.designNotes)}</p>
+            </div>`).join("")}
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function renderDrList(shown) {
+  const listEl = document.getElementById("dr-list");
+  if (!shown.length) {
+    listEl.innerHTML = `<p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center">暂无评审单，点击右上角「＋ 提交评审单」开始</p>`;
+    return;
+  }
+  listEl.innerHTML = shown.map(r => `
       <div class="bg-white rounded-xl shadow p-4">
         <div class="flex items-start justify-between gap-3 cursor-pointer" onclick="toggleDrDetail('${r.reviewId}')">
           <div>
@@ -705,9 +771,6 @@ async function loadDrawingReviews() {
         <div id="dr-detail-${r.reviewId}" class="hidden mt-3 pt-3 border-t border-gray-100 space-y-2 text-sm"></div>
       </div>
     `).join("");
-  } catch (err) {
-    listEl.innerHTML = `<p class="text-sm text-red-500 bg-white rounded-xl shadow p-8 text-center">加载失败：${esc(err.message)}</p>`;
-  }
 }
 
 function filterDr(status) { DR_FILTER = status; loadDrawingReviews(); }
