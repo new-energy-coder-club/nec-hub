@@ -92,6 +92,7 @@
     <button data-tab="docs" class="tab-btn py-3">资料页</button>
     <button data-tab="repos" class="tab-btn py-3">开源仓库</button>
     <button data-tab="dashboard" class="tab-btn py-3">数据看板</button>
+    <button data-tab="reimburse" class="tab-btn py-3">报销</button>
     <button data-tab="agent" class="tab-btn py-3">我的 Agent</button>
     <button data-tab="prd" class="tab-btn py-3">PRD 看板</button>
   </div>
@@ -169,6 +170,52 @@
     <div id="validate-body" class="mt-4"></div>
   </section>
 
+  <!-- 报销（R-01 v1）：提交报销申请 + 我的报销 -->
+  <section id="tab-reimburse" class="hidden">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">报销</h2>
+      <span class="text-xs text-gray-400">审批中：财务/队长审批，结果在群里通知</span>
+    </div>
+    <div id="reimburse-login-tip" class="hidden bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">
+      请先点击右上角「飞书登录」后提交报销。
+    </div>
+    <div id="reimburse-body" class="hidden space-y-4">
+      <div class="bg-white rounded-xl shadow p-5">
+        <h3 class="font-bold mb-3">提交报销申请</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <label class="block">
+            <span class="text-gray-500">事项 *</span>
+            <input id="rb-item" type="text" class="mt-1 w-full border rounded px-3 py-2" placeholder="如：铝型材打样运费">
+          </label>
+          <label class="block">
+            <span class="text-gray-500">金额（元）*</span>
+            <input id="rb-amount" type="number" min="0.01" step="0.01" class="mt-1 w-full border rounded px-3 py-2" placeholder="0.00">
+          </label>
+          <label class="block">
+            <span class="text-gray-500">发票号 *</span>
+            <input id="rb-invoice" type="text" class="mt-1 w-full border rounded px-3 py-2" placeholder="8 位或 20 位">
+          </label>
+          <label class="block">
+            <span class="text-gray-500">发票照片（选填）</span>
+            <input id="rb-invoice-img" type="text" class="mt-1 w-full border rounded px-3 py-2" placeholder="图片链接（选填，填了就不用填无票说明）">
+          </label>
+          <label class="block sm:col-span-2">
+            <span class="text-gray-500">无票说明（发票照片为空时必填）</span>
+            <input id="rb-no-invoice" type="text" class="mt-1 w-full border rounded px-3 py-2" placeholder="如：电子发票待开具 / 小额无票">
+          </label>
+        </div>
+        <div class="mt-4 flex items-center gap-3">
+          <button onclick="submitReimburse()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--cyan)">提交申请</button>
+          <span id="rb-msg" class="text-sm"></span>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl shadow p-5">
+        <h3 class="font-bold mb-3">我的报销</h3>
+        <div id="rb-list" class="text-sm text-gray-400">加载中…</div>
+      </div>
+    </div>
+  </section>
+
   <!-- 我的 Agent -->
   <section id="tab-agent" class="hidden">
     <h2 class="text-lg font-bold mb-4">接入我的 Agent</h2>
@@ -223,7 +270,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("tab-active"));
     btn.classList.add("tab-active");
-    ["apps","skills","docs","repos","dashboard","agent","prd"].forEach(t =>
+    ["apps","skills","docs","repos","dashboard","reimburse","agent","prd"].forEach(t =>
       document.getElementById("tab-"+t).classList.toggle("hidden", t !== btn.dataset.tab));
   });
 });
@@ -293,6 +340,7 @@ async function bootAuth() {
   loadApps();
   loadDashboard(); // 财务区可见性随登录角色变化
   loadTodos();     // 待办条：待我审批 + 逾期任务
+  loadReimburse(); // 报销页：登录态表单 + 我的报销列表
 }
 
 async function refreshMe() {
@@ -334,6 +382,7 @@ async function logout() {
   loadDashboard();
   loadApps();
   hideTodos();
+  loadReimburse();
 }
 
 // 应用广场（在 bootAuth / logout 中调用，保证带登录态语义后再加载）
@@ -398,6 +447,101 @@ function toggleTodos() {
 
 function hideTodos() {
   document.getElementById("todo-bar").classList.add("hidden");
+}
+
+// 报销（R-01 v1）：登录态表单 + 我的报销列表
+function loadReimburse() {
+  const tip = document.getElementById("reimburse-login-tip");
+  const body = document.getElementById("reimburse-body");
+  if (!ME.authenticated || !ME.user) {
+    tip.classList.remove("hidden");
+    body.classList.add("hidden");
+    return;
+  }
+  tip.classList.add("hidden");
+  body.classList.remove("hidden");
+  renderMyReimburseList();
+}
+
+function renderMyReimburseList() {
+  const box = document.getElementById("rb-list");
+  box.innerHTML = "加载中…";
+  fetch("/api/approvals/mine?type=reimburse").then(r => {
+    if (r.status === 401) return { __unauthorized: true };
+    return r.json();
+  }).then(d => {
+    if (d.__unauthorized) { box.innerHTML = `<p class="text-gray-400">登录后可见。</p>`; return; }
+    if (d.hint && !(d.records ?? []).length) { box.innerHTML = `<p class="text-gray-400">${esc(d.hint)}</p>`; return; }
+    const rows = d.records ?? [];
+    if (!rows.length) { box.innerHTML = `<p class="text-gray-400">暂无记录</p>`; return; }
+    box.innerHTML = `
+      <table class="w-full">
+        <thead><tr class="text-left text-xs text-gray-400">
+          <th class="pb-2 font-medium">单号</th><th class="pb-2 font-medium">事项</th>
+          <th class="pb-2 font-medium">金额</th><th class="pb-2 font-medium">状态</th><th class="pb-2 font-medium">提交时间</th>
+        </tr></thead>
+        <tbody>${rows.map(r => {
+          const f = r.fields ?? {};
+          const badge = `<span class="px-2 py-0.5 rounded text-xs text-white" style="background:${dashStatusColor(r.status)}">${esc(r.status || "—")}</span>`;
+          const note = r.status === "审批中" ? `<span class="text-xs text-gray-400 ml-1">通过后可在群里收到通知</span>` : "";
+          return `<tr class="border-t border-gray-100">
+            <td class="py-2 pr-3 mono text-xs whitespace-nowrap">${esc(f.申请单号 || r.application_id || "—")}</td>
+            <td class="py-2 pr-3">${esc(f.事项 || "—")}</td>
+            <td class="py-2 pr-3 mono whitespace-nowrap">${f.金额 != null ? "¥" + esc(String(f.金额)) : "—"}</td>
+            <td class="py-2 pr-3 whitespace-nowrap">${badge}${note}</td>
+            <td class="py-2 text-gray-400 text-xs whitespace-nowrap">${f.提交时间 ? new Date(f.提交时间).toLocaleDateString("zh-CN") : "—"}</td>
+          </tr>`;
+        }).join("")}</tbody>
+      </table>`;
+  }).catch(() => { box.innerHTML = `<p class="text-red-500">加载失败，请稍后重试。</p>`; });
+}
+
+async function submitReimburse() {
+  const msg = document.getElementById("rb-msg");
+  const item = document.getElementById("rb-item").value.trim();
+  const amount = parseFloat(document.getElementById("rb-amount").value);
+  const invoice = document.getElementById("rb-invoice").value.trim();
+  const invoiceImg = document.getElementById("rb-invoice-img").value.trim();
+  const noInvoice = document.getElementById("rb-no-invoice").value.trim();
+  const problems = [];
+  if (!item) problems.push("事项");
+  if (!isFinite(amount) || amount <= 0) problems.push("金额（须大于 0）");
+  if (!/^\d{8}(\d{12})?$/.test(invoice)) problems.push("发票号（8 位或 20 位数字）");
+  if (!invoiceImg && !noInvoice) problems.push("无票说明（发票照片为空时必填）");
+  if (problems.length) {
+    msg.textContent = "缺项：" + problems.join("、");
+    msg.className = "text-sm text-red-500";
+    return;
+  }
+  msg.textContent = "提交中…";
+  msg.className = "text-sm text-gray-400";
+  try {
+    const resp = await fetch("/api/approvals", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        type: "reimburse",
+        fields: {
+          事项: item,
+          金额: amount,
+          发票号: invoice,
+          ...(invoiceImg ? { 发票照片: invoiceImg } : {}),
+          ...(noInvoice ? { 无票说明: noInvoice } : {}),
+        },
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || ("HTTP " + resp.status));
+    msg.textContent = `✅ 已提交：${data.application_id}（${data.status}），群里已通知审批人`;
+    msg.className = "text-sm text-green-600";
+    for (const id of ["rb-item", "rb-amount", "rb-invoice", "rb-invoice-img", "rb-no-invoice"]) {
+      document.getElementById(id).value = "";
+    }
+    renderMyReimburseList();
+  } catch (e) {
+    msg.textContent = "提交失败：" + (e.message || e);
+    msg.className = "text-sm text-red-500";
+  }
 }
 
 // Skill 中心

@@ -225,6 +225,9 @@ export default {
       if (url.pathname === "/api/todos") {
         return await handleTodos(env, request);
       }
+      if (url.pathname === "/api/approvals/mine") {
+        return await handleApprovalMine(env, request);
+      }
       if (url.pathname === "/api/dashboard") {
         return json(await buildDashboard(env, request));
       }
@@ -2489,7 +2492,7 @@ function evalFlowFields(flow: FlowConfig, fields: Record<string, unknown>): stri
       }
     }
   }
-  for (const name of ["报销金额", "数量", "预估总价"]) {
+  for (const name of ["报销金额", "金额", "数量", "预估总价", "预估加工费"]) {
     const v = fieldNum(fields[name]);
     if (v !== null && v <= 0) missing.push(`${name}（须大于 0）`);
   }
@@ -2944,6 +2947,46 @@ async function handleTodos(env: Env, request: Request): Promise<Response> {
   if (!session) return json({ error: "unauthorized" }, 401);
   const role = await resolveUserRole(env, session.user);
   return json(await aggregateTodos(env, role));
+}
+
+/** 我的申请列表（R-01「我的报销」数据源）：按 open_id 过滤 → 提交时间降序 → 前 20 条 */
+async function handleApprovalMine(env: Env, request: Request): Promise<Response> {
+  const session = await resolveSession(env, request);
+  if (!session) return json({ error: "unauthorized" }, 401);
+  const url = new URL(request.url);
+  const type = (url.searchParams.get("type") ?? "reimburse") as ApprovalType;
+  if (!APPROVAL_TYPES.includes(type)) {
+    return json({ error: `type 必须是：${APPROVAL_TYPES.join(" | ")}` }, 400);
+  }
+  const cfg = await getFlowsConfig(env);
+  const flow = cfg[type];
+  if (!flow.tableId) return json({ records: [], hint: "流程未配置" });
+  const base = await getFlowBase(env, flow);
+  if (!base) return json({ records: [], hint: "流程未配置" });
+  const token = await getTenantAccessToken(env);
+  const records = await listBitableRecords(token, base, flow.tableId);
+  const mine = records
+    .filter((r) => fieldText(r.fields["申请人 open_id"]) === session.user.open_id)
+    .sort((a, b) => (fieldNum(b.fields["提交时间"]) ?? 0) - (fieldNum(a.fields["提交时间"]) ?? 0))
+    .slice(0, 20);
+  return json({
+    records: mine.map((r) => {
+      const f = r.fields;
+      return {
+        application_id: fieldText(f["申请单号"]),
+        status: fieldText(f["状态"]),
+        fields: {
+          申请单号: fieldText(f["申请单号"]),
+          事项: fieldText(f["事项"]),
+          金额: fieldNum(f["金额"]),
+          状态: fieldText(f["状态"]),
+          提交时间: fieldNum(f["提交时间"]),
+          审批人: fieldText(f["审批人"]),
+          审批意见: fieldText(f["审批意见"]),
+        },
+      };
+    }),
+  });
 }
 
 // ---------- 审批相关 MCP 工具实现 ----------
