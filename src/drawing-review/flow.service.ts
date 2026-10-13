@@ -49,12 +49,12 @@ export function generateReviewId(): string {
 }
 
 export interface SubmitReviewInput {
-  projectId: string;
-  machineName: string;
-  drawingVersion: string;
-  designerId: string;
+  projectId?: string;
+  machineName?: string;
+  drawingVersion?: string;
+  designerId?: string;
   drawingFiles: DrawingReview["drawingFiles"];
-  designNotes: string;
+  designNotes?: string;
 }
 
 export interface MeetingInput {
@@ -70,27 +70,180 @@ export interface ConclusionInput {
   issues?: ReviewIssue[];
 }
 
+export interface UserPreferences {
+  defaultProjectId?: string;
+  defaultMachineName?: string;
+  defaultDesignerId?: string;
+  lastUsedVersion?: string;
+  preferredTemplate?: string;
+}
+
 export class ReviewFlowService {
   constructor(
     private env: Env,
     private adapter: BaseAdapter,
   ) {}
 
+  /**
+   * Generate intelligent defaults for drawing review submission
+   */
+  async getDefaultSubmissionValues(input: SubmitReviewInput, actorId: string): Promise<Partial<SubmitReviewInput>> {
+    const now = new Date();
+    
+    // Get user preferences for smarter defaults
+    const prefs = await this.getUserPreferences(actorId);
+    
+    // Default to current user as designer if not specified
+    const designerId = input.designerId || prefs.defaultDesignerId || actorId;
+    
+    // Generate default drawing version (V1.0, V1.1, etc.)
+    let drawingVersion = input.drawingVersion;
+    if (!drawingVersion) {
+      // Try to get latest version for this project/machine
+      try {
+        const reviews = await this.adapter.listReviews();
+        if (input.projectId && input.machineName) {
+          // Find latest version for this project and machine
+          const projectMachineReviews = reviews.filter(r => 
+            r.projectId === input.projectId && 
+            r.machineName === input.machineName
+          );
+          if (projectMachineReviews.length > 0) {
+            // Get latest version and increment
+            const latestVersion = projectMachineReviews.reduce((latest, current) => {
+              if (!current.drawingVersion) return latest;
+              // Simple version parsing: V1.0, V1.1, V2.0
+              const match = current.drawingVersion.match(/^V(\d+)\.(\d+)$/);
+              if (!match) return latest;
+              const [_, major, minor] = match;
+              const currentMajor = parseInt(major, 10);
+              const currentMinor = parseInt(minor, 10);
+              
+              const latestMatch = latest.drawingVersion?.match(/^V(\d+)\.(\d+)$/);
+              if (!latestMatch) return current;
+              
+              const [__, latestMajor, latestMinor] = latestMatch;
+              const latestMajorNum = parseInt(latestMajor, 10);
+              const latestMinorNum = parseInt(latestMinor, 10);
+              
+              if (currentMajor > latestMajorNum) return current;
+              if (currentMajor === latestMajorNum && currentMinor > latestMinorNum) return current;
+              return latest;
+            }, { drawingVersion: "V0.0" } as DrawingReview);
+            
+            if (latestVersion.drawingVersion) {
+              const match = latestVersion.drawingVersion.match(/^V(\d+)\.(\d+)$/);
+              if (match) {
+                const [_, major, minor] = match;
+                const currentMajor = parseInt(major, 10);
+                const currentMinor = parseInt(minor, 10);
+                // Increment minor version
+                drawingVersion = `V${currentMajor}.${currentMinor + 1}`;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[drawing-review] Failed to get latest version, using default:", err);
+      }
+      
+      if (!drawingVersion) {
+        drawingVersion = prefs.lastUsedVersion || "V1.0";
+      }
+    }
+    
+    // Default design notes template
+    const designNotes = input.designNotes || this.getDefaultDesignNotesTemplate(prefs.preferredTemplate as string);
+    
+    return {
+      projectId: input.projectId || prefs.defaultProjectId,
+      machineName: input.machineName || prefs.defaultMachineName,
+      drawingVersion,
+      designerId,
+      designNotes,
+    };
+  }
+  
+  private getDefaultDesignNotesTemplate(template: string = "v1"): string {
+    switch (template) {
+      case "v2":
+        return `【设计说明模板 - V2】\n\n1. 项目背景与目标：\n2. 技术规格与参数：\n3. 关键设计变更：\n4. 风险评估与应对：\n5. 测试验证计划：\n6. 相关文档与标准：\n`;
+      default:
+        return `【设计说明模板】\n\n1. 设计背景与目标：\n2. 关键技术参数：\n3. 主要变更点：\n4. 特殊要求与注意事项：\n5. 相关参考文件：\n`;
+    }
+  }
+  
+  /**
+   * Get user-specific preferences for easier filling
+   */
+  private async getUserPreferences(actorId: string): Promise<UserPreferences> {
+    try {
+      // Try to get user preferences from registry
+      const prefs = await this.env.REGISTRY.get(`user-prefs:${actorId}`);
+      if (prefs) {
+        return JSON.parse(prefs) as UserPreferences;
+      }
+    } catch (err) {
+      console.warn("[drawing-review] Failed to get user preferences:", err);
+    }
+    
+    // Return default preferences
+    return {
+      defaultProjectId: "",
+      defaultMachineName: "",
+      defaultDesignerId: actorId,
+      lastUsedVersion: "V1.0",
+      preferredTemplate: "v1",
+    };
+  }
+  
+  /**
+   * Save user preferences for future easy filling
+   */
+  private async saveUserPreferences(actorId: string, prefs: UserPreferences): Promise<void> {
+    try {
+      await this.env.REGISTRY.put(`user-prefs:${actorId}`, JSON.stringify(prefs));
+    } catch (err) {
+      console.warn("[drawing-review] Failed to save user preferences:", err);
+    }
+  }
+
   async submit(input: SubmitReviewInput, actorId: string): Promise<DrawingReview & { recordId: string }> {
+    // Apply intelligent defaults for missing fields
+    const defaults = await this.getDefaultSubmissionValues(input, actorId);
+    
     const review: DrawingReview = {
       reviewId: generateReviewId(),
-      projectId: input.projectId,
-      machineName: input.machineName,
-      drawingVersion: input.drawingVersion,
-      designerId: input.designerId,
+      projectId: defaults.projectId || "",
+      machineName: defaults.machineName || "",
+      drawingVersion: defaults.drawingVersion || "V1.0",
+      designerId: defaults.designerId || actorId,
       drawingFiles: input.drawingFiles,
-      designNotes: input.designNotes,
+      designNotes: defaults.designNotes || "",
       status: "pending_review",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+    
+    // Validate required fields
+    if (!review.projectId || !review.machineName || !review.drawingFiles || review.drawingFiles.length === 0) {
+      throw new Error("项目编号、机型名称和图纸文件为必填项");
+    }
+    
     const saved = await this.adapter.createReview(review);
     await this.logEvent(saved.reviewId, actorId, "submit", "draft", "pending_review", { recordId: saved.recordId });
+    
+    // Save user preferences based on this submission
+    try {
+      const prefs = await this.getUserPreferences(actorId);
+      if (input.projectId) prefs.defaultProjectId = input.projectId;
+      if (input.machineName) prefs.defaultMachineName = input.machineName;
+      if (input.drawingVersion) prefs.lastUsedVersion = input.drawingVersion;
+      await this.saveUserPreferences(actorId, prefs);
+    } catch (err) {
+      console.warn("[drawing-review] Failed to save preferences after submission:", err);
+    }
+    
     return saved;
   }
 

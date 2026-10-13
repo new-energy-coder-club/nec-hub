@@ -3,11 +3,15 @@
  */
 
 import { getTenantAccessToken } from "../feishu/bitable";
+import { resolveUserRole } from "../index";
 import { BaseAdapter } from "./adapter";
+import { BoardService } from "./board.service";
 import { BOMService } from "./bom.service";
 import { getDrawingReviewConfig, requireConfig } from "./config";
-import { ReviewFlowService } from "./flow.service";
+import { ReviewFlowService, type SubmitReviewInput } from "./flow.service";
+import { InquiryService } from "./inquiry.service";
 import { defaultMeetingInput, MeetingService } from "./meeting.service";
+import { SuggestionService } from "./suggestion.service";
 import type { DrawingReviewConfig } from "./types";
 
 export async function handleDrawingReview(request: Request, env: Env, pathname: string): Promise<Response | null> {
@@ -41,14 +45,66 @@ export async function handleDrawingReview(request: Request, env: Env, pathname: 
   try {
     // 评审单
     if (pathname === "/api/drawing-review/submit" && request.method === "POST") {
-      const body = await request.json();
-      const review = await flow.submit(body as Parameters<ReviewFlowService["submit"]>[0], session.open_id);
+      const body = (await request.json()) as Partial<SubmitReviewInput>;
+      // Apply automatic default filling for missing fields
+      const input: SubmitReviewInput = {
+        projectId: body.projectId,
+        machineName: body.machineName,
+        drawingVersion: body.drawingVersion,
+        designerId: body.designerId,
+        drawingFiles: body.drawingFiles || [],
+        designNotes: body.designNotes,
+      };
+      const review = await flow.submit(input, session.open_id);
       return json(review);
     }
 
     if (pathname === "/api/drawing-review" && request.method === "GET") {
       const list = await flow.listReviews();
       return json(list);
+    }
+
+    // 流程看板（须放在 /{id} 详情匹配之前，否则 "board" 会被当作评审单号）
+    if (pathname === "/api/drawing-review/board" && request.method === "GET") {
+      const board = new BoardService(adapter);
+      return json(await board.build());
+    }
+
+    // 询价单：生成（幂等）
+    const inqGenMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/inquiries\/generate$/);
+    if (inqGenMatch && request.method === "POST") {
+      const body = (await request.json().catch(() => ({}))) as import("./inquiry.service").GenerateInquiriesInput;
+      const svc = new InquiryService(env, adapter);
+      return json(await svc.generate(inqGenMatch[1], body, session.open_id));
+    }
+
+    // 询价单：比价建议书 + 可选选定（selections: {物料编码|物料项ID: inquiryId}）
+    const inqCmpMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/inquiries\/compare$/);
+    if (inqCmpMatch && request.method === "POST") {
+      const body = (await request.json().catch(() => ({}))) as { selections?: Record<string, string> };
+      const svc = new InquiryService(env, adapter);
+      if (body.selections && Object.keys(body.selections).length > 0) {
+        const role = await resolveUserRole(env, session);
+        // 名单表未配置/未匹配时降级为仅登录校验，操作人已记入事件日志
+        if (role.matched && !/队长|采购|项目经理/.test(role.role)) {
+          return json({ error: `权限不足：选定供应商仅队长/采购/项目经理可执行（当前角色：${role.role}）` }, 403);
+        }
+      }
+      return json(await svc.compare(inqCmpMatch[1], body.selections, session.open_id));
+    }
+
+    // 询价单：供应商报价回填（任何登录用户，模拟供应商）
+    const inqQuoteMatch = pathname.match(/^\/api\/drawing-review\/inquiries\/([^/]+)\/quote$/);
+    if (inqQuoteMatch && request.method === "POST") {
+      const body = (await request.json()) as import("./inquiry.service").QuoteInput;
+      const svc = new InquiryService(env, adapter);
+      return json(await svc.quote(inqQuoteMatch[1], body, session.open_id));
+    }
+
+    // 询价单：按评审单查询
+    const inqListMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/inquiries$/);
+    if (inqListMatch && request.method === "GET") {
+      return json(await adapter.listInquiries(inqListMatch[1]));
     }
 
     const detailMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)$/);
@@ -112,6 +168,71 @@ export async function handleDrawingReview(request: Request, env: Env, pathname: 
       const bomService = new BOMService(adapter);
       const items = await bomService.extractMachiningItems(machiningMatch[1]);
       return json(items);
+    }
+
+    // 开始填写（方便填写）
+    if (pathname === "/api/drawing-review/start" && request.method === "GET") {
+      const defaults = await flow.getDefaultSubmissionValues({ drawingFiles: [] }, session.open_id);
+      return json({
+        ok: true,
+        defaults,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // 联想建议 API
+    if (pathname === "/api/drawing-review/suggestions" && request.method === "GET") {
+      const url = new URL(request.url);
+      const query = url.searchParams.get("q") || "";
+      const type = url.searchParams.get("type") || "all"; // project | machine | all
+      const projectId = url.searchParams.get("projectId") || undefined;
+      const machineName = url.searchParams.get("machineName") || undefined;
+      
+      const suggestionService = new SuggestionService(adapter);
+      const context = { projectId, machineName };
+      
+      let suggestions;
+      if (type === "all") {
+        suggestions = await suggestionService.getSuggestions(context, query);
+      } else {
+        // 特定类型的联想
+        if (type === "project") {
+          const projectSuggestions = await adapter.getProjectSuggestions(query, 10);
+          suggestions = projectSuggestions.map(p => ({
+            type: "project" as const,
+            value: p,
+            label: `项目: ${p}`,
+          }));
+        } else if (type === "machine") {
+          const machineSuggestions = await adapter.getMachineSuggestions(query, 10);
+          suggestions = machineSuggestions.map(m => ({
+            type: "machine" as const,
+            value: m,
+            label: `机型: ${m}`,
+          }));
+        }
+      }
+      
+      return json({
+        ok: true,
+        suggestions,
+        query,
+        type,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // 基于任务的智能联想
+    const taskSuggestionMatch = pathname.match(/^\/api\/drawing-review\/([^\/]+)\/task-suggestions$/);
+    if (taskSuggestionMatch && request.method === "GET") {
+      const suggestionService = new SuggestionService(adapter);
+      const suggestions = await suggestionService.getTaskBasedSuggestions(taskSuggestionMatch[1]);
+      return json({
+        ok: true,
+        reviewId: taskSuggestionMatch[1],
+        suggestions,
+        timestamp: new Date().toISOString(),
+      });
     }
 
     return null;

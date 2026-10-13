@@ -16,6 +16,25 @@ export async function getDrawingReviewConfig(env: Env): Promise<DrawingReviewCon
   }
 }
 
+/**
+ * Get drawing review configuration with automatic default filling enabled
+ */
+export async function getDrawingReviewConfigWithDefaults(env: Env): Promise<DrawingReviewConfig | null> {
+  const cfg = await getDrawingReviewConfig(env);
+  if (!cfg) return null;
+  
+  // Add default filling configuration
+  return {
+    ...cfg,
+    features: {
+      ...cfg.features,
+      autoDefaultFilling: true,
+      versionIncrement: "minor", // minor or major
+      designNotesTemplate: "template_v1",
+    },
+  };
+}
+
 export async function setDrawingReviewConfig(env: Env, cfg: Omit<DrawingReviewConfig, "updatedAt">): Promise<DrawingReviewConfig> {
   const full: DrawingReviewConfig = { ...cfg, updatedAt: new Date().toISOString() };
   await env.REGISTRY.put(CONFIG_KEY, JSON.stringify(full));

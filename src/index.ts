@@ -206,6 +206,16 @@ export default {
         const res = await dr.handleDrawingReview(request, env, url.pathname);
         if (res) return res;
       }
+      if (url.pathname.startsWith("/api/hardware-review")) {
+        const hr = await import("./hardware-review");
+        const res = await hr.handleHardwareReview(request, env, url.pathname);
+        if (res) return res;
+      }
+      if (url.pathname.startsWith("/api/contract-approval")) {
+        const ca = await import("./contract-approval");
+        const res = await ca.handleContractApproval(request, env, url.pathname);
+        if (res) return res;
+      }
       if (url.pathname === "/api/reimburse" && request.method === "POST") {
         return await handleReimburse(request, env);
       }
@@ -455,7 +465,7 @@ async function validateUserToken(userToken: string): Promise<string> {
  * 按"队员名单"表解析用户角色（表配置来自 config_dashboard 的 members 表）。
  * 表未配置/读取失败 → 默认"队员"（不锁死登录）；在表中未匹配 → "external"（仅公开区）。
  */
-async function resolveUserRole(env: Env, user: HubUser): Promise<UserRole> {
+export async function resolveUserRole(env: Env, user: HubUser): Promise<UserRole> {
   const cacheKey = `role:${user.open_id}`;
   const cached = await env.REGISTRY.get(cacheKey, "json") as UserRole | null;
   if (cached) return cached;
@@ -599,24 +609,31 @@ const TOOLS = [
   {
     name: "deploy_app",
     description:
-      "把一个 Vibe Coding 的静态应用部署到 NEC 团队中台应用广场。文件会上传到团队 R2，访问路径为 /apps/<name>/（入口默认 index.html）。",
+      "把一个 Vibe Coding 的静态应用（单页 HTML 或多文件静态站）发布到 NEC 团队中台应用广场。文件上传到团队 R2，访问路径为 /apps/<name>/。提交前必须满足：① name 匹配 ^[a-z0-9][a-z0-9-]{1,40}$（小写字母/数字/连字符，须以小写字母或数字开头，2-41 字符）；② files 必须包含入口文件 index.html，单次最多 100 个文件；③ 文本文件（HTML/CSS/JS/JSON 等）用 text 字段传 UTF-8 内容，图片/字体等二进制用 base64 字段，两者二选一；④ 文件 path 为相对路径，禁止包含 .. 或以 / 开头；⑤ 同名应用重复部署即覆盖更新，建议递增 version；⑥ 建议显式填写 title/author，便于应用广场展示。",
     inputSchema: {
       type: "object",
       properties: {
-        name: { type: "string", description: "应用名，小写字母/数字/连字符，如 inventory-check" },
-        title: { type: "string", description: "展示名称，如 物资盘点助手" },
-        author: { type: "string", description: "作者（队员姓名）" },
+        name: {
+          type: "string",
+          description:
+            "应用名，即访问路径 /apps/<name>/。小写字母/数字/连字符，须以小写字母或数字开头，2-41 字符，如 inventory-check",
+        },
+        title: { type: "string", description: "展示名称，如 物资盘点助手；缺省用 name" },
+        author: { type: "string", description: "作者（队员姓名）；缺省显示「未知」" },
         visibility: { type: "string", description: "可见范围：all 或组别名，默认 all" },
-        version: { type: "string", description: "版本号，默认 0.1.0" },
+        version: { type: "string", description: "版本号，默认 0.1.0；覆盖更新时建议递增" },
         files: {
           type: "array",
-          description: "静态文件列表（HTML/CSS/JS 等）",
+          description: "静态文件列表（1-100 个），必须包含入口 index.html",
           items: {
             type: "object",
             properties: {
-              path: { type: "string", description: "相对路径，如 index.html、style.css" },
+              path: {
+                type: "string",
+                description: "相对路径（禁止 .. 和开头 /），如 index.html、assets/style.css",
+              },
               text: { type: "string", description: "UTF-8 文本内容（与 base64 二选一）" },
-              base64: { type: "string", description: "base64 内容（二进制文件用）" },
+              base64: { type: "string", description: "base64 内容（图片等二进制文件用）" },
             },
             required: ["path"],
           },
@@ -772,6 +789,52 @@ const TOOLS = [
     },
   },
   {
+    name: "config_hardware_review",
+    description:
+      "配置/查看硬件评审流程对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", description: "get（默认）| set" },
+        base: { type: "string", description: "set 时必填：多维表格 app_token（URL 中 /base/ 后的一段）" },
+        tables: {
+          type: "object",
+          description: "set 时必填：如 {\"reviews\":\"tblxxxx\",\"minutes\":\"tblxxxx\"}",
+          properties: {
+            reviews: { type: "string", description: "硬件评审单表 table_id" },
+            minutes: { type: "string", description: "会议纪要表 table_id" },
+            rectifications: { type: "string", description: "整改项表 table_id" },
+            reports: { type: "string", description: "评审报告表 table_id" },
+            events: { type: "string", description: "流程事件日志表 table_id" },
+          },
+        },
+      },
+    },
+  },
+  {
+    name: "config_contract_approval",
+    description:
+      "配置/查看合同审批流程对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", description: "get（默认）| set" },
+        base: { type: "string", description: "set 时必填：多维表格 app_token（URL 中 /base/ 后的一段）" },
+        tables: {
+          type: "object",
+          description: "set 时必填：如 {\"approvals\":\"tblxxxx\",\"comments\":\"tblxxxx\"}",
+          properties: {
+            approvals: { type: "string", description: "合同审批单表 table_id" },
+            comments: { type: "string", description: "审批评论表 table_id" },
+            approvals_history: { type: "string", description: "审批历史表 table_id" },
+            events: { type: "string", description: "流程事件日志表 table_id" },
+          },
+        },
+      },
+      required: ["action"],
+    },
+  },
+  {
     name: "publish_doc",
     description:
       "发布/更新一条资料页条目（品牌规范、文档模板、制度 SOP、培训材料）。用于 Agent 提交资料更新。",
@@ -819,9 +882,9 @@ async function handleMcp(request: Request, env: Env): Promise<Response> {
       return rpc(id, {
         protocolVersion: (msg.params?.protocolVersion as string) ?? "2025-06-18",
         capabilities: { tools: {} },
-        serverInfo: { name: "nec-hub-mcp", version: "0.2.0" },
+        serverInfo: { name: "NEC-MCP", version: "0.3.0" },
         instructions:
-          "NEC 团队 AI 中台 MCP。deploy_app 部署静态应用到应用广场；publish_skill 上架 Skill；config_dashboard 配置数据看板对接的飞书多维表格；query_bitable 查询多维表格数据（finance 表需 user_token 且角色为队长/财务，或管理端 MCP_TOKEN）。",
+          "NEC-MCP — NEC 团队 AI 中台智能协作中枢。应用广场发布：deploy_app 上传静态文件部署（name 用小写字母/数字/连字符且以字母或数字开头，files 须含 index.html，文本用 text、二进制用 base64，同名重复部署即覆盖更新），register_app 登记外部链接应用，sync_vercel 从 Vercel 批量发现登记；Skill 中心：publish_skill 上架、import_skills 批量导入、remove_skills 下架；数据看板：config_dashboard 配置飞书多维表格，query_bitable 查询（finance 表需 user_token 且角色为队长/财务，或管理端 MCP_TOKEN）。支持自然语言指令，如「把我的应用发布到应用广场」。",
       });
     case "ping":
       return rpc(id, {});
@@ -865,6 +928,10 @@ async function callTool(
         return rpc(id, await toolConfigDashboard(args, env));
       case "config_drawing_review":
         return rpc(id, await toolConfigDrawingReview(args, env));
+      case "config_hardware_review":
+        return rpc(id, await toolConfigHardwareReview(args, env));
+      case "config_contract_approval":
+        return rpc(id, await toolConfigContractApproval(args, env));
       case "publish_doc":
         return rpc(id, await toolPublishDoc(args, env));
       default:
@@ -1719,7 +1786,7 @@ async function buildDashboard(env: Env, request: Request): Promise<unknown> {
   if (!cfg) {
     return {
       configured: false,
-      hint: "数据看板尚未接入飞书多维表格。让 Agent 调用 nec-hub MCP 的 config_dashboard（action=set）配置 base 与 tables 后即可展示。",
+      hint: "数据看板尚未接入飞书多维表格。让 Agent 调用 NEC-MCP 的 config_dashboard（action=set）配置 base 与 tables 后即可展示。",
     };
   }
   // FE-01：按登录角色决定财务区可见级别（hidden=未登录 / summary=队员 / full=队长·财务）
@@ -1789,7 +1856,7 @@ async function buildDashboard(env: Env, request: Request): Promise<unknown> {
   const fAmountKey = findFieldKey(fin.records, [/报销金额/, /^金额/, /金额/, /费用/, /amount/i]);
   const fItemKey = findFieldKey(fin.records, [/^事项/, /事项/, /用途/, /摘要/]);
   const fDateKey = findFieldKey(fin.records, [/报销时间/, /报销日期/, /^日期/, /日期/, /时间/, /^date/i]);
-  const fApplicantKey = findFieldKey(fin.records, [/申请人/, /报销人/, /经手人/, /提交人/]);
+  const fApplicantKey = findFieldKey(fin.records, [/^申请人$/, /申请人/, /报销人/, /经手人/, /提交人/]);
   const financeRecent = fin.records
     .map((r) => ({
       name: (fItemKey ? fieldText(r.fields[fItemKey]) : "") || firstFieldText(r),
@@ -1919,7 +1986,7 @@ async function handleReimburse(request: Request, env: Env): Promise<Response> {
           ? Date.parse(dateStr + "T00:00:00+08:00")
           : dateStr;
       }
-      const fApplicant = matchField(metas, [/申请人/, /报销人/, /经手人/, /提交人/], /Text/i);
+      const fApplicant = matchField(metas, [/^申请人$/, /申请人/, /报销人/, /经手人/, /提交人/], /Text/i);
       if (fApplicant) record[fApplicant.field_name] = session.user.name;
       const fAttach = matchField(metas, [/凭证/, /单据/, /附件/, /票据/], /Text/i);
       const keys = Object.values(files);
@@ -1971,4 +2038,124 @@ async function timingSafeEqual(a: string, b: string): Promise<boolean> {
   const bb = enc.encode(b);
   if (ab.length !== bb.length) return false;
   return crypto.subtle.timingSafeEqual(ab, bb);
+}
+
+
+// ---------- 合同审批流程配置 ----------
+
+const CONTRACT_APPROVAL_TABLES = [
+  "approvals",
+  "comments",
+  "approvals_history",
+  "events",
+] as const;
+
+type ContractApprovalTableName = (typeof CONTRACT_APPROVAL_TABLES)[number];
+
+async function toolConfigContractApproval(args: Record<string, unknown>, env: Env) {
+  const action = String(args.action ?? "get");
+  if (action === "get") {
+    const cfg = await (await import("./contract-approval/config")).getContractApprovalConfig(env);
+    return {
+      content: [
+        {
+          type: "text",
+          text: cfg
+            ? `当前合同审批流程配置：\n${JSON.stringify(cfg, null, 2)} `
+            : "尚未配置。用 action=set 写入：base = 多维表格 app_token（URL 中 /base/ 后的一段），tables = 逻辑表名到 table_id 的映射。",
+        },
+      ],
+    };
+  }
+  if (action !== "set") throw new Error("action 必须是 get | set");
+
+  const base = String(args.base ?? "").trim();
+  if (!/^[A-Za-z0-9]{10,}$/.test(base)) {
+    throw new Error("base 不合法：应为飞书多维表格 URL 中 /base/ 后的 app_token（10 位以上字母数字串）");
+  }
+  const rawTables = (args.tables ?? {}) as Record<string, unknown>;
+  const tables: Partial<Record<ContractApprovalTableName, string>> = {};
+  for (const key of CONTRACT_APPROVAL_TABLES) {
+    const v = String(rawTables[key] ?? "").trim();
+    if (v) {
+      if (!/^tbl[A-Za-z0-9]+$/.test(v)) {
+        throw new Error(`table_id 不合法（${key}）：应以 tbl 开头，如 tblsH8aOxxx`);
+      }
+      tables[key] = v;
+    }
+  }
+  if (Object.keys(tables).length === 0) {
+    throw new Error("tables 至少提供一张表：approvals / comments / approvals_history / events → table_id");
+  }
+  const { setContractApprovalConfig } = await import("./contract-approval/config");
+  const cfg = await setContractApprovalConfig(env, { base, tables });
+  return {
+    content: [
+      {
+        type: "text",
+        text: `✅ 合同审批流程配置已保存：base=${base}，共 ${Object.keys(tables).length} 张表（${Object.keys(tables).join(" / ")}）。
+可调用 GET /api/contract-approval/config 或继续调用 API 验证。`,
+      },
+    ],
+  };
+}
+
+
+// ---------- 硬件评审流程配置 ----------
+
+const HARDWARE_REVIEW_TABLES = [
+  "reviews",
+  "minutes",
+  "rectifications",
+  "reports",
+  "events",
+] as const;
+
+type HardwareReviewTableName = (typeof HARDWARE_REVIEW_TABLES)[number];
+
+async function toolConfigHardwareReview(args: Record<string, unknown>, env: Env) {
+  const action = String(args.action ?? "get");
+  if (action === "get") {
+    const cfg = await (await import("./hardware-review/config")).getHardwareReviewConfig(env);
+    return {
+      content: [
+        {
+          type: "text",
+          text: cfg
+            ? `当前硬件评审流程配置：\n${JSON.stringify(cfg, null, 2)} `
+            : "尚未配置。用 action=set 写入：base = 多维表格 app_token（URL 中 /base/ 后的一段），tables = 逻辑表名到 table_id 的映射。",
+        },
+      ],
+    };
+  }
+  if (action !== "set") throw new Error("action 必须是 get | set");
+
+  const base = String(args.base ?? "").trim();
+  if (!/^[A-Za-z0-9]{10,}$/.test(base)) {
+    throw new Error("base 不合法：应为飞书多维表格 URL 中 /base/ 后的 app_token（10 位以上字母数字串）");
+  }
+  const rawTables = (args.tables ?? {}) as Record<string, unknown>;
+  const tables: Partial<Record<HardwareReviewTableName, string>> = {};
+  for (const key of HARDWARE_REVIEW_TABLES) {
+    const v = String(rawTables[key] ?? "").trim();
+    if (v) {
+      if (!/^tbl[A-Za-z0-9]+$/.test(v)) {
+        throw new Error(`table_id 不合法（${key}）：应以 tbl 开头，如 tblsH8aOxxx`);
+      }
+      tables[key] = v;
+    }
+  }
+  if (Object.keys(tables).length === 0) {
+    throw new Error("tables 至少提供一张表：reviews / minutes / rectifications / reports / events → table_id");
+  }
+  const { setHardwareReviewConfig } = await import("./hardware-review/config");
+  const cfg = await setHardwareReviewConfig(env, { base, tables });
+  return {
+    content: [
+      {
+        type: "text",
+        text: `✅ 硬件评审流程配置已保存：base=${base}，共 ${Object.keys(tables).length} 张表（${Object.keys(tables).join(" / ")}）。\n可调用 GET /api/hardware-review/config 或继续调用 API 验证。`,
+      },
+    ],
+  };
 }

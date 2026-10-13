@@ -170,11 +170,16 @@ export interface Inquiry {
   inquiryId: string;
   reviewId: string;
   bomItemId: string;
+  materialCode?: string;
+  materialName?: string;
+  specification?: string;
   supplierName: string;
   quantity: number;
+  requiredDate?: string;
   price?: number;
   deliveryDate?: string;
   status: "sent" | "quoted" | "selected" | "rejected";
+  createdAt?: string;
 }
 
 export interface ProcessEvent {
@@ -192,6 +197,11 @@ export interface DrawingReviewConfig {
   base: string;
   tables: Partial<Record<DrawingReviewTable, string>>;
   updatedAt: string;
+  features?: {
+    autoDefaultFilling?: boolean;
+    versionIncrement?: "minor" | "major";
+    designNotesTemplate?: string;
+  };
 }
 
 export type DrawingReviewTable =

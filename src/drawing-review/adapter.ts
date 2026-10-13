@@ -8,7 +8,9 @@
 import {
   BitableRecord,
   createBitableRecord,
+  fieldNum,
   fieldText,
+  fieldTs,
   getTenantAccessToken,
   listBitableRecords,
   updateBitableRecord,
@@ -19,6 +21,8 @@ import type {
   DrawingReview,
   DrawingReviewConfig,
   DrawingReviewTable,
+  Inquiry,
+  ProcessEvent,
   ReviewConclusion,
   ReviewMinutes,
   ReviewStatus,
@@ -81,6 +85,73 @@ export class BaseAdapter {
     return rec ? this.recordToReview(rec) : null;
   }
 
+  /**
+   * 联想查询：根据项目编号、机型名称等条件查找相关评审单
+   */
+  async findReviewsByPattern(pattern: {
+    projectId?: string;
+    machineName?: string;
+    designerId?: string;
+    status?: string;
+    limit?: number;
+  }): Promise<Array<DrawingReview & { recordId: string }>> {
+    const records = await this.listRecords("reviews");
+    const limit = pattern.limit || 10;
+    
+    return records
+      .filter(r => {
+        if (pattern.projectId && !fieldText(r.fields["项目编号"]).toLowerCase().includes(pattern.projectId.toLowerCase())) {
+          return false;
+        }
+        if (pattern.machineName && !fieldText(r.fields["机型名称"]).toLowerCase().includes(pattern.machineName.toLowerCase())) {
+          return false;
+        }
+        if (pattern.designerId && fieldText(r.fields["设计负责人"]) !== pattern.designerId) {
+          return false;
+        }
+        if (pattern.status && fieldText(r.fields["状态"]) !== pattern.status) {
+          return false;
+        }
+        return true;
+      })
+      .map(r => this.recordToReview(r))
+      .slice(0, limit);
+  }
+
+  /**
+   * 获取项目编号联想列表（去重）
+   */
+  async getProjectSuggestions(query: string, limit: number = 5): Promise<string[]> {
+    const records = await this.listRecords("reviews");
+    const projects = new Set<string>();
+    
+    records.forEach(r => {
+      const projectId = fieldText(r.fields["项目编号"]);
+      if (projectId && projectId.toLowerCase().includes(query.toLowerCase())) {
+        projects.add(projectId);
+      }
+    });
+    
+    return Array.from(projects).slice(0, limit);
+  }
+
+  /**
+   * 获取机型名称联想列表（去重）
+   */
+  async getMachineSuggestions(query: string, limit: number = 5): Promise<string[]> {
+    const records = await this.listRecords("reviews");
+    const machines = new Set<string>();
+    
+    records.forEach(r => {
+      const machineName = fieldText(r.fields["机型名称"]);
+      if (machineName && machineName.toLowerCase().includes(query.toLowerCase())) {
+        machines.add(machineName);
+      }
+    });
+    
+    return Array.from(machines).slice(0, limit);
+  }
+
   async createReview(review: DrawingReview): Promise<DrawingReview & { recordId: string }> {
     const fields = this.reviewToFields(review);
     const rec = await this.createRecord("reviews", fields);
@@ -123,6 +194,7 @@ export class BaseAdapter {
       机型名称: "machineName",
       图纸版本: "drawingVersion",
       设计负责人: "designerId",
+      设计负责人ID: "designerId",
       设计说明: "designNotes",
       状态: "status",
       会议ID: "meetingId",
@@ -213,7 +285,133 @@ export class BaseAdapter {
       status: (fieldText(rec.fields["状态"] ?? rec.fields["status"]) as "draft" | "confirmed") || "draft",
       recordId: rec.record_id,
     };
-    // TODO: 读取 BOMItem 子表
-    return { bom, items: [] };
+    const items = await this.listBOMItems(bom.bomId);
+    return { bom, items };
+  }
+
+  /** 读取某 BOM 下的全部物料行（BOM 头与物料同表，以「关联BOM」区分） */
+  async listBOMItems(bomId: string): Promise<Array<BOMItem & { recordId: string }>> {
+    const records = await this.listRecords("bom");
+    return records
+      .filter((r) => fieldText(r.fields["关联BOM"] ?? r.fields["bomId"]) === bomId)
+      .map((r) => this.recordToBOMItem(r, bomId));
+  }
+
+  private recordToBOMItem(r: BitableRecord, bomId: string): BOMItem & { recordId: string } {
+    const f = r.fields;
+    const rawSource = fieldText(f["来源"] ?? f["source"]);
+    const sourceMap: Record<string, BOMItem["source"]> = { 外购: "purchased", 标准件: "standard", 自制: "self-made" };
+    return {
+      recordId: r.record_id,
+      itemId: fieldText(f["物料项ID"] ?? f["itemId"]) || r.record_id,
+      bomId,
+      level: fieldNum(f["层级"] ?? f["level"]) ?? 3,
+      materialCode: fieldText(f["物料编码"] ?? f["materialCode"]) || undefined,
+      materialName: fieldText(f["物料名称"] ?? f["materialName"]),
+      specification: fieldText(f["规格型号"] ?? f["specification"]),
+      quantity: fieldNum(f["数量"] ?? f["quantity"]) ?? 0,
+      unit: fieldText(f["单位"] ?? f["unit"]),
+      material: fieldText(f["材质"] ?? f["material"]) || undefined,
+      process: (fieldText(f["加工工艺"] ?? f["process"]) as BOMItem["process"]) || undefined,
+      source: sourceMap[rawSource] ?? ((rawSource as BOMItem["source"]) || "standard"),
+      drawingNo: fieldText(f["参考图号"] ?? f["drawingNo"]) || undefined,
+      remark: fieldText(f["备注"] ?? f["remark"]) || undefined,
+    };
+  }
+
+  // ---------- 询价单 ----------
+
+  async listInquiries(reviewId?: string): Promise<Array<Inquiry & { recordId: string }>> {
+    const records = await this.listRecords("inquiries");
+    return records
+      .map((r) => this.recordToInquiry(r))
+      .filter((i) => !reviewId || i.reviewId === reviewId);
+  }
+
+  async findInquiryById(inquiryId: string): Promise<(Inquiry & { recordId: string }) | null> {
+    const records = await this.listRecords("inquiries");
+    const rec = records.find((r) => fieldText(r.fields["询价单号"] ?? r.fields["inquiryId"]) === inquiryId);
+    return rec ? this.recordToInquiry(rec) : null;
+  }
+
+  async createInquiry(inquiry: Inquiry): Promise<Inquiry & { recordId: string }> {
+    const rec = await this.createRecord("inquiries", {
+      询价单号: inquiry.inquiryId,
+      关联评审单: [inquiry.reviewId],
+      关联物料: inquiry.bomItemId,
+      物料编码: inquiry.materialCode,
+      物料名称: inquiry.materialName,
+      规格型号: inquiry.specification,
+      供应商: inquiry.supplierName,
+      需求数量: inquiry.quantity,
+      需求日期: inquiry.requiredDate,
+      报价: inquiry.price,
+      交期: inquiry.deliveryDate,
+      状态: inquiry.status,
+      创建时间: inquiry.createdAt ?? new Date().toISOString(),
+    });
+    return this.recordToInquiry(rec);
+  }
+
+  async updateInquiry(recordId: string, patch: Partial<Inquiry>): Promise<Inquiry & { recordId: string }> {
+    const fields: Record<string, unknown> = {};
+    if (patch.supplierName !== undefined) fields["供应商"] = patch.supplierName;
+    if (patch.price !== undefined) fields["报价"] = patch.price;
+    if (patch.deliveryDate !== undefined) fields["交期"] = patch.deliveryDate;
+    if (patch.status !== undefined) fields["状态"] = patch.status;
+    if (patch.requiredDate !== undefined) fields["需求日期"] = patch.requiredDate;
+    const rec = await this.updateRecord("inquiries", recordId, fields);
+    return this.recordToInquiry(rec);
+  }
+
+  private recordToInquiry(r: BitableRecord): Inquiry & { recordId: string } {
+    const f = r.fields;
+    return {
+      recordId: r.record_id,
+      inquiryId: fieldText(f["询价单号"] ?? f["inquiryId"]) || r.record_id,
+      reviewId: fieldText(f["关联评审单"] ?? f["reviewId"]),
+      bomItemId: fieldText(f["关联物料"] ?? f["bomItemId"]),
+      materialCode: fieldText(f["物料编码"] ?? f["materialCode"]) || undefined,
+      materialName: fieldText(f["物料名称"] ?? f["materialName"]) || undefined,
+      specification: fieldText(f["规格型号"] ?? f["specification"]) || undefined,
+      supplierName: fieldText(f["供应商"] ?? f["supplierName"]),
+      quantity: fieldNum(f["需求数量"] ?? f["quantity"]) ?? 0,
+      requiredDate: fieldText(f["需求日期"] ?? f["requiredDate"]) || undefined,
+      price: fieldNum(f["报价"] ?? f["price"]) ?? undefined,
+      deliveryDate: fieldText(f["交期"] ?? f["deliveryDate"]) || undefined,
+      status: (fieldText(f["状态"] ?? f["status"]) as Inquiry["status"]) || "sent",
+      createdAt: fieldText(f["创建时间"] ?? f["createdAt"]) || undefined,
+    };
+  }
+
+  // ---------- 流程事件 ----------
+
+  async listEvents(reviewId?: string): Promise<ProcessEvent[]> {
+    const records = await this.listRecords("events");
+    return records
+      .map((r) => {
+        const f = r.fields;
+        const ts = fieldTs(f["操作时间"] ?? f["createdAt"]);
+        let payload: Record<string, unknown> | undefined;
+        const rawPayload = fieldText(f["附加信息"] ?? f["payload"]);
+        if (rawPayload) {
+          try {
+            payload = JSON.parse(rawPayload) as Record<string, unknown>;
+          } catch {
+            payload = undefined;
+          }
+        }
+        return {
+          eventId: fieldText(f["事件ID"] ?? f["eventId"]) || r.record_id,
+          reviewId: fieldText(f["关联评审单"] ?? f["reviewId"]),
+          actorId: fieldText(f["操作人"] ?? f["actorId"]),
+          action: fieldText(f["动作"] ?? f["action"]),
+          fromStatus: (fieldText(f["原状态"] ?? f["fromStatus"]) as ReviewStatus) || undefined,
+          toStatus: (fieldText(f["新状态"] ?? f["toStatus"]) as ReviewStatus) || undefined,
+          payload,
+          createdAt: ts ? new Date(ts).toISOString() : "",
+        } satisfies ProcessEvent;
+      })
+      .filter((e) => !reviewId || e.reviewId === reviewId);
   }
 }
