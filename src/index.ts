@@ -2570,7 +2570,7 @@ async function notifyFeishu(env: Env, flow: string, title: string, content: stri
   while (attempt < 3) {
     attempt++;
     try {
-      const body: Record<string, unknown> = { msgtype: "text", text: { content: text } };
+      const body: Record<string, unknown> = { msg_type: "text", content: { text } };
       if (secret) {
         const timestamp = Math.floor(Date.now() / 1000);
         body.timestamp = timestamp;
