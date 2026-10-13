@@ -1871,6 +1871,7 @@ async function handleReimburse(request: Request, env: Env): Promise<Response> {
   const amount = Number(String(form.get("amount") ?? "").replace(/[,，¥￥\s]/g, ""));
   const dateStr = String(form.get("date") ?? "").trim();
   const note = String(form.get("note") ?? "").trim();
+  const invno = String(form.get("invno") ?? "").trim();
   if (!item) return json({ error: "请填写报销事项" }, 400);
   if (!Number.isFinite(amount) || amount <= 0) return json({ error: "请填写有效金额" }, 400);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return json({ error: "请选择报销时间" }, 400);
