@@ -59,6 +59,20 @@ interface SkillEntry {
   source?: string;
 }
 
+/** 资料页条目（KV key: docs:registry，由 MCP publish_doc 写入） */
+interface DocEntry {
+  id: string;
+  title: string;
+  description: string;
+  /** 分类：brand=品牌规范 template=文档模板 sop=制度SOP training=培训材料 */
+  category: "brand" | "template" | "sop" | "training";
+  url: string;
+  visibility: string;
+  maintainer: string;
+  updatedAt: string;
+  source: string;
+}
+
 /** 数据看板配置（KV key: dashboard:config，由 MCP config_dashboard 写入） */
 interface DashboardConfig {
   /** 多维表格 app_token（表格 URL 中 /base/ 之后的一段） */
@@ -123,6 +137,9 @@ const GITEE_USER = "darrenpig";
 /** 仓库列表缓存 TTL（秒）。两源合计单次刷新约 40+ 次请求（GitHub/Gitee 匿名均 60 次/小时），建议配置 GITHUB_TOKEN / GITEE_TOKEN */
 const REPOS_CACHE_TTL_SEC = 3600;
 
+/** 资料页注册表 KV key */
+const DOCS_REGISTRY_KEY = "docs:registry";
+
 const MIME: Record<string, string> = {
   html: "text/html; charset=utf-8",
   htm: "text/html; charset=utf-8",
@@ -177,6 +194,9 @@ export default {
       }
       if (url.pathname === "/api/skills") {
         return json(await readIndex<SkillEntry>(env, "skills:index"));
+      }
+      if (url.pathname === "/api/docs") {
+        return json(await buildDocs(env, request));
       }
       if (url.pathname === "/api/dashboard") {
         return json(await buildDashboard(env, request));
@@ -282,6 +302,11 @@ async function handleFeishuAuth(request: Request, env: Env): Promise<Response> {
   // 4. 签发中台会话（HttpOnly Cookie；MES 跨域调用不会带上，本门户同源登录生效）
   const sid = await createSession(env, user);
 
+  // 5. 另签发"上次登录"提示 Cookie（非 HttpOnly，前端可读；仅姓名/头像/时间等展示信息）
+  const headers = new Headers({ "content-type": "application/json; charset=utf-8", ...cors });
+  headers.append("set-cookie", sessionCookie(sid));
+  headers.append("set-cookie", lastLoginCookie(user));
+
   return new Response(
     JSON.stringify({
       name: user.name,
@@ -290,13 +315,7 @@ async function handleFeishuAuth(request: Request, env: Env): Promise<Response> {
       avatar_url: user.avatar_url,
       session: true,
     }),
-    {
-      headers: {
-        "content-type": "application/json; charset=utf-8",
-        "set-cookie": sessionCookie(sid),
-        ...cors,
-      },
-    },
+    { headers },
   );
 }
 
@@ -325,6 +344,10 @@ async function getAppAccessToken(env: Env): Promise<string> {
 const SESSION_COOKIE = "nec_session";
 /** 会话有效期 7 天；剩余不足一半时滑动续期（sid 轮换，旧 sid 立刻作废） */
 const SESSION_TTL_SEC = 7 * 24 * 3600;
+/** “记住上次登录”提示 Cookie：非 HttpOnly，前端可读；仅存姓名/头像/时间等展示信息 */
+const LAST_LOGIN_COOKIE = "nec_last_login";
+/** 提示 Cookie 有效期 30 天；登出时不清除，用于下次打开门户显示"上次登录：某某" */
+const LAST_LOGIN_TTL_SEC = 30 * 24 * 3600;
 /** 角色解析缓存 TTL（秒）。负结果不入缓存，保证移除队员后下一次请求即失效 */
 const ROLE_CACHE_TTL_SEC = 60;
 
@@ -360,6 +383,14 @@ function parseCookies(request: Request): Record<string, string> {
 
 function sessionCookie(sid: string, maxAge = SESSION_TTL_SEC): string {
   return `${SESSION_COOKIE}=${sid}; HttpOnly; Path=/; SameSite=Lax; Secure; Max-Age=${maxAge}`;
+}
+
+/** 展示用"上次登录"Cookie：URI 编码的 JSON（name/avatar_url/at），不含任何凭据 */
+function lastLoginCookie(user: HubUser): string {
+  const payload = encodeURIComponent(
+    JSON.stringify({ name: user.name, avatar_url: user.avatar_url ?? "", at: new Date().toISOString() }),
+  );
+  return `${LAST_LOGIN_COOKIE}=${payload}; Path=/; SameSite=Lax; Secure; Max-Age=${LAST_LOGIN_TTL_SEC}`;
 }
 
 async function createSession(env: Env, user: HubUser): Promise<string> {
@@ -740,6 +771,28 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: "publish_doc",
+    description:
+      "发布/更新一条资料页条目（品牌规范、文档模板、制度 SOP、培训材料）。用于 Agent 提交资料更新。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "资料唯一标识，小写连字符，如 nec-vi、reimburse-sop" },
+        title: { type: "string", description: "展示标题" },
+        description: { type: "string", description: "一句话说明" },
+        category: {
+          type: "string",
+          enum: ["brand", "template", "sop", "training"],
+          description: "brand=品牌规范 template=文档模板 sop=制度SOP training=培训材料",
+        },
+        url: { type: "string", description: "链接（飞书文档、站内页面或本地下载）" },
+        visibility: { type: "string", description: "可见范围：all 或组别名，默认 all" },
+        maintainer: { type: "string", description: "维护人" },
+      },
+      required: ["id", "title", "category", "url"],
+    },
+  },
 ];
 
 async function handleMcp(request: Request, env: Env): Promise<Response> {
@@ -812,6 +865,8 @@ async function callTool(
         return rpc(id, await toolConfigDashboard(args, env));
       case "config_drawing_review":
         return rpc(id, await toolConfigDrawingReview(args, env));
+      case "publish_doc":
+        return rpc(id, await toolPublishDoc(args, env));
       default:
         return rpcError(id, -32602, `Unknown tool: ${name}`);
     }
@@ -1234,6 +1289,54 @@ async function toolConfigDrawingReview(args: Record<string, unknown>, env: Env) 
   };
 }
 
+// ---------- 资料页（publish_doc） ----------
+
+async function toolPublishDoc(args: Record<string, unknown>, env: Env) {
+  const id = String(args.id ?? "").trim();
+  if (!NAME_RE.test(id)) {
+    throw new Error("资料 id 不合法：仅允许小写字母/数字/连字符（2-41 字符），如 nec-vi、reimburse-sop");
+  }
+  const title = String(args.title ?? "").trim();
+  const description = String(args.description ?? "").trim();
+  const category = String(args.category ?? "").trim();
+  const url = String(args.url ?? "").trim();
+  const visibility = String(args.visibility ?? "all").trim();
+  const maintainer = String(args.maintainer ?? "").trim();
+
+  if (!title) throw new Error("title 不能为空");
+  if (!["brand", "template", "sop", "training"].includes(category)) {
+    throw new Error("category 必须是 brand / template / sop / training");
+  }
+  if (!url) throw new Error("url 不能为空");
+
+  const entry: DocEntry = {
+    id,
+    title,
+    description,
+    category: category as DocEntry["category"],
+    url,
+    visibility,
+    maintainer,
+    updatedAt: new Date().toISOString(),
+    source: "hub",
+  };
+
+  const list = await readIndex<DocEntry>(env, DOCS_REGISTRY_KEY);
+  const idx = list.findIndex((d) => d.id === id);
+  if (idx >= 0) list[idx] = entry;
+  else list.push(entry);
+  await env.REGISTRY.put(DOCS_REGISTRY_KEY, JSON.stringify(list));
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: `✅ 资料已${idx >= 0 ? "更新" : "发布"}：${title}（${category}）\nid=${id} · 维护人=${maintainer || "未填"}\n打开 ${url} 或刷新门户「资料页」查看。`,
+      },
+    ],
+  };
+}
+
 // ---------- NEC 开源仓库（GitHub org + KV 缓存） ----------
 
 async function buildRepos(env: Env): Promise<unknown> {
@@ -1472,6 +1575,144 @@ async function fetchTableCached(env: Env, cfg: DashboardConfig, key: DashTable):
 }
 
 const TASK_DONE_RE = /完成|已完|完结|done|取消|cancel|关闭|close|drop/i;
+
+/** 资料页初始种子数据（首次访问且 KV 为空时写入） */
+const SEED_DOCS: DocEntry[] = [
+  {
+    id: "nec-brand-center",
+    title: "NEC 品牌主视觉中心",
+    description: "Logo / PPT 模板 / VI 规范一站式下载与规范说明",
+    category: "brand",
+    url: "/brand/",
+    visibility: "all",
+    maintainer: "NEC AI 中台",
+    updatedAt: new Date().toISOString(),
+    source: "hub",
+  },
+  {
+    id: "nec-vi-manual",
+    title: "NEC VI 规范手册 V1.0",
+    description: "标准色值、字体系统、最小尺寸、禁用示例完整规范",
+    category: "brand",
+    url: "/brand/NEC-VI-Manual_V1.0.md",
+    visibility: "all",
+    maintainer: "NEC AI 中台",
+    updatedAt: new Date().toISOString(),
+    source: "hub",
+  },
+  {
+    id: "nec-ppt-template",
+    title: "NEC PPT 标准模板",
+    description: "7 种版式（封面/目录/章节/内容/图文/表格/结尾），思源黑体统一",
+    category: "template",
+    url: "/brand/NEC-PPT-Template_V1.0.pptx",
+    visibility: "all",
+    maintainer: "NEC AI 中台",
+    updatedAt: new Date().toISOString(),
+    source: "hub",
+  },
+  {
+    id: "tech-report-template",
+    title: "技术方案报告模板",
+    description: "项目立项/技术评审/成果总结通用报告结构（待接入飞书文档）",
+    category: "template",
+    url: "https://example.feishu.cn/docx/tech-report",
+    visibility: "all",
+    maintainer: "待认领",
+    updatedAt: new Date().toISOString(),
+    source: "hub",
+  },
+  {
+    id: "meeting-minutes-template",
+    title: "会议纪要模板",
+    description: "例会/评审会标准纪要结构，含行动项追踪（待接入飞书文档）",
+    category: "template",
+    url: "https://example.feishu.cn/docx/meeting-minutes",
+    visibility: "all",
+    maintainer: "待认领",
+    updatedAt: new Date().toISOString(),
+    source: "hub",
+  },
+  {
+    id: "reimburse-sop",
+    title: "财务报销流程",
+    description: "线上报销助手 + 材料清单 + 审批节点说明",
+    category: "sop",
+    url: "/#tab-dashboard",
+    visibility: "all",
+    maintainer: "NEC AI 中台",
+    updatedAt: new Date().toISOString(),
+    source: "hub",
+  },
+  {
+    id: "warehouse-sop",
+    title: "仓库领用规范",
+    description: "物资领用/归还/盘点操作流程，配合 NEC 仓库作业台使用",
+    category: "sop",
+    url: "https://mes.newenergycoder.club/home.html",
+    visibility: "all",
+    maintainer: "NEC AI 中台",
+    updatedAt: new Date().toISOString(),
+    source: "hub",
+  },
+  {
+    id: "handover-checklist",
+    title: "换届交接清单",
+    description: "中台资产/账号/文档/权限交接 checklist（待接入飞书文档）",
+    category: "sop",
+    url: "https://example.feishu.cn/docx/handover",
+    visibility: "all",
+    maintainer: "待认领",
+    updatedAt: new Date().toISOString(),
+    source: "hub",
+  },
+  {
+    id: "mech-onboarding",
+    title: "机械组入门教程",
+    description: "机械组常用工具链、设计规范、常用元件手册（待接入飞书文档）",
+    category: "training",
+    url: "https://example.feishu.cn/wiki/mech-onboarding",
+    visibility: "all",
+    maintainer: "待认领",
+    updatedAt: new Date().toISOString(),
+    source: "hub",
+  },
+  {
+    id: "elec-onboarding",
+    title: "电控组入门教程",
+    description: "电路设计、嵌入式开发、调试工具使用指南（待接入飞书文档）",
+    category: "training",
+    url: "https://example.feishu.cn/wiki/elec-onboarding",
+    visibility: "all",
+    maintainer: "待认领",
+    updatedAt: new Date().toISOString(),
+    source: "hub",
+  },
+  {
+    id: "vision-onboarding",
+    title: "视觉组入门教程",
+    description: "OpenCV/深度学习/相机标定/部署流程（待接入飞书文档）",
+    category: "training",
+    url: "https://example.feishu.cn/wiki/vision-onboarding",
+    visibility: "all",
+    maintainer: "待认领",
+    updatedAt: new Date().toISOString(),
+    source: "hub",
+  },
+];
+
+async function buildDocs(env: Env, request: Request): Promise<unknown> {
+  let docs = await readIndex<DocEntry>(env, DOCS_REGISTRY_KEY);
+  if (docs.length === 0) {
+    docs = SEED_DOCS;
+    await env.REGISTRY.put(DOCS_REGISTRY_KEY, JSON.stringify(docs));
+  }
+  const session = await resolveSession(env, request);
+  if (!session) {
+    return docs.filter((d) => d.visibility === "all");
+  }
+  return docs;
+}
 
 async function buildDashboard(env: Env, request: Request): Promise<unknown> {
   const cfg = await getDashboardConfig(env);

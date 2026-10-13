@@ -31,6 +31,8 @@
   .chip i { color: var(--cyan); }
   .host-btn { border: 1.5px solid #d1d5db; color: #6b7280; background: #fff; }
   .host-btn.on { border-color: var(--navy); color: #fff; background: var(--navy); }
+  .doc-cat-btn { border: 1.5px solid #d1d5db; color: #6b7280; background: #fff; }
+  .doc-cat-btn.on { border-color: var(--navy); color: #fff; background: var(--navy); }
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
@@ -78,9 +80,10 @@
 
 <nav class="bg-white shadow-sm">
   <div class="max-w-5xl mx-auto px-6 flex gap-6 text-sm font-medium text-gray-500">
-    <button data-tab="drawing-review" class="tab-btn py-3">📐 图纸评审</button>
+    <button data-tab="drawing-review" id="tab-btn-drawing-review" class="tab-btn py-3 hidden">📐 图纸评审</button>
     <button data-tab="apps" class="tab-btn py-3 tab-active">应用广场</button>
     <button data-tab="skills" class="tab-btn py-3">Skill 中心</button>
+    <button data-tab="docs" class="tab-btn py-3">资料页</button>
     <button data-tab="repos" class="tab-btn py-3">开源仓库</button>
     <button data-tab="dashboard" class="tab-btn py-3">数据看板</button>
     <button data-tab="agent" class="tab-btn py-3">我的 Agent</button>
@@ -89,11 +92,64 @@
 
 <main class="max-w-5xl mx-auto px-6 py-8">
 
-  <!-- 图纸评审（iframe 嵌入独立应用，登录态同源共享） -->
+  <!-- 图纸评审（原生集成，登录后可见） -->
   <section id="tab-drawing-review" class="hidden">
-    <iframe id="drawing-review-frame" src="/apps/drawing-review/?embedded=1" class="w-full bg-transparent" style="height:calc(100vh - 200px);min-height:560px;border:0;" title="新增机图纸评审流程"></iframe>
-    <p class="text-xs text-gray-400 mt-2">
-      全屏打开：<a href="/apps/drawing-review/" target="_blank" class="hover:underline" style="color:var(--cyan)">/apps/drawing-review/ →</a>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">图纸评审</h2>
+      <div class="flex items-center gap-2">
+        <div class="flex rounded-lg border border-gray-200 overflow-hidden text-xs bg-white">
+          <button id="dr-mode-board" onclick="setDrMode('board')" class="px-3 py-1.5">看板</button>
+          <button id="dr-mode-list" onclick="setDrMode('list')" class="px-3 py-1.5 border-l border-gray-200">列表</button>
+        </div>
+        <button onclick="loadDrawingReviews()" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600">刷新</button>
+        <button onclick="toggleDrForm()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--cyan)">＋ 提交评审单</button>
+      </div>
+    </div>
+
+    <!-- 提交表单（默认折叠） -->
+    <div id="dr-form-box" class="hidden mb-6 bg-white rounded-xl shadow p-5">
+      <h3 class="font-bold mb-3">提交图纸报告书</h3>
+      <form id="dr-form" class="grid grid-cols-1 sm:grid-cols-2 gap-3" onsubmit="submitDr(event)">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">项目编号 *</label>
+          <input name="projectId" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="PRJ-2026-001" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">机型名称 *</label>
+          <input name="machineName" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="R1 底盘" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">图纸版本 *</label>
+          <input name="drawingVersion" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="V1.0" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">设计负责人</label>
+          <input name="designerName" id="dr-designer-name" disabled class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-xs text-gray-500 mb-1">设计说明 *</label>
+          <textarea name="designNotes" rows="3" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="关键设计参数、变更点"></textarea>
+        </div>
+        <div class="sm:col-span-2 flex justify-end gap-2">
+          <button type="button" onclick="toggleDrForm()" class="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-500">取消</button>
+          <button type="submit" class="text-sm text-white px-5 py-2 rounded-lg" style="background:var(--navy)">提交</button>
+        </div>
+      </form>
+      <p id="dr-form-result" class="mt-2 text-sm"></p>
+    </div>
+
+    <!-- 状态统计条（兼作状态筛选，看板/列表共用） -->
+    <div id="dr-stats" class="flex flex-wrap gap-2 mb-4"></div>
+
+    <!-- 看板视图（默认） -->
+    <div id="dr-board" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+
+    <!-- 评审单列表 -->
+    <div id="dr-list" class="space-y-3 hidden">
+      <p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center">加载中…</p>
+    </div>
+    <p class="text-xs text-gray-400 mt-3">
+      独立全屏版：<a href="/apps/drawing-review/" target="_blank" class="hover:underline" style="color:var(--cyan)">/apps/drawing-review/ →</a>
     </p>
   </section>
 
@@ -167,6 +223,31 @@
     </div>
   </section>
 
+  <!-- 资料页 -->
+  <section id="tab-docs" class="hidden">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">资料页</h2>
+      <button onclick="showDocPublishPrompt()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--cyan)">＋ 发布/更新资料</button>
+    </div>
+    <div id="doc-publish-box" class="hidden mb-6 bg-white rounded-xl shadow p-5">
+      <h3 class="font-bold mb-2">资料页更新 Prompt（复制后发给你的 Agent）</h3>
+      <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="doc-publish-prompt"></pre>
+      <button onclick="copyText('doc-publish-prompt')" class="mt-3 text-sm text-white px-3 py-1.5 rounded" style="background:var(--navy)">复制</button>
+    </div>
+
+    <div class="flex items-center gap-2 mb-4 text-xs flex-wrap">
+      <button data-doc-cat="all" class="doc-cat-btn on px-3 py-1 rounded-full">全部</button>
+      <button data-doc-cat="brand" class="doc-cat-btn px-3 py-1 rounded-full">品牌规范</button>
+      <button data-doc-cat="template" class="doc-cat-btn px-3 py-1 rounded-full">文档模板</button>
+      <button data-doc-cat="sop" class="doc-cat-btn px-3 py-1 rounded-full">制度 SOP</button>
+      <button data-doc-cat="training" class="doc-cat-btn px-3 py-1 rounded-full">培训材料</button>
+    </div>
+
+    <div id="docs-list" class="space-y-6">
+      <p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center">加载中…</p>
+    </div>
+  </section>
+
   <!-- 我的 Agent -->
   <section id="tab-agent" class="hidden">
     <h2 class="text-lg font-bold mb-4">接入我的 Agent</h2>
@@ -202,12 +283,25 @@ document.getElementById("publish-prompt").textContent =
    - title 用中文展示名，author 填我的名字
 3. 成功后把访问链接发给我`;
 
+document.getElementById("doc-publish-prompt").textContent =
+`请把这条资料发布/更新到 NEC 团队资料页：
+1. 调用 nec-hub MCP 的 publish_doc 工具
+2. 参数：
+   - id：小写连字符唯一标识，如 nec-vi、reimburse-sop
+   - title：展示标题
+   - description：一句话说明
+   - category：brand（品牌规范）/ template（文档模板）/ sop（制度 SOP）/ training（培训材料）
+   - url：链接（飞书文档、站内页面或本地下载）
+   - visibility：all 或组名，默认 all
+   - maintainer：维护人
+3. 成功后告诉我已发布到资料页`;
+
 // Tab 切换
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("tab-active"));
     btn.classList.add("tab-active");
-    ["drawing-review","apps","skills","repos","dashboard","agent"].forEach(t =>
+    ["drawing-review","apps","skills","docs","repos","dashboard","agent"].forEach(t =>
       document.getElementById("tab-"+t).classList.toggle("hidden", t !== btn.dataset.tab));
   });
 });
@@ -281,9 +375,29 @@ function renderUserBox() {
       ${u.group ? `<span class="text-gray-400 hidden sm:inline">${esc(u.group)}</span>` : ""}
       <button onclick="logout()" class="text-gray-400 hover:text-gray-600 ml-1">登出</button>`;
   } else if (HUB_CONFIG.loginEnabled) {
-    box.innerHTML = `<button onclick="startLogin()" class="px-3 py-1 rounded text-white" style="background:var(--navy)">飞书登录</button>`;
+    // “记住上次登录”：登录成功后后端写入非 HttpOnly 的 nec_last_login Cookie（30 天，仅展示信息）
+    const last = getLastLogin();
+    const hint = last && last.name ? `
+      ${last.avatar_url ? `<img src="${esc(last.avatar_url)}" class="w-6 h-6 rounded-full opacity-70" alt=""/>` : ""}
+      <span class="text-xs text-gray-400" title="${esc(last.at ? new Date(last.at).toLocaleString("zh-CN") : "")}">上次登录：${esc(last.name)}</span>` : "";
+    box.innerHTML = `${hint}<button onclick="startLogin()" class="px-3 py-1 rounded text-white" style="background:var(--navy)">${last && last.name ? "以 " + esc(last.name) + " 继续登录" : "飞书登录"}</button>`;
   } else {
     box.innerHTML = "";
+  }
+  updateDrawingReviewGate();
+}
+
+function readCookie(name) {
+  const m = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "=([^;]*)"));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+function getLastLogin() {
+  try {
+    const raw = readCookie("nec_last_login");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
   }
 }
 
@@ -340,6 +454,52 @@ fetch("/api/skills").then(r => r.json()).then(skills => {
       <a href="${s.url || (ORIGIN + '/skills/' + encodeURIComponent(s.name) + '/SKILL.md')}" target="_blank"
          class="text-sm hover:underline whitespace-nowrap" style="color:var(--cyan)">查看 SKILL.md${s.source === 'gitee' ? ' ⤤' : ''}</a>
     </div>`).join("");
+});
+
+// 资料页
+let docsData = [];
+let docsCat = "all";
+const DOC_CAT_LABEL = { brand: "品牌规范", template: "文档模板", sop: "制度 SOP", training: "培训材料" };
+const DOC_CAT_ORDER = ["brand", "template", "sop", "training"];
+
+function showDocPublishPrompt() {
+  document.getElementById("doc-publish-box").classList.toggle("hidden");
+}
+
+function renderDocs() {
+  const box = document.getElementById("docs-list");
+  const list = docsData.filter(d => docsCat === "all" || d.category === docsCat);
+  if (!list.length) {
+    box.innerHTML = `<p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center">当前分类暂无资料。</p>`;
+    return;
+  }
+  const groups = DOC_CAT_ORDER.map(cat => ({ cat, items: list.filter(d => d.category === cat) })).filter(g => g.items.length);
+  box.innerHTML = groups.map(g => `
+    <div>
+      <h3 class="text-sm font-bold text-slate-700 mb-3">${DOC_CAT_LABEL[g.cat]}</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        ${g.items.map(d => `
+          <a href="${d.url}" target="_blank" class="block bg-white rounded-xl shadow hover:shadow-md transition p-5">
+            <div class="flex items-center justify-between">
+              <h4 class="font-bold">${esc(d.title)}</h4>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">${d.category}</span>
+            </div>
+            <p class="text-sm text-gray-500 mt-1 line-clamp-2">${esc(d.description || "")}</p>
+            <p class="text-xs text-gray-400 mt-3">维护：${esc(d.maintainer || "—")} · ${new Date(d.updatedAt).toLocaleString("zh-CN")}</p>
+          </a>`).join("")}
+      </div>
+    </div>`).join("");
+}
+
+document.querySelectorAll(".doc-cat-btn").forEach(b => b.addEventListener("click", () => {
+  docsCat = b.dataset.docCat;
+  document.querySelectorAll(".doc-cat-btn").forEach(x => x.classList.toggle("on", x === b));
+  renderDocs();
+}));
+
+fetch("/api/docs").then(r => r.json()).then(docs => {
+  docsData = docs || [];
+  renderDocs();
 });
 
 // NEC 开源仓库（GitHub org + Gitee 账号合并，点击表头按 Star/Fork/Commit 等排序）
@@ -431,6 +591,175 @@ function renderRepos() {
 
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+// ---------- 图纸评审（原生集成，登录后可见） ----------
+const DR_STATUS = {
+  draft: { label: "待提交", cls: "bg-gray-100 text-gray-600" },
+  pending_review: { label: "待评审", cls: "bg-blue-50 text-blue-700" },
+  in_review: { label: "评审中", cls: "bg-amber-50 text-amber-700" },
+  rectifying: { label: "待整改", cls: "bg-orange-50 text-orange-700" },
+  bom_generating: { label: "BOM生成中", cls: "bg-purple-50 text-purple-700" },
+  assessing: { label: "评估中", cls: "bg-indigo-50 text-indigo-700" },
+  scheduling: { label: "排期中", cls: "bg-pink-50 text-pink-700" },
+  procuring: { label: "采购中", cls: "bg-teal-50 text-teal-700" },
+  archived: { label: "已归档", cls: "bg-green-50 text-green-700" },
+};
+let DR_FILTER = "";
+let DR_DATA = {};
+
+/** 登录门控：显示/隐藏「图纸评审」Tab 并加载数据 */
+function updateDrawingReviewGate() {
+  const btn = document.getElementById("tab-btn-drawing-review");
+  const section = document.getElementById("tab-drawing-review");
+  const authed = ME.authenticated && ME.user;
+  btn.classList.toggle("hidden", !authed);
+  if (authed) {
+    const dn = document.getElementById("dr-designer-name");
+    if (dn) dn.value = `${ME.user.name}（${ME.user.open_id}）`;
+    loadDrawingReviews();
+  } else {
+    if (!section.classList.contains("hidden")) {
+      document.querySelector('[data-tab="apps"]').click();
+    }
+    document.getElementById("dr-list").innerHTML =
+      `<p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center">登录后可使用图纸评审流程</p>`;
+    document.getElementById("dr-stats").innerHTML = "";
+    document.getElementById("dr-form-box").classList.add("hidden");
+  }
+}
+
+function toggleDrForm() {
+  document.getElementById("dr-form-box").classList.toggle("hidden");
+}
+
+async function apiDr(path, options = {}) {
+  const res = await fetch("/api/drawing-review" + path, options);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+async function submitDr(e) {
+  e.preventDefault();
+  const f = e.target;
+  const resultEl = document.getElementById("dr-form-result");
+  try {
+    const data = await apiDr("/submit", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        projectId: f.projectId.value.trim(),
+        machineName: f.machineName.value.trim(),
+        drawingVersion: f.drawingVersion.value.trim(),
+        designerId: ME.user.open_id,
+        drawingFiles: [],
+        designNotes: f.designNotes.value.trim(),
+      }),
+    });
+    resultEl.className = "mt-2 text-sm text-green-600";
+    resultEl.textContent = `提交成功：${data.reviewId}，请在列表中点击「预约会议」`;
+    f.reset();
+    document.getElementById("dr-designer-name").value = `${ME.user.name}（${ME.user.open_id}）`;
+    setTimeout(() => { document.getElementById("dr-form-box").classList.add("hidden"); resultEl.textContent = ""; }, 1500);
+    loadDrawingReviews();
+  } catch (err) {
+    resultEl.className = "mt-2 text-sm text-red-600";
+    resultEl.textContent = "提交失败：" + err.message;
+  }
+}
+
+async function loadDrawingReviews() {
+  const listEl = document.getElementById("dr-list");
+  const statsEl = document.getElementById("dr-stats");
+  try {
+    const data = await apiDr("");
+    const counts = {};
+    data.forEach(r => { counts[r.status] = (counts[r.status] || 0) + 1; });
+    const chips = Object.entries(DR_STATUS)
+      .filter(([k]) => counts[k])
+      .map(([k, v]) => {
+        const on = DR_FILTER === k;
+        return `<button onclick="filterDr('${k}')" class="text-xs px-3 py-1.5 rounded-full border ${on ? "text-white border-transparent" : "border-gray-200 text-gray-600"}" ${on ? 'style="background:var(--navy)"' : ""}>${v.label} · ${counts[k]}</button>`;
+      });
+    const allOn = !DR_FILTER;
+    chips.push(`<button onclick="filterDr('')" class="text-xs px-3 py-1.5 rounded-full border ${allOn ? "text-white border-transparent" : "border-gray-200 text-gray-600"}" ${allOn ? 'style="background:var(--navy)"' : ""}>全部 · ${data.length}</button>`);
+    statsEl.innerHTML = chips.join("");
+    DR_DATA = Object.fromEntries(data.map(r => [r.reviewId, r]));
+
+    const shown = DR_FILTER ? data.filter(r => r.status === DR_FILTER) : data;
+    if (!shown.length) {
+      listEl.innerHTML = `<p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center">暂无评审单，点击右上角「＋ 提交评审单」开始</p>`;
+      return;
+    }
+    listEl.innerHTML = shown.map(r => `
+      <div class="bg-white rounded-xl shadow p-4">
+        <div class="flex items-start justify-between gap-3 cursor-pointer" onclick="toggleDrDetail('${r.reviewId}')">
+          <div>
+            <p class="font-bold text-slate-800">${esc(r.machineName)} <span class="text-xs font-normal text-gray-400">${esc(r.reviewId)}</span></p>
+            <p class="text-xs text-gray-500 mt-0.5">项目 ${esc(r.projectId)} · 版本 ${esc(r.drawingVersion)} · 设计 ${esc(r.designerId)}</p>
+          </div>
+          <span class="text-xs px-2 py-1 rounded-full whitespace-nowrap ${DR_STATUS[r.status]?.cls || "bg-gray-100 text-gray-600"}">${DR_STATUS[r.status]?.label || r.status}</span>
+        </div>
+        <p class="text-sm text-gray-600 mt-2 line-clamp-2">${esc(r.designNotes)}</p>
+        <div id="dr-detail-${r.reviewId}" class="hidden mt-3 pt-3 border-t border-gray-100 space-y-2 text-sm"></div>
+      </div>
+    `).join("");
+  } catch (err) {
+    listEl.innerHTML = `<p class="text-sm text-red-500 bg-white rounded-xl shadow p-8 text-center">加载失败：${esc(err.message)}</p>`;
+  }
+}
+
+function filterDr(status) { DR_FILTER = status; loadDrawingReviews(); }
+
+async function toggleDrDetail(reviewId) {
+  const box = document.getElementById(`dr-detail-${reviewId}`);
+  if (!box.classList.contains("hidden")) { box.classList.add("hidden"); return; }
+  const r = DR_DATA[reviewId];
+  if (!r) return;
+  const actions = [];
+  if (r.status === "pending_review") actions.push(`<button onclick="drMeeting('${reviewId}')" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:var(--cyan)">预约会议</button>`);
+  if (r.status === "in_review") actions.push(`<button onclick="drConclude('${reviewId}')" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:var(--navy)">提交评审结论</button>`);
+  if (r.status === "rectifying") actions.push(`<button onclick="drRectify('${reviewId}')" class="text-xs px-3 py-1.5 rounded-lg text-white bg-orange-500">整改完成</button>`);
+  if (r.status === "bom_generating") actions.push(`<button onclick="drBom('${reviewId}')" class="text-xs px-3 py-1.5 rounded-lg text-white bg-purple-600">生成 BOM</button>`);
+  box.innerHTML = `
+    ${r.meetingId ? `<p>会议：<a href="${esc(r.meetingLink || "#")}" target="_blank" class="underline" style="color:var(--cyan)">${esc(r.meetingId)}</a>${r.meetingStartTime ? " · " + esc(new Date(r.meetingStartTime).toLocaleString()) : ""}</p>` : ""}
+    ${r.conclusion ? `<p>评审结论：${esc(r.conclusion)}${r.conclusionNotes ? " · " + esc(r.conclusionNotes) : ""}</p>` : ""}
+    ${actions.length ? `<div class="flex flex-wrap gap-2 pt-1">${actions.join("")}</div>` : `<p class="text-xs text-gray-400">当前状态暂无可执行操作</p>`}
+    <p id="dr-act-${reviewId}" class="text-xs"></p>
+  `;
+  box.classList.remove("hidden");
+}
+
+async function drAct(reviewId, path, body, okMsg) {
+  const tip = document.getElementById(`dr-act-${reviewId}`);
+  try {
+    await apiDr(`/${reviewId}${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+    });
+    if (tip) { tip.className = "text-xs text-green-600"; tip.textContent = okMsg; }
+    setTimeout(loadDrawingReviews, 600);
+  } catch (err) {
+    if (tip) { tip.className = "text-xs text-red-500"; tip.textContent = "失败：" + err.message; }
+  }
+}
+function drMeeting(id) { drAct(id, "/meeting", {}, "会议已预约"); }
+function drRectify(id) { drAct(id, "/rectify", {}, "整改已完成，进入 BOM 生成"); }
+function drConclude(id) {
+  const c = prompt("评审结论：passed（通过）/ conditional（有条件通过）/ rejected（不通过）", "passed");
+  if (c === null) return;
+  if (!["passed", "conditional", "rejected"].includes(c)) { alert("无效结论"); return; }
+  drAct(id, "/conclusion", { conclusion: c }, "评审结论已提交");
+}
+function drBom(id) {
+  const raw = prompt('粘贴 BOM JSON 数组：\n[{"materialName":"电机支架","quantity":2,"unit":"件","source":"self-made","process":"machining"}]', "[]");
+  if (raw === null) return;
+  let items;
+  try { items = JSON.parse(raw); } catch { alert("JSON 格式错误"); return; }
+  if (!Array.isArray(items)) { alert("必须是数组"); return; }
+  drAct(id, "/bom/generate", { items }, "BOM 已生成，进入评估");
 }
 
 // 数据看板

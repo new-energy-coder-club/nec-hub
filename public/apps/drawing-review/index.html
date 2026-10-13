@@ -26,7 +26,6 @@
         <nav class="flex gap-2">
           <button onclick="router('list')" class="nav-btn px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50" data-view="list">评审单</button>
           <button onclick="router('submit')" class="nav-btn px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50" data-view="submit">提交</button>
-          <button onclick="router('dashboard')" class="nav-btn px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50" data-view="dashboard">看板</button>
         </nav>
       </div>
     </header>
@@ -72,28 +71,23 @@
       </div>
     </section>
 
-    <!-- 列表视图 -->
+    <!-- 评审单视图（列表 / 看板 一体） -->
     <section id="view-list" class="view active">
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-bold text-slate-800">评审单列表</h2>
-          <button onclick="loadReviews()" class="text-sm text-blue-600 hover:text-blue-700 font-medium">刷新</button>
-        </div>
-        <div id="review-list" class="space-y-3">
-          <p class="text-sm text-gray-400">加载中…</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- 看板视图 -->
-    <section id="view-dashboard" class="view">
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-bold text-slate-800">流程看板</h2>
-          <button onclick="loadDashboard()" class="text-sm text-blue-600 hover:text-blue-700 font-medium">刷新</button>
+          <h2 class="text-lg font-bold text-slate-800">评审单</h2>
+          <div class="flex items-center gap-2">
+            <div class="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+              <button id="mode-board" onclick="setDisplayMode('board')" class="px-3 py-1.5">看板</button>
+              <button id="mode-table" onclick="setDisplayMode('table')" class="px-3 py-1.5 border-l border-gray-200">列表</button>
+            </div>
+            <button onclick="loadReviews()" class="text-sm text-blue-600 hover:text-blue-700 font-medium px-2">刷新</button>
+          </div>
         </div>
         <div id="dashboard" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <p class="text-sm text-gray-400 md:col-span-3 lg:col-span-4">加载中…</p>
+        </div>
+        <div id="review-list" class="space-y-3 hidden">
         </div>
       </div>
     </section>
@@ -101,7 +95,7 @@
     <!-- 详情视图 -->
     <section id="view-detail" class="view">
       <div class="mb-4">
-        <button onclick="router('list')" class="text-sm text-blue-600 hover:underline">← 返回列表</button>
+        <button onclick="router('list')" class="text-sm text-blue-600 hover:underline">← 返回评审单</button>
       </div>
       <div id="detail-content" class="space-y-4">
         <p class="text-sm text-gray-400">加载中…</p>
@@ -144,8 +138,20 @@
         btn.classList.toggle("border-blue-200", btn.dataset.view === view);
       });
       if (view === "list") loadReviews();
-      if (view === "dashboard") loadDashboard();
       if (view === "detail" && params.id) loadDetail(params.id);
+    }
+
+    let displayMode = "board";
+    function setDisplayMode(mode) {
+      displayMode = mode;
+      document.getElementById("dashboard").classList.toggle("hidden", mode !== "board");
+      document.getElementById("review-list").classList.toggle("hidden", mode !== "table");
+      for (const m of ["board", "table"]) {
+        const btn = document.getElementById(`mode-${m}`);
+        btn.classList.toggle("bg-blue-50", m === mode);
+        btn.classList.toggle("text-blue-700", m === mode);
+        btn.classList.toggle("font-medium", m === mode);
+      }
     }
 
     async function api(path, options = {}) {
@@ -166,13 +172,25 @@
 
     async function loadReviews() {
       const listEl = document.getElementById("review-list");
+      const boardEl = document.getElementById("dashboard");
       try {
         const data = await api("/api/drawing-review");
-        if (!data.length) {
-          listEl.innerHTML = `<p class="text-sm text-gray-400">暂无评审单</p>`;
-          return;
-        }
-        listEl.innerHTML = data.map(r => `
+        renderList(data);
+        renderBoard(data);
+      } catch (err) {
+        const msg = `<p class="text-sm text-red-500">加载失败：${err.message}</p>`;
+        listEl.innerHTML = msg;
+        boardEl.innerHTML = `<p class="text-sm text-red-500 md:col-span-3 lg:col-span-4">加载失败：${err.message}</p>`;
+      }
+    }
+
+    function renderList(data) {
+      const listEl = document.getElementById("review-list");
+      if (!data.length) {
+        listEl.innerHTML = `<p class="text-sm text-gray-400">暂无评审单</p>`;
+        return;
+      }
+      listEl.innerHTML = data.map(r => `
           <div class="border border-gray-100 rounded-lg p-4 hover:bg-gray-50 cursor-pointer" onclick="router('detail', {id:'${r.reviewId}'})">
             <div class="flex items-center justify-between">
               <div>
@@ -188,26 +206,21 @@
             </div>
           </div>
         `).join("");
-      } catch (err) {
-        listEl.innerHTML = `<p class="text-sm text-red-500">加载失败：${err.message}</p>`;
-      }
     }
 
-    async function loadDashboard() {
+    function renderBoard(data) {
       const el = document.getElementById("dashboard");
-      try {
-        const data = await api("/api/drawing-review");
-        const groups = {};
-        for (const r of data) {
-          groups[r.status] = groups[r.status] || [];
-          groups[r.status].push(r);
-        }
-        const columns = Object.keys(statusMap).map(status => ({
-          status,
-          ...statusMap[status],
-          items: groups[status] || []
-        }));
-        el.innerHTML = columns.map(col => `
+      const groups = {};
+      for (const r of data) {
+        groups[r.status] = groups[r.status] || [];
+        groups[r.status].push(r);
+      }
+      const columns = Object.keys(statusMap).map(status => ({
+        status,
+        ...statusMap[status],
+        items: groups[status] || []
+      }));
+      el.innerHTML = columns.map(col => `
           <div class="bg-gray-50 rounded-lg p-3">
             <div class="flex items-center justify-between mb-3">
               <span class="text-sm font-bold text-slate-700">${col.label}</span>
@@ -223,9 +236,6 @@
             </div>
           </div>
         `).join("");
-      } catch (err) {
-        el.innerHTML = `<p class="text-sm text-red-500 md:col-span-3 lg:col-span-4">加载失败：${err.message}</p>`;
-      }
     }
 
     async function loadDetail(reviewId) {
@@ -426,6 +436,7 @@
       if (!cfg.configured) {
         document.getElementById("not-configured").classList.remove("hidden");
       }
+      setDisplayMode("board");
       loadReviews();
     }
 

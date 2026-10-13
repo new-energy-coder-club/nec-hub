@@ -3,6 +3,7 @@
 > 版本：V2.0（从 V1.0《搭建方案》演进为产品化 PRD）
 > 日期：2026-10-12
 > 状态：草稿，待队长 + 组长评审
+> 更新：2026-10-14 同步本地任务进展 —— FE-01/FE-03 已落地，FE-08 进展更新，新增 FE-14（新增机图纸评审流程，专项 PRD 见 docs/）
 > 参考：[万涂幻象《卡兹克的飞书工作台是怎么搭的？我从 0 到 1 手把手带你搭一遍》(2026-10-11)](https://mp.weixin.qq.com/s/WgXz7xasqh9vClny6am-SQ)、数字生命卡兹克《我花了5天时间，对公司进行了一场AI化改造》
 > 前置文档：《团队AI中台搭建方案_V1.0.md》《网页版vs飞书工作台版_评估.md》《飞书定制工作台配置手册.md》《飞书工作台上架手册_NEC仓库作业台.md》
 
@@ -36,17 +37,21 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 | 队员 | role=队员 | 找应用、找资料、报任务、交报销 | 全员可见范围内读写 |
 | 校友 / 指导老师 | role=校友，飞书组织外 | 只读了解战队动态 | 仅公开区（无登录态亦可看公开页） |
 
-## 4. 现状盘点（截至 2026-10-12）
+## 4. 现状盘点（截至 2026-10-14）
 
-**已上线（实测确认，`src/index.ts` 1018 行）**：
+**已上线（实测确认，`src/index.ts` 1955 行 + `src/drawing-review/` 约 1080 行）**：
 
-- 门户四 Tab：应用广场 / Skill 中心 / 数据看板 / 我的 Agent（Cloudflare Worker 单体）
-- MCP：`deploy_app` / `register_app` / `sync_vercel` / `publish_skill` / `import_skills` / `config_dashboard` / `query_bitable`（多维表格查询已真实接入，`MCP_TOKEN` 写保护已支持）
-- `/auth/feishu` 回调已打通（code → token → user_info），**但无会话保持，门户不认登录态**
+- 门户七 Tab：图纸评审 / 应用广场 / Skill 中心 / 资料页 / 开源仓库 / 数据看板 / 我的 Agent（Cloudflare Worker 单体）
+- MCP：`deploy_app` / `register_app` / `sync_vercel` / `publish_skill` / `import_skills` / `remove_skills` / `publish_doc` / `config_dashboard` / `config_drawing_review` / `query_bitable`（多维表格查询已真实接入，`MCP_TOKEN` 写保护已支持）
+- **登录态与角色（FE-01）已落地**：`/auth/feishu` code 兑换 + HttpOnly 会话 Cookie（KV `session:<sid>`，7 天滑动续期）、`whoami`、按"队员名单"表实时判定角色（60s 缓存，退队即时失效）、登出入口；财务报销按角色三级脱敏（hidden/summary/full），`query_bitable` finance 表带角色门禁
 - R2 应用托管 + KV 注册表；自定义域名 + 证书
 - MES 已挂飞书工作台（网页应用方式），MES 侧飞书免登 `integrations/mes/feishu-sso.js` 已就绪
+- **资料页（FE-03）已上线**：`publish_doc` MCP 工具 + `/api/docs` + 门户资料页 Tab（含发布 Prompt 生成器），种子数据四类 10 条
+- **开源仓库**：`/api/repos` GitHub org + Gitee 双源合并，1 小时 KV 缓存
+- **报销链路（FE-08）**：OCR 识别、凭证 R2 存档、回写财务表，详见 §5 FE-08 进展记录
+- **图纸评审（FE-14）**：`src/drawing-review/` 模块 + `/api/drawing-review` 路由 + 门户图纸评审 Tab 已上线，详见 §5 FE-14
 
-**缺口（本 PRD 覆盖）**：登录态与角色判定、数据基建落地、资料页、赛季目标面板、数据校验 Agent、个性化首页、标杆业务应用、审批聚合、品牌 Skill、工作台 Level 3 切换、Skill CI、运营配置自动化。
+**缺口（本 PRD 覆盖）**：数据基建真实灌数、赛季目标面板、数据校验 Agent、个性化首页、审批聚合、品牌 Skill、工作台 Level 3 切换、Skill CI、运营配置自动化、图纸评审全流程集成（腾讯会议/ERP/MES）。
 
 ## 5. 功能需求
 
@@ -70,6 +75,13 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 2. 用队长、组长、队员三个测试账号登录，看到的内容范围不同；队员账号访问财务报销表 API 返回 403。
 3. 把测试队员从"队员名单"表移除后，其 session 下一次请求即失效。
 4. 校友（无飞书组织身份）可匿名浏览公开区，访问任何角色接口返回 401 而非 500。
+
+**进展（2026-10-14，主体已上线）**：
+
+- ✅ 会话保持：KV `session:<sid>`，HttpOnly + SameSite=Lax，7 天有效，剩余不足一半时 sid 轮换滑动续期；登出接口销毁会话。
+- ✅ `whoami` API + 角色判定：按"队员名单"表 open_id 精确匹配（姓名兜底），60s KV 缓存，负结果不缓存（退队即时失效）。
+- ✅ 财务按角色脱敏：看板财务区 hidden（未登录）/summary（队员）/full（队长·财务）三级；MCP `query_bitable` finance 表需 `MCP_TOKEN` 或有效 user_token（角色为队长/财务）。
+- 待办：飞书内 JSAPI 免登端到端验证（验收 1）、三角色测试账号走查（验收 2）、401/403 边界用例确认（验收 4）。
 
 ### FE-02 数据基建落地与看板接入（P0）
 
@@ -108,6 +120,13 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 1. 每类资料 ≥ 3 条有效内容，无死链。
 2. 新队员仅凭资料页可独立完成：下载队标、拿到答辩 PPT 模板、搞清报销流程（走查测试）。
 3. 更新一条资料后，资料页 1 分钟内反映新版本并显示更新时间。
+
+**进展（2026-10-14，资料页已上线）**：
+
+- ✅ MCP `publish_doc` 工具上线（id/title/description/category/url/visibility/maintainer，KV `docs:registry` upsert，等价于 `publish_skill` 的资料版）。
+- ✅ 门户"资料页" Tab + `/api/docs`（未登录仅见 visibility=all；已登录见全部），种子数据四类 10 条已写入。
+- ✅ 门户内置"资料页更新 Prompt"生成器，队员复制给 Agent 即可发布/更新资料。
+- 待办：占位链接（example.feishu.cn）替换为真实飞书文档并认领维护人（验收 1/2）、死链走查。
 
 ### FE-04 赛季目标可视化面板（P1）——对标卡兹克"OKR 面板"
 
@@ -272,6 +291,22 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 
 **验收标准**：输出一份《lark-cli 能力边界验证报告》归档 docs/；手册相应更新。
 
+### FE-14 标杆业务：新增机图纸评审流程（P1）
+
+**用户故事**：作为项目经理，新增机型图纸从提交、评审会议、纪要结论到 BOM/电控布线评估/询价全流程在线流转，流程状态与阻塞点在看板一目了然。
+
+**需求描述**：详见专项 PRD《[新增机图纸评审流程_PRD.md](./新增机图纸评审流程_PRD.md)》及配套《方案C混合架构设计》《设计文档》《图纸评审流程对比分析》。核心链路：图纸报告书提交 → 腾讯会议自动预约（自动勾选相关成员）→ 纪要与评审结论 → BOM 工程量清单 → 电控/布线评估 → 库存与 MES 位置拉取 → 发货清单 → 成员时间清单排期 → 机械加工件 BOM → 三家询价单 → 流程管理看板。
+
+**进展（2026-10-14，基础接入已上线）**：
+
+- ✅ `src/drawing-review/` 模块（flow / meeting / bom 服务 + adapter + types，约 1080 行）与 `/api/drawing-review` 路由。
+- ✅ 数据落飞书多维表格：10 张逻辑表（评审单/会议纪要/整改项/BOM/评估报告/库存查询/发货清单/排期任务/询价单/事件日志），MCP `config_drawing_review` 工具完成 base 与 table_id 配置。
+- ✅ 门户新增"图纸评审" Tab（登录后可见，嵌入独立应用页 `public/apps/drawing-review/`）。
+- ✅ `src/feishu/bitable.ts` 多维表格读写封装（数据看板与图纸评审共用）。
+- 待办：腾讯会议 OpenAPI 自动预约联调、ERP/MES 库存与库位接口对接（未就绪前用手动导入模板兜底）、三家询价单流转与比价、看板阻塞预警与甘特图。
+
+**验收标准**（对齐专项 PRD §8 里程碑）：MVP 跑通"提交 → 评审 → 纪要结论 → BOM → 归档"单流程实例；腾讯会议/ERP/MES 集成联调通过；试点新增机项目全链路跑通。
+
 ## 6. 非功能需求
 
 | 类别 | 要求 |
@@ -285,11 +320,11 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 ## 7. 技术方案要点（架构不变，仅增量）
 
 ```
-队员 Agent ──MCP──▶ Worker（新增：session/whoami/validate_bitable/publish_doc/update_progress）
+队员 Agent ──MCP──▶ Worker（新增：session/whoami/publish_doc/config_drawing_review；待做：validate_bitable/update_progress）
                      │
-门户（新增：资料页 Tab / 赛季目标区块 / 待办条 / 个人与组首页渲染）
+门户（已上线：资料页 Tab / 图纸评审 Tab；待做：赛季目标区块 / 待办条 / 个人与组首页渲染）
                      │
-飞书（新增表：赛季目标；既有 4 表接入校验规则集）── 群机器人 webhook（周一校验摘要）
+飞书（既有 4 表接入校验规则集；新增表：赛季目标、图纸评审 10 表）── 群机器人 webhook（周一校验摘要）
 ```
 
 - 会话：KV `session:<sid>` → `{user_id, expires}`，滑动续期 7 天。
