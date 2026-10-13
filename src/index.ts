@@ -1903,7 +1903,14 @@ async function handleReimburse(request: Request, env: Env): Promise<Response> {
       const record: Record<string, unknown> = {};
 
       const fItem = matchField(metas, [/^事项/, /事项/, /用途/, /摘要/], /Text/i);
-      if (fItem) record[fItem.field_name] = note ? item + "（" + note + "）" : item;
+      const fInvno = invno ? matchField(metas, [/发票号/, /票号/, /invoice/i], /Text/i) : undefined;
+      if (fInvno) record[fInvno.field_name] = invno;
+      if (fItem) {
+        const suffix: string[] = [];
+        if (note) suffix.push(note);
+        if (invno && !fInvno) suffix.push("发票号 " + invno);
+        record[fItem.field_name] = suffix.length ? item + "（" + suffix.join("；") + "）" : item;
+      }
       const fAmount = matchField(metas, [/报销金额/, /^金额/, /金额/, /费用/, /amount/i], /Number|Currency/i);
       if (fAmount) record[fAmount.field_name] = amount;
       const fDate = matchField(metas, [/报销时间/, /报销日期/, /^日期/, /日期/, /时间/, /^date/i]);

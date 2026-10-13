@@ -1057,7 +1057,7 @@ function parseFinanceText(text) {
   const di = t.match(/开票日期\D{0,4}(20\d{2})[-\/年.]?(\d{1,2})[-\/月.]?(\d{1,2})/);
   const d = di || t.match(/(20\d{2})[-\/年.](\d{1,2})[-\/月.](\d{1,2})/);
   if (d) out.date = d[1] + '-' + String(d[2]).padStart(2, '0') + '-' + String(d[3]).padStart(2, '0');
-  const inv = t.match(/发票号码\D{0,4}(\d{8}|\d{20})/) || t.match(/\b(\d{20})\b/);
+  const inv = t.match(/发票号码\D{0,4}(\d{20}|\d{8})/) || t.match(/\b(\d{20})\b/);
   if (inv) out.invno = inv[1];
   return out;
 }
