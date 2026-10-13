@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>新增机图纸评审流程</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+  .view { display: none; }
+  .view.active { display: block; }
+  .status-badge {
+    @apply text-xs px-2 py-1 rounded-full font-medium;
+  }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="max-w-5xl mx-auto px-4 py-6">
+    <!-- 顶部导航（embedded 模式隐藏） -->
+    <header id="app-header" class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 class="text-xl font-black text-slate-800">新增机图纸评审流程</h1>
+          <p class="text-xs text-gray-500">提交图纸 → 自动预约会议 → 保存纪要 → BOM 生成</p>
+        </div>
+        <nav class="flex gap-2">
+          <button onclick="router('list')" class="nav-btn px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50" data-view="list">评审单</button>
+          <button onclick="router('submit')" class="nav-btn px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50" data-view="submit">提交</button>
+          <button onclick="router('dashboard')" class="nav-btn px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50" data-view="dashboard">看板</button>
+        </nav>
+      </div>
+    </header>
+
+    <!-- 未配置提示 -->
+    <div id="not-configured" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+      <p class="text-yellow-800 font-medium">流程尚未配置</p>
+      <p class="text-sm text-yellow-700">请先让 Agent 调用 MCP 的 config_drawing_review 配置 Base 表。</p>
+    </div>
+
+    <!-- 提交视图 -->
+    <section id="view-submit" class="view">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <h2 class="text-lg font-bold text-slate-800 mb-4">提交图纸报告书</h2>
+        <form id="submit-form" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">项目编号</label>
+              <input type="text" name="projectId" required class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm" placeholder="PRJ-2026-001" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">机型名称</label>
+              <input type="text" name="machineName" required class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm" placeholder="R1 底盘" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">图纸版本</label>
+              <input type="text" name="drawingVersion" required class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm" placeholder="V1.0" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">设计负责人 open_id</label>
+              <input type="text" name="designerId" required class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm" placeholder="ou_xxx" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">设计说明</label>
+            <textarea name="designNotes" rows="3" required class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm" placeholder="关键设计参数、变更点"></textarea>
+          </div>
+          <div class="flex justify-end">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-lg">提交评审单</button>
+          </div>
+        </form>
+        <p id="submit-result" class="mt-3 text-sm"></p>
+      </div>
+    </section>
+
+    <!-- 列表视图 -->
+    <section id="view-list" class="view active">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-slate-800">评审单列表</h2>
+          <button onclick="loadReviews()" class="text-sm text-blue-600 hover:text-blue-700 font-medium">刷新</button>
+        </div>
+        <div id="review-list" class="space-y-3">
+          <p class="text-sm text-gray-400">加载中…</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 看板视图 -->
+    <section id="view-dashboard" class="view">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-slate-800">流程看板</h2>
+          <button onclick="loadDashboard()" class="text-sm text-blue-600 hover:text-blue-700 font-medium">刷新</button>
+        </div>
+        <div id="dashboard" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <p class="text-sm text-gray-400 md:col-span-3 lg:col-span-4">加载中…</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 详情视图 -->
+    <section id="view-detail" class="view">
+      <div class="mb-4">
+        <button onclick="router('list')" class="text-sm text-blue-600 hover:underline">← 返回列表</button>
+      </div>
+      <div id="detail-content" class="space-y-4">
+        <p class="text-sm text-gray-400">加载中…</p>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // embedded 模式：被 hub 主界面 iframe 嵌入时隐藏自身顶栏、收窄边距
+    (function () {
+      const params = new URLSearchParams(location.search);
+      const embedded = params.get("embedded") === "1" || window.parent !== window;
+      if (embedded) {
+        const header = document.getElementById("app-header");
+        if (header) header.style.display = "none";
+        document.body.classList.remove("bg-gray-50");
+        const wrap = document.querySelector("body > div.max-w-5xl");
+        if (wrap) wrap.classList.remove("px-4", "py-6");
+      }
+    })();
+
+    const API = "";
+    const statusMap = {
+      draft: { label: "待提交", color: "bg-gray-100 text-gray-700" },
+      pending_review: { label: "待评审", color: "bg-blue-50 text-blue-700" },
+      in_review: { label: "评审中", color: "bg-yellow-50 text-yellow-700" },
+      rectifying: { label: "待整改", color: "bg-orange-50 text-orange-700" },
+      bom_generating: { label: "BOM生成中", color: "bg-purple-50 text-purple-700" },
+      assessing: { label: "评估中", color: "bg-indigo-50 text-indigo-700" },
+      scheduling: { label: "排期中", color: "bg-pink-50 text-pink-700" },
+      procuring: { label: "采购中", color: "bg-teal-50 text-teal-700" },
+      archived: { label: "已归档", color: "bg-green-50 text-green-700" },
+    };
+
+    function router(view, params = {}) {
+      document.querySelectorAll(".view").forEach(el => el.classList.remove("active"));
+      document.getElementById(`view-${view}`).classList.add("active");
+      document.querySelectorAll(".nav-btn").forEach(btn => {
+        btn.classList.toggle("bg-blue-50", btn.dataset.view === view);
+        btn.classList.toggle("border-blue-200", btn.dataset.view === view);
+      });
+      if (view === "list") loadReviews();
+      if (view === "dashboard") loadDashboard();
+      if (view === "detail" && params.id) loadDetail(params.id);
+    }
+
+    async function api(path, options = {}) {
+      const res = await fetch(`${API}${path}`, options);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      return data;
+    }
+
+    async function getConfig() {
+      return api("/api/drawing-review/config");
+    }
+
+    function renderStatus(status) {
+      const s = statusMap[status] || { label: status, color: "bg-gray-100 text-gray-700" };
+      return `<span class="status-badge ${s.color}">${s.label}</span>`;
+    }
+
+    async function loadReviews() {
+      const listEl = document.getElementById("review-list");
+      try {
+        const data = await api("/api/drawing-review");
+        if (!data.length) {
+          listEl.innerHTML = `<p class="text-sm text-gray-400">暂无评审单</p>`;
+          return;
+        }
+        listEl.innerHTML = data.map(r => `
+          <div class="border border-gray-100 rounded-lg p-4 hover:bg-gray-50 cursor-pointer" onclick="router('detail', {id:'${r.reviewId}'})">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="font-bold text-slate-800">${r.reviewId} · ${r.machineName}</p>
+                <p class="text-xs text-gray-500">项目：${r.projectId} · 版本：${r.drawingVersion}</p>
+              </div>
+              ${renderStatus(r.status)}
+            </div>
+            <p class="text-sm text-gray-600 mt-2 line-clamp-2">${r.designNotes}</p>
+            <div class="mt-3 flex gap-2 text-xs">
+              <span class="text-gray-400">负责人：${r.designerId}</span>
+              ${r.meetingLink ? `<a href="${r.meetingLink}" target="_blank" class="text-blue-600 hover:underline" onclick="event.stopPropagation()">会议链接</a>` : ""}
+            </div>
+          </div>
+        `).join("");
+      } catch (err) {
+        listEl.innerHTML = `<p class="text-sm text-red-500">加载失败：${err.message}</p>`;
+      }
+    }
+
+    async function loadDashboard() {
+      const el = document.getElementById("dashboard");
+      try {
+        const data = await api("/api/drawing-review");
+        const groups = {};
+        for (const r of data) {
+          groups[r.status] = groups[r.status] || [];
+          groups[r.status].push(r);
+        }
+        const columns = Object.keys(statusMap).map(status => ({
+          status,
+          ...statusMap[status],
+          items: groups[status] || []
+        }));
+        el.innerHTML = columns.map(col => `
+          <div class="bg-gray-50 rounded-lg p-3">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-bold text-slate-700">${col.label}</span>
+              <span class="text-xs text-gray-500">${col.items.length}</span>
+            </div>
+            <div class="space-y-2">
+              ${col.items.map(r => `
+                <div class="bg-white border border-gray-100 rounded p-3 cursor-pointer hover:shadow-sm" onclick="router('detail', {id:'${r.reviewId}'})">
+                  <p class="text-sm font-medium text-slate-800 truncate">${r.machineName}</p>
+                  <p class="text-xs text-gray-500">${r.reviewId}</p>
+                </div>
+              `).join("") || `<p class="text-xs text-gray-400 text-center py-4">无</p>`}
+            </div>
+          </div>
+        `).join("");
+      } catch (err) {
+        el.innerHTML = `<p class="text-sm text-red-500 md:col-span-3 lg:col-span-4">加载失败：${err.message}</p>`;
+      }
+    }
+
+    async function loadDetail(reviewId) {
+      const el = document.getElementById("detail-content");
+      try {
+        const r = await api(`/api/drawing-review/${reviewId}`);
+        el.innerHTML = `
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div class="flex items-start justify-between">
+              <div>
+                <h2 class="text-xl font-bold text-slate-800">${r.machineName}</h2>
+                <p class="text-sm text-gray-500">${r.reviewId} · 项目 ${r.projectId} · 版本 ${r.drawingVersion}</p>
+              </div>
+              ${renderStatus(r.status)}
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-4 text-sm">
+              <div><span class="text-gray-500">设计负责人：</span>${r.designerId}</div>
+              <div><span class="text-gray-500">创建时间：</span>${new Date(r.createdAt).toLocaleString()}</div>
+              ${r.meetingId ? `<div><span class="text-gray-500">会议号：</span>${r.meetingId}</div>` : ""}
+              ${r.meetingStartTime ? `<div><span class="text-gray-500">会议时间：</span>${new Date(r.meetingStartTime).toLocaleString()}</div>` : ""}
+            </div>
+            <div class="mt-4">
+              <h3 class="text-sm font-bold text-slate-700 mb-2">设计说明</h3>
+              <p class="text-sm text-gray-600 whitespace-pre-wrap">${r.designNotes}</p>
+            </div>
+            ${r.meetingLink ? `<div class="mt-4"><a href="${r.meetingLink}" target="_blank" class="text-sm text-blue-600 hover:underline">加入腾讯会议 →</a></div>` : ""}
+          </div>
+
+          <!-- 操作区 -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <h3 class="text-sm font-bold text-slate-700 mb-3">状态操作</h3>
+            <div class="flex flex-wrap gap-2">
+              ${renderActionButtons(r)}
+            </div>
+          </div>
+
+          <!-- 会议纪要 -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <h3 class="text-sm font-bold text-slate-700 mb-3">保存会议纪要</h3>
+            <form onsubmit="saveMinutes(event, '${r.reviewId}')" class="space-y-3">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">会议时间</label>
+                <input type="datetime-local" name="meetingTime" required class="w-full rounded border-gray-300 border px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">讨论记录</label>
+                <textarea name="discussion" rows="3" required class="w-full rounded border-gray-300 border px-3 py-2 text-sm"></textarea>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">评审结论</label>
+                <select name="conclusion" class="w-full rounded border-gray-300 border px-3 py-2 text-sm">
+                  <option value="passed">通过</option>
+                  <option value="conditional">有条件通过</option>
+                  <option value="rejected">不通过</option>
+                </select>
+              </div>
+              <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg">保存纪要并提交结论</button>
+            </form>
+            <p id="minutes-result" class="mt-2 text-sm"></p>
+          </div>
+
+          <!-- BOM 生成 -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <h3 class="text-sm font-bold text-slate-700 mb-3">生成 BOM</h3>
+            <form onsubmit="generateBOM(event, '${r.reviewId}')" class="space-y-3">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">BOM JSON（首期可粘贴简单数组）</label>
+                <textarea name="items" rows="4" required class="w-full rounded border-gray-300 border px-3 py-2 text-sm font-mono" placeholder='[{"materialName":"电机支架","quantity":2,"unit":"件","source":"self-made","process":"machining"}]'></textarea>
+              </div>
+              <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-4 py-2 rounded-lg">生成 BOM</button>
+            </form>
+            <p id="bom-result" class="mt-2 text-sm"></p>
+          </div>
+        `;
+      } catch (err) {
+        el.innerHTML = `<p class="text-sm text-red-500">加载失败：${err.message}</p>`;
+      }
+    }
+
+    function renderActionButtons(r) {
+      const buttons = [];
+      if (r.status === "pending_review") {
+        buttons.push(`<button onclick="scheduleMeeting('${r.reviewId}')" class="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg">预约会议</button>`);
+      }
+      if (r.status === "rectifying") {
+        buttons.push(`<button onclick="completeRectify('${r.reviewId}')" class="bg-orange-600 text-white text-xs px-3 py-1.5 rounded-lg">整改完成</button>`);
+      }
+      return buttons.join("") || `<span class="text-xs text-gray-400">当前状态无可用操作</span>`;
+    }
+
+    async function scheduleMeeting(reviewId) {
+      try {
+        const data = await api(`/api/drawing-review/${reviewId}/meeting`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        alert(`会议已创建：${data.meeting?.meetingLink || "mock"}`);
+        loadDetail(reviewId);
+      } catch (err) {
+        alert("预约失败：" + err.message);
+      }
+    }
+
+    async function completeRectify(reviewId) {
+      try {
+        await api(`/api/drawing-review/${reviewId}/rectify`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        loadDetail(reviewId);
+      } catch (err) {
+        alert("操作失败：" + err.message);
+      }
+    }
+
+    async function saveMinutes(e, reviewId) {
+      e.preventDefault();
+      const form = e.target;
+      try {
+        await api(`/api/drawing-review/${reviewId}/minutes`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            meetingTime: new Date(form.meetingTime.value).toISOString(),
+            discussion: form.discussion.value,
+            attendees: [],
+            topics: [],
+            issues: [],
+            nextActions: [],
+            conclusion: form.conclusion.value,
+            attachments: [],
+          }),
+        });
+        await api(`/api/drawing-review/${reviewId}/conclusion`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ conclusion: form.conclusion.value }),
+        });
+        document.getElementById("minutes-result").className = "mt-2 text-sm text-green-600";
+        document.getElementById("minutes-result").textContent = "纪要与结论已保存";
+        loadDetail(reviewId);
+      } catch (err) {
+        document.getElementById("minutes-result").className = "mt-2 text-sm text-red-600";
+        document.getElementById("minutes-result").textContent = "失败：" + err.message;
+      }
+    }
+
+    async function generateBOM(e, reviewId) {
+      e.preventDefault();
+      const form = e.target;
+      try {
+        const items = JSON.parse(form.items.value);
+        const data = await api(`/api/drawing-review/${reviewId}/bom/generate`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ items }),
+        });
+        document.getElementById("bom-result").className = "mt-2 text-sm text-green-600";
+        document.getElementById("bom-result").textContent = `BOM 已生成：${data.bom.bomId}，共 ${data.items.length} 项`;
+        loadDetail(reviewId);
+      } catch (err) {
+        document.getElementById("bom-result").className = "mt-2 text-sm text-red-600";
+        document.getElementById("bom-result").textContent = "失败：" + err.message;
+      }
+    }
+
+    document.getElementById("submit-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const resultEl = document.getElementById("submit-result");
+      try {
+        const data = await api("/api/drawing-review/submit", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            projectId: form.projectId.value,
+            machineName: form.machineName.value,
+            drawingVersion: form.drawingVersion.value,
+            designerId: form.designerId.value,
+            drawingFiles: [],
+            designNotes: form.designNotes.value,
+          }),
+        });
+        resultEl.className = "mt-3 text-sm text-green-600";
+        resultEl.textContent = `提交成功：${data.reviewId}`;
+        form.reset();
+        router("list");
+      } catch (err) {
+        resultEl.className = "mt-3 text-sm text-red-600";
+        resultEl.textContent = "失败：" + err.message;
+      }
+    });
+
+    async function init() {
+      const cfg = await getConfig();
+      if (!cfg.configured) {
+        document.getElementById("not-configured").classList.remove("hidden");
+      }
+      loadReviews();
+    }
+
+    init();
+  </script>
+</body>
+</html>

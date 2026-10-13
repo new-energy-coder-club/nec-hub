@@ -78,6 +78,7 @@
 
 <nav class="bg-white shadow-sm">
   <div class="max-w-5xl mx-auto px-6 flex gap-6 text-sm font-medium text-gray-500">
+    <button data-tab="drawing-review" class="tab-btn py-3">📐 图纸评审</button>
     <button data-tab="apps" class="tab-btn py-3 tab-active">应用广场</button>
     <button data-tab="skills" class="tab-btn py-3">Skill 中心</button>
     <button data-tab="repos" class="tab-btn py-3">开源仓库</button>
@@ -87,6 +88,14 @@
 </nav>
 
 <main class="max-w-5xl mx-auto px-6 py-8">
+
+  <!-- 图纸评审（iframe 嵌入独立应用，登录态同源共享） -->
+  <section id="tab-drawing-review" class="hidden">
+    <iframe id="drawing-review-frame" src="/apps/drawing-review/?embedded=1" class="w-full bg-transparent" style="height:calc(100vh - 200px);min-height:560px;border:0;" title="新增机图纸评审流程"></iframe>
+    <p class="text-xs text-gray-400 mt-2">
+      全屏打开：<a href="/apps/drawing-review/" target="_blank" class="hover:underline" style="color:var(--cyan)">/apps/drawing-review/ →</a>
+    </p>
+  </section>
 
   <!-- 应用广场 -->
   <section id="tab-apps">
@@ -99,6 +108,23 @@
       <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="publish-prompt"></pre>
       <button onclick="copyText('publish-prompt')" class="mt-3 text-sm text-white px-3 py-1.5 rounded" style="background:var(--navy)">复制</button>
     </div>
+
+    <!-- 核心流程入口 -->
+    <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <h3 class="text-sm font-bold text-slate-700 mb-3">核心流程</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <a href="/apps/drawing-review/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-blue-200 transition">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-lg">📐</div>
+            <div>
+              <p class="font-bold text-slate-800">新增机图纸评审</p>
+              <p class="text-xs text-gray-500">提交 · 评审 · BOM · 排期 · 采购</p>
+            </div>
+          </div>
+        </a>
+      </div>
+    </div>
+
     <div id="apps-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
   </section>
 
@@ -181,7 +207,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("tab-active"));
     btn.classList.add("tab-active");
-    ["apps","skills","repos","dashboard","agent"].forEach(t =>
+    ["drawing-review","apps","skills","repos","dashboard","agent"].forEach(t =>
       document.getElementById("tab-"+t).classList.toggle("hidden", t !== btn.dataset.tab));
   });
 });

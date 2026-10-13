@@ -4,3 +4,4 @@ node_modules/
 *.log
 worker-configuration.d.ts
 .kimi-code/
+.DS_Store

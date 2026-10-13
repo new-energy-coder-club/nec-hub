@@ -68,10 +68,21 @@ interface DashboardConfig {
   updatedAt: string;
 }
 
-interface BitableRecord {
-  record_id: string;
-  fields: Record<string, unknown>;
-}
+import {
+  BitableRecord,
+  BitableFieldMeta,
+  createBitableRecord,
+  fieldNum,
+  fieldText,
+  fieldTs,
+  findFieldKey,
+  firstFieldText,
+  getTenantAccessToken,
+  listBitableFields,
+  listBitableRecords,
+  matchField,
+  updateBitableRecord,
+} from "./feishu/bitable";
 
 interface TableFetchResult {
   records: BitableRecord[];
@@ -169,6 +180,11 @@ export default {
       }
       if (url.pathname === "/api/dashboard") {
         return json(await buildDashboard(env, request));
+      }
+      if (url.pathname.startsWith("/api/drawing-review")) {
+        const dr = await import("./drawing-review");
+        const res = await dr.handleDrawingReview(request, env, url.pathname);
+        if (res) return res;
       }
       if (url.pathname === "/api/reimburse" && request.method === "POST") {
         return await handleReimburse(request, env);
@@ -696,6 +712,34 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: "config_drawing_review",
+    description:
+      "配置/查看新增机图纸评审流程对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", description: "get（默认）| set" },
+        base: { type: "string", description: "set 时必填：多维表格 app_token（URL 中 /base/ 后的一段）" },
+        tables: {
+          type: "object",
+          description: "set 时必填：如 {\"reviews\":\"tblxxxx\",\"minutes\":\"tblxxxx\"}",
+          properties: {
+            reviews: { type: "string", description: "图纸评审单表 table_id" },
+            minutes: { type: "string", description: "会议纪要表 table_id" },
+            rectifications: { type: "string", description: "整改项表 table_id" },
+            bom: { type: "string", description: "BOM 清单表 table_id" },
+            assessments: { type: "string", description: "评估报告表 table_id" },
+            inventory: { type: "string", description: "库存查询结果表 table_id" },
+            delivery: { type: "string", description: "发货清单表 table_id" },
+            schedule: { type: "string", description: "排期任务表 table_id" },
+            inquiries: { type: "string", description: "询价单表 table_id" },
+            events: { type: "string", description: "流程事件日志表 table_id" },
+          },
+        },
+      },
+    },
+  },
 ];
 
 async function handleMcp(request: Request, env: Env): Promise<Response> {
@@ -766,6 +810,8 @@ async function callTool(
         return rpc(id, await toolQueryBitable(args, env, hasMcpToken));
       case "config_dashboard":
         return rpc(id, await toolConfigDashboard(args, env));
+      case "config_drawing_review":
+        return rpc(id, await toolConfigDrawingReview(args, env));
       default:
         return rpcError(id, -32602, `Unknown tool: ${name}`);
     }
@@ -1124,6 +1170,70 @@ async function toolConfigDashboard(args: Record<string, unknown>, env: Env) {
   };
 }
 
+// ---------- 新增机图纸评审流程配置 ----------
+
+const DRAWING_REVIEW_TABLES = [
+  "reviews",
+  "minutes",
+  "rectifications",
+  "bom",
+  "assessments",
+  "inventory",
+  "delivery",
+  "schedule",
+  "inquiries",
+  "events",
+] as const;
+
+type DrawingReviewTableName = (typeof DRAWING_REVIEW_TABLES)[number];
+
+async function toolConfigDrawingReview(args: Record<string, unknown>, env: Env) {
+  const action = String(args.action ?? "get");
+  if (action === "get") {
+    const cfg = await (await import("./drawing-review/config")).getDrawingReviewConfig(env);
+    return {
+      content: [
+        {
+          type: "text",
+          text: cfg
+            ? `当前新增机图纸评审流程配置：\n${JSON.stringify(cfg, null, 2)}`
+            : "尚未配置。用 action=set 写入：base = 多维表格 app_token（URL 中 /base/ 后的一段），tables = 逻辑表名到 table_id 的映射。",
+        },
+      ],
+    };
+  }
+  if (action !== "set") throw new Error("action 必须是 get | set");
+
+  const base = String(args.base ?? "").trim();
+  if (!/^[A-Za-z0-9]{10,}$/.test(base)) {
+    throw new Error("base 不合法：应为飞书多维表格 URL 中 /base/ 后的 app_token（10 位以上字母数字串）");
+  }
+  const rawTables = (args.tables ?? {}) as Record<string, unknown>;
+  const tables: Partial<Record<DrawingReviewTableName, string>> = {};
+  for (const key of DRAWING_REVIEW_TABLES) {
+    const v = String(rawTables[key] ?? "").trim();
+    if (v) {
+      if (!/^tbl[A-Za-z0-9]+$/.test(v)) {
+        throw new Error(`table_id 不合法（${key}）：应以 tbl 开头，如 tblsH8aOxxx`);
+      }
+      tables[key] = v;
+    }
+  }
+  if (Object.keys(tables).length === 0) {
+    throw new Error("tables 至少提供一张表：reviews / minutes / rectifications / bom / ... → table_id");
+  }
+  const { setDrawingReviewConfig } = await import("./drawing-review/config");
+  const cfg = await setDrawingReviewConfig(env, { base, tables });
+  return {
+    content: [
+      {
+        type: "text",
+        text: `✅ 新增机图纸评审流程配置已保存：base=${base}，共 ${Object.keys(tables).length} 张表（${Object.keys(tables).join(" / ")}）。\n可调用 GET /api/drawing-review/config 或继续调用 API 验证。`,
+      },
+    ],
+  };
+}
+
 // ---------- NEC 开源仓库（GitHub org + KV 缓存） ----------
 
 async function buildRepos(env: Env): Promise<unknown> {
@@ -1331,60 +1441,6 @@ async function getDashboardConfig(env: Env): Promise<DashboardConfig | null> {
   }
 }
 
-/** tenant_access_token 供多维表格等应用级 API 使用（KV 缓存，提前 5 分钟过期） */
-async function getTenantAccessToken(env: Env): Promise<string> {
-  const cached = await env.REGISTRY.get("feishu:tenant_access_token", "json") as
-    | { token: string; expireAt: number }
-    | null;
-  if (cached && cached.expireAt > Date.now()) return cached.token;
-
-  const resp = await fetch(`${FEISHU_API}/auth/v3/tenant_access_token/internal`, {
-    method: "POST",
-    headers: { "content-type": "application/json; charset=utf-8" },
-    body: JSON.stringify({ app_id: env.FEISHU_APP_ID, app_secret: env.FEISHU_APP_SECRET }),
-  });
-  const data = (await resp.json()) as {
-    code?: number;
-    msg?: string;
-    tenant_access_token?: string;
-    expire?: number;
-  };
-  if (data.code !== 0 || !data.tenant_access_token) {
-    throw new Error(`获取 tenant_access_token 失败：${data.msg ?? "unknown"}`);
-  }
-  const expireAt = Date.now() + ((data.expire ?? 7200) - 300) * 1000;
-  await env.REGISTRY.put("feishu:tenant_access_token", JSON.stringify({ token: data.tenant_access_token, expireAt }));
-  return data.tenant_access_token;
-}
-
-/** 分页读取一张多维表格（最多 max 条），code !== 0 视为失败 */
-async function listBitableRecords(
-  token: string,
-  appToken: string,
-  tableId: string,
-  max = 1000,
-): Promise<BitableRecord[]> {
-  const out: BitableRecord[] = [];
-  let pageToken = "";
-  do {
-    const u = new URL(`${FEISHU_API}/bitable/v1/apps/${appToken}/tables/${tableId}/records`);
-    u.searchParams.set("page_size", "100");
-    if (pageToken) u.searchParams.set("page_token", pageToken);
-    const resp = await fetch(u.toString(), { headers: { authorization: `Bearer ${token}` } });
-    const data = (await resp.json()) as {
-      code?: number;
-      msg?: string;
-      data?: { items?: BitableRecord[]; has_more?: boolean; page_token?: string };
-    };
-    if (data.code !== 0) {
-      throw new Error(`飞书多维表格读取失败（${tableId}）：${data.msg ?? `code ${data.code}`}`);
-    }
-    out.push(...(data.data?.items ?? []));
-    pageToken = data.data?.has_more ? (data.data?.page_token ?? "") : "";
-  } while (pageToken && out.length < max);
-  return out.slice(0, max);
-}
-
 /** 读一张表：命中 5 分钟缓存直接返回；刷新失败时降级返回过期缓存 */
 async function fetchTableCached(env: Env, cfg: DashboardConfig, key: DashTable): Promise<TableFetchResult> {
   const tableId = cfg.tables[key];
@@ -1413,50 +1469,6 @@ async function fetchTableCached(env: Env, cfg: DashboardConfig, key: DashTable):
     }
     return { records: [], cachedAt: "", error: msg };
   }
-}
-
-/** 多维表格字段值松散类型 → 展示文本（兼容字符串/数字/数组/人员对象） */
-function fieldText(v: unknown): string {
-  if (v == null) return "";
-  if (typeof v === "number") return String(v);
-  if (typeof v === "string") return v;
-  if (Array.isArray(v)) return v.map(fieldText).filter(Boolean).join("、");
-  if (typeof v === "object") {
-    const o = v as Record<string, unknown>;
-    return fieldText(o.name ?? o.text ?? o.title ?? "");
-  }
-  return String(v);
-}
-
-/** 尽量从字段值里解析出数字（"¥1,200" → 1200） */
-function fieldNum(v: unknown): number | null {
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  const m = fieldText(v).replace(/[,，\s]/g, "").match(/-?\d+(?:\.\d+)?/);
-  return m ? Number(m[0]) : null;
-}
-
-/** 字段值 → 时间戳（ms）。数字按 ms 计；字符串兼容 2026-10-13 / 2026/10/13 / 2026年10月13日 */
-function fieldTs(v: unknown): number | null {
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  const s = fieldText(v).trim();
-  if (!s) return null;
-  const norm = s.replace(/[年月/.]/g, "-").replace(/日/g, "");
-  const t = Date.parse(norm);
-  return Number.isNaN(t) ? null : t;
-}
-
-/** 在记录样本里按正则找第一个匹配的字段名（字段名不固定，做模糊匹配） */
-function findFieldKey(records: BitableRecord[], patterns: RegExp[]): string | null {
-  const keys = new Set<string>();
-  for (const r of records.slice(0, 50)) {
-    for (const k of Object.keys(r.fields ?? {})) keys.add(k);
-  }
-  for (const re of patterns) {
-    for (const k of keys) {
-      if (re.test(k)) return k;
-    }
-  }
-  return null;
 }
 
 const TASK_DONE_RE = /完成|已完|完结|done|取消|cancel|关闭|close|drop/i;
@@ -1597,42 +1609,6 @@ async function buildDashboard(env: Env, request: Request): Promise<unknown> {
 
 // ---------- 报销提交（上传单据/付款凭证 → R2；按字段类型写入财务报销表） ----------
 
-interface BitableFieldMeta {
-  field_name: string;
-  ui_type: string;
-}
-
-/** 拉取表字段元数据（field_name + ui_type），用于按类型序列化写入值 */
-async function listBitableFields(token: string, appToken: string, tableId: string): Promise<BitableFieldMeta[]> {
-  const out: BitableFieldMeta[] = [];
-  let pageToken = "";
-  do {
-    const u = new URL(FEISHU_API + "/bitable/v1/apps/" + appToken + "/tables/" + tableId + "/fields");
-    u.searchParams.set("page_size", "100");
-    if (pageToken) u.searchParams.set("page_token", pageToken);
-    const resp = await fetch(u.toString(), { headers: { authorization: "Bearer " + token } });
-    const data = (await resp.json()) as {
-      code?: number;
-      msg?: string;
-      data?: { items?: BitableFieldMeta[]; has_more?: boolean; page_token?: string };
-    };
-    if (data.code !== 0) throw new Error("读取表字段失败：" + (data.msg ?? ("code " + data.code)));
-    out.push(...(data.data?.items ?? []));
-    pageToken = data.data?.has_more ? (data.data?.page_token ?? "") : "";
-  } while (pageToken);
-  return out;
-}
-
-/** 按字段名正则 + 可选 ui_type 正则挑字段 */
-function matchField(fields: BitableFieldMeta[], patterns: RegExp[], types?: RegExp): BitableFieldMeta | null {
-  for (const re of patterns) {
-    for (const f of fields) {
-      if (re.test(f.field_name) && (!types || types.test(f.ui_type))) return f;
-    }
-  }
-  return null;
-}
-
 /**
  * POST /api/reimburse（multipart/form-data，需登录）
  * 字段：item / amount / date(YYYY-MM-DD) / note / receipt(单据文件) / payment(付款凭证文件)
@@ -1703,17 +1679,8 @@ async function handleReimburse(request: Request, env: Env): Promise<Response> {
       if (Object.keys(record).length === 0) {
         result.warning = "财务报销表未匹配到可写字段（事项/金额/报销时间），已仅存档凭证文件";
       } else {
-        const resp = await fetch(
-          FEISHU_API + "/bitable/v1/apps/" + cfg.base + "/tables/" + cfg.tables.finance + "/records",
-          {
-            method: "POST",
-            headers: { authorization: "Bearer " + token, "content-type": "application/json" },
-            body: JSON.stringify({ fields: record }),
-          },
-        );
-        const data = (await resp.json()) as { code?: number; msg?: string; data?: { record?: { record_id?: string } } };
-        if (data.code !== 0) throw new Error(data.msg ?? ("code " + data.code));
-        result.recordId = data.data?.record?.record_id;
+        const created = await createBitableRecord(token, cfg.base, cfg.tables.finance, record);
+        result.recordId = created.record_id;
         await env.REGISTRY.delete("dashboard:cache:finance");
       }
     } catch (err) {
@@ -1723,15 +1690,6 @@ async function handleReimburse(request: Request, env: Env): Promise<Response> {
     result.warning = "未配置财务报销表或飞书应用，已仅存档凭证文件";
   }
   return json(result);
-}
-
-/** 记录里第一个非空文本字段（兜底当标题用） */
-function firstFieldText(r: BitableRecord): string {
-  for (const k of Object.keys(r.fields ?? {})) {
-    const v = fieldText(r.fields[k]);
-    if (v) return v;
-  }
-  return "";
 }
 
 // ---------- 工具函数 ----------
