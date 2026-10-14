@@ -49,7 +49,7 @@
   .fade-in { animation: fadeIn .35s ease both; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
-  /* ---- PDF 证书模板（屏幕外渲染，html2canvas 截取；打印回退时可见） ---- */
+  /* ---- PDF 证书模板（屏幕外布局，仅打印时可见；由浏览器打印引擎导出为可选中文字的 PDF） ---- */
   #cert {
     position: absolute; left: -9999px; top: 0; width: 794px;
     background: #fff; color: var(--nec-ink); padding: 56px 64px;
@@ -57,13 +57,18 @@
   }
   #cert .cert-horizon { height: 4px; background: var(--nec-horizon); border-radius: 2px; }
   #cert h1 { font-family: var(--nec-font-display); letter-spacing: .02em; }
-  #cert .cert-body { font-size: 13px; line-height: 1.9; white-space: pre-wrap; }
+  #cert .cert-body { font-size: 13px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word; }
   #cert .cert-kv { display: flex; gap: 8px; font-size: 13px; }
   #cert .cert-kv dt { color: var(--nec-gray); min-width: 88px; }
-  #cert .cert-kv dd { font-weight: 600; }
+  #cert .cert-kv dd { font-weight: 600; overflow-wrap: break-word; word-break: break-all; min-width: 0; }
   @media print {
+    @page { size: A4; margin: 16mm 14mm; }
+    html, body { background: #fff !important; }
     body.printing > div { display: none !important; }
-    body.printing #cert { position: static; left: 0; width: auto; padding: 0; }
+    body.printing > #cert { display: block !important; position: static; left: 0; width: auto; padding: 0; }
+    body.printing #cert h1 { page-break-after: avoid; }
+    body.printing #cert .cert-box { page-break-inside: avoid; }
+    body.printing #cert p, body.printing #cert pre { orphans: 3; widows: 3; }
   }
 </style>
 </head>
@@ -140,7 +145,7 @@
       <div class="p-4 flex flex-col sm:flex-row sm:items-center gap-4">
         <p id="signed-msg" class="mono text-xs ok flex-1"></p>
         <button id="pdf-btn" type="button" class="pdf-btn mono rounded-lg px-5 py-2.5 text-sm whitespace-nowrap">
-          ⬇ 下载 PDF 证书
+          ⬇ 导出 PDF 证书
         </button>
       </div>
     </section>
@@ -159,7 +164,7 @@
     <p class="mono text-center text-xs text-gray-400 mt-6">$ echo "BUILT TO DAWN · 为黎明而造 · KEEP BUILDING" · NEC 开源社区 · 协议版本 <span id="ver-foot">1.0</span></p>
   </div>
 
-  <!-- PDF 证书模板（屏幕外，html2canvas 截取渲染） -->
+  <!-- PDF 证书模板（屏幕外，打印导出时由浏览器排版引擎渲染为可选中文字） -->
   <div id="cert" aria-hidden="true">
     <div style="display:flex; justify-content:space-between; align-items:flex-end;">
       <img src="/brand/nec-lockup-h.svg" alt="NEC 常州工学院 NEC 战队" style="height:56px; width:auto;" />
@@ -172,7 +177,7 @@
       Contributor License Agreement Certificate · 协议版本 v<span data-cert="version"></span> · <span data-cert="updatedAt"></span> 生效
     </p>
 
-    <div style="margin-top:24px; border:1px solid var(--nec-line); border-radius:10px; padding:18px 20px; background:var(--nec-fog);">
+    <div class="cert-box" style="margin-top:24px; border:1px solid var(--nec-line); border-radius:10px; padding:18px 20px; background:var(--nec-fog);">
       <dl style="display:grid; grid-template-columns:1fr 1fr; row-gap:10px;">
         <div class="cert-kv"><dt>签署人</dt><dd data-cert="name"></dd></div>
         <div class="cert-kv"><dt>GitHub</dt><dd class="mono" data-cert="github"></dd></div>
@@ -351,63 +356,23 @@ async function fillCert(sig) {
   set("agreement", AGREEMENT.replace(/─+\n\s*阅读完毕后，在右侧终端执行签署命令。\s*$/, "").trimEnd());
 }
 
-let _pdfLibs = null;
-function loadPdfLibs() {
-  if (_pdfLibs) return _pdfLibs;
-  const load = (src) => new Promise((res, rej) => {
-    const s = document.createElement("script");
-    s.src = src; s.onload = res; s.onerror = () => rej(new Error("PDF 库加载失败"));
-    document.head.appendChild(s);
-  });
-  _pdfLibs = load("vendor/html2canvas.min.js")
-    .then(() => load("vendor/jspdf.umd.min.js"))
-    .then(() => ({ html2canvas: window.html2canvas, jspdf: window.jspdf }));
-  return _pdfLibs;
-}
-
+// ---------- PDF 导出：浏览器打印引擎 ----------
+// 用浏览器打印（另存为 PDF）生成证书：文字可选中可复制，换行/分页由排版引擎处理，
+// 不会出现图片版 PDF 的切行问题，也无需嵌入数 MB 的中文字体。
 $("#pdf-btn").addEventListener("click", async () => {
   if (!currentSig) return;
   const btn = $("#pdf-btn");
   btn.disabled = true;
-  btn.textContent = "生成中…";
   await fillCert(currentSig);
-  try {
-    const { html2canvas, jspdf } = await loadPdfLibs();
-    const el = $("#cert");
-    const canvas = await html2canvas(el, {
-      scale: 2,
-      backgroundColor: "#ffffff",
-      // 整页克隆会拉取荣誉榜里的跨域头像，网络受限时会挂起渲染；忽略跨域图片，保留同源队标
-      ignoreElements: (node) => {
-        if (node.tagName !== "IMG") return false;
-        try { return new URL(node.src, location.href).origin !== location.origin; } catch { return true; }
-      },
-      imageTimeout: 8000,
-    });
-    const pdf = new jspdf.jsPDF("p", "mm", "a4");
-    const PW = 210, PH = 297;
-    const pxPerMm = canvas.width / PW;
-    const pagePx = Math.floor(PH * pxPerMm);
-    let y = 0, page = 0;
-    while (y < canvas.height) {
-      const h = Math.min(pagePx, canvas.height - y);
-      const c = document.createElement("canvas");
-      c.width = canvas.width; c.height = h;
-      c.getContext("2d").drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
-      if (page > 0) pdf.addPage();
-      pdf.addImage(c.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, PW, h / pxPerMm);
-      y += h; page++;
-    }
-    pdf.save(`NEC-CLA-v${currentSig.version}-${currentSig.github}.pdf`);
-  } catch {
-    // CDN 不可用时回退：浏览器打印（另存为 PDF），原生支持中文
-    document.body.classList.add("printing");
-    window.print();
-    document.body.classList.remove("printing");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "⬇ 下载 PDF 证书";
-  }
+  // 等证书里的队标图片就绪后再唤起打印，避免打印出占位空白
+  const imgs = [...document.querySelectorAll("#cert img")];
+  await Promise.all(imgs.map((img) => img.complete
+    ? Promise.resolve()
+    : new Promise((r) => { img.onload = r; img.onerror = r; })));
+  document.body.classList.add("printing");
+  window.print();
+  document.body.classList.remove("printing");
+  btn.disabled = false;
 });
 
 // ---------- 荣誉榜 ----------
