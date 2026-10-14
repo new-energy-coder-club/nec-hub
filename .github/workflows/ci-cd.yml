@@ -16,6 +16,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Env 类型来自 wrangler types 生成的 worker-configuration.d.ts（gitignored，CI 需现生成）
+      - run: npm run types
       - run: npm run check
 
   deploy:
