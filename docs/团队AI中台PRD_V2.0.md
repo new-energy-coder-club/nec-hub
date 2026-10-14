@@ -60,7 +60,7 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 - **我的任务（FE-17）**：`/api/my-tasks` 绑定飞书任务后 Task v2 同步拉取（KV 5 分钟缓存、`?refresh=1` 强刷、解绑）
 - **VI V1.1**：语义色定义（§3.4）落地 nec tokens，门户首页 / 图纸评审 / 硬件评审 / 评分 / 赛季目标页状态色已统一收口；品牌视觉中心页 `/brand/`
 - **Skill 中心**：分类体系与检索体验上线；`nec-vi` / `nec-ppt` Skill 就绪
-- **工程质量**：主线合并对照 A 组 5 项已全部移植入库（续期修复 `94fc174`、报销动作/列表 `c9fcfb9`、签名 webhook 通知域 + 应用广场角色过滤 + send_notice + whoami，见 `docs/主线合并对照_main_vs_fixvi.md`）；fix/vi 为存续主线，main 按计划归档只读；vitest 19 文件 191 用例全绿
+- **工程质量**：主线合并对照 A 组 5 项已全部移植入库（续期修复 `94fc174`、报销动作/列表 `c9fcfb9`、签名 webhook 通知域 + 应用广场角色过滤 + send_notice + whoami，见 `docs/主线合并对照_main_vs_fixvi.md`）；fix/vi 为存续主线，main 按计划归档只读；vitest 19 文件 200 用例全绿；《主线整合与执行方案_V1.0.md》为唯一版本与协作公约入口
 
 **缺口（本 PRD 覆盖）**：飞书内 JSAPI 免登端到端验证、三角色测试账号走查、数据基建真实灌数（物资/报销两表仍 0 记录、队员名单组别待补）、飞书视频会议企业授权与 ERP/MES 集成联调（未就绪前手动导入模板兜底）、硬件评审/合同审批前端页面、D 组新建能力（飞书邮件通道 + refresh_token 持久化、真两级审批、48h 代理人升级，见主线对照文尾）。
 
@@ -592,6 +592,7 @@ M2 结束、工作台切换 2 周后，按对标文章建议发**飞书问卷**�
 | V2.0 修订 | 2026-10-14 晚 | FE-04/FE-05/FE-06/FE-07/FE-09 上线（赛季目标面板+update_progress、数据校验 Agent+周报 cron、三层回退个性化首页+set_home_layout、待办聚合条）；FE-02 接入正式 Base 并建赛季目标表（灌数/补组别待团队）；FE-12 确认已满足；FE-13 报告归档；生产部署修复半新状态，vitest 114 用例全绿 |
 | V2.0 修订 | 2026-10-14 深夜 | **fix/vi 主线全量同步**：单体按域拆分重构（index.ts 1955→192 行 + 15 域模块）；新增 FE-15 硬件评审 / FE-16 合同审批 / FE-17 我的任务 / FE-18 赛季目标收集与自动规划（均含进展记录）；FE-08 报销审批动作 approve/reject/pay + 我的报销列表（main A2/A3 移植）；FE-01 会话同 sid 原地续期修复（A1 移植）；FE-10 VI V1.1 语义色体系；FE-14 图纸联想功能 45 用例全绿 + 飞书视频会议共享服务（腾讯会议降为备选）+ 10 表配置完毕；MCP 工具 10→17 个；Cron 增加看板 4 分钟预热；vitest 16 文件 174 用例全绿；《主线合并对照》《页面与Tab状态现状》归档 docs/ |
 | V2.0 修订 | 2026-10-14 深夜二更 | **主线移植收尾（main 归档）**：A4 签名群机器人通知域（`src/feishu/notify.ts` 加签/分流/重试/失败留痕，报销提交与审批四类事件接入）、A5 应用广场按角色过滤 visibleApps、B2 `send_notice` MCP、C 组 `whoami` MCP（Agent 接入自检）、B4《审批与通知中心 PRD V1.1》搬运并按 fix/vi 重标 §0；MCP 工具 17→19 个；vitest 19 文件 191 用例全绿；main 分支打 tag 归档，旧工作副本物理删除，fix/vi 单线演进 |
+| V2.0 修订 | 2026-10-14 三更 | **N-02 飞书邮箱通道 + 全量部署**：`src/feishu/mail.ts`（RFC 5822 EML 构造/建草稿/发送/profile 取发件地址，refresh_token 持久化续期）+ `send_mail` MCP 工具（第 20 个）+ 登录 scope 追加 `mail:user_mailbox.message:modify`；姓名→open_id 目录抽至共享模块 `feishu/member-directory`（meeting/mail 共用）；vitest 19 文件 200 用例全绿；全量部署生产；《主线整合与执行方案_V1.0》归档 docs/ |
 
 ### 11.2 变更流程
 
@@ -605,7 +606,7 @@ M2 结束、工作台切换 2 周后，按对标文章建议发**飞书问卷**�
 ### 12.1 测试基建现状
 
 - 框架：vitest，配置见 `vitest.config.ts`（`test-setup.ts` 已移除，配置并入 vitest.config）。
-- 现状（2026-10-14 深夜实测）：**16 个测试文件、174 个用例全部通过**。覆盖：登录态与角色（fe04-fe09）、首页三层回退（home）、校验规则引擎（validation）、MCP 配置工具（mcp-config-tools）、我的任务（my-tasks）、Skill 中心（skills）、会议服务（meeting）、模块网关（module-gateway）、图纸评审域（drawing-review 单测 45 + 看板 10 + 询价 16 + e2e 全链路 2）、合同审批域（contract-approval）、赛季目标（season-goals），共享 mock 环境 `src/__tests__/mock-env.ts` 与 `dr-test-utils.ts`。
+- 现状（2026-10-14 深夜实测）：**19 个测试文件、200 个用例全部通过**。覆盖：登录态与角色（fe04-fe09）、首页三层回退（home）、校验规则引擎（validation）、MCP 配置工具（mcp-config-tools）、我的任务（my-tasks）、Skill 中心（skills）、会议服务（meeting）、模块网关（module-gateway）、通知域（notify：加签/分流/重试/失败留痕）、应用可见性（visible-apps）、MCP 身份与告示（mcp-whoami）、图纸评审域（drawing-review 单测 45 + 看板 10 + 询价 16 + e2e 全链路 2）、合同审批域（contract-approval）、赛季目标（season-goals）、邮箱通道（b5d64c4 附 9 例），共享 mock 环境 `src/__tests__/mock-env.ts` 与 `dr-test-utils.ts`。
 - 命令：`npm run check`（类型检查）+ `npm test`（vitest）。
 
 ### 12.2 各 FE 测试要点
