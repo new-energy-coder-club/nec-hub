@@ -53,8 +53,15 @@
 - B 组：send_notice ✅、文档 ✅；剩余 flow-config 约定 ≈ 2h
 - D 组邮件通道：refresh_token 2h + mailer 模块 3h + 授权联调 1h ≈ **0.5~1 天**（依赖用户完成一次扫码授权）
 
+## 收尾结论（2026-10-14 深夜）
+
+- ✅ **main 已归档**：`archive/pre-domain-split` tag（指向 `32c0b98`）已推送 gitee；旧工作副本 `nec-hub/` 已物理清理，本地 secrets（`.dev.vars` / `.mcp-token`）已迁移至 fix/vi 工作区。
+- ✅ **fix/vi 已推送**：分支 `fix/vi-v1.1-convergence` 已上 gitee；生产部署 `hub.newenergycoder.club` 版本 `b0f2bc85`（MCP 19 工具，vitest 19 文件 191 用例全绿）。
+- ⚠️ **GitHub 镜像未同步**：网络受限（connection reset），`main` 与 `fix/vi` 的最新状态仅在 gitee；网络恢复后执行 `git push origin main --tags` + `git push origin fix/vi-v1.1-convergence`。
+- 剩余可选工作：B 组 flow-config 共享约定（≈2h）；D 组邮件通道/refresh_token 持久化/48h 代理人/真两级审批（见上，需用户扫码授权一次）。
+
 ## 待裁决
 
-1. main 归档时点：A 组移植全部完成后，main 打 tag `archive/pre-domain-split` 后只读（**A 组已零缺口，可执行**）
+1. ~~main 归档时点~~ **已执行**（见上方收尾结论）
 2. 报销前端字段：fix/vi 英文 matchField 方案 vs main 中文字段直连——建议保留 fix/vi 方案（对表结构变更有韧性）
 3. 通知群：主群「NEC 中台通知」webhook 已存在于生产 secrets，fix/vi 通知域部署后直接可用

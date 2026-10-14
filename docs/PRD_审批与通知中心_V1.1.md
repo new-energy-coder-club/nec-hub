@@ -28,8 +28,8 @@
 | F-02 硬件采购/领用 | 🔄 | 硬件评审域已上线（选型/评审/立项/归档/会议预约）；**update_inventory 工具与台账自动增减未做** |
 | F-03 合规审批 | ⬜ | 合同审批域已上线（contract-approval）；PRD §5 的对外发布/合作/授权合规流程未建（驳回原因标准化选项未做） |
 | M-01 MCP 工具 | 🔄 | **send_notice / whoami 已移植**（管理端 MCP_TOKEN；本次）；submit_approval/list_todos/config_flows 由各域 config 工具替代（弃用，见架构备注）；update_inventory 未做 |
-| 应用广场角色过滤 | ✅ | visibleApps 已移植（未登录/external 仅 all，在册队员可见 all/本组/本角色/本人 authored），单测 4 例全绿；待部署 |
-| 部署状态 | — | 本 PRD 能力已进入 fix/vi 本地分支（含通知域/报销通知/visibleApps/send_notice），**未部署、未推送远程** |
+| 应用广场角色过滤 | ✅ | visibleApps 已移植（未登录/external 仅 all，在册队员可见 all/本组/本角色/本人 authored），单测 4 例全绿；已随生产部署 b0f2bc85 生效 |
+| 部署状态 | ✅ | 已部署生产 `hub.newenergycoder.club`（版本 b0f2bc85，19 工具/191 用例全绿）并推送 gitee `fix/vi-v1.1-convergence`；main 分支已打 tag `archive/pre-domain-split` 归档 |
 
 ---
 
