@@ -11,7 +11,7 @@
 
 | 页面 | 路径 | 功能 | 文件 |
 |---|---|---|---|
-| 门户 Hub（单页应用） | `/` | Hero + 7 个一级 Tab | `public/index.html`（约 1500 行） |
+| 门户 Hub（单页应用） | `/` | Hero + 13 个 Tab，hash 路由 `#/<tab>` | `public/index.html`（676 行骨架）+ `public/portal/`（ES Module：main.js + shared/ + tabs/，ST-01 已拆 home/dashboard/drawing-review，M2 继续） |
 | 图纸评审独立页 | `/apps/drawing-review/` | 新增机图纸评审全屏版 | `public/apps/drawing-review/index.html`（约 450 行） |
 | 品牌视觉中心 | `/brand/` | Logo / PPT 模板 / VI 下载，无 Tab | `public/brand/index.html`（约 230 行） |
 
@@ -104,7 +104,7 @@ nec-hub（Cloudflare Worker · src/index.ts:166-237 路由入口）
 
 | # | 问题 | 位置 | 影响 |
 |---|---|---|---|
-| 1 | `/#tab-dashboard` hash 断链：种子资料链接指向 hash，门户完全不读 hash | `src/index.ts:1708` ↔ `index.html` | 用户点链接到不了目标 Tab |
+| 1 | ~~`/#tab-dashboard` hash 断链：种子资料链接指向 hash，门户完全不读 hash~~ ✅ 已解决（2026-10-15，ST-02）：hash 路由升级为 `#/<tab>` 规范，旧式 `#tab-<x>` 自动升级兼容；未登录门控 Tab 深链经 `pendingHashTab` 暂存 + OAuth 往返 `sessionStorage` 桥接，登录后自动重放 | `portal/main.js` 路由层 | 已清零 |
 | 2 | 图纸评审双实现部分漂移：独立页已同步筛选 chips 与询价/比价面板，联想/自动填人/登录态仍仅门户版有；`statusMap` 两处重复定义且文案略异 | `index.html:766-1156` vs `apps/drawing-review/index.html` | 维护双倍成本，部分行为不一致 |
 | 3 | ~~会话解析复制三份，副本不含滑动续期~~ ✅ 已解决（2026-10-15）：`resolveSession` 已收敛至 `src/shared/session.ts` 唯一定义，全部 27 个调用点统一导入，滑动续期一致 | 原三模块 `resolveSessionFor*` | 已清零 |
 | 4 | 硬件评审/合同审批后端就绪但无前端入口 | 门户仅 1 张流程卡 `:214-224` | 已建能力闲置 |
