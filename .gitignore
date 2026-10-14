@@ -2,4 +2,7 @@ node_modules/
 .wrangler/
 .dev.vars
 *.log
+worker-configuration.d.ts
+.kimi-code/
+.DS_Store
 .mcp-token

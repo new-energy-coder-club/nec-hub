@@ -22,6 +22,7 @@
 1. 进入应用详情 → **「安全设置」→「重定向 URL」**，添加：
    ```
    https://mes.newenergycoder.club/home.html
+   https://mes.newenergycoder.club/index.html   # 主工作台（v3.13.48 起已接入免登）
    ```
    （本地调试可加 `http://localhost:端口/home.html`）
 2. 权限：基础免登**不需要额外申请 scope**，user_info 返回姓名/open_id 够用
@@ -43,6 +44,8 @@ curl -X POST http://localhost:8787/auth/feishu -H "content-type: application/jso
 ```
 
 ## 第三步 · MES 侧接入（416mes 仓库）
+
+> ✅ 已完成（v3.13.48，2026-10-14）：`index.html` 主工作台与 `home.html` 门户均已接入 `feishu-sso.js`。主工作台会把免登成员自动设为当前操作人（手动切换后本会话不再自动覆盖）；下方步骤保留为历史接入记录。
 
 1. 把 `integrations/mes/feishu-sso.js` 复制到 MES 站点目录（与 home.html 同级）
 2. `home.html` 的 `</body>` 前加：

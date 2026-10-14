@@ -1,6 +1,7 @@
 # 「NEC 仓库作业台」上架飞书工作台 — 操作手册
 
-> 目标应用：https://mes.newenergycoder.club/home.html#label
+> 目标应用：https://mes.newenergycoder.club/index.html#label
+> 说明：`index.html` 才是带页签的工作台本体（若上次已配 `home.html#label` 也能用 —— 门户会自动把页签 hash 转发到工作台）。免登需在开放平台「重定向 URL」加 `index.html`，见《飞书免登接入_MES.md》。
 > 原理：在飞书开放平台创建一个**企业自建应用**，给它添加**网页应用能力**（指向 MES 链接），发布后由管理员挂到工作台。全程约 15 分钟，纯网页操作，无 API 可用（已确认 lark-cli 不覆盖此能力）。
 > 前提：你需要是团队飞书的**企业管理员**或有开放平台权限的账号。
 
@@ -19,8 +20,9 @@
 
 1. 左侧菜单 **「应用能力」→「添加应用能力」→ 选择「网页应用」**（有的版本叫"网页"）
 2. 配置网页地址：
-   - 桌面端主页：`https://mes.newenergycoder.club/home.html#label`
-   - 移动端主页：`https://mes.newenergycoder.club/home.html#label`（同一链接即可）
+   - 桌面端主页：`https://mes.newenergycoder.club/index.html#label`
+   - 移动端主页：`https://mes.newenergycoder.club/index.html#label`（同一链接即可）
+   - （备选）想落在门户概览首页，就用 `https://mes.newenergycoder.club/home.html`
 3. **权限与 scopes**：纯网页跳转不需要申请任何 API 权限，跳过
    - （可选增强）若以后想在飞书内免登拿用户身份，再开 `contact:user.id:readonly` 并在 MES 侧接 JSAPI `tt.requestAccess`
 
@@ -40,7 +42,7 @@
 
 ## Step 5 · 验证
 
-- 桌面端：飞书 → 左侧「工作台」→ 应看到「NEC 仓库作业台」图标，点击在飞书内置窗口打开 MES
+- 桌面端：飞书 → 左侧「工作台」→ 应看到「NEC 仓库作业台」图标，点击在飞书内置窗口直接打开「标签打印」页（顶栏操作人应显示免登后的成员名）
 - 手机端：飞书 App → 底部「工作台」→ 同样可打开（移动端体验即评估文档中说的最大收益点）
 
 ## 常见问题
@@ -49,6 +51,8 @@
 |---|---|
 | 工作台搜不到应用 | 检查 Step 3 的可用范围是否包含自己；版本是否已发布 |
 | 打开白屏 | 确认 URL 是 HTTPS ✅（mes.newenergycoder.club 已是） |
+| 点进去停在门户首页，没到标签打印 | 入口配的是旧 `home.html#label`，门户现已自动转发到工作台；要直达标签页可把入口 URL 改成 `index.html#label` |
+| 顶栏操作人没自动变成自己 | 需管理员在开放平台「安全设置 → 重定向 URL」加入 `https://mes.newenergycoder.club/index.html`（见《飞书免登接入_MES.md》） |
 | 免费版飞书能用吗 | 能。自建应用 + 网页能力 + 工作台挂载均为免费功能 |
 | 想换成中台门户 | 同一流程再走一遍，URL 换成 `https://hub.newenergycoder.club`（中台部署上线后） |
 

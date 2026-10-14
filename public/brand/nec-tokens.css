@@ -1,6 +1,6 @@
 /* ============================================================
    NEC 品牌设计 Tokens — BUILT TO DAWN
-   版本: v1.0 · 2026-10-12 · 规范见《NEC 主视觉 VI 规范手册》
+   版本: v1.1 · 2026-10-14 · 规范见《NEC 主视觉 VI 规范手册》(新增语义色 §3.4)
    用法: <link rel="stylesheet" href="/brand/nec-tokens.css">
    ============================================================ */
 
@@ -22,8 +22,18 @@
   --nec-gray: #5A6472;         /* 次级文字 */
   --nec-line: #D9DFF0;         /* 描边/分割线 */
 
+  /* ---- 语义色 Semantic（VI §3.4 · V1.1 新增） ---- */
+  --nec-success: #177A4C;      /* 成功：已完成/通过/达标 */
+  --nec-success-bg: #E3F6EC;   /* 成功浅底 */
+  --nec-warning: #B45309;      /* 警告：待处理/倒计时/待整改 */
+  --nec-warning-bg: #FDEADD;   /* 警告浅底 */
+  --nec-danger: #C22E2E;       /* 危险：逾期/失败/驳回 */
+  --nec-danger-bg: #FBEAEA;    /* 危险浅底 */
+  --nec-info: var(--nec-cyan); /* 信息：提示/高亮（同破晓青） */
+  --nec-info-bg: #EAF7FD;      /* 信息浅底 */
+
   /* ---- 字体族 Typography ---- */
-  --nec-font-cn: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  --nec-font-cn: "Source Han Sans SC", "思源黑体 CN", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; /* VI 规范：中文思源黑体优先 */
   --nec-font-en: Arial, Helvetica, sans-serif;
   --nec-font-display: "Arial Black", Arial, "Microsoft YaHei", sans-serif; /* 大标题/口号 */
   --nec-font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;    /* 编号/代码/数据 */
