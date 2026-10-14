@@ -12,6 +12,11 @@
  *   POST /api/home        → 写个人首页布局（白名单组件）
  *   POST /api/home/reset  → 恢复默认（删个人布局）
  *   GET  /api/todos       → 审批/待办聚合（FE-09，需登录，KV 5 分钟缓存）
+ *   GET  /api/prd         → PRD 看板（M1/M2/M3 状态 + 总进度 + 最近 git 提交；状态经 MCP update_prd 维护）
+ *   POST /api/hooks/github → GitHub push webhook（HMAC-SHA256 验签 → 记录最近提交 → 飞书群机器人通知）
+ *   POST /api/approvals   → 发起审批（4 流程统一入口，flows:config 配置驱动，Plan B 状态机落底表）
+ *   POST /api/approvals/<type>/<单号>/<action> → 审批与流程动作（approve/reject/pay/start/archive/arrive/issue/publish）
+ *   GET  /api/approvals/mine → 我的申请列表（R-01 报销页数据源，按 open_id 过滤，降序 20 条）
  *   /api/season-goals/*   → 赛季目标管理（收集单提交/采纳 + 按任务自动规划，模块网关）
  *   GET  /api/my-tasks    → 我的任务（绑定飞书任务后 Task v2 同步拉取，KV my-tasks:<open_id> 5 分钟缓存，?refresh=1 强刷）
  *   POST /api/my-tasks/unbind → 解绑飞书任务（清授权 token 与缓存）
@@ -27,6 +32,7 @@
  *   auth/（飞书免登、角色、登录态处理器）· hosting（R2 托管与 KV 注册表）· dashboard（看板/资料页）
  *   repos（开源仓库聚合）· reimburse（报销提交）· mcp/（MCP 端点与工具）· validation/（FE-05 校验）
  *   home/（FE-06/07 首页布局）· todos.ts（FE-09 审批/待办聚合）· season-goals/（赛季目标）· my-tasks/（飞书任务绑定与同步）
+ *   prd.ts（PRD 看板 + GitHub webhook）· approvals/（Plan B 审批引擎：状态机 + 群机器人通知）
  *
  * 类型：运行 `npx wrangler types` 生成 worker-configuration.d.ts 后，下面的声明合并会把
  * secrets 补到 Cloudflare.Env 上。wrangler.jsonc 变更后请重新生成类型。
@@ -47,8 +53,25 @@ declare global {
     GITHUB_TOKEN?: string;
     /** Gitee API（/api/repos 仓库列表用，可选；匿名 60 次/小时，配置后限额更高） */
     GITEE_TOKEN?: string;
+    /** GitHub Webhook secret（/api/hooks/github 验签用；未配置时拒绝接收推送） */
+    GITHUB_WEBHOOK_SECRET?: string;
     /** 飞书群自定义机器人 webhook（FE-05 每周校验摘要推送 + 图纸评审流程通知/阻塞告警；未配置则跳过推送不报错） */
     FEISHU_WEBHOOK_URL?: string;
+    /** FEISHU_WEBHOOK_URL 的加签 secret（机器人开启加签时必填，否则推送被拒） */
+    FEISHU_WEBHOOK_SECRET?: string;
+    /** 审批通知群机器人 webhook（PRD V1.1 N-01）；可按流程分流 FEISHU_BOT_WEBHOOK_<TYPE>，加签 secret 为同名 _SECRET 变量 */
+    FEISHU_BOT_WEBHOOK?: string;
+    FEISHU_BOT_WEBHOOK_SECRET?: string;
+    FEISHU_BOT_WEBHOOK_PRD?: string;
+    FEISHU_BOT_WEBHOOK_PRD_SECRET?: string;
+    FEISHU_BOT_WEBHOOK_REIMBURSE?: string;
+    FEISHU_BOT_WEBHOOK_REIMBURSE_SECRET?: string;
+    FEISHU_BOT_WEBHOOK_DRAWING?: string;
+    FEISHU_BOT_WEBHOOK_DRAWING_SECRET?: string;
+    FEISHU_BOT_WEBHOOK_HARDWARE?: string;
+    FEISHU_BOT_WEBHOOK_HARDWARE_SECRET?: string;
+    FEISHU_BOT_WEBHOOK_COMPLIANCE?: string;
+    FEISHU_BOT_WEBHOOK_COMPLIANCE_SECRET?: string;
   }
 }
 
@@ -90,6 +113,19 @@ export default {
       }
       if (url.pathname === "/api/health") {
         return json({ ok: true, service: env.HUB_NAME ?? "nec-hub", time: new Date().toISOString() });
+      }
+      if (url.pathname === "/api/prd") {
+        const { buildPrdBoard } = await import("./prd");
+        return json(await buildPrdBoard(env));
+      }
+      if (url.pathname === "/api/hooks/github" && request.method === "POST") {
+        const { handleGithubPush } = await import("./prd");
+        return await handleGithubPush(request, env);
+      }
+      if (url.pathname.startsWith("/api/approvals")) {
+        const ap = await import("./approvals");
+        const res = await ap.handleApprovals(request, env, url.pathname, ctx);
+        if (res) return res;
       }
       if (url.pathname === "/api/apps") {
         return json(await readIndex<AppEntry>(env, "apps:index"));

@@ -157,6 +157,25 @@ export async function updateBitableRecord(
   return data.data.record;
 }
 
+/** 在指定 base 里新建一张数据表（按字段 schema），返回 table_id */
+export async function createBitableTable(
+  token: string,
+  appToken: string,
+  name: string,
+  fields: Array<{ field_name: string; type: number; property?: Record<string, unknown> }>,
+): Promise<string> {
+  const resp = await fetch(`${FEISHU_API}/bitable/v1/apps/${appToken}/tables`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json; charset=utf-8" },
+    body: JSON.stringify({ table: { name, fields } }),
+  });
+  const data = (await resp.json()) as { code?: number; msg?: string; data?: { table_id?: string } };
+  if (data.code !== 0 || !data.data?.table_id) {
+    throw new Error(`创建数据表失败（${name}）：${data.msg ?? `code ${data.code}`}`);
+  }
+  return data.data.table_id;
+}
+
 // ---------- 字段值工具函数 ----------
 
 export function fieldText(v: unknown): string {

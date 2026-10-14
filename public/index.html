@@ -130,6 +130,7 @@
     <button data-tab="docs" class="tab-btn py-3 shrink-0">资料页</button>
     <button data-tab="repos" class="tab-btn py-3 shrink-0">开源仓库</button>
     <button data-tab="dashboard" class="tab-btn py-3 shrink-0">数据看板</button>
+    <button data-tab="prd" class="tab-btn py-3 shrink-0">PRD 看板</button>
     <button data-tab="agent" class="tab-btn py-3 shrink-0">NEC-MCP</button>
   </div>
 </nav>
@@ -356,6 +357,20 @@
     <div id="dash-health" class="mt-4"></div>
   </section>
 
+  <!-- PRD 看板（动态：状态经 MCP update_prd 维护；git 提交经 webhook 推送） -->
+  <section id="tab-prd" class="hidden">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">PRD 看板</h2>
+      <span id="prd-status" class="text-xs text-gray-400"></span>
+    </div>
+    <div id="prd-progress" class="mb-4"></div>
+    <div id="prd-last-commit" class="mb-4"></div>
+    <div id="prd-board" class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="bg-white rounded-xl shadow p-6 text-sm text-gray-400">加载中…</div>
+    </div>
+    <p class="text-xs text-gray-400 mt-3">状态由 Agent 经 NEC-MCP 的 update_prd 维护（done / partial / pending / todo）；每次 git 提交会推送飞书群并在上方显示最近提交。</p>
+  </section>
+
   <!-- 资料页 -->
   <section id="tab-docs" class="hidden">
     <div class="flex items-center justify-between mb-4">
@@ -530,7 +545,7 @@ document.getElementById("doc-publish-prompt").textContent =
 3. 成功后告诉我已发布到资料页`;
 
 // Tab 切换 + Hash 路由：/#tab-dashboard 等深链可直达对应面板，刷新/分享不丢位置
-const TAB_IDS = ["home","my-tasks","drawing-review","apps","skills","docs","repos","dashboard","agent"];
+const TAB_IDS = ["home","my-tasks","drawing-review","apps","skills","docs","repos","dashboard","prd","agent"];
 function switchTab(tab, opts = {}) {
   const btn = document.querySelector('.tab-btn[data-tab="' + tab + '"]');
   const panel = document.getElementById("tab-" + tab);
@@ -2185,9 +2200,11 @@ function renderDashboard(d) {
       ${errNote(d.finance?.error)}
     </div>
     ${reimburseCard()}
+    ${myReimburseCard()}
     <p class="text-xs text-gray-400">数据源：飞书多维表格（base ${esc(d.base)}）· 队员名单 / 任务进度 / 物资台账 / 财务报销${d.goals?.configured ? " / 赛季目标" : ""} · 5 分钟缓存 · 财务区按登录角色脱敏</p>
   `;
   mountReimburse();
+  mountMyReimburse();
   renderGoalBanner(d.goals);
 }
 
@@ -2478,6 +2495,120 @@ function loadDashboard() {
       `<div class="bg-white rounded-xl shadow p-6 text-sm text-red-500">看板加载失败，请稍后重试。</div>`;
   });
 }
+
+// ===== 我的报销（R-01）：GET /api/approvals/mine?type=reimburse（Plan B 审批引擎；登录后可见） =====
+// 与报销表单同为持久节点：看板每次刷新都会重建 dash-body，避免渲染抖动清空列表
+let MY_REIMBURSE_NODE = null;
+function myReimburseCard() {
+  return '<div id="my-reimburse-slot"></div>';
+}
+function mountMyReimburse() {
+  const slot = document.getElementById('my-reimburse-slot');
+  if (!slot) return;
+  if (!MY_REIMBURSE_NODE) {
+    const wrap = document.createElement('div');
+    wrap.innerHTML =
+      '<div class="bg-white rounded-xl shadow p-5">' +
+        '<h3 class="font-bold mb-3">我的报销</h3>' +
+        '<div id="my-rb-list" class="text-sm text-gray-400">加载中…</div>' +
+        '<p class="text-xs text-gray-400 mt-2">审批由财务/队长在飞书处理，结果在群里通知；流程未配置时此列表为空。</p>' +
+      '</div>';
+    MY_REIMBURSE_NODE = wrap.firstElementChild;
+  }
+  slot.appendChild(MY_REIMBURSE_NODE);
+  renderMyReimburseList();
+}
+function renderMyReimburseList() {
+  const box = document.getElementById('my-rb-list');
+  if (!box) return;
+  if (!(ME && ME.authenticated)) { box.innerHTML = '<p class="text-gray-400">登录后可见。</p>'; return; }
+  box.innerHTML = '加载中…';
+  fetch('/api/approvals/mine?type=reimburse').then(r => {
+    if (r.status === 401) return { __unauthorized: true };
+    return r.json();
+  }).then(d => {
+    if (d.__unauthorized) { box.innerHTML = '<p class="text-gray-400">登录后可见。</p>'; return; }
+    if (d.hint && !(d.records ?? []).length) { box.innerHTML = `<p class="text-gray-400">${esc(d.hint)}</p>`; return; }
+    const rows = d.records ?? [];
+    if (!rows.length) { box.innerHTML = '<p class="text-gray-400">暂无记录</p>'; return; }
+    box.innerHTML = `
+      <table class="w-full">
+        <thead><tr class="text-left text-xs text-gray-400">
+          <th class="pb-2 font-medium">单号</th><th class="pb-2 font-medium">事项</th>
+          <th class="pb-2 font-medium">金额</th><th class="pb-2 font-medium">状态</th><th class="pb-2 font-medium">提交时间</th>
+        </tr></thead>
+        <tbody>${rows.map(r => {
+          const f = r.fields ?? {};
+          const badge = `<span class="px-2 py-0.5 rounded text-xs text-white" style="background:${dashStatusColor(r.status)}">${esc(r.status || "—")}</span>`;
+          const note = r.status === "审批中" ? `<span class="text-xs text-gray-400 ml-1">通过后可在群里收到通知</span>` : "";
+          return `<tr class="border-t border-gray-100">
+            <td class="py-2 pr-3 mono text-xs whitespace-nowrap">${esc(f.申请单号 || r.application_id || "—")}</td>
+            <td class="py-2 pr-3">${esc(f.事项 || "—")}</td>
+            <td class="py-2 pr-3 mono whitespace-nowrap">${f.金额 != null ? "¥" + esc(String(f.金额)) : "—"}</td>
+            <td class="py-2 pr-3 whitespace-nowrap">${badge}${note}</td>
+            <td class="py-2 text-gray-400 text-xs whitespace-nowrap">${f.提交时间 ? new Date(f.提交时间).toLocaleDateString("zh-CN") : "—"}</td>
+          </tr>`;
+        }).join("")}</tbody>
+      </table>`;
+  }).catch(() => { box.innerHTML = '<p class="text-red-500">加载失败，请稍后重试。</p>'; });
+}
+
+// ===== PRD 看板（动态）：里程碑三列卡片 + 总进度 + 最近提交（GET /api/prd） =====
+const PRD_STATUS_META = {
+  done:     { label: "已完成", color: "#16A34A", bg: "#ECFDF5" },
+  partial:  { label: "进行中", color: "#1FA9E8", bg: "#EFF8FF" },
+  pending:  { label: "待验收", color: "#D97706", bg: "#FFFBEB" },
+  todo:     { label: "未开始", color: "#9CA3AF", bg: "#F9FAFB" },
+};
+function renderPrd(board) {
+  const status = document.getElementById("prd-status");
+  const total = board.progress?.total ?? 0;
+  const done = board.progress?.done ?? 0;
+  const pct = total ? Math.round(done / total * 100) : 0;
+  status.textContent = `更新于 ${new Date(board.updatedAt).toLocaleString("zh-CN")}`;
+  document.getElementById("prd-progress").innerHTML = `
+    <div class="bg-white rounded-xl shadow p-5">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-bold">总进度</span>
+        <span class="text-sm font-black" style="color:var(--nec-navy)">${done} / ${total}（${pct}%）</span>
+      </div>
+      <div class="h-3 rounded overflow-hidden bg-gray-100">
+        <div class="h-3 rounded" style="width:${pct}%;background:linear-gradient(90deg,var(--nec-cyan),var(--nec-sky))"></div>
+      </div>
+    </div>`;
+  document.getElementById("prd-last-commit").innerHTML = board.lastCommit ? `
+    <div class="bg-white rounded-xl shadow p-4 flex items-center gap-3 text-sm">
+      <span class="px-2 py-0.5 rounded text-xs text-white" style="background:var(--nec-navy)">最近提交</span>
+      <a href="${esc(board.lastCommit.url)}" target="_blank" class="hover:underline truncate" style="color:var(--nec-cyan)">${esc(board.lastCommit.message)}</a>
+      <span class="text-xs text-gray-400 whitespace-nowrap">${esc(board.lastCommit.branch)} · ${esc(board.lastCommit.author)} · ${new Date(board.lastCommit.at).toLocaleString("zh-CN")}</span>
+    </div>` : "";
+  document.getElementById("prd-board").innerHTML = (board.milestones ?? []).map((m) => `
+    <div class="bg-white rounded-xl shadow p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold">${esc(m.id)} · ${esc(m.title)}</h3>
+        <span class="text-xs text-gray-400">${m.done}/${m.total}</span>
+      </div>
+      <div class="h-1.5 rounded bg-gray-100 mb-4"><div class="h-1.5 rounded" style="width:${m.total ? m.done / m.total * 100 : 0}%;background:var(--nec-cyan)"></div></div>
+      <div class="space-y-2">
+        ${m.cards.map((c) => {
+          const meta = PRD_STATUS_META[c.status] ?? PRD_STATUS_META.todo;
+          return `
+          <div class="rounded-lg p-3 border border-gray-100" style="background:${meta.bg}">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-bold text-sm" style="color:var(--nec-navy)">${esc(c.id)}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded text-white" style="background:${meta.color}">${meta.label}</span>
+            </div>
+            <p class="text-xs mt-1" style="color:var(--nec-ink)">${esc(c.title)}</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">${esc(c.priority)}${c.note ? " · " + esc(c.note) : ""}</p>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`).join("");
+}
+fetch("/api/prd").then(r => r.json()).then(renderPrd).catch(() => {
+  document.getElementById("prd-board").innerHTML =
+    `<div class="bg-white rounded-xl shadow p-6 text-sm text-red-500">PRD 看板加载失败，请稍后重试。</div>`;
+});
 
 // ===== FE-05 数据健康：最新校验报告展示 + 手动触发（mine 所有登录用户 / all 仅队长·组长） =====
 function isLeader() {

@@ -361,4 +361,109 @@ export const TOOLS = [
       },
     },
   },
+  {
+    name: "remove_docs",
+    description: "从资料页移除指定资料（只删索引，不动资料本体）。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ids: { type: "array", items: { type: "string" }, description: "要移除的资料 id 列表" },
+      },
+      required: ["ids"],
+    },
+  },
+  {
+    name: "add_records",
+    description:
+      "往飞书多维表格追加记录（飞书字段名 → 值；数字/日期字段传数字，日期为毫秒时间戳）。仅管理端（MCP_TOKEN）可用。典型用法：报销回写财务表、任务批量导入。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        table: { type: "string", description: "表名：members | tasks | inventory | finance | goals" },
+        records: { type: "array", items: { type: "object" }, description: "记录数组，每条为 {字段名: 值}，如 [{\"姓名\":\"张三\",\"组别\":\"机械\"}]" },
+      },
+      required: ["table", "records"],
+    },
+  },
+  {
+    name: "setup_bitable",
+    description:
+      "数据基建一键建表：在指定飞书多维表格 base 里按标准字段 schema 创建 队员名单/任务进度/物资台账/财务报销 四张表，并把 table_id 写入看板配置。需先在飞书云文档新建空白多维表格，把 URL 中 /base/ 后的 app_token 传给 base 参数。仅管理端（MCP_TOKEN）可用。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        base: { type: "string", description: "多维表格 app_token（URL 中 /base/ 后的一段）" },
+        tables: { type: "array", items: { type: "string" }, description: "可选：只建部分表，如 [\"members\",\"tasks\"]，默认全部四张" },
+        force: { type: "boolean", description: "true 时即使配置里已有该表也强制新建（会留下旧表，谨慎）" },
+      },
+      required: ["base"],
+    },
+  },
+  {
+    name: "update_prd",
+    description:
+      "更新 PRD 看板需求状态（done | partial | pending | todo），门户「PRD 看板」Tab 实时同步；状态变化会推飞书群（webhook 已配置时）。仅管理端（MCP_TOKEN）可用。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "需求编号：FE-01 ~ FE-13" },
+        status: { type: "string", description: "done | partial | pending | todo" },
+        note: { type: "string", description: "可选：备注（覆盖旧备注）" },
+      },
+      required: ["id", "status"],
+    },
+  },
+  {
+    name: "submit_approval",
+    description:
+      "代发起审批申请（Agent 帮队员代提交，需管理端 MCP_TOKEN）。type 限 4 枚举；fields 按 flows:config 的声明式规则校验；applicant_open_id 可指定申请人（缺省 mcp-admin）。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        type: { type: "string", description: "reimburse | drawing | hardware | compliance" },
+        fields: { type: "object", description: "业务字段（与底表字段名一致），如 {\"事项\":\"打样\",\"报销金额\":120}" },
+        applicant_name: { type: "string", description: "可选：申请人姓名（缺省取 fields.applicant_open_id 或 mcp-admin）" },
+      },
+      required: ["type", "fields"],
+    },
+  },
+  {
+    name: "list_todos",
+    description:
+      "拉取指定用户的待办聚合（各流程底表中 审批中 且待其审批的单 + 逾期任务，按流程分组）。需管理端 MCP_TOKEN；角色由 open_id 查队员名单表解析。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        open_id: { type: "string", description: "飞书 open_id（ou 开头）" },
+      },
+      required: ["open_id"],
+    },
+  },
+  {
+    name: "send_notice",
+    description:
+      "向指定流程的飞书群发送机器人通知（需管理端 MCP_TOKEN）。webhook 未配置时返回降级说明；发送失败自动重试 2 次并记录到 notify:failed。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        flow: { type: "string", description: "reimburse | drawing | hardware | compliance（决定用哪个群 webhook，未配置 fallback 主群）" },
+        title: { type: "string", description: "标题" },
+        content: { type: "string", description: "正文" },
+        link: { type: "string", description: "可选：去处理链接" },
+      },
+      required: ["flow", "title", "content"],
+    },
+  },
+  {
+    name: "config_flows",
+    description:
+      "查看/修改审批流程配置 flows:config（底表 tableId/base、单号前缀、审批角色、必填与条件必填校验规则、金额会签阈值）。action=set 深合并写入；tableId 须 tbl 开头或留空。仅管理端（MCP_TOKEN）。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", description: "get（默认）| set" },
+        flows: { type: "object", description: "set 时必填：{ reimburse: { tableId, base, ... } }，只传要改的字段" },
+      },
+    },
+  },
 ];
