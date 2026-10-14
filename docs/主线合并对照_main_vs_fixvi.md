@@ -42,8 +42,8 @@
 
 | 事项 | 说明 |
 |---|---|
-| **飞书邮件通道（N-02 替代方案）** | 已验证：飞书 `mail/v1/user_mailboxes/me/drafts` API 可用（lark-cli `mail +draft-create/+draft-send`，lark-mcp 有 mail_v1 工具包），scope `mail:user_mailbox.message:modify`，**仅 user 身份**。前置：M1.5 refresh_token 持久化（指定发件账号授权一次，refresh_token 14 天滚动）。比 Resend 更优：零外部依赖、直接进队员飞书邮箱 |
-| refresh_token 持久化 | 登录流程把 user_access_token/refresh_token 存 KV `oauth:<open_id>`；是飞书审批 Plan A 待办 API + 邮件通道的共同前置 |
+| **飞书邮件通道（N-02 替代方案）** | ✅ **代码完成（2026-10-14 深夜）**：`src/feishu/mail.ts`（EML 构造 + me/drafts 建草稿 + send 发送 + profile 取发件地址，单测 9 例）+ `send_mail` MCP 工具（本人 user_token / 管理端 from 代发）+ 登录 scope 追加 `mail:user_mailbox.message:modify`（lark-cli 实测验证过的 scope）。**剩余：部署 + 发件账号重新扫码授权一次 + 实测发一单** |
+| refresh_token 持久化 | ✅ **fix/vi 已具备**：登录时 user_access_token + refresh_token 落 KV `feishu:user_token:<open_id>`（TTL 跟 refresh 寿命），`user-token.ts` 临期自动续期 / 失效清绑；邮件通道与待办 API 的共同前置已无阻塞 |
 | 48h 代理人升级 / 14 天自动取消（Cron） | 两版皆无 |
 | 真两级审批（金额阈值会签） | fix/vi 的 contract-approval 若已支持多级则复用其模式推广，否则等飞书审批引擎 |
 
@@ -51,7 +51,7 @@
 
 - A 组（5 项）：✅ 全部移植完成（续期 `94fc174`、报销动作/列表 `c9fcfb9`、通知域 + visibleApps 本次），**剩余 0**
 - B 组：send_notice ✅、文档 ✅；剩余 flow-config 约定 ≈ 2h
-- D 组邮件通道：refresh_token 2h + mailer 模块 3h + 授权联调 1h ≈ **0.5~1 天**（依赖用户完成一次扫码授权）
+- D 组邮件通道：✅ 代码完成（通道 + send_mail + scope），剩部署 + 用户扫码授权一次 ≈ **0.5h**（不含授权人操作时间）
 
 ## 收尾结论（2026-10-14 深夜）
 

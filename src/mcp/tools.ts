@@ -387,4 +387,23 @@ export const TOOLS = [
       required: ["flow", "title", "content"],
     },
   },
+  {
+    name: "send_mail",
+    description:
+      "用飞书邮箱发信（PRD 审批与通知中心 N-02 邮件通道）。本人发信传 user_token；管理端（MCP_TOKEN）传 from（队员姓名或 ou_ 开头的 open_id，用其已绑定的授权代发，发件账号需在中台登录授权过）。text 与 html 至少一个，二者都有时用 html。发送失败时草稿保留在发件人邮箱可手动补发。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        from: { type: "string", description: "管理端（MCP_TOKEN）专用：发件人，队员姓名或 ou_ 开头的 open_id（姓名须在队员名单表）" },
+        to: { type: "array", items: { type: "string" }, description: "收件人邮箱列表，至少一个" },
+        cc: { type: "array", items: { type: "string" }, description: "可选：抄送邮箱列表" },
+        bcc: { type: "array", items: { type: "string" }, description: "可选：密送邮箱列表" },
+        subject: { type: "string", description: "邮件主题" },
+        text: { type: "string", description: "纯文本正文（与 html 至少一个）" },
+        html: { type: "string", description: "HTML 正文（与 text 二选一，都有时用 html）" },
+        user_token: { type: "string", description: "飞书 user_access_token；本人发信必填（管理端指定 from 时忽略）" },
+      },
+      required: ["to", "subject"],
+    },
+  },
 ];

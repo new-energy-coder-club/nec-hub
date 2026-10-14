@@ -26,6 +26,8 @@ import {
   updateBitableRecord,
 } from "../feishu/bitable";
 import { readIndex, upsertIndex, inferSkillCategory, normalizeSkillCategory, normalizeSkillTags, type AppEntry, type SkillEntry } from "../hosting";
+import { sendFeishuMail } from "../feishu/mail";
+import { resolveOpenIds } from "../feishu/member-directory";
 import { notifyFeishu } from "../feishu/notify";
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
@@ -600,4 +602,54 @@ export async function toolWhoami(args: Record<string, unknown>, env: Env, hasMcp
       },
     ],
   };
+}
+
+/** send_mail：飞书邮箱发信（N-02 邮件通道）。本人传 user_token；管理端可指定 from（姓名/open_id）代发 */
+export async function toolSendMail(args: Record<string, unknown>, env: Env, hasMcpToken: boolean) {
+  // 1. 发件人身份：user_token 本人优先；否则管理端 from（姓名或 ou_ open_id）
+  const userToken = String(args.user_token ?? "").trim();
+  let fromOpenId = "";
+  if (userToken) {
+    const u = await validateUserToken(userToken);
+    fromOpenId = u.openId;
+  } else if (hasMcpToken) {
+    const from = String(args.from ?? "").trim();
+    if (!from) throw new Error("管理端发信需指定 from（队员姓名或 ou_ 开头的 open_id）");
+    const { resolved, missing } = await resolveOpenIds(env, [from]);
+    if (!resolved[0]) {
+      throw new Error(`from 未解析：${missing.join("、")}（传 ou_ 开头的 open_id，或队员名单里的姓名）`);
+    }
+    fromOpenId = resolved[0].openId;
+  } else {
+    throw new Error("发送邮件需要 user_token（本人发信）或管理端 MCP_TOKEN（可指定 from 代发）");
+  }
+
+  // 2. 收件人与内容校验
+  const asList = (v: unknown) => (Array.isArray(v) ? v.map((x) => String(x).trim()).filter(Boolean) : []);
+  const to = asList(args.to);
+  if (!to.length) throw new Error("to 至少一个收件人邮箱");
+  const cc = asList(args.cc);
+  const bcc = asList(args.bcc);
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const bad = [...to, ...cc, ...bcc].find((e) => !EMAIL_RE.test(e));
+  if (bad) throw new Error(`邮箱格式无效：${bad}`);
+  const subject = String(args.subject ?? "").trim();
+  if (!subject) throw new Error("subject 不能为空");
+  const text = String(args.text ?? "").trim();
+  const html = String(args.html ?? "").trim();
+  if (!text && !html) throw new Error("text 与 html 至少提供一个");
+
+  // 3. 发信（建草稿 + 发送；失败不抛错，草稿可由发件人手动补发）
+  const result = await sendFeishuMail(env, fromOpenId, {
+    to,
+    cc: cc.length ? cc : undefined,
+    bcc: bcc.length ? bcc : undefined,
+    subject,
+    text: text || undefined,
+    html: html || undefined,
+  });
+  if (!result.ok) {
+    return { content: [{ type: "text", text: `⚠️ 邮件未送达：${result.detail}` }] };
+  }
+  return { content: [{ type: "text", text: `✅ 邮件已发送（to=${to.join(", ")}）：${result.detail}` }] };
 }

@@ -697,13 +697,13 @@ function startLogin() {
   const state = crypto.randomUUID();
   sessionStorage.setItem("nec_oauth_state", state);
   const redirect = location.origin + location.pathname;
-  // scope 取 Task v2 最小集：task:task:read 读任务 + task:tasklist:read 读清单；
-  // scope 变化后老用户需重新授权一次，"我的任务"才能绑定
+  // scope = Task v2 最小集（读任务/读清单）+ 邮箱发信（N-02 邮件通道，mail:user_mailbox.message:modify）；
+  // scope 变化后老用户需重新授权一次（登出再登录），"我的任务"绑定与邮件通道才生效
   location.href = "https://open.feishu.cn/open-apis/authen/v1/authorize?app_id="
     + encodeURIComponent(HUB_CONFIG.feishuAppId)
     + "&redirect_uri=" + encodeURIComponent(redirect)
     + "&state=" + state
-    + "&scope=" + encodeURIComponent("task:task:read task:tasklist:read");
+    + "&scope=" + encodeURIComponent("task:task:read task:tasklist:read mail:user_mailbox.message:modify");
 }
 
 async function logout() {

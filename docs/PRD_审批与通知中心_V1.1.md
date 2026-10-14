@@ -5,6 +5,7 @@
 > 状态：草稿，待队长评审后排期
 > 变更记录：V1.0 首期只含报销一条业务线；V1.1 按队长要求新增 3 个流程，引擎设计要求同步升级为**流程即配置**（新增流程 = 一张底表 + 一个飞书审批定义 + 一份配置，零代码）
 > 变更记录：2026-10-14 能力移植 fix/vi 主线（N-01 通知域 + send_notice + 应用广场角色过滤 + 报销链路四类通知接入），§0 状态总览按 fix/vi 实际重标
+> 变更记录：2026-10-14 深夜 N-02 邮件通道落地（mail.ts + send_mail MCP + 登录 scope 追加 mail 权限）；注：并行会话同期以快照方式重建了 fix/vi git 历史（40 个本地提交折叠为单提交并部署生产 b0f2bc85）
 > 前置文档：《团队AI中台PRD_V2.0.md》（本 PRD 将其 FE-08、FE-09 展开为可开发的字段级/接口级细节）、《团队AI中台搭建方案_V1.0.md》
 > 对标：数字生命生命卡兹克《我花了5天时间，对公司进行了一场AI化改造》中的三件套 —— 侧栏"审批"入口（角标 12 条待办）、发票助手（申请→财务审核→状态回写）、商务助手（生成确认邮件草稿并自动抄送）
 
@@ -18,18 +19,18 @@
 
 | 需求 | 状态 | 说明 |
 |---|---|---|
-| M1.5 前置补丁 | 🔄 | 队员名单 53 人已录 ✅；流程底表按域已建 ✅；**refresh_token 持久化未做**（待办 API 用 user_access_token 的前置） |
+| M1.5 前置补丁 | ✅ | 队员名单 53 人已录 ✅；流程底表按域已建 ✅；refresh_token 持久化 fix/vi 已具备（登录存 KV `feishu:user_token:<open_id>` + `user-token.ts` 临期自动续期/失效清绑）|
 | N-01 通知服务 | 🔄 | **已移植 fix/vi**：`src/feishu/notify.ts`（加签 string_to_sign 作 HMAC 密钥对空内容签名、msg_type/text 嵌套、多群分流 FEISHU_BOT_WEBHOOK[_<TYPE>][_SECRET]、重试 2 次、失败写 KV notify:failed）+ 报销提交/通过/驳回/打款四类通知已接入，单测 7 例全绿；生产 secrets 已配置主群「NEC 中台通知」（main 侧端到端验证过），**待 fix/vi 部署生产后走查** |
-| N-02 邮件通道 | ⬜ | 未开始（可选增强） |
+| N-02 邮件通道 | 🔄 | **代码就绪（2026-10-14 晚）**：`src/feishu/mail.ts`（EML 构造 + 建草稿/发送两步，profile 取发件地址）+ `send_mail` MCP 工具（本人 user_token 或管理端 from 代发）+ 登录 scope 追加 `mail:user_mailbox.message:modify`；**待：发件账号重新扫码授权 + 部署后实测一单** |
 | A-01 待办条 | 🔄 | fix/vi 待办聚合已上线生产（FE-09：任务逾期 + 待确认报销 + 飞书审批待办；审批 scope 未开通时静默降级）；合规 T-1 标红未做 |
 | A-02 审批引擎 | 🔄 | 按域落地：报销 approve/reject/pay ✅（角色门禁、状态机、幂等、字段模糊匹配，未部署）；图纸/硬件/合同各评审域自带引擎 ✅；金额阈值真两级、48h 代理人升级、14 天自动取消（Cron）未做；事件回调+轮询 N/A（Plan B 单通道写表） |
 | R-01 报销助手 | 🔄 | fix/vi 报销链路已上线（提交上传/OCR/发票号/看板）；**SOP 校验、确认邮件草稿、复盘文档未做** |
 | F-01 机械图纸 | ✅ | 图纸评审域已上线（提交/评审结论/整改/BOM/询价比价/会议预约/看板）；审批动作以域内评审结论驱动 |
 | F-02 硬件采购/领用 | 🔄 | 硬件评审域已上线（选型/评审/立项/归档/会议预约）；**update_inventory 工具与台账自动增减未做** |
 | F-03 合规审批 | ⬜ | 合同审批域已上线（contract-approval）；PRD §5 的对外发布/合作/授权合规流程未建（驳回原因标准化选项未做） |
-| M-01 MCP 工具 | 🔄 | **send_notice / whoami 已移植**（管理端 MCP_TOKEN；本次）；submit_approval/list_todos/config_flows 由各域 config 工具替代（弃用，见架构备注）；update_inventory 未做 |
+| M-01 MCP 工具 | 🔄 | **send_notice / whoami 已移植**（管理端 MCP_TOKEN）；**send_mail 已新增**（N-02 邮箱发信，本人 user_token 或管理端 from 代发，待部署）；submit_approval/list_todos/config_flows 由各域 config 工具替代（弃用，见架构备注）；update_inventory 未做 |
 | 应用广场角色过滤 | ✅ | visibleApps 已移植（未登录/external 仅 all，在册队员可见 all/本组/本角色/本人 authored），单测 4 例全绿；已随生产部署 b0f2bc85 生效 |
-| 部署状态 | ✅ | 已部署生产 `hub.newenergycoder.club`（版本 b0f2bc85，19 工具/191 用例全绿）并推送 gitee `fix/vi-v1.1-convergence`；main 分支已打 tag `archive/pre-domain-split` 归档 |
+| 部署状态 | ✅ | 已部署生产 `hub.newenergycoder.club`（版本 b0f2bc85，19 工具/191 用例全绿）并推送 gitee `fix/vi-v1.1-convergence`；main 分支已打 tag `archive/pre-domain-split` 归档；N-02 邮件通道（send_mail，第 20 个工具）待下一次部署 + 发件账号重新授权 |
 
 ---
 
