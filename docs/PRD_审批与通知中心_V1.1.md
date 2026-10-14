@@ -21,7 +21,7 @@
 |---|---|---|
 | M1.5 前置补丁 | ✅ | 队员名单 53 人已录 ✅；流程底表按域已建 ✅；refresh_token 持久化 fix/vi 已具备（登录存 KV `feishu:user_token:<open_id>` + `user-token.ts` 临期自动续期/失效清绑）|
 | N-01 通知服务 | 🔄 | **已移植 fix/vi**：`src/feishu/notify.ts`（加签 string_to_sign 作 HMAC 密钥对空内容签名、msg_type/text 嵌套、多群分流 FEISHU_BOT_WEBHOOK[_<TYPE>][_SECRET]、重试 2 次、失败写 KV notify:failed）+ 报销提交/通过/驳回/打款四类通知已接入，单测 7 例全绿；生产 secrets 已配置主群「NEC 中台通知」（main 侧端到端验证过），**待 fix/vi 部署生产后走查** |
-| N-02 邮件通道 | 🔄 | **代码就绪并已部署（2026-10-14 深夜，生产 9b74c833）**：`src/feishu/mail.ts`（EML 构造 + 建草稿/发送两步，profile 取发件地址）+ `send_mail` MCP 工具（本人 user_token 或管理端 from 代发）+ 登录 scope 追加 `mail:user_mailbox.message:modify`；**待：发件账号重新扫码授权后实测一单** |
+| N-02 邮件通道 | 🔄 | **已部署并端到端实测两轮**（生产 fd8bac72）：建草稿 ✅（from_address 显式地址修复 invalid mime）；发送被拒 99991679——缺 scope `mail:user_mailbox.message:send`，草稿已保留在发件邮箱可手动补发。正确 scope 集：`message:modify`（草稿）+ `message:send`（发送）+ `user_mailbox:readonly`（profile 读地址）；前端登录 scope 已补 send，待发件账号重新扫码 |
 | A-01 待办条 | 🔄 | fix/vi 待办聚合已上线生产（FE-09：任务逾期 + 待确认报销 + 飞书审批待办；审批 scope 未开通时静默降级）；合规 T-1 标红未做 |
 | A-02 审批引擎 | 🔄 | 按域落地：报销 approve/reject/pay ✅（角色门禁、状态机、幂等、字段模糊匹配，未部署）；图纸/硬件/合同各评审域自带引擎 ✅；金额阈值真两级、48h 代理人升级、14 天自动取消（Cron）未做；事件回调+轮询 N/A（Plan B 单通道写表） |
 | R-01 报销助手 | 🔄 | fix/vi 报销链路已上线（提交上传/OCR/发票号/看板）；**SOP 校验、确认邮件草稿、复盘文档未做** |
