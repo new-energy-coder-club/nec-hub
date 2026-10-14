@@ -6,6 +6,7 @@
  */
 
 import type { DrawingReviewAdapter } from "./adapter";
+import { notifyFeishuGroup } from "./notify";
 import type { BOMSource, Inquiry } from "./types";
 
 /** 比价规则：价格优先；交期晚于需求日期的报价按惩罚系数折算后再比较 */
@@ -15,7 +16,15 @@ export const COMPARE_RULES = {
 
 const QUOTABLE_SOURCES: BOMSource[] = ["purchased", "standard"];
 
+function localToday(): string {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
 export interface GenerateInquiriesInput {
+  /** 需求日期，缺省默认当天（YYYY-MM-DD，本地时区） */
   requiredDate?: string;
   /** 物料编码 → 推荐供应商列表；未提供的物料生成一条供应商待定的询价单 */
   suppliers?: Record<string, string[]>;
@@ -81,12 +90,15 @@ export class InquiryService {
     if (!data) throw new Error(`评审单 ${reviewId} 尚无 BOM，请先生成 BOM`);
 
     const items = data.items.filter((it) => QUOTABLE_SOURCES.includes(it.source));
+    const requiredDate = input.requiredDate ?? localToday();
     const existing = await this.adapter.listInquiries(reviewId);
     const existingItems = new Set(existing.map((i) => i.bomItemId));
     const existingIds = new Set(existing.map((i) => i.inquiryId));
 
     const created: Array<Inquiry & { recordId: string }> = [];
     const skipped: string[] = [];
+    // 先顺序生成全部询价单号（保证唯一性与跳过语义），再并行写入 Base
+    const toCreate: Inquiry[] = [];
     for (const item of items) {
       const key = item.itemId;
       if (existingItems.has(key)) {
@@ -101,7 +113,7 @@ export class InquiryService {
       for (const supplier of suppliers) {
         const inquiryId = generateInquiryId(existingIds);
         existingIds.add(inquiryId);
-        const saved = await this.adapter.createInquiry({
+        toCreate.push({
           inquiryId,
           reviewId,
           bomItemId: item.itemId,
@@ -110,14 +122,14 @@ export class InquiryService {
           specification: item.specification,
           supplierName: supplier,
           quantity: item.quantity,
-          requiredDate: input.requiredDate,
+          requiredDate,
           status: "sent",
           createdAt: new Date().toISOString(),
         });
-        created.push(saved);
         existingItems.add(key);
       }
     }
+    created.push(...(await Promise.all(toCreate.map((inquiry) => this.adapter.createInquiry(inquiry)))));
 
     await this.logEvent(reviewId, actorId, "inquiry_generate", {
       created: created.map((c) => c.inquiryId),
@@ -148,6 +160,10 @@ export class InquiryService {
       price: updated.price,
       deliveryDate: updated.deliveryDate,
     });
+    await notifyFeishuGroup(
+      this.env,
+      `💰 询价单报价回填\n询价单 ${inquiryId}（${updated.materialName ?? updated.bomItemId}）\n供应商：${updated.supplierName}，报价：${updated.price}${updated.deliveryDate ? `，交期：${updated.deliveryDate}` : ""}`,
+    );
     return updated;
   }
 
@@ -230,13 +246,17 @@ export class InquiryService {
         const target = list.find((i) => i.inquiryId === inquiryId);
         if (!target) throw new Error(`询价单 ${inquiryId} 不属于物料 ${materialKey}`);
         if (target.status !== "quoted") throw new Error(`询价单 ${inquiryId} 尚未报价，无法选定`);
-        for (const inq of list) {
-          if (inq.inquiryId === inquiryId && inq.status !== "selected") {
-            await this.adapter.updateInquiry(inq.recordId, { status: "selected" });
-          } else if (inq.inquiryId !== inquiryId && (inq.status === "quoted" || inq.status === "selected")) {
-            await this.adapter.updateInquiry(inq.recordId, { status: "rejected" });
-          }
-        }
+        await Promise.all(
+          list.map((inq) => {
+            if (inq.inquiryId === inquiryId && inq.status !== "selected") {
+              return this.adapter.updateInquiry(inq.recordId, { status: "selected" });
+            }
+            if (inq.inquiryId !== inquiryId && (inq.status === "quoted" || inq.status === "selected")) {
+              return this.adapter.updateInquiry(inq.recordId, { status: "rejected" });
+            }
+            return null;
+          }),
+        );
         selected.push(inquiryId);
         await this.logEvent(reviewId, actorId, "inquiry_select", {
           material: materialKey,
@@ -245,6 +265,10 @@ export class InquiryService {
           price: target.price,
         });
       }
+      await notifyFeishuGroup(
+        this.env,
+        `✅ 询价选定完成\n评审单 ${reviewId}\n已选定 ${selected.length} 项物料的供应商：${selected.join("、")}`,
+      );
     }
 
     return { reviewId, materials, selected, generatedAt: new Date().toISOString() };
@@ -253,7 +277,7 @@ export class InquiryService {
   private async logEvent(reviewId: string, actorId: string, action: string, payload?: Record<string, unknown>): Promise<void> {
     try {
       await this.adapter.createRecord("events", {
-        关联评审单: [reviewId],
+        关联评审单: reviewId,
         操作人: actorId,
         动作: action,
         附加信息: payload ? JSON.stringify(payload) : "",

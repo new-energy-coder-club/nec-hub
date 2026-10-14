@@ -12,7 +12,7 @@ import { DrawingReviewAdapter } from "./adapter";
 import { BoardService } from "./board.service";
 import { BOMService } from "./bom.service";
 import { getDrawingReviewConfig } from "./config";
-import { ReviewFlowService, type SubmitReviewInput } from "./flow.service";
+import { ReviewFlowService, nextStatus, type SubmitReviewInput } from "./flow.service";
 import { InquiryService } from "./inquiry.service";
 import { SuggestionService } from "./suggestion.service";
 import type { DrawingReviewConfig } from "./types";
@@ -148,14 +148,22 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
     return json(review);
   }
 
-  // BOM 生成
+  // BOM 生成（幂等：已有 BOM 直接返回；仅当状态机允许时才流转 assessing）
   const bomMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/bom\/generate$/);
   if (bomMatch && request.method === "POST") {
     const body = await request.json() as import("./bom.service").GenerateBOMInput;
+    if (!Array.isArray(body?.items) || body.items.length === 0) {
+      return json({ error: "BOM 物料清单不能为空：items 至少包含一项物料" }, 400);
+    }
+    const existing = await adapter.getBOMByReview(bomMatch[1]);
+    if (existing) return json({ ...existing, existed: true });
     const bomService = new BOMService(adapter);
     const result = await bomService.generate(bomMatch[1], body);
-    // BOM 生成后自动流转到 assessing
-    await flow.transitionTo(bomMatch[1], "generated", session.open_id);
+    // 仅 bom_generating 状态允许 generated 事件；其它状态（如补录 BOM）只写数据不流转
+    const review = await flow.getReview(bomMatch[1]);
+    if (review && nextStatus(review.status, "generated")) {
+      await flow.transitionTo(bomMatch[1], "generated", session.open_id);
+    }
     return json(result);
   }
 

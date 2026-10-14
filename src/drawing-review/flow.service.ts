@@ -3,6 +3,7 @@
  */
 
 import type { DrawingReviewAdapter } from "./adapter";
+import { notifyFeishuGroup } from "./notify";
 import type {
   Assessment,
   BOM,
@@ -48,6 +49,9 @@ export function generateReviewId(): string {
   return `DR-${date}-${rand}`;
 }
 
+/** 图纸版本号格式（V主.次），模块级共享避免循环内重复编译 */
+const VERSION_RE = /^V(\d+)\.(\d+)$/;
+
 export interface SubmitReviewInput {
   projectId?: string;
   machineName?: string;
@@ -87,14 +91,14 @@ export class ReviewFlowService {
   /**
    * Generate intelligent defaults for drawing review submission
    */
-  async getDefaultSubmissionValues(input: SubmitReviewInput, actorId: string): Promise<Partial<SubmitReviewInput>> {
+  async getDefaultSubmissionValues(input: SubmitReviewInput, actorId: string, prefs?: UserPreferences): Promise<Partial<SubmitReviewInput>> {
     const now = new Date();
     
     // Get user preferences for smarter defaults
-    const prefs = await this.getUserPreferences(actorId);
+    const resolvedPrefs = prefs ?? (await this.getUserPreferences(actorId));
     
     // Default to current user as designer if not specified
-    const designerId = input.designerId || prefs.defaultDesignerId || actorId;
+    const designerId = input.designerId || resolvedPrefs.defaultDesignerId || actorId;
     
     // Generate default drawing version (V1.0, V1.1, etc.)
     let drawingVersion = input.drawingVersion;
@@ -113,13 +117,13 @@ export class ReviewFlowService {
             const latestVersion = projectMachineReviews.reduce((latest, current) => {
               if (!current.drawingVersion) return latest;
               // Simple version parsing: V1.0, V1.1, V2.0
-              const match = current.drawingVersion.match(/^V(\d+)\.(\d+)$/);
+              const match = current.drawingVersion.match(VERSION_RE);
               if (!match) return latest;
               const [_, major, minor] = match;
               const currentMajor = parseInt(major, 10);
               const currentMinor = parseInt(minor, 10);
               
-              const latestMatch = latest.drawingVersion?.match(/^V(\d+)\.(\d+)$/);
+              const latestMatch = latest.drawingVersion?.match(VERSION_RE);
               if (!latestMatch) return current;
               
               const [__, latestMajor, latestMinor] = latestMatch;
@@ -132,7 +136,7 @@ export class ReviewFlowService {
             }, { drawingVersion: "V0.0" } as DrawingReview);
             
             if (latestVersion.drawingVersion) {
-              const match = latestVersion.drawingVersion.match(/^V(\d+)\.(\d+)$/);
+              const match = latestVersion.drawingVersion.match(VERSION_RE);
               if (match) {
                 const [_, major, minor] = match;
                 const currentMajor = parseInt(major, 10);
@@ -148,16 +152,16 @@ export class ReviewFlowService {
       }
       
       if (!drawingVersion) {
-        drawingVersion = prefs.lastUsedVersion || "V1.0";
+        drawingVersion = resolvedPrefs.lastUsedVersion || "V1.0";
       }
     }
     
     // Default design notes template
-    const designNotes = input.designNotes || this.getDefaultDesignNotesTemplate(prefs.preferredTemplate as string);
+    const designNotes = input.designNotes || this.getDefaultDesignNotesTemplate(resolvedPrefs.preferredTemplate as string);
     
     return {
-      projectId: input.projectId || prefs.defaultProjectId,
-      machineName: input.machineName || prefs.defaultMachineName,
+      projectId: input.projectId || resolvedPrefs.defaultProjectId,
+      machineName: input.machineName || resolvedPrefs.defaultMachineName,
       drawingVersion,
       designerId,
       designNotes,
@@ -209,8 +213,10 @@ export class ReviewFlowService {
   }
 
   async submit(input: SubmitReviewInput, actorId: string): Promise<DrawingReview & { recordId: string }> {
+    // 偏好读取一次，供默认值填充与提交后回写共用（避免重复 KV 读）
+    const prefs = await this.getUserPreferences(actorId);
     // Apply intelligent defaults for missing fields
-    const defaults = await this.getDefaultSubmissionValues(input, actorId);
+    const defaults = await this.getDefaultSubmissionValues(input, actorId, prefs);
     
     const review: DrawingReview = {
       reviewId: generateReviewId(),
@@ -232,10 +238,13 @@ export class ReviewFlowService {
     
     const saved = await this.adapter.createReview(review);
     await this.logEvent(saved.reviewId, actorId, "submit", "draft", "pending_review", { recordId: saved.recordId });
+    await notifyFeishuGroup(
+      this.env,
+      `📐 新图纸评审单提交\n评审单 ${saved.reviewId}（${saved.machineName}，${saved.drawingVersion}）\n设计负责人：${saved.designerId}\n请及时安排评审会议`,
+    );
     
     // Save user preferences based on this submission
     try {
-      const prefs = await this.getUserPreferences(actorId);
       if (input.projectId) prefs.defaultProjectId = input.projectId;
       if (input.machineName) prefs.defaultMachineName = input.machineName;
       if (input.drawingVersion) prefs.lastUsedVersion = input.drawingVersion;
@@ -296,18 +305,20 @@ export class ReviewFlowService {
     const updated = await this.adapter.updateReview(review.recordId, update);
     await this.logEvent(reviewId, actorId, "conclude", review.status, next, { conclusion: input.conclusion });
 
-    // 有条件通过时创建整改项
+    // 有条件通过时创建整改项（相互独立，并行写入）
     if (input.conclusion === "conditional" && input.issues && input.issues.length > 0) {
-      for (const issue of input.issues) {
-        await this.adapter.createRecord("rectifications", {
-          关联评审单: [reviewId],
-          问题描述: issue.description,
-          提出人: issue.raisedBy.open_id,
-          责任人: issue.owner?.open_id,
-          截止日期: issue.dueDate,
-          完成状态: "未完成",
-        });
-      }
+      await Promise.all(
+        input.issues.map((issue) =>
+          this.adapter.createRecord("rectifications", {
+            关联评审单: reviewId,
+            问题描述: issue.description,
+            提出人: issue.raisedBy.open_id,
+            责任人: issue.owner?.open_id,
+            截止日期: issue.dueDate,
+            完成状态: "未完成",
+          }),
+        ),
+      );
     }
 
     return updated;
@@ -329,6 +340,10 @@ export class ReviewFlowService {
     if (!next) throw new Error(`当前状态 ${review.status} 不允许事件 ${event}`);
     const updated = await this.adapter.updateReview(review.recordId, { status: next, updatedAt: new Date().toISOString() });
     await this.logEvent(reviewId, actorId, event, review.status, next, payload);
+    await notifyFeishuGroup(
+      this.env,
+      `📐 图纸评审状态变更\n评审单 ${reviewId}（${review.machineName}）\n${review.status} → ${next}\n操作人：${actorId}`,
+    );
     return updated;
   }
 
@@ -356,7 +371,7 @@ export class ReviewFlowService {
   ): Promise<void> {
     try {
       await this.adapter.createRecord("events", {
-        关联评审单: [reviewId],
+        关联评审单: reviewId,
         操作人: actorId,
         动作: action,
         原状态: fromStatus,

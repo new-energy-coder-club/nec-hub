@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>赛季目标管理</title>
+<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin />
+<link rel="dns-prefetch" href="https://cdn.tailwindcss.com" />
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+  .view { display: none; }
+  .view.active { display: block; }
+  .status-badge {
+    @apply text-xs px-2 py-1 rounded-full font-medium;
+  }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="max-w-5xl mx-auto px-4 py-6">
+    <!-- 顶部导航（embedded 模式隐藏） -->
+    <header id="app-header" class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 class="text-xl font-black text-slate-800">赛季目标管理</h1>
+          <p class="text-xs text-gray-500">提交目标 → 收集单评审 → 目标看板 → 按任务自动规划</p>
+        </div>
+        <nav class="flex gap-2">
+          <button onclick="router('submit')" class="nav-btn px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50" data-view="submit">提交目标</button>
+          <button onclick="router('collect')" class="nav-btn px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50" data-view="collect">收集单</button>
+          <button onclick="router('goals')" class="nav-btn px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50" data-view="goals">目标看板</button>
+          <button onclick="router('plan')" class="nav-btn px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50" data-view="plan">自动规划</button>
+        </nav>
+      </div>
+    </header>
+
+    <!-- 未配置提示 -->
+    <div id="not-configured" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+      <p class="text-yellow-800 font-medium">模块未配置</p>
+      <p class="text-sm text-yellow-700">请先调用 POST /api/season-goals/config 设置 base 与 tables（goals / collect 必填）。</p>
+    </div>
+
+    <!-- 提交目标视图 -->
+    <section id="view-submit" class="view">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <h2 class="text-lg font-bold text-slate-800 mb-4">提交赛季目标（收集单）</h2>
+        <form id="submit-form" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">目标</label>
+            <input type="text" name="title" required class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm" placeholder="例：完成新赛季底盘迭代" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">关键结果（KR）</label>
+            <textarea name="krs" rows="4" required class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm" placeholder="每行一条关键结果"></textarea>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">负责组</label>
+              <select name="group" required class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm">
+                <option value="硬件组">硬件组</option>
+                <option value="软件组">软件组</option>
+                <option value="运营组">运营组</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">截止日期</label>
+              <input type="date" name="deadline" required class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">备注（可选）</label>
+            <input type="text" name="note" class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm" />
+          </div>
+          <div class="flex justify-end">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-lg">提交收集单</button>
+          </div>
+        </form>
+        <p id="submit-result" class="mt-3 text-sm"></p>
+      </div>
+    </section>
+
+    <!-- 收集单视图 -->
+    <section id="view-collect" class="view">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-slate-800">收集单</h2>
+          <button onclick="loadCollect()" class="text-sm text-blue-600 hover:text-blue-700 font-medium px-2">刷新</button>
+        </div>
+        <div id="collect-list" class="overflow-x-auto">
+          <p class="text-sm text-gray-400">加载中…</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 目标看板视图 -->
+    <section id="view-goals" class="view">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-slate-800">目标看板</h2>
+          <button onclick="loadGoals()" class="text-sm text-blue-600 hover:text-blue-700 font-medium px-2">刷新</button>
+        </div>
+        <div id="goal-list" class="space-y-3">
+          <p class="text-sm text-gray-400">加载中…</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 自动规划视图 -->
+    <section id="view-plan" class="view">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-slate-800">自动规划</h2>
+          <div class="flex gap-2">
+            <button onclick="previewPlan()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg">预览规划</button>
+            <button id="apply-btn" onclick="applyPlan()" disabled class="bg-green-600 hover:bg-green-700 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg">生成草稿到收集单</button>
+          </div>
+        </div>
+        <p class="text-xs text-gray-500 mb-4">按「负责组」聚合未完成任务生成目标建议；已有进行中目标的组自动跳过。「生成草稿」会把建议写入收集单（待评审），需人工采纳后才进入目标看板。</p>
+        <div id="plan-result" class="space-y-3">
+          <p class="text-sm text-gray-400">点击「预览规划」查看建议</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-sm text-white shadow-lg"></div>
+
+  <script>
+    // embedded 模式：被 hub 主界面 iframe 嵌入时隐藏自身顶栏、收窄边距
+    (function () {
+      const params = new URLSearchParams(location.search);
+      const embedded = params.get("embedded") === "1" || window.parent !== window;
+      if (embedded) {
+        const header = document.getElementById("app-header");
+        if (header) header.style.display = "none";
+        document.body.classList.remove("bg-gray-50");
+        const wrap = document.querySelector("body > div.max-w-5xl");
+        if (wrap) wrap.classList.remove("px-4", "py-6");
+      }
+    })();
+
+    const API = "";
+    const statusMap = {
+      "待评审": "bg-blue-50 text-blue-700",
+      "已采纳": "bg-green-50 text-green-700",
+      "已拒绝": "bg-gray-100 text-gray-500",
+      "进行中": "bg-yellow-50 text-yellow-700",
+      "已完成": "bg-green-50 text-green-700",
+    };
+
+    function toast(msg, ok = true) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-sm text-white shadow-lg ${ok ? "bg-green-600" : "bg-red-600"}`;
+      setTimeout(() => el.classList.add("hidden"), 3000);
+    }
+
+    function router(view) {
+      document.querySelectorAll(".view").forEach(el => el.classList.remove("active"));
+      document.getElementById(`view-${view}`).classList.add("active");
+      document.querySelectorAll(".nav-btn").forEach(btn => {
+        btn.classList.toggle("bg-blue-50", btn.dataset.view === view);
+        btn.classList.toggle("border-blue-200", btn.dataset.view === view);
+      });
+      if (view === "collect") loadCollect();
+      if (view === "goals") loadGoals();
+    }
+
+    async function api(path, options = {}) {
+      const res = await fetch(`${API}${path}`, options);
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        // 未登录：回门户走飞书 OAuth 登录
+        location.href = "/";
+        throw new Error("请先登录");
+      }
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      return data;
+    }
+
+    function esc(s) {
+      return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function renderStatus(status) {
+      const color = statusMap[status] || "bg-gray-100 text-gray-700";
+      return `<span class="status-badge ${color}">${esc(status) || "—"}</span>`;
+    }
+
+    // ---------- 收集单 ----------
+
+    async function loadCollect() {
+      const el = document.getElementById("collect-list");
+      try {
+        const data = await api("/api/season-goals/collect");
+        if (!data.length) {
+          el.innerHTML = `<p class="text-sm text-gray-400">暂无收集单</p>`;
+          return;
+        }
+        el.innerHTML = `
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-xs text-gray-500 border-b border-gray-100">
+                <th class="py-2 pr-3">提交人</th>
+                <th class="py-2 pr-3">目标</th>
+                <th class="py-2 pr-3">负责组</th>
+                <th class="py-2 pr-3">截止</th>
+                <th class="py-2 pr-3">来源</th>
+                <th class="py-2 pr-3">状态</th>
+                <th class="py-2">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.map(s => `
+                <tr class="border-b border-gray-50">
+                  <td class="py-2 pr-3">${esc(s.submitter) || "—"}</td>
+                  <td class="py-2 pr-3 font-medium text-slate-800" title="${esc(s.krs)}">${esc(s.title)}</td>
+                  <td class="py-2 pr-3">${esc(s.group)}</td>
+                  <td class="py-2 pr-3">${esc(s.deadline) || "—"}</td>
+                  <td class="py-2 pr-3">${esc(s.source)}</td>
+                  <td class="py-2 pr-3">${renderStatus(s.status)}</td>
+                  <td class="py-2 whitespace-nowrap">
+                    ${s.status === "待评审" ? `
+                      <button onclick="approve('${s.recordId}')" class="text-xs text-green-600 hover:underline mr-2">采纳</button>
+                      <button onclick="reject('${s.recordId}')" class="text-xs text-red-500 hover:underline">拒绝</button>
+                    ` : `<span class="text-xs text-gray-300">—</span>`}
+                  </td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>`;
+      } catch (err) {
+        el.innerHTML = `<p class="text-sm text-red-500">加载失败：${esc(err.message)}</p>`;
+      }
+    }
+
+    async function approve(recordId) {
+      try {
+        await api("/api/season-goals/collect/approve", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ recordId }),
+        });
+        toast("已采纳，目标已创建");
+        loadCollect();
+      } catch (err) {
+        toast("采纳失败：" + err.message, false);
+      }
+    }
+
+    async function reject(recordId) {
+      try {
+        await api("/api/season-goals/collect/reject", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ recordId }),
+        });
+        toast("已拒绝");
+        loadCollect();
+      } catch (err) {
+        toast("拒绝失败：" + err.message, false);
+      }
+    }
+
+    // ---------- 目标看板 ----------
+
+    async function loadGoals() {
+      const el = document.getElementById("goal-list");
+      try {
+        const data = await api("/api/season-goals/goals");
+        if (!data.length) {
+          el.innerHTML = `<p class="text-sm text-gray-400">暂无目标</p>`;
+          return;
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        const doneRe = /完成|达成|达标|done|close/i;
+        el.innerHTML = data.map(g => {
+          const done = doneRe.test(g.status) || g.progress >= 100;
+          const overdue = !done && g.deadline && g.deadline < today;
+          return `
+            <div class="border ${overdue ? "border-red-200 bg-red-50" : "border-gray-100"} rounded-lg p-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="font-bold text-slate-800">${esc(g.title)}</p>
+                  <p class="text-xs text-gray-500">${esc(g.group)} · 截止 ${esc(g.deadline) || "—"}${overdue ? ' · <span class="text-red-600 font-medium">已逾期</span>' : ""}</p>
+                </div>
+                ${renderStatus(g.status)}
+              </div>
+              <div class="mt-3 flex items-center gap-3">
+                <div class="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div class="h-full ${overdue ? "bg-red-400" : "bg-blue-500"} rounded-full" style="width:${Math.min(Math.max(g.progress, 0), 100)}%"></div>
+                </div>
+                <span class="text-xs text-gray-500 w-10 text-right">${g.progress}%</span>
+              </div>
+              ${g.krs ? `<p class="text-xs text-gray-500 mt-2 whitespace-pre-wrap">${esc(g.krs)}</p>` : ""}
+            </div>`;
+        }).join("");
+      } catch (err) {
+        el.innerHTML = `<p class="text-sm text-red-500">加载失败：${esc(err.message)}</p>`;
+      }
+    }
+
+    // ---------- 自动规划 ----------
+
+    async function previewPlan() {
+      const el = document.getElementById("plan-result");
+      el.innerHTML = `<p class="text-sm text-gray-400">分析任务中…</p>`;
+      document.getElementById("apply-btn").disabled = true;
+      try {
+        const data = await api("/api/season-goals/plan");
+        renderPlan(data);
+        document.getElementById("apply-btn").disabled = !data.suggestions.length;
+      } catch (err) {
+        el.innerHTML = `<p class="text-sm text-red-500">预览失败：${esc(err.message)}</p>`;
+      }
+    }
+
+    function renderPlan(data) {
+      const el = document.getElementById("plan-result");
+      const parts = [];
+      parts.push(`<p class="text-xs text-gray-500">共扫描 ${data.taskCount} 条未完成任务 · 生成于 ${new Date(data.generatedAt).toLocaleString()}</p>`);
+      if (!data.suggestions.length) {
+        parts.push(`<p class="text-sm text-gray-400">没有可生成的目标建议</p>`);
+      }
+      for (const s of data.suggestions) {
+        parts.push(`
+          <div class="border border-gray-100 rounded-lg p-4">
+            <div class="flex items-center justify-between">
+              <p class="font-bold text-slate-800">${esc(s.title)}</p>
+              <span class="text-xs text-gray-500">截止 ${esc(s.deadline)}</span>
+            </div>
+            <p class="text-sm text-gray-600 mt-2 whitespace-pre-wrap">${esc(s.krs)}</p>
+            <p class="text-xs text-gray-400 mt-2">基于任务：${s.basedOnTasks.map(esc).join("、")}</p>
+          </div>`);
+      }
+      if (data.skipped.length) {
+        parts.push(`
+          <div class="text-xs text-gray-500 border-t border-gray-100 pt-3">
+            ${data.skipped.map(s => `<p>跳过「${esc(s.group)}」：${esc(s.reason)}</p>`).join("")}
+          </div>`);
+      }
+      el.innerHTML = parts.join("");
+    }
+
+    async function applyPlan() {
+      try {
+        const data = await api("/api/season-goals/plan", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        toast(`已生成 ${data.created} 条草稿到收集单`);
+        router("collect");
+      } catch (err) {
+        toast("生成失败：" + err.message, false);
+      }
+    }
+
+    // ---------- 提交表单 ----------
+
+    document.getElementById("submit-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const resultEl = document.getElementById("submit-result");
+      try {
+        await api("/api/season-goals/submit", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: form.title.value,
+            krs: form.krs.value,
+            group: form.group.value,
+            deadline: form.deadline.value,
+            note: form.note.value,
+          }),
+        });
+        resultEl.className = "mt-3 text-sm text-green-600";
+        resultEl.textContent = "提交成功，等待评审采纳";
+        toast("提交成功");
+        form.reset();
+        router("collect");
+      } catch (err) {
+        resultEl.className = "mt-3 text-sm text-red-600";
+        resultEl.textContent = "失败：" + err.message;
+        toast("提交失败：" + err.message, false);
+      }
+    });
+
+    async function init() {
+      try {
+        const cfg = await api("/api/season-goals/config");
+        if (!cfg.configured) {
+          document.getElementById("not-configured").classList.remove("hidden");
+        }
+      } catch {}
+      router("submit");
+    }
+
+    init();
+  </script>
+</body>
+</html>

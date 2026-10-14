@@ -36,10 +36,9 @@ async function runValidateNow(
   user: HubUser | null,
   tables?: ValidateTable[],
 ): Promise<ValidateReport> {
-  const cfg = await getDashboardConfig(env);
+  const [cfg, rules] = await Promise.all([getDashboardConfig(env), getValidateRules(env)]);
   if (!cfg) throw new Error("数据看板尚未配置：请先调用 config_dashboard（action=set）写入 base 与 tables");
-  const rules = await getValidateRules(env);
-  // 复用看板 5 分钟缓存（飞书免费版频次保护），4 表顺序拉取
+  // 复用看板 5 分钟缓存（飞书免费版频次保护），多表并行拉取
   const report = await runValidation(cfg, (t) => fetchTableCached(env, cfg, t), rules, scope, tables);
   return scope === "mine" && user ? filterViolationsForUser(report, user) : report;
 }
@@ -174,9 +173,8 @@ export async function handleValidateQuery(request: Request, env: Env, ctx?: Exec
 /** 每周一 08:00（UTC+8，cron 0 0 * * 1 UTC）：全量校验 → 报告落 KV → 与上周 diff → 推飞书群机器人 */
 export async function runWeeklyValidation(env: Env): Promise<void> {
   try {
-    const cfg = await getDashboardConfig(env);
+    const [cfg, rules] = await Promise.all([getDashboardConfig(env), getValidateRules(env)]);
     if (!cfg || !env.FEISHU_APP_ID || !env.FEISHU_APP_SECRET) return;
-    const rules = await getValidateRules(env);
     // 周报基于最新数据：强制刷新 4 张底表缓存；单表失败记 error 不中断整轮
     const fresh = (t: ValidateTable) =>
       refreshTableCache(env, cfg, t).catch((err) => ({

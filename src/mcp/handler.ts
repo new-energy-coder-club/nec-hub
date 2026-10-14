@@ -25,6 +25,7 @@ import {
   toolConfigDrawingReview,
   toolConfigHardwareReview,
 } from "./module-config-tools";
+import { toolScheduleMeeting } from "../meeting";
 import { TOOLS } from "./tools";
 
 function rpc(id: string | number | null, result: unknown): Response {
@@ -69,7 +70,7 @@ export async function handleMcp(request: Request, env: Env): Promise<Response> {
         capabilities: { tools: {} },
         serverInfo: { name: "NEC-MCP", version: "0.4.0" },
         instructions:
-          "NEC-MCP — NEC 团队 AI 中台智能协作中枢。应用广场发布：deploy_app 上传静态文件部署（name 用小写字母/数字/连字符且以字母或数字开头，files 须含 index.html，文本用 text、二进制用 base64，同名重复部署即覆盖更新），register_app 登记外部链接应用，sync_vercel 从 Vercel 批量发现登记；Skill 中心：publish_skill 上架、import_skills 批量导入、remove_skills 下架；数据看板：config_dashboard 配置飞书多维表格（含 goals 赛季目标表），query_bitable 查询（finance 表需 user_token 且角色为队长/财务，或管理端 MCP_TOKEN），update_progress 回写赛季目标完成度/状态，validate_bitable 校验 4 张底表脏数据（scope=mine 校验自己 / scope=all 全量仅队长/组长），config_validate_rules 管理校验规则；首页布局：set_home_layout 配置「我的首页」（白名单组件 my-apps/my-tasks/my-reimburse/docs/goals/inventory，scope=user 绑本人、scope=group 组默认需组长/队长，action=get 查看 / set 写入 / reset 恢复默认）。支持自然语言指令，如「把我的应用发布到应用广场」「把物资查询放到首页最上面」。",
+          "NEC-MCP — NEC 团队 AI 中台智能协作中枢。应用广场发布：deploy_app 上传静态文件部署（name 用小写字母/数字/连字符且以字母或数字开头，files 须含 index.html，文本用 text、二进制用 base64，同名重复部署即覆盖更新），register_app 登记外部链接应用，sync_vercel 从 Vercel 批量发现登记；Skill 中心：publish_skill 上架、import_skills 批量导入、remove_skills 下架；数据看板：config_dashboard 配置飞书多维表格（含 goals 赛季目标表），query_bitable 查询（finance 表需 user_token 且角色为队长/财务，或管理端 MCP_TOKEN），update_progress 回写赛季目标完成度/状态，validate_bitable 校验 4 张底表脏数据（scope=mine 校验自己 / scope=all 全量仅队长/组长），config_validate_rules 管理校验规则；首页布局：set_home_layout 配置「我的首页」（白名单组件 my-apps/my-tasks/my-reimburse/docs/goals/inventory，scope=user 绑本人、scope=group 组默认需组长/队长，action=get 查看 / set 写入 / reset 恢复默认）；一键拉会：schedule_meeting 创建飞书日历日程+视频会议（attendees 传姓名或 ou_ open_id，本人拉会传 user_token，管理端可 organizer 代拉会）。支持自然语言指令，如「把我的应用发布到应用广场」「明晚 7 点拉个评审会叫上张三」。",
       });
     case "ping":
       return rpc(id, {});
@@ -127,6 +128,8 @@ async function callTool(
         return rpc(id, await toolConfigValidateRules(args, env));
       case "set_home_layout":
         return rpc(id, await toolSetHomeLayout(args, env, hasMcpToken));
+      case "schedule_meeting":
+        return rpc(id, await toolScheduleMeeting(args, env, hasMcpToken));
       default:
         return rpcError(id, -32602, `Unknown tool: ${name}`);
     }

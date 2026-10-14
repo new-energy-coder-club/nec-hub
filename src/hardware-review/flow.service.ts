@@ -47,6 +47,9 @@ export function generateReviewId(): string {
   return `HR-${date}-${rand}`;
 }
 
+/** 硬件版本号格式（V主.次），模块级共享避免循环内重复编译 */
+const VERSION_RE = /^V(\d+)\.(\d+)$/;
+
 export interface SubmitReviewInput {
   projectId?: string;
   hardwareName?: string;
@@ -73,10 +76,10 @@ export class ReviewFlowService {
   /**
    * 提交前智能默认填充：缺省版本号按同项目同硬件递增，设计说明套用模板
    */
-  async getDefaultSubmissionValues(input: SubmitReviewInput, actorId: string): Promise<Partial<SubmitReviewInput>> {
-    const prefs = await this.getUserPreferences(actorId);
+  async getDefaultSubmissionValues(input: SubmitReviewInput, actorId: string, prefs?: Record<string, unknown>): Promise<Partial<SubmitReviewInput>> {
+    const resolvedPrefs = prefs ?? (await this.getUserPreferences(actorId));
 
-    const designerId = input.designerId || (prefs.defaultDesignerId as string) || actorId;
+    const designerId = input.designerId || (resolvedPrefs.defaultDesignerId as string) || actorId;
 
     let hardwareVersion = input.hardwareVersion;
     if (!hardwareVersion) {
@@ -87,10 +90,10 @@ export class ReviewFlowService {
             (r) => r.projectId === input.projectId && r.hardwareName === input.hardwareName,
           );
           const latest = sameHardware.reduce<(typeof sameHardware)[number] | null>((acc, cur) => {
-            const m = cur.hardwareVersion?.match(/^V(\d+)\.(\d+)$/);
+            const m = cur.hardwareVersion?.match(VERSION_RE);
             if (!m) return acc;
             if (!acc) return cur;
-            const am = acc.hardwareVersion?.match(/^V(\d+)\.(\d+)$/);
+            const am = acc.hardwareVersion?.match(VERSION_RE);
             if (!am) return cur;
             const curMajor = Number(m[1]);
             const curMinor = Number(m[2]);
@@ -98,18 +101,18 @@ export class ReviewFlowService {
             const accMinor = Number(am[2]);
             return curMajor > accMajor || (curMajor === accMajor && curMinor > accMinor) ? cur : acc;
           }, null);
-          const m = latest?.hardwareVersion?.match(/^V(\d+)\.(\d+)$/);
+          const m = latest?.hardwareVersion?.match(VERSION_RE);
           if (m) hardwareVersion = `V${Number(m[1])}.${Number(m[2]) + 1}`;
         }
       } catch (err) {
         console.warn("[hardware-review] failed to resolve latest version:", err);
       }
-      if (!hardwareVersion) hardwareVersion = (prefs.lastUsedVersion as string) || "V1.0";
+      if (!hardwareVersion) hardwareVersion = (resolvedPrefs.lastUsedVersion as string) || "V1.0";
     }
 
     return {
-      projectId: input.projectId || (prefs.defaultProjectId as string) || "",
-      hardwareName: input.hardwareName || (prefs.defaultHardwareName as string) || "",
+      projectId: input.projectId || (resolvedPrefs.defaultProjectId as string) || "",
+      hardwareName: input.hardwareName || (resolvedPrefs.defaultHardwareName as string) || "",
       hardwareType: input.hardwareType || "other",
       hardwareVersion,
       designerId,
@@ -141,7 +144,9 @@ export class ReviewFlowService {
   }
 
   async submit(input: SubmitReviewInput, actorId: string): Promise<HardwareReview & { recordId: string }> {
-    const defaults = await this.getDefaultSubmissionValues(input, actorId);
+    // 偏好读取一次，供默认值填充与提交后回写共用（避免重复 KV 读）
+    const prefs = await this.getUserPreferences(actorId);
+    const defaults = await this.getDefaultSubmissionValues(input, actorId, prefs);
 
     const review: HardwareReview = {
       reviewId: generateReviewId(),
@@ -166,7 +171,6 @@ export class ReviewFlowService {
     await this.logEvent(saved.reviewId, actorId, "submit", "draft", "pending_review", { recordId: saved.recordId });
 
     try {
-      const prefs = await this.getUserPreferences(actorId);
       if (input.projectId) prefs.defaultProjectId = input.projectId;
       if (input.hardwareName) prefs.defaultHardwareName = input.hardwareName;
       if (input.hardwareVersion) prefs.lastUsedVersion = input.hardwareVersion;
@@ -226,18 +230,20 @@ export class ReviewFlowService {
     });
     await this.logEvent(reviewId, actorId, "conclude", review.status, next, { conclusion: input.conclusion });
 
-    // 有条件通过时创建整改项
+    // 有条件通过时创建整改项（相互独立，并行写入）
     if (input.conclusion === "conditional" && input.issues && input.issues.length > 0) {
-      for (const issue of input.issues) {
-        await this.adapter.createRecord("rectifications", {
-          关联评审单: [reviewId],
-          问题描述: issue.description,
-          提出人: issue.raisedBy.open_id,
-          责任人: issue.owner?.open_id,
-          截止日期: issue.dueDate,
-          完成状态: "未完成",
-        });
-      }
+      await Promise.all(
+        input.issues.map((issue) =>
+          this.adapter.createRecord("rectifications", {
+            关联评审单: reviewId,
+            问题描述: issue.description,
+            提出人: issue.raisedBy.open_id,
+            责任人: issue.owner?.open_id,
+            截止日期: issue.dueDate,
+            完成状态: "未完成",
+          }),
+        ),
+      );
     }
 
     return updated;
@@ -285,7 +291,7 @@ export class ReviewFlowService {
   ): Promise<void> {
     try {
       await this.adapter.createRecord("events", {
-        关联评审单: [reviewId],
+        关联评审单: reviewId,
         操作人: actorId,
         动作: action,
         原状态: fromStatus,

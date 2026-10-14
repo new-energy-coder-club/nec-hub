@@ -52,6 +52,16 @@ describe("InquiryService.generate", () => {
     expect(names).toEqual(["伺服电机", "联轴器"].sort());
   });
 
+  it("未传需求日期时默认取当天", async () => {
+    const { created } = await svc.generate("DR-1", {}, "ou-user");
+    const d = new Date(NOW);
+    const expected = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    expect(expected).toBe("2026-10-14");
+    for (const inq of created) {
+      expect(inq.requiredDate).toBe(expected);
+    }
+  });
+
   it("按推荐供应商列表为同一物料生成多张询价单", async () => {
     const { created } = await svc.generate(
       "DR-1",

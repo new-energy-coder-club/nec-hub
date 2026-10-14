@@ -189,9 +189,9 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
 
   async createMinutes(minutes: ReviewMinutes): Promise<ReviewMinutes & { recordId: string }> {
     const fields: Record<string, unknown> = {
-      关联评审单: [minutes.reviewId],
+      关联评审单: minutes.reviewId,
       会议时间: minutes.meetingTime,
-      参会人员: minutes.attendees.map((a) => ({ id: a.open_id })),
+      参会人员: minutes.attendees.map((a) => a.name || a.open_id).join("、"),
       讨论记录: minutes.discussion,
       评审结论: minutes.conclusion,
     };
@@ -223,23 +223,25 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
   async createBOMItems(bomId: string, items: BOMItem[]): Promise<void> {
     const token = await this.token();
     const tableId = this.tableId("bom");
-    for (const item of items) {
-      await createBitableRecord(token, this.cfg.base, tableId, {
-        关联BOM: [bomId],
-        层级: item.level,
-        父级物料: item.parentItemId ? [item.parentItemId] : undefined,
-        物料编码: item.materialCode,
-        物料名称: item.materialName,
-        规格型号: item.specification,
-        数量: item.quantity,
-        单位: item.unit,
-        材质: item.material,
-        加工工艺: item.process,
-        来源: item.source,
-        参考图号: item.drawingNo,
-        备注: item.remark,
-      });
-    }
+    await Promise.all(
+      items.map((item) =>
+        createBitableRecord(token, this.cfg.base, tableId, {
+          关联BOM: bomId,
+          层级: item.level,
+          父级物料: item.parentItemId ? [item.parentItemId] : undefined,
+          物料编码: item.materialCode,
+          物料名称: item.materialName,
+          规格型号: item.specification,
+          数量: item.quantity,
+          单位: item.unit,
+          材质: item.material,
+          加工工艺: item.process,
+          来源: item.source,
+          参考图号: item.drawingNo,
+          备注: item.remark,
+        }),
+      ),
+    );
   }
 
   async getBOMByReview(reviewId: string): Promise<{ bom: BOM & { recordId: string }; items: Array<BOMItem & { recordId: string }> } | null> {
@@ -254,7 +256,10 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
       status: (fieldText(rec.fields["状态"] ?? rec.fields["status"]) as "draft" | "confirmed") || "draft",
       recordId: rec.record_id,
     };
-    const items = await this.listBOMItems(bom.bomId);
+    // BOM 头与物料同表，直接复用已拉取的 records 过滤物料行，不再二次拉表
+    const items = records
+      .filter((r) => fieldText(r.fields["关联BOM"] ?? r.fields["bomId"]) === bom.bomId)
+      .map((r) => this.recordToBOMItem(r, bom.bomId));
     return { bom, items };
   }
 
@@ -306,7 +311,7 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
   async createInquiry(inquiry: Inquiry): Promise<Inquiry & { recordId: string }> {
     const rec = await this.createRecord("inquiries", {
       询价单号: inquiry.inquiryId,
-      关联评审单: [inquiry.reviewId],
+      关联评审单: inquiry.reviewId,
       关联物料: inquiry.bomItemId,
       物料编码: inquiry.materialCode,
       物料名称: inquiry.materialName,

@@ -118,9 +118,9 @@ export class HardwareReviewAdapter extends FeishuTableAdapter<HardwareReviewConf
 
   async createMinutes(minutes: ReviewMinutes): Promise<ReviewMinutes & { recordId: string }> {
     const fields: Record<string, unknown> = {
-      关联评审单: [minutes.reviewId],
+      关联评审单: minutes.reviewId,
       会议时间: minutes.meetingTime,
-      参会人员: minutes.attendees.map((a) => ({ id: a.open_id })),
+      参会人员: minutes.attendees.map((a) => a.name || a.open_id).join("、"),
       讨论记录: minutes.discussion,
       评审结论: minutes.conclusion,
     };
@@ -151,7 +151,7 @@ export class HardwareReviewAdapter extends FeishuTableAdapter<HardwareReviewConf
 
   async createReport(report: ReviewReport): Promise<ReviewReport & { recordId: string }> {
     const rec = await this.createRecord("reports", {
-      关联评审单: [report.reviewId],
+      关联评审单: report.reviewId,
       报告编号: report.reportId,
       版本: report.version,
       总结: report.summary,

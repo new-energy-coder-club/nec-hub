@@ -190,6 +190,10 @@
             </div>
           </div>
           <div>
+            <label class="block text-sm font-medium text-nec-navy mb-1">硬件资料 <span class="text-nec-gray font-normal">（每行一条：名称|文件token|链接，后两项可省略）</span></label>
+            <textarea name="hardwareFiles" rows="2" required class="mono w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="原理图 V1.0.pdf|file_token_xxx&#10;BOM 表.xlsx"></textarea>
+          </div>
+          <div>
             <label class="block text-sm font-medium text-nec-navy mb-1">规格参数</label>
             <textarea name="specification" rows="2" class="w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="电压 / 电流 / 功率 / 接口 / 防护等级等"></textarea>
           </div>
@@ -281,6 +285,7 @@
         btn.classList.toggle("on", btn.dataset.view === view);
       });
       if (view === "list") loadReviews();
+      if (view === "submit") prefillSubmitForm();
       if (view === "detail" && params.id) loadDetail(params.id);
     }
 
@@ -306,6 +311,50 @@
 
     async function getConfig() {
       return api("/api/hardware-review/config");
+    }
+
+    // 当前登录用户（/api/whoami），用于预填设计负责人、纪要参会人/提出人
+    let currentUser = null;
+    async function loadCurrentUser() {
+      try {
+        const data = await api("/api/whoami");
+        if (data.authenticated && data.user) currentUser = data.user;
+      } catch {}
+    }
+
+    function parseLines(text) {
+      return (text || "").split("\n").map(s => s.trim()).filter(Boolean);
+    }
+
+    function parseOpenIds(text) {
+      return (text || "").split(/[,，\s]+/).map(s => s.trim()).filter(Boolean);
+    }
+
+    function defaultMeetingTime() {
+      const d = new Date(Date.now() + 24 * 3600 * 1000);
+      d.setHours(14, 0, 0, 0);
+      const pad = n => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    // 提交表单智能预填：当前用户 + /api/hardware-review/start 的默认值（版本号递增、设计说明模板等）
+    let prefilled = false;
+    async function prefillSubmitForm() {
+      if (prefilled) return;
+      prefilled = true;
+      const form = document.getElementById("submit-form");
+      if (currentUser && !form.designerId.value) form.designerId.value = currentUser.open_id;
+      try {
+        const data = await api("/api/hardware-review/start");
+        const d = data.defaults || {};
+        if (!form.projectId.value && d.projectId) form.projectId.value = d.projectId;
+        if (!form.hardwareName.value && d.hardwareName) form.hardwareName.value = d.hardwareName;
+        if (d.hardwareType) form.hardwareType.value = d.hardwareType;
+        if (!form.hardwareVersion.value && d.hardwareVersion) form.hardwareVersion.value = d.hardwareVersion;
+        if (!form.designerId.value && d.designerId) form.designerId.value = d.designerId;
+        if (!form.designNotes.value && d.designNotes) form.designNotes.value = d.designNotes;
+        if (!form.specification.value && d.specification) form.specification.value = d.specification;
+      } catch {}
     }
 
     function renderStatus(status) {
@@ -392,10 +441,12 @@
         `).join("");
     }
 
+    let currentReview = null;
     async function loadDetail(reviewId) {
       const el = document.getElementById("detail-content");
       try {
         const r = await api(`/api/hardware-review/${reviewId}`);
+        currentReview = r;
         el.innerHTML = `
           <div class="nec-card p-5" style="border-top:3px solid var(--nec-cyan)">
             <div class="flex items-start justify-between">
@@ -605,7 +656,12 @@
       e.preventDefault();
       const form = e.target;
       const resultEl = document.getElementById("submit-result");
+      const hardwareFiles = parseLines(form.hardwareFiles.value).map(line => {
+        const [name, token, url] = line.split("|").map(s => (s || "").trim());
+        return { name, token: token || "manual", ...(url ? { url } : {}) };
+      });
       try {
+        if (!hardwareFiles.length) throw new Error("请至少填写一条硬件资料");
         const data = await api("/api/hardware-review/submit", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -615,7 +671,7 @@
             hardwareType: form.hardwareType.value,
             hardwareVersion: form.hardwareVersion.value,
             designerId: form.designerId.value,
-            hardwareFiles: [{ name: "硬件资料", token: "manual" }],
+            hardwareFiles,
             designNotes: form.designNotes.value,
             specification: form.specification.value,
           }),

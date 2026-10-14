@@ -67,7 +67,12 @@ export async function handleFeishuAuth(request: Request, env: Env): Promise<Resp
   const tokenData = (await tokenResp.json()) as {
     code?: number;
     msg?: string;
-    data?: { access_token?: string };
+    data?: {
+      access_token?: string;
+      refresh_token?: string;
+      expires_in?: number;
+      refresh_expires_in?: number;
+    };
   };
   const userToken = tokenData.data?.access_token;
   if (tokenData.code !== 0 || !userToken) {
@@ -95,7 +100,10 @@ export async function handleFeishuAuth(request: Request, env: Env): Promise<Resp
   // 4. 签发中台会话（HttpOnly Cookie；MES 跨域调用不会带上，本门户同源登录生效）
   const sid = await createSession(env, user);
 
-  // 5. 另签发"上次登录"提示 Cookie（非 HttpOnly，前端可读；仅姓名/头像/时间等展示信息）
+  // 5. 持久化用户授权（feishu:user_token:<open_id>），供"我的任务"等模块代用户调飞书 API
+  await saveUserToken(env, user.open_id, tokenData.data);
+
+  // 6. 另签发"上次登录"提示 Cookie（非 HttpOnly，前端可读；仅姓名/头像/时间等展示信息）
   const headers = new Headers({ "content-type": "application/json; charset=utf-8", ...cors });
   headers.append("set-cookie", sessionCookie(sid));
   headers.append("set-cookie", lastLoginCookie(user));
@@ -112,11 +120,33 @@ export async function handleFeishuAuth(request: Request, env: Env): Promise<Resp
   );
 }
 
+/** 登录换到的 user_access_token + refresh_token 持久化（KV TTL 跟 refresh_token 寿命走，到期自动清理） */
+async function saveUserToken(
+  env: Env,
+  openId: string,
+  d?: { access_token?: string; refresh_token?: string; expires_in?: number; refresh_expires_in?: number },
+): Promise<void> {
+  if (!openId || !d?.access_token || !d.refresh_token) return; // 无 refresh_token 无法续期，不绑定
+  const now = Date.now();
+  const refreshExpiresAt = now + (d.refresh_expires_in ?? 30 * 24 * 3600) * 1000;
+  await env.REGISTRY.put(
+    `feishu:user_token:${openId}`,
+    JSON.stringify({
+      user_access_token: d.access_token,
+      refresh_token: d.refresh_token,
+      expires_at: now + (d.expires_in ?? 7200) * 1000,
+      refresh_expires_at: refreshExpiresAt,
+    }),
+    { expirationTtl: Math.max(60, Math.floor((refreshExpiresAt - now) / 1000)) },
+  );
+}
+
 /** 实例内 app_access_token 缓存 + in-flight 去重（同 getTenantAccessToken 的模式） */
 let appTokenMem: { token: string; expireAt: number } | null = null;
 let appTokenInflight: Promise<string> | null = null;
 
-async function getAppAccessToken(env: Env): Promise<string> {
+/** 供 feishu/user-token.ts 续期 refresh 时复用 */
+export async function getAppAccessToken(env: Env): Promise<string> {
   if (appTokenMem && appTokenMem.expireAt > Date.now()) return appTokenMem.token;
   appTokenInflight ??= fetchAppAccessToken(env).finally(() => {
     appTokenInflight = null;

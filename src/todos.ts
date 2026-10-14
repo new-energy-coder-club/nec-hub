@@ -159,13 +159,23 @@ export async function buildTodos(env: Env, user: { name: string; open_id: string
   let finance: { count: number; scope: "mine" | "all"; items: TodoFinanceItem[] } = { count: 0, scope: "mine", items: [] };
   let approvals: { count: number; items: Array<{ title: string; link: string }> } = { count: 0, items: [] };
 
+  // 审批待办与看板表互不依赖，先行启动，最后统一收口（warnings 顺序保持不变）
+  const approvalsPromise =
+    env.FEISHU_APP_ID && env.FEISHU_APP_SECRET
+      ? fetchApprovalTodos(env, user.open_id).then(
+          (value) => ({ ok: true as const, value }),
+          (err: unknown) => ({ ok: false as const, err }),
+        )
+      : null;
+
   const cfg = await getDashboardConfig(env);
   if (!cfg) {
     warnings.push("数据看板未配置，仅聚合飞书审批待办");
   } else {
-    const role = await resolveUserRole(env, user, ctx);
-    const seeAllFinance = canSeeFinanceDetail(role);
+    // 角色解析（members 表）与任务/财务表读取并行
+    const rolePromise = resolveUserRole(env, user, ctx);
     const [t, f] = await Promise.all([fetchTableCached(env, cfg, "tasks", ctx), fetchTableCached(env, cfg, "finance", ctx)]);
+    const seeAllFinance = canSeeFinanceDetail(await rolePromise);
     if (cfg.tables.tasks) {
       if (t.error) warnings.push(`任务表读取失败：${t.error}`);
       else tasks = buildTodoTasks(t.records, user.name, cfg.base, cfg.tables.tasks);
@@ -179,11 +189,11 @@ export async function buildTodos(env: Env, user: { name: string; open_id: string
     }
   }
 
-  if (env.FEISHU_APP_ID && env.FEISHU_APP_SECRET) {
-    try {
-      approvals = await fetchApprovalTodos(env, user.open_id);
-    } catch (err) {
-      warnings.push(`飞书审批待办不可用（审批 API scope 未开通或未授权），已降级为任务/报销聚合：${err instanceof Error ? err.message : String(err)}`);
+  if (approvalsPromise) {
+    const res = await approvalsPromise;
+    if (res.ok) approvals = res.value;
+    else {
+      warnings.push(`飞书审批待办不可用（审批 API scope 未开通或未授权），已降级为任务/报销聚合：${res.err instanceof Error ? res.err.message : String(res.err)}`);
     }
   } else {
     warnings.push("飞书应用未配置，跳过审批待办聚合");

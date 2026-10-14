@@ -47,6 +47,8 @@ export async function toolDeployApp(args: Record<string, unknown>, env: Env, req
   if (!files.some((f) => f.path === "index.html")) {
     throw new Error("必须包含入口文件 index.html");
   }
+  // 先整体校验（纯同步、无副作用），再并行上传 R2
+  const bodies: Array<{ path: string; body: string | Uint8Array }> = [];
   for (const f of files) {
     const p = String(f.path ?? "");
     if (!p || p.includes("..") || p.startsWith("/")) throw new Error(`非法文件路径：${p}`);
@@ -54,8 +56,9 @@ export async function toolDeployApp(args: Record<string, unknown>, env: Env, req
     if (typeof f.text === "string") body = f.text;
     else if (typeof f.base64 === "string") body = base64ToBytes(f.base64);
     else throw new Error(`文件 ${p} 缺少 text 或 base64 内容`);
-    await env.APPS_BUCKET.put(`apps/${appName}/${p}`, body);
+    bodies.push({ path: p, body });
   }
+  await Promise.all(bodies.map((f) => env.APPS_BUCKET.put(`apps/${appName}/${f.path}`, f.body)));
   const origin = new URL(request.url).origin;
   // 让边缘缓存里的旧版本立即失效（含目录入口与每个文件）
   await Promise.all([
@@ -130,56 +133,61 @@ export async function toolSyncVercel(args: Record<string, unknown>, env: Env) {
   const excluded = new Set([...VERCEL_DEFAULT_EXCLUDE, ...extraExclude]);
 
   const headers = { authorization: `Bearer ${env.VERCEL_TOKEN}` };
-  const listResp = await fetch(`https://api.vercel.com/v9/projects?slug=${encodeURIComponent(team)}&limit=100`, { headers });
+  // Vercel 项目列表与本地注册表互不依赖，并行拉取
+  const listRespPromise = fetch(`https://api.vercel.com/v9/projects?slug=${encodeURIComponent(team)}&limit=100`, { headers });
+  const registry = await readIndex<AppEntry>(env, "apps:index");
+  const listResp = await listRespPromise;
   const listData = (await listResp.json()) as { projects?: Array<{ name?: string }>; error?: { message?: string } };
   if (!listResp.ok || !listData.projects) {
     throw new Error(`Vercel API 错误：${listData.error?.message ?? listResp.status}`);
   }
 
-  const registry = await readIndex<AppEntry>(env, "apps:index");
   const existingHosts = new Set(
     registry.map((a) => { try { return new URL(a.url).host; } catch { return ""; } }),
   );
   const existingNames = new Set(registry.map((a) => a.name));
 
-  const plan: Array<{ name: string; url: string; action: string }> = [];
-  for (const p of listData.projects) {
-    const name = p.name ?? "";
-    if (!name) continue;
-    if (excluded.has(name) || VERCEL_DEFAULT_EXCLUDE_PREFIX.some((pre) => name.startsWith(pre))) {
-      plan.push({ name, url: "-", action: "skip: 排除名单" });
-      continue;
-    }
-    if (existingNames.has(name)) {
-      plan.push({ name, url: "-", action: "skip: 已在广场" });
-      continue;
-    }
-    // 取项目生产域名：targets.production.alias，优先非 vercel.app 的自定义域名
-    let url = `https://${name}.vercel.app`;
-    try {
-      const dResp = await fetch(`https://api.vercel.com/v9/projects/${encodeURIComponent(name)}?slug=${encodeURIComponent(team)}`, { headers });
-      const detail = (await dResp.json()) as { targets?: { production?: { alias?: string[] } } };
-      const domains = detail.targets?.production?.alias ?? [];
-      const custom = domains.find((d) => !d.endsWith(".vercel.app"));
-      if (custom) url = `https://${custom}`;
-      else if (domains.length > 0) url = `https://${domains[0]}`;
-    } catch { /* 详情失败则用默认 vercel.app 域名 */ }
+  // 各项目详情请求互不依赖，并行拉取；确认模式下的注册表写回仍顺序执行（避免 KV 读写竞争）
+  const entries = await Promise.all(
+    listData.projects.map(async (p): Promise<{ name: string; url: string; action: string } | null> => {
+      const name = p.name ?? "";
+      if (!name) return null;
+      if (excluded.has(name) || VERCEL_DEFAULT_EXCLUDE_PREFIX.some((pre) => name.startsWith(pre))) {
+        return { name, url: "-", action: "skip: 排除名单" };
+      }
+      if (existingNames.has(name)) {
+        return { name, url: "-", action: "skip: 已在广场" };
+      }
+      // 取项目生产域名：targets.production.alias，优先非 vercel.app 的自定义域名
+      let url = `https://${name}.vercel.app`;
+      try {
+        const dResp = await fetch(`https://api.vercel.com/v9/projects/${encodeURIComponent(name)}?slug=${encodeURIComponent(team)}`, { headers });
+        const detail = (await dResp.json()) as { targets?: { production?: { alias?: string[] } } };
+        const domains = detail.targets?.production?.alias ?? [];
+        const custom = domains.find((d) => !d.endsWith(".vercel.app"));
+        if (custom) url = `https://${custom}`;
+        else if (domains.length > 0) url = `https://${domains[0]}`;
+      } catch { /* 详情失败则用默认 vercel.app 域名 */ }
 
-    const host = new URL(url).host;
-    if (existingHosts.has(host)) {
-      plan.push({ name, url, action: "skip: 同域名已收录" });
-      continue;
-    }
-    plan.push({ name, url, action: confirm ? "registered" : "would register" });
-    if (confirm) {
+      const host = new URL(url).host;
+      if (existingHosts.has(host)) {
+        return { name, url, action: "skip: 同域名已收录" };
+      }
+      return { name, url, action: confirm ? "registered" : "would register" };
+    }),
+  );
+  const plan = entries.filter((e) => e !== null);
+  if (confirm) {
+    for (const p of plan) {
+      if (p.action !== "registered") continue;
       await upsertIndex(env, "apps:index", {
-        name,
-        title: name,
+        name: p.name,
+        title: p.name,
         author: "Vercel 同步",
         visibility: "all",
         version: "1.0.0",
         updatedAt: new Date().toISOString(),
-        url,
+        url: p.url,
         external: true,
       });
     }
@@ -474,6 +482,9 @@ export async function toolUpdateProgress(args: Record<string, unknown>, env: Env
     throw new Error("赛季目标表未配置：请先调用 config_dashboard（action=set）写入 tables.goals");
   }
   const token = await getTenantAccessToken(env);
+  // 字段元数据与记录定位互不依赖，提前启动并行拉取；错误仍在下方 await 处抛出
+  const metasPromise = listBitableFields(token, cfg.base, tableId);
+  metasPromise.catch(() => {});
 
   // goal 关键词定位记录：整条记录 JSON 不区分大小写包含匹配，或 record_id 精确命中；
   // 唯一匹配才写，多匹配返回候选列表让调用方用 record_id 精确指定
@@ -506,7 +517,7 @@ export async function toolUpdateProgress(args: Record<string, unknown>, env: Env
     recordId = matched[0].record_id;
   }
 
-  const metas = await listBitableFields(token, cfg.base, tableId);
+  const metas = await metasPromise;
   const record: Record<string, unknown> = {};
   if (progress !== null) {
     const f =

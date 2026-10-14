@@ -90,7 +90,7 @@ function recordPersons(r: BitableRecord): string[] {
   return out;
 }
 
-/** 全量校验：4 表顺序拉取（复用调用方缓存），跑规则后拼记录直链与归属人 */
+/** 全量校验：4 表并行拉取（复用调用方缓存），跑规则后拼记录直链与归属人 */
 export async function runValidation(
   cfg: ValidateTableSource,
   fetchTable: FetchValidateTable,
@@ -101,14 +101,16 @@ export async function runValidation(
   const wanted = (tables?.length ? tables : [...VALIDATE_TABLES]).filter((t) => VALIDATE_TABLES.includes(t));
   const data = new Map<ValidateTable, BitableRecord[]>();
   const errors: Record<string, string> = {};
-  for (const t of wanted) {
-    if (!cfg.tables[t]) {
-      errors[t] = "未配置 table_id";
-      continue;
-    }
-    const res = await fetchTable(t);
-    data.set(t, res.records);
-    if (res.error) errors[t] = res.error;
+  const results = await Promise.all(
+    wanted.map(async (t) => {
+      if (!cfg.tables[t]) return { t, records: null as BitableRecord[] | null, error: "未配置 table_id" };
+      const res = await fetchTable(t);
+      return { t, records: res.records, error: res.error };
+    }),
+  );
+  for (const { t, records, error } of results) {
+    if (records) data.set(t, records);
+    if (error) errors[t] = error;
   }
 
   const memberRecords = data.get("members") ?? [];

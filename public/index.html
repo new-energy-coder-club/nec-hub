@@ -81,9 +81,9 @@
 
 <!-- KV V2 Hero：BUILT TO DAWN -->
 <header class="hero">
-  <div class="max-w-5xl mx-auto px-6 pt-8 pb-10 relative">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8 sm:pb-10 relative">
     <div class="flex items-center gap-3 relative z-10">
-      <img src="/brand/nec-logo.svg" alt="NEC" class="h-9 w-auto" />
+      <img src="/brand/nec-logo.svg" alt="NEC" class="h-8 sm:h-9 w-auto" />
       <div class="leading-tight">
         <div class="font-black text-lg" style="color:var(--nec-navy)">常州工NEC <span class="text-sm font-extrabold" style="color:var(--nec-cyan)">in CIT</span></div>
         <div class="mono text-[11px] text-gray-500 tracking-wider">newenergycoder.club</div>
@@ -93,21 +93,21 @@
     </div>
 
     <div class="mt-10 relative z-10">
-      <p class="mono text-xs tracking-[.22em] mb-4" style="color:var(--nec-navy)"><b>NEC HUB</b> · 团队 AI 中台 · KEEP BUILDING</p>
-      <h1 class="hero-title text-5xl sm:text-7xl">BUILT <span class="to">TO</span> DAWN</h1>
-      <p class="mt-4 font-black tracking-[.4em] text-sm sm:text-base" style="color:var(--nec-navy)">为黎明而造</p>
-      <p class="mono mt-3 text-xs text-gray-500 tracking-widest">应用广场 · SKILL 中心 · 开源仓库 · 数据看板 · NEC-MCP</p>
-      <div class="mt-6 flex flex-wrap gap-3 text-sm">
-        <span class="chip mono px-3 py-1.5 rounded-sm bg-white"><i class="not-italic mr-1">01</i>找物品</span>
-        <span class="chip mono px-3 py-1.5 rounded-sm bg-white"><i class="not-italic mr-1">02</i>扫标签</span>
-        <span class="chip mono px-3 py-1.5 rounded-sm bg-white"><i class="not-italic mr-1">03</i>办工单</span>
+      <p class="mono text-xs tracking-[.18em] sm:tracking-[.22em] mb-3 sm:mb-4" style="color:var(--nec-navy)"><b>NEC HUB</b> · 团队 AI 中台 · KEEP BUILDING</p>
+      <h1 class="hero-title text-4xl sm:text-7xl">BUILT <span class="to">TO</span> DAWN</h1>
+      <p class="mt-3 sm:mt-4 font-black tracking-[.22em] sm:tracking-[.4em] text-sm sm:text-base" style="color:var(--nec-navy)">为黎明而造</p>
+      <p class="mono mt-3 text-xs text-gray-500 tracking-wider sm:tracking-widest leading-relaxed">应用广场 · SKILL 中心 · 开源仓库 · 数据看板 · NEC-MCP</p>
+      <div class="mt-5 sm:mt-6 flex flex-wrap gap-2 sm:gap-3 text-sm">
+        <span class="chip mono px-3 py-2 rounded-sm bg-white"><i class="not-italic mr-1">01</i>找物品</span>
+        <span class="chip mono px-3 py-2 rounded-sm bg-white"><i class="not-italic mr-1">02</i>扫标签</span>
+        <span class="chip mono px-3 py-2 rounded-sm bg-white"><i class="not-italic mr-1">03</i>办工单</span>
         <a href="https://mes.newenergycoder.club/home.html#label" target="_blank"
-           class="mono px-3 py-1.5 rounded-sm text-white" style="background:var(--nec-cyan)">→ NEC 仓库作业台</a>
+           class="mono px-4 py-2 rounded-sm text-white inline-block" style="background:var(--nec-cyan)">→ NEC 仓库作业台</a>
       </div>
     </div>
 
     <!-- 破晓太阳 -->
-    <svg class="absolute right-2 sm:right-10 top-24 w-40 sm:w-64 opacity-90 z-0" viewBox="0 0 800 800" fill="none">
+    <svg class="absolute -right-10 sm:right-10 top-24 w-36 sm:w-64 opacity-40 sm:opacity-90 z-0 pointer-events-none" viewBox="0 0 800 800" fill="none" aria-hidden="true">
       <defs><linearGradient id="sunG" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#4FC3F7"/><stop offset="1" stop-color="#1FA9E8"/></linearGradient></defs>
       <circle cx="400" cy="400" r="330" stroke="url(#sunG)" stroke-width="10"/>
@@ -121,21 +121,22 @@
 </header>
 
 <nav class="bg-white shadow-sm">
-  <div class="max-w-5xl mx-auto px-6 flex gap-6 text-sm font-medium text-gray-500">
-    <button data-tab="home" class="tab-btn py-3 tab-active">我的首页</button>
-    <button data-tab="drawing-review" id="tab-btn-drawing-review" class="tab-btn py-3 hidden">📐 图纸评审</button>
-    <button data-tab="apps" class="tab-btn py-3">应用广场</button>
-    <button data-tab="skills" class="tab-btn py-3">Skill 中心</button>
-    <button data-tab="docs" class="tab-btn py-3">资料页</button>
-    <button data-tab="repos" class="tab-btn py-3">开源仓库</button>
-    <button data-tab="dashboard" class="tab-btn py-3">数据看板</button>
-    <button data-tab="agent" class="tab-btn py-3">NEC-MCP</button>
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 flex gap-4 sm:gap-6 text-sm font-medium text-gray-500 overflow-x-auto whitespace-nowrap scrollbar-hide">
+    <button data-tab="home" class="tab-btn py-3 shrink-0 tab-active">我的首页</button>
+    <button data-tab="my-tasks" class="tab-btn py-3 shrink-0">我的任务</button>
+    <button data-tab="drawing-review" id="tab-btn-drawing-review" class="tab-btn py-3 shrink-0 hidden">📐 图纸评审</button>
+    <button data-tab="apps" class="tab-btn py-3 shrink-0">应用广场</button>
+    <button data-tab="skills" class="tab-btn py-3 shrink-0">Skill 中心</button>
+    <button data-tab="docs" class="tab-btn py-3 shrink-0">资料页</button>
+    <button data-tab="repos" class="tab-btn py-3 shrink-0">开源仓库</button>
+    <button data-tab="dashboard" class="tab-btn py-3 shrink-0">数据看板</button>
+    <button data-tab="agent" class="tab-btn py-3 shrink-0">NEC-MCP</button>
   </div>
 </nav>
 
 <!-- FE-04：赛季目标关键节点 T-7 提醒条（renderDashboard 按 goals 数据填充，无临近节点时隐藏） -->
 <div id="goal-banner" class="hidden">
-  <div class="max-w-5xl mx-auto px-6 py-2.5 flex items-center gap-3 text-sm text-white" style="background:var(--nec-navy)">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-2.5 flex items-center gap-3 text-sm text-white" style="background:var(--nec-navy)">
     <span class="shrink-0">📌</span>
     <div id="goal-banner-text" class="flex-1 leading-snug"></div>
     <button onclick="document.getElementById('goal-banner').classList.add('hidden')" class="text-white/60 hover:text-white shrink-0">✕</button>
@@ -144,7 +145,7 @@
 
 <!-- FE-09：待办条（登录后有待办时显示；逾期任务/待确认报销/飞书审批聚合，可展开清单） -->
 <div id="todo-bar" class="hidden">
-  <div class="max-w-5xl mx-auto px-6 py-2.5 text-sm text-white" style="background:#B45309">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-2.5 text-sm text-white" style="background:#B45309">
     <div class="flex items-center gap-3">
       <span class="shrink-0">✅</span>
       <button onclick="toggleTodoList()" class="flex-1 text-left leading-snug hover:underline" id="todo-bar-text"></button>
@@ -154,7 +155,7 @@
   </div>
 </div>
 
-<main class="max-w-5xl mx-auto px-6 py-8">
+<main class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
   <!-- FE-06/07 我的首页：白名单组件按布局配置渲染（个人 > 组 > 全员默认） -->
   <section id="tab-home">
@@ -174,16 +175,25 @@
     <div id="home-widgets" class="space-y-4"></div>
   </section>
 
+  <!-- 我的任务：绑定飞书任务（Task v2）后同步展示，未绑定引导重新授权 -->
+  <section id="tab-my-tasks" class="hidden">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">我的任务<span id="my-tasks-meta" class="text-xs font-normal text-gray-400 ml-2"></span></h2>
+      <div class="flex items-center gap-2" id="my-tasks-actions"></div>
+    </div>
+    <div id="my-tasks-body" class="space-y-3"></div>
+  </section>
+
   <!-- 图纸评审（原生集成，登录后可见） -->
   <section id="tab-drawing-review" class="hidden">
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
       <h2 class="text-lg font-bold">图纸评审</h2>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
         <div class="flex rounded-lg border border-gray-200 overflow-hidden text-xs bg-white">
-          <button id="dr-mode-board" onclick="setDrMode('board')" class="px-3 py-1.5">看板</button>
-          <button id="dr-mode-list" onclick="setDrMode('list')" class="px-3 py-1.5 border-l border-gray-200">列表</button>
+          <button id="dr-mode-board" onclick="setDrMode('board')" class="px-3 py-2">看板</button>
+          <button id="dr-mode-list" onclick="setDrMode('list')" class="px-3 py-2 border-l border-gray-200">列表</button>
         </div>
-        <button onclick="loadDrawingReviews()" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600">刷新</button>
+        <button onclick="loadDrawingReviews()" class="text-xs px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600">刷新</button>
         <button onclick="toggleDrForm()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--nec-cyan)">＋ 提交评审单</button>
       </div>
     </div>
@@ -265,6 +275,24 @@
             <div>
               <p class="font-bold text-slate-800">新增机图纸评审</p>
               <p class="text-xs text-gray-500">提交 · 评审 · BOM · 排期 · 采购</p>
+            </div>
+          </div>
+        </a>
+        <a href="/apps/hardware-review/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-blue-200 transition">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-lg">🔧</div>
+            <div>
+              <p class="font-bold text-slate-800">硬件评审流程</p>
+              <p class="text-xs text-gray-500">选型 · 评审 · 立项 · 归档</p>
+            </div>
+          </div>
+        </a>
+        <a href="/apps/scoring/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-blue-200 transition">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-lg">🏆</div>
+            <div>
+              <p class="font-bold text-slate-800">NEC 评分看板</p>
+              <p class="text-xs text-gray-500">赛事成绩 · 评分记录 · 排名</p>
             </div>
           </div>
         </a>
@@ -501,15 +529,32 @@ document.getElementById("doc-publish-prompt").textContent =
    - maintainer：维护人
 3. 成功后告诉我已发布到资料页`;
 
-// Tab 切换
+// Tab 切换 + Hash 路由：/#tab-dashboard 等深链可直达对应面板，刷新/分享不丢位置
+const TAB_IDS = ["home","my-tasks","drawing-review","apps","skills","docs","repos","dashboard","agent"];
+function switchTab(tab, opts = {}) {
+  const btn = document.querySelector('.tab-btn[data-tab="' + tab + '"]');
+  const panel = document.getElementById("tab-" + tab);
+  if (!btn || !panel || btn.classList.contains("hidden")) return false;
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("tab-active"));
+  btn.classList.add("tab-active");
+  TAB_IDS.forEach(t => document.getElementById("tab-"+t).classList.toggle("hidden", t !== tab));
+  if (!opts.silent && location.hash !== "#tab-" + tab) location.hash = "tab-" + tab;
+  if (tab === "my-tasks") loadMyTasks();
+  return true;
+}
+function applyHashRoute() {
+  const m = location.hash.match(/^#tab-([a-z-]+)$/);
+  if (!m) return;
+  if (!switchTab(m[1], { silent: true })) {
+    // 目标 Tab 当前不可见（如未登录时的图纸评审）：保持现有激活 Tab，只清掉无效 hash
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+}
 document.querySelectorAll(".tab-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("tab-active"));
-    btn.classList.add("tab-active");
-    ["home","drawing-review","apps","skills","docs","repos","dashboard","agent"].forEach(t =>
-      document.getElementById("tab-"+t).classList.toggle("hidden", t !== btn.dataset.tab));
-  });
+  btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
+window.addEventListener("hashchange", applyHashRoute);
+applyHashRoute();
 
 function showPublishPrompt() {
   document.getElementById("publish-box").classList.toggle("hidden");
@@ -642,10 +687,13 @@ function startLogin() {
   const state = crypto.randomUUID();
   sessionStorage.setItem("nec_oauth_state", state);
   const redirect = location.origin + location.pathname;
+  // scope 取 Task v2 最小集：task:task:read 读任务 + task:tasklist:read 读清单；
+  // scope 变化后老用户需重新授权一次，"我的任务"才能绑定
   location.href = "https://open.feishu.cn/open-apis/authen/v1/authorize?app_id="
     + encodeURIComponent(HUB_CONFIG.feishuAppId)
     + "&redirect_uri=" + encodeURIComponent(redirect)
-    + "&state=" + state;
+    + "&state=" + state
+    + "&scope=" + encodeURIComponent("task:task:read task:tasklist:read");
 }
 
 async function logout() {
@@ -656,6 +704,84 @@ async function logout() {
   loadValidateHealth();
   loadTodos();
   loadHome();
+  loadMyTasks();
+}
+
+// ===== 我的任务：绑定飞书任务并同步（GET /api/my-tasks，KV 5 分钟缓存） =====
+let MY_TASKS_AUTH_URL = null;
+function bindMyTasks() {
+  if (MY_TASKS_AUTH_URL) location.href = MY_TASKS_AUTH_URL;
+}
+
+async function loadMyTasks(force) {
+  const body = document.getElementById("my-tasks-body");
+  const actions = document.getElementById("my-tasks-actions");
+  const meta = document.getElementById("my-tasks-meta");
+  if (!body) return;
+  if (!ME.authenticated) {
+    actions.innerHTML = ""; meta.textContent = "";
+    body.innerHTML = `<div class="bg-white rounded-xl shadow p-8 text-center text-sm text-gray-400">请先点击右上角「飞书登录」，登录后可绑定并同步你的飞书任务</div>`;
+    return;
+  }
+  let data;
+  try {
+    const resp = await fetch("/api/my-tasks" + (force ? "?refresh=1" : ""));
+    if (resp.status === 401) {
+      body.innerHTML = `<div class="bg-white rounded-xl shadow p-8 text-center text-sm text-gray-400">登录已过期，请重新登录</div>`;
+      return;
+    }
+    data = await resp.json();
+  } catch (e) {
+    body.innerHTML = `<div class="bg-white rounded-xl shadow p-8 text-center text-sm text-red-500">任务加载失败：${esc(e.message || String(e))}</div>`;
+    return;
+  }
+  if (!data.bound) {
+    meta.textContent = ""; actions.innerHTML = "";
+    MY_TASKS_AUTH_URL = data.authorizeUrl || null;
+    body.innerHTML = `
+      <div class="bg-white rounded-xl shadow p-8 text-center">
+        <p class="text-sm text-gray-500 mb-1">尚未绑定飞书任务${data.rebind ? "（原授权已失效）" : ""}</p>
+        <p class="text-xs text-gray-400 mb-4">授权后中台将代你同步拉取飞书任务（Task v2，只读）</p>
+        ${MY_TASKS_AUTH_URL
+          ? `<button onclick="bindMyTasks()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--nec-cyan)">🔗 绑定飞书任务</button>`
+          : `<p class="text-xs text-red-500">飞书应用未配置，无法发起授权</p>`}
+      </div>`;
+    return;
+  }
+  meta.textContent = "同步于 " + new Date(data.syncedAt).toLocaleString("zh-CN") + (data.cached ? "（缓存）" : "");
+  actions.innerHTML = `
+    <button onclick="loadMyTasks(true)" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600">同步</button>
+    <button onclick="unbindMyTasks()" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600">解绑</button>`;
+  if (!data.tasks || !data.tasks.length) {
+    body.innerHTML = `<div class="bg-white rounded-xl shadow p-8 text-center text-sm text-gray-400">🎉 没有未完成的飞书任务</div>`;
+    return;
+  }
+  const now = Date.now();
+  body.innerHTML = data.tasks.map(t => {
+    const done = !!t.completedAt;
+    const overdue = !done && t.dueTimestamp && t.dueTimestamp < now;
+    const due = t.dueTimestamp
+      ? new Date(t.dueTimestamp).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+      : "无截止时间";
+    return `
+    <div class="bg-white rounded-xl shadow p-4 flex items-center gap-3 ${done ? "opacity-50" : ""}">
+      <div class="flex-1 min-w-0">
+        ${t.url
+          ? `<a href="${esc(t.url)}" target="_blank" class="font-medium hover:underline ${done ? "line-through text-gray-400" : ""}" style="color:var(--nec-navy)">${esc(t.summary)}</a>`
+          : `<span class="font-medium ${done ? "line-through text-gray-400" : ""}" style="color:var(--nec-navy)">${esc(t.summary)}</span>`}
+        <p class="text-xs mt-1 ${overdue ? "text-red-600 font-medium" : "text-gray-400"}">${overdue ? "已逾期 · " : ""}截止：${due}</p>
+      </div>
+      ${done
+        ? `<span class="text-xs text-gray-400 shrink-0">已完成</span>`
+        : overdue ? `<span class="text-xs text-white px-2 py-0.5 rounded bg-red-500 shrink-0">逾期</span>` : ""}
+    </div>`;
+  }).join("");
+}
+
+async function unbindMyTasks() {
+  if (!confirm("解绑后将停止同步你的飞书任务，确定解绑？")) return;
+  await fetch("/api/my-tasks/unbind", { method: "POST" }).catch(() => {});
+  loadMyTasks();
 }
 
 // ===== FE-09 待办条：聚合逾期任务 / 待确认报销 / 飞书审批（GET /api/todos，5 分钟缓存） =====
@@ -1574,12 +1700,17 @@ function drConclude(id) {
   drAct(id, "/conclusion", { conclusion: c }, "评审结论已提交");
 }
 function drBom(id) {
-  const raw = prompt('粘贴 BOM JSON 数组：\n[{"materialName":"电机支架","quantity":2,"unit":"件","source":"self-made","process":"machining"}]', "[]");
+  const sample = JSON.stringify([
+    { materialName: "伺服电机", materialCode: "M-001", specification: "AK10-9", quantity: 2, unit: "台", source: "purchased" },
+    { materialName: "联轴器", materialCode: "M-002", specification: "LK-20", quantity: 4, unit: "个", source: "standard" },
+    { materialName: "安装支架", quantity: 1, unit: "件", source: "self-made", process: "machining" },
+  ], null, 2);
+  const raw = prompt('粘贴或修改 BOM JSON 数组（source: purchased 外购 / standard 标准件 / self-made 自制）：', sample);
   if (raw === null) return;
   let items;
   try { items = JSON.parse(raw); } catch { alert("JSON 格式错误"); return; }
-  if (!Array.isArray(items)) { alert("必须是数组"); return; }
-  drAct(id, "/bom/generate", { items }, "BOM 已生成，进入评估");
+  if (!Array.isArray(items) || items.length === 0) { alert("必须是非空数组"); return; }
+  drAct(id, "/bom/generate", { items }, "BOM 已生成，可继续生成询价单");
 }
 
 // ---------- 图纸评审 · 询价流转与比价 ----------
@@ -1606,7 +1737,14 @@ async function drGenerateInquiries(reviewId) {
     }
     loadDrInquiries(reviewId);
   } catch (err) {
-    if (tip) { tip.className = "text-xs text-red-500"; tip.textContent = "生成失败：" + err.message; }
+    if (tip) {
+      tip.className = "text-xs text-red-500";
+      if (/尚无 BOM/.test(err.message)) {
+        tip.innerHTML = `生成失败：${esc(err.message)} <button onclick="drBom('${reviewId}')" class="ml-1 px-2 py-0.5 rounded text-white bg-purple-600">去生成 BOM</button>`;
+      } else {
+        tip.textContent = "生成失败：" + err.message;
+      }
+    }
   }
 }
 
@@ -2075,6 +2213,48 @@ function mountReimburse() {
   REIMBURSE_NODE = wrap.firstElementChild;
   REIMBURSE_NODE.dataset.authed = String(authed);
   slot.appendChild(REIMBURSE_NODE);
+  const form = REIMBURSE_NODE.querySelector('#reimburse-form');
+  if (form) {
+    form.addEventListener('input', queueReimburseDraft);
+    restoreReimburseDraft();
+  }
+}
+
+// 草稿持久化：文本字段防抖写入 localStorage，刷新/误关页面后可恢复（文件选择无法持久化，需重传）
+const REIMBURSE_DRAFT_KEY = 'nec_reimburse_draft';
+let _reimburseDraftTimer = null;
+function queueReimburseDraft() {
+  clearTimeout(_reimburseDraftTimer);
+  _reimburseDraftTimer = setTimeout(() => {
+    const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+    const draft = { item: g('r-item'), amount: g('r-amount'), date: g('r-date'), invno: g('r-invno'), note: g('r-note'), savedAt: Date.now() };
+    try {
+      if (draft.item || draft.amount || draft.invno || draft.note) {
+        localStorage.setItem(REIMBURSE_DRAFT_KEY, JSON.stringify(draft));
+      } else {
+        localStorage.removeItem(REIMBURSE_DRAFT_KEY);
+      }
+    } catch { /* 隐私模式等场景写不进就跳过 */ }
+  }, 400);
+}
+function restoreReimburseDraft() {
+  let draft = null;
+  try { draft = JSON.parse(localStorage.getItem(REIMBURSE_DRAFT_KEY) || 'null'); } catch { return; }
+  if (!draft) return;
+  const put = (id, v) => {
+    const el = document.getElementById(id);
+    if (el && v) { el.value = v; el.dataset.ocr = ''; }
+  };
+  put('r-item', draft.item); put('r-amount', draft.amount);
+  put('r-date', draft.date); put('r-invno', draft.invno); put('r-note', draft.note);
+  const st = document.getElementById('r-submit-status');
+  if (st && (draft.item || draft.amount || draft.invno || draft.note)) {
+    st.textContent = '📝 已恢复 ' + new Date(draft.savedAt).toLocaleString('zh-CN') + ' 的未提交草稿（凭证文件需重新上传）';
+  }
+}
+function clearReimburseDraft() {
+  clearTimeout(_reimburseDraftTimer);
+  try { localStorage.removeItem(REIMBURSE_DRAFT_KEY); } catch {}
 }
 function reimburseFormHtml() {
   const today = new Date().toLocaleDateString('sv-SE'); // 本地时区 YYYY-MM-DD
@@ -2269,6 +2449,7 @@ async function submitReimburse(ev) {
     const data = await resp.json();
     if (!resp.ok || data.error) throw new Error(data.error || ('HTTP ' + resp.status));
     st.textContent = '✅ 已提交' + (data.recordId ? '，已写入财务报销表' : '') + (data.warning ? '；⚠ ' + data.warning : '');
+    clearReimburseDraft();
     document.getElementById('reimburse-form').reset();
     ['r-amount', 'r-invno'].forEach(id => {
       const el = document.getElementById(id);

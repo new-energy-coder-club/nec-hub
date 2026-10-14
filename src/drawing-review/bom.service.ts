@@ -24,7 +24,7 @@ export class BOMService {
       status: "draft",
     };
     const bomRec = await this.adapter.createRecord("bom", {
-      关联评审单: [reviewId],
+      关联评审单: reviewId,
       BOM编号: bom.bomId,
       版本: bom.version,
       状态: bom.status,

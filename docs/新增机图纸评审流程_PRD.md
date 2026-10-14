@@ -733,10 +733,11 @@ BOM 中来源为「外购/标准件」且库存不足的物料。
 - 资源约束：全程 Cloudflare 免费额度（Worker 请求量 + KV + R2），用量纳入每月巡检。
 
 ### 16.2 配置步骤
-1. 在飞书创建图纸评审专用多维表格，按 10 张逻辑表（评审单/会议纪要/整改项/BOM/评估报告/库存查询/发货清单/排期任务/询价单/事件日志）建表并记录 table_id。
-2. 调用 MCP `config_drawing_review`（或 `POST /api/drawing-review/config`）写入 base 与 10 张 table_id。
+1. 在飞书创建图纸评审专用多维表格，按 10 张逻辑表（评审单/会议纪要/整改项/BOM/评估报告/库存查询/发货清单/排期任务/询价单/事件日志）建表并记录 table_id。**（已完成，2026-10-14：Base `OFZqbJHteaYRpssam7Nc4fTYnLc`，table_id 清单见设计文档 §5.1.1）**
+2. 调用 MCP `config_drawing_review`（或 `POST /api/drawing-review/config`）写入 base 与 10 张 table_id。**注意 set 为全量覆盖，须一次带齐全部 table_id。**
 3. 调用 `GET /api/drawing-review/config` 验证配置生效，随后提交一条测试评审单走通链路。
-4. 未配置时 API 返回明确提示（「请先调用 POST /api/drawing-review/config 设置 base 与 tables」），不出现 500。
+4. 配置 `FEISHU_WEBHOOK_URL`（飞书群自定义机器人）：配置后评审单提交/状态流转/报价回填/供应商选定实时推送群通知，每小时 cron 自动推送看板阻塞告警；未配置则全部静默跳过，不影响主流程。
+5. 未配置时 API 返回明确提示（「请先调用 POST /api/drawing-review/config 设置 base 与 tables」），不出现 500。
 
 ### 16.3 灰度策略
 - 先试点 1 个真实新增机项目跑通全链路，期间仅项目组开放使用；

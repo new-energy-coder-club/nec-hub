@@ -27,19 +27,16 @@ export class SuggestionService {
    * 获取综合联想建议
    */
   async getSuggestions(context: SuggestionContext, query: string): Promise<SuggestionResult[]> {
-    const suggestions: SuggestionResult[] = [];
-    
-    // 项目编号联想
-    if (!context.projectId || query.toLowerCase().includes(context.projectId.toLowerCase())) {
-      const projectSuggestions = await this.getProjectSuggestions(query);
-      suggestions.push(...projectSuggestions);
-    }
-    
-    // 机型名称联想
-    if (!context.machineName || query.toLowerCase().includes(context.machineName.toLowerCase())) {
-      const machineSuggestions = await this.getMachineSuggestions(query, context.projectId);
-      suggestions.push(...machineSuggestions);
-    }
+    // 两类联想互不依赖，并行拉取（各自读评审单表）
+    const [projectSuggestions, machineSuggestions] = await Promise.all([
+      !context.projectId || query.toLowerCase().includes(context.projectId.toLowerCase())
+        ? this.getProjectSuggestions(query)
+        : Promise.resolve([]),
+      !context.machineName || query.toLowerCase().includes(context.machineName.toLowerCase())
+        ? this.getMachineSuggestions(query, context.projectId)
+        : Promise.resolve([]),
+    ]);
+    const suggestions: SuggestionResult[] = [...projectSuggestions, ...machineSuggestions];
     
     // 去重并排序
     return this.deduplicateAndRank(suggestions, query);
@@ -84,43 +81,39 @@ export class SuggestionService {
 
       const suggestions: SuggestionResult[] = [];
       
+      // 同项目机型推荐与同设计师历史项目互不依赖，并行拉取
+      const [relatedReviews, designerReviews] = await Promise.all([
+        review.projectId
+          ? this.adapter.findReviewsByPattern({ projectId: review.projectId, limit: 5 })
+          : Promise.resolve([]),
+        review.designerId
+          ? this.adapter.findReviewsByPattern({ designerId: review.designerId, limit: 3 })
+          : Promise.resolve([]),
+      ]);
+      
       // 基于当前项目推荐相关机型
-      if (review.projectId) {
-        const relatedReviews = await this.adapter.findReviewsByPattern({
-          projectId: review.projectId,
-          limit: 5
-        });
-        
-        relatedReviews.forEach(r => {
-          if (r.machineName !== review.machineName) {
-            suggestions.push({
-              type: "machine",
-              value: r.machineName,
-              label: `相关机型: ${r.machineName} (${r.drawingVersion})`,
-              recent: true,
-            });
-          }
-        });
-      }
+      relatedReviews.forEach(r => {
+        if (r.machineName !== review.machineName) {
+          suggestions.push({
+            type: "machine",
+            value: r.machineName,
+            label: `相关机型: ${r.machineName} (${r.drawingVersion})`,
+            recent: true,
+          });
+        }
+      });
       
       // 基于同一设计师推荐
-      if (review.designerId) {
-        const designerReviews = await this.adapter.findReviewsByPattern({
-          designerId: review.designerId,
-          limit: 3
-        });
-        
-        designerReviews.forEach(r => {
-          if (r.reviewId !== review.reviewId) {
-            suggestions.push({
-              type: "project",
-              value: r.projectId,
-              label: `历史项目: ${r.projectId} (${r.machineName})`,
-              recent: true,
-            });
-          }
-        });
-      }
+      designerReviews.forEach(r => {
+        if (r.reviewId !== review.reviewId) {
+          suggestions.push({
+            type: "project",
+            value: r.projectId,
+            label: `历史项目: ${r.projectId} (${r.machineName})`,
+            recent: true,
+          });
+        }
+      });
       
       return this.deduplicateAndRank(suggestions, "");
     } catch (error) {
