@@ -471,6 +471,29 @@
             ${r.meetingLink ? `<div class="mt-4"><a href="${r.meetingLink}" target="_blank" class="text-sm link hover:underline mono">加入会议 →</a></div>` : ""}
           </div>
 
+          ${r.status === "pending_review" ? `
+          <!-- 会议预约 -->
+          <div class="nec-card p-5">
+            <h3 class="text-sm font-bold text-nec-navy mb-3">预约评审会议</h3>
+            <form onsubmit="scheduleMeeting(event, '${r.reviewId}')" class="space-y-3">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label class="block text-xs text-nec-gray mb-1">开始时间</label>
+                  <input type="datetime-local" name="startTime" value="${defaultMeetingTime()}" required class="mono w-full rounded border border-nec-line px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="block text-xs text-nec-gray mb-1">时长（分钟）</label>
+                  <input type="number" name="durationMinutes" value="60" min="15" step="15" class="mono w-full rounded border border-nec-line px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="block text-xs text-nec-gray mb-1">参会人 open_id（逗号分隔）</label>
+                  <input type="text" name="attendeeOpenIds" value="${r.designerId}" class="mono w-full rounded border border-nec-line px-3 py-2 text-sm" />
+                </div>
+              </div>
+              <button type="submit" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg">预约会议</button>
+            </form>
+          </div>` : ""}
+
           <!-- 操作区 -->
           <div class="nec-card p-5">
             <h3 class="text-sm font-bold text-nec-navy mb-3">状态操作</h3>
@@ -528,9 +551,6 @@
 
     function renderActionButtons(r) {
       const buttons = [];
-      if (r.status === "pending_review") {
-        buttons.push(`<button onclick="scheduleMeeting('${r.reviewId}')" class="btn-primary text-xs px-3 py-1.5 rounded-lg">预约会议</button>`);
-      }
       if (r.status === "rectifying") {
         buttons.push(`<button onclick="completeRectify('${r.reviewId}')" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:#B04A0F">整改完成</button>`);
       }
