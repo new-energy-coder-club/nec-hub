@@ -364,3 +364,15 @@ for type in APPROVAL_TYPES:
 - [ ] 生产部署后实测：提交→审批→arrive→台账变动→群通知 全链路一条单跑通；
 - [x] V1.1 §0 实施状态总览回写：F-02、M-01 已升 ✅；F-03（代码交付待实测）、A-01（G-04 代码交付待登录实测）、A-02（G-03 代码交付待 cron 实测）均已按 2026-10-14 交付状态刷新；
 - [ ] 新增流程走查：假设新增第 5 条流程，确认只需 config_flows + 建表，零代码（含 sla 段）。
+
+### 验收进展回填（2026-10-15 凌晨，部署后实测）
+
+- ✅ **生产部署完成**：commit `1f5726f` 经本地 `wrangler deploy` 上线（Version `1f438e34`），`/api/health` 200。⚠️ CI deploy job 失败——仓库 secret `CLOUDFLARE_API_TOKEN` 缺失/失效，需队长在 GitHub 仓库 Settings → Secrets 补配后 CI 才能自动部署。
+- ✅ **`npm run test` 全绿**：296 条（291 + 新增 role.test.ts 5 条）通过，typecheck 通过。
+- ✅ **§6.3 登录实测 5 条中 3 条通过**（维护者账号 DarrenPig 朱佩韦，role 解析曾失败——根因：名单表 open_id 为 lark-cli 应用域，与中台应用域不同；已写回中台 open_id 并给 `role.ts` 加姓名双向包含兜底 + 5 条单测）：
+  - 用例 3 ✅：CP-2026-0001（计划发布 24h 内）门户待办条标红 + T-1 徽标 + 「距计划发布不足 24h」；
+  - 用例 4 ✅：飞书审批 scope 未开通时 `warnings` 降级提示、页面不白屏；
+  - 用例 5 ✅：5 分钟内重复请求 `cached: true`；
+  - 用例 1（队长 48h 视角）/ 用例 2（队员对照）⏳ 需第二个飞书账号，待人工。
+- ✅ **FE-04 验收 3 联动通过**：goals 表灌入截止=次日测试目标后，门户顶部 goal-banner 出现 T-2 提醒条。
+- ⏳ §3.6 / §4.3 / §5.4 / §7.3：§5.4 待 cron 整点（每小时 07 分）自动触发后复核群通知；§3.6/§4.3 需真实审批人操作一单；§7.3 第 3/5 条仍阻塞于飞书后台 mail scope 开通（`MAIL_SENDER_OPEN_ID` secret 已配）。

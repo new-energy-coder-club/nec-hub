@@ -66,9 +66,9 @@ nec-hub（Cloudflare Worker · src/index.ts:166-237 路由入口）
 ├── L1 页面②：图纸评审独立页 ── /apps/drawing-review/ ── public/apps/drawing-review/index.html
 │   │   机制：router() 纯内存视图切换（:133-142），无 URL 同步、无登录态
 │   ├── L2 视图1：列表 view-list（默认）
-│   │   └── L3：看板/表格 displayMode（:145-155）；无筛选 chips、无联想（与门户版漂移 ⚠）
+│   │   └── L3：看板/表格 displayMode + 状态筛选 chips（drFilter，含计数）；联想/登录态仍仅门户版有
 │   ├── L2 视图2：提交 view-submit（手填 designerId :59，无登录门控 ⚠）
-│   ├── L2 视图3：详情 view-detail（id 仅函数传参，刷新回列表）
+│   ├── L2 视图3：详情 view-detail（id 仅函数传参，刷新回列表；含询价/比价面板）
 │   └── L2 隐藏模式：embedded（?embedded=1 / iframe 检测 :107-118）
 │       └── ⚠ 死代码：门户已原生集成，无调用方；独立打开时无返回 Hub 链接
 │
@@ -105,8 +105,8 @@ nec-hub（Cloudflare Worker · src/index.ts:166-237 路由入口）
 | # | 问题 | 位置 | 影响 |
 |---|---|---|---|
 | 1 | `/#tab-dashboard` hash 断链：种子资料链接指向 hash，门户完全不读 hash | `src/index.ts:1708` ↔ `index.html` | 用户点链接到不了目标 Tab |
-| 2 | 图纸评审双实现漂移：门户版有筛选/联想/自动填人，独立页全无；`statusMap` 两处重复定义且文案略异 | `index.html:766-1156` vs `apps/drawing-review/index.html:121-131` | 维护双倍成本，行为不一致 |
-| 3 | 会话解析复制三份，副本不含滑动续期 | 三模块 `resolveSessionFor*` vs `src/index.ts:418` | 子路由请求不轮换 sid，存在会话提前失效隐患 |
+| 2 | 图纸评审双实现部分漂移：独立页已同步筛选 chips 与询价/比价面板，联想/自动填人/登录态仍仅门户版有；`statusMap` 两处重复定义且文案略异 | `index.html:766-1156` vs `apps/drawing-review/index.html` | 维护双倍成本，部分行为不一致 |
+| 3 | ~~会话解析复制三份，副本不含滑动续期~~ ✅ 已解决（2026-10-15）：`resolveSession` 已收敛至 `src/shared/session.ts` 唯一定义，全部 27 个调用点统一导入，滑动续期一致 | 原三模块 `resolveSessionFor*` | 已清零 |
 | 4 | 硬件评审/合同审批后端就绪但无前端入口 | 门户仅 1 张流程卡 `:214-224` | 已建能力闲置 |
 | 5 | 全部 Tab/筛选/视图状态零持久化（10+ 处内存变量） | 见结构树 L3 | 刷新即丢、不可分享链接 |
 | 6 | embedded 模式死代码 + 独立页无返回 Hub 入口 | `apps/drawing-review/index.html:107-118` | 维护噪音、导航断头路 |
@@ -130,9 +130,7 @@ nec-hub（Cloudflare Worker · src/index.ts:166-237 路由入口）
    - 收益：修复 `/#tab-dashboard` 断链；Tab 可分享、刷新不丢；登出跳转改为 `location.hash = 'apps'`，消除 DOM 竞态。
    - 成本：约 30 行原生 JS，不引入依赖。
 
-2. **收敛 resolveSession**（修复问题 3）
-   - 三模块的 `resolveSessionFor*` 全部改为从 `src/index.ts` 导入唯一的 `resolveSession`，或在子路由挂统一中间件。
-   - 收益：消除续期不一致的会话失效隐患；后续改会话策略只动一处。
+2. ~~**收敛 resolveSession**（修复问题 3）~~ ✅ 已完成（2026-10-15）：唯一实现位于 `src/shared/session.ts`，全部模块经 `shared/module-gateway.ts` 等统一导入，无 `resolveSessionFor*` 残留。
 
 #### P1 —— 近期改造（结构级，中等成本）
 

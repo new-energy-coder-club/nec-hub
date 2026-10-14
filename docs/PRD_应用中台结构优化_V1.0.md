@@ -4,7 +4,7 @@
 |---|---|
 | 文档编号 | PRD-STRUCT-1.0 |
 | 日期 | 2026-10-15 |
-| 状态 | 草案（待评审） |
+| 状态 | 已评审通过（2026-10-15），M1 进行中（ST-08a 已落地） |
 | 关联文档 | `docs/团队AI中台PRD_V2.0.md`（FE-01~FE-14 主 PRD）、`docs/页面与Tab状态现状.md`（现状盘点，本文档数据已刷新）、`docs/PRD_审批与通知中心_V1.1/V1.2.md` |
 | 编号体系 | 本文档需求编号 **ST-01 ~ ST-10**（Structure），与主 PRD 的 FE-xx 并行；落地后同步 PRD 看板 |
 
@@ -184,3 +184,17 @@ public/
 
 - 本迭代**不改 FE-01~FE-14 的任何功能行为**，但为它们还债：FE-06/07（首页布局）的渲染器是 ST-01 首批迁出对象；FE-09（审批待办）的降级路径依赖 ST-04 的引导态。
 - 完成后建议将 ST 编号并入主 PRD V2.1（届时新建 `团队AI中台PRD_V2.1.md`，含 MCP 生态规划），本文档作为 V2.1 的工程先行部分归档。
+
+---
+
+## 7. 评审记录（2026-10-15）
+
+**结论：通过。** M1（ST-08a + ST-02 + ST-01 首批 3 Tab）已按原计划启动。
+
+评审发现与修订（评审人已部分核实现状，文档数据以评审日实测为准）：
+
+1. **Tab 数量口径过期**：§1.1 写 10 个 Tab，评审日实测 13 个（home / my-tasks / drawing-review / reimburse / task-schedule / season-goals / apps / skills / docs / repos / dashboard / prd / agent）。ST-01/ST-02 的验收口径按 13 个执行；ST-04 落地后「更多」为 5 项的结论同步顺延。
+2. **ST-08a 已落地**：随 V1.2 提交（2026-10-15）进入 `ci-cd.yml`（独立 test job，deploy 需 typecheck+test 双绿）。验收项「故意挂测试的 PR 被 CI 拦下」仍待实测勾选。
+3. **resolveSession 三副本问题已清零**：唯一实现 `src/shared/session.ts`，27 个调用点全部收敛；`docs/页面与Tab状态现状.md` 问题 3 已同步标记解决。§1.2 痛点 8 仅剩 `user-prefs:hw:` 变体（ST-07 覆盖）。
+4. **`web/` 废弃 Vite 脚手架需处置**：该目录是不完整的 Vue3 预研残留（缺 App.vue，build 必败），wrangler 不引用。建议本轮直接删除，或在 §2.2 非目标中显式交代去留，避免误导后续迭代。
+5. **ST-03 方案 A/B**：维持「M2 开始前用 drawing-review 做半天 spike」的决策点，不提前锁方案。

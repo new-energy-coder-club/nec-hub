@@ -85,6 +85,13 @@ function matchMemberRecord(records: BitableRecord[], user: HubUser): BitableReco
         if (fieldText(r.fields[k]) === user.name) return r;
       }
     }
+    // 飞书显示名可能带前缀/后缀（如 "DarrenPig 朱佩韦"）：退化为双向包含匹配，要求名单姓名 ≥2 字
+    for (const r of records) {
+      for (const k of nameKeys) {
+        const n = fieldText(r.fields[k]);
+        if (n && n.length >= 2 && (user.name.includes(n) || n.includes(user.name))) return r;
+      }
+    }
   }
   return null;
 }
