@@ -140,6 +140,25 @@ export const TOOLS = [
     },
   },
   {
+    name: "update_inventory",
+    description:
+      "物资台账手工调账（仅管理端 MCP_TOKEN）：inbound 入库 / outbound 出库 / adjust 盘点调账（直接设为目标值，可为 0）。按「物料」字段精确匹配 item_name，spec 非空时匹配键为 物料名称（规格型号）；无匹配行自动建行（位置默认「未登记」）。出库写「领用人」= operator；负库存放行但返回 ⚠️ 提示并发群告警。用于盘点修正、历史补录、审批台账联动失败补偿。需先用 config_dashboard 配置 tables.inventory。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["inbound", "outbound", "adjust"], description: "inbound 入库 / outbound 出库 / adjust 盘点调账（设为目标值）" },
+        item_name: { type: "string", description: "物料名称（匹配规则同审批台账联动）" },
+        spec: { type: "string", description: "可选：规格型号，参与拼接匹配键 物料名称（规格型号）" },
+        quantity: { type: "number", description: "数量（inbound/outbound 须 >0；adjust 为目标库存值，≥0）" },
+        operator: { type: "string", description: "操作人姓名（出库写「领用人」，进通知）" },
+        location: { type: "string", description: "可选：位置（入库/新建行时写入）" },
+        note: { type: "string", description: "可选：备注，追加到群通知" },
+        approval_id: { type: "string", description: "可选：关联申请单号（如 HW-2026-0003），写入通知便于追溯" },
+      },
+      required: ["action", "item_name", "quantity", "operator"],
+    },
+  },
+  {
     name: "config_dashboard",
     description:
       "配置/查看数据看板对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。写入后自动清空看板缓存。",

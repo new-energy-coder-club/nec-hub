@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
 import { evalFlowFields, getFlowsConfig, DEFAULT_FLOWS } from "../approvals/flows";
 import { runApprovalAction, submitApprovalCore } from "../approvals/engine";
-import { handleApprovalMine, handleApprovalSubmit, toolConfigFlows, toolSendNotice } from "../approvals/handlers";
+import { handleApprovalMine, handleApprovalPending, handleApprovalSubmit, handleApprovalUpload, toolConfigFlows, toolSendNotice } from "../approvals/handlers";
 import { notifyFeishu } from "../feishu/bot";
 
 const BASE = "appMockBase";
@@ -98,6 +98,10 @@ function createCtx(opts: { webhookFailTimes?: number; withWebhook?: boolean } = 
     },
     FEISHU_APP_ID: "mock-app-id",
     FEISHU_APP_SECRET: "mock-app-secret",
+    APPS_BUCKET: {
+      put: vi.fn(async () => ({})),
+      get: vi.fn(async () => null),
+    },
     ...(opts.withWebhook ? { FEISHU_BOT_WEBHOOK: "https://open.feishu.cn/open-apis/bot/v2/hook/abc" } : {}),
   } as unknown as Env;
 
@@ -189,6 +193,39 @@ describe("submitApprovalCore（发起审批）", () => {
     const res = await submitApprovalCore(ctx.env, { type: "reimburse", fields: goodFields, user: null, role: null, applicantName: "李四", source: "mcp" });
     expect(res.application_id).toMatch(/-0002$/);
   });
+
+  it("drawing：图号 @appId 占位符替换为分配单号；mine 透传图纸字段与 record 链接", async () => {
+    const ctx = createCtx({ withWebhook: true });
+    ctx.kv.set("flows:config", JSON.stringify({
+      reimburse: { tableId: TBL_REIMBURSE, base: BASE },
+      drawing: { tableId: "tblDrawing", base: BASE },
+    }));
+    const res = await submitApprovalCore(ctx.env, {
+      type: "drawing",
+      fields: {
+        图纸名称: "6014 电机转接板", 图号: "@appId", 版本: "V1.0", 所属机构: "底盘",
+        材料与工艺: "7075 铝合金 / CNC", 加工方式: "外协加工", 预估加工费: 600, 图纸文件: "plate.pdf",
+      },
+      user: MEMBER,
+      role: MEMBER_ROLE,
+      source: "portal",
+    });
+    expect(res.application_id).toMatch(/^MECH-\d{4}-0001$/);
+    const row = ctx.tables["tblDrawing"][0];
+    expect(row.fields["图号"]).toBe(res.application_id); // 占位符已替换
+    expect(row.fields["状态"]).toBe("审批中");
+    // 预估加工费 600 ≥ 500 → 额外会签提醒（共 2 条群通知）
+    expect(ctx.webhookCalls).toHaveLength(2);
+
+    const mine = await handleApprovalMine(sessionReq("https://hub.test/api/approvals/mine?type=drawing", "sid-member"), ctx.env);
+    const data = (await mine.json()) as { records: Array<{ application_id: string; record_id: string; url: string; fields: Record<string, unknown> }> };
+    expect(data.records).toHaveLength(1);
+    expect(data.records[0].application_id).toBe(res.application_id);
+    expect(data.records[0].fields["图纸名称"]).toBe("6014 电机转接板");
+    expect(data.records[0].fields["预估加工费"]).toBe(600);
+    expect(data.records[0].record_id).toBe(row.record_id);
+    expect(data.records[0].url).toContain("table=tblDrawing");
+  });
 });
 
 describe("POST /api/approvals（门户入口）", () => {
@@ -214,6 +251,31 @@ describe("POST /api/approvals（门户入口）", () => {
     // 队长硬编码放行，进入字段校验 → 400 字段缺失
     const res400 = await handleApprovalSubmit(sessionReq("https://hub.test/api/approvals", "sid-captain", { type: "drawing", fields: {} }), ctx.env);
     expect(res400.status).toBe(400);
+  });
+});
+
+describe("GET /api/approvals/pending（G-02 待我审批）", () => {
+  it("审批人看到审批中行（升序）；非审批人空列表；未登录 401；未知 type 400", async () => {
+    const ctx = createCtx();
+    ctx.seed(TBL_REIMBURSE, { 申请单号: "BX-2026-0001", 状态: "审批中", 申请人: "张三", 事项: "打样", 提交时间: 2000 });
+    ctx.seed(TBL_REIMBURSE, { 申请单号: "BX-2026-0002", 状态: "已通过", 申请人: "张三", 事项: "运费", 提交时间: 1000 });
+    ctx.seed(TBL_REIMBURSE, { 申请单号: "BX-2026-0003", 状态: "审批中", 申请人: "李四", 事项: "耗材", 提交时间: 1500 });
+
+    const noAuth = await handleApprovalPending(new Request("https://hub.test/api/approvals/pending?type=reimburse"), ctx.env);
+    expect(noAuth.status).toBe(401);
+    const badType = await handleApprovalPending(sessionReq("https://hub.test/api/approvals/pending?type=nope", "sid-captain"), ctx.env);
+    expect(badType.status).toBe(400);
+
+    // 非审批人（队员）→ 空列表而非 403
+    const member = await handleApprovalPending(sessionReq("https://hub.test/api/approvals/pending?type=reimburse", "sid-member"), ctx.env);
+    expect(((await member.json()) as { records: unknown[] }).records).toHaveLength(0);
+
+    // 队长 → 仅审批中行，按提交时间升序，不含已通过
+    const captain = await handleApprovalPending(sessionReq("https://hub.test/api/approvals/pending?type=reimburse", "sid-captain"), ctx.env);
+    const data = (await captain.json()) as { records: Array<{ application_id: string; applicant: string; url: string }> };
+    expect(data.records.map((r) => r.application_id)).toEqual(["BX-2026-0003", "BX-2026-0001"]);
+    expect(data.records[0].applicant).toBe("李四");
+    expect(data.records[0].url).toContain("table=tblReimburse");
   });
 });
 
@@ -267,6 +329,37 @@ describe("runApprovalAction（状态机）", () => {
     ).rejects.toThrow("仅财务/队长");
   });
 
+  it("G-02：reject 带 reason → 写「驳回原因」字段 + 群通知含驳回原因", async () => {
+    const ctx = createCtx({ withWebhook: true });
+    const { appId, rec } = await seedPending(ctx);
+    rec.fields["驳回原因"] = ""; // 底表已有该单选字段
+    const res = await runApprovalAction(ctx.env, {
+      type: "reimburse", appId, action: "reject",
+      comment: "请修正后重提", reason: "内容事实错误",
+      user: CAPTAIN, role: CAPTAIN_ROLE,
+    });
+    expect(res.status).toBe("已驳回");
+    expect(rec.fields["驳回原因"]).toBe("内容事实错误");
+    const text = String((ctx.webhookCalls[0].body.content as { text: string }).text);
+    expect(text).toContain("❌ 已驳回");
+    expect(text).toContain("驳回原因：内容事实错误");
+    expect(text).toContain("审批意见：请修正后重提");
+  });
+
+  it("G-02：底表无「驳回原因」字段时 reject 带 reason 静默跳过，不影响动作", async () => {
+    const ctx = createCtx({ withWebhook: true });
+    const { appId, rec } = await seedPending(ctx); // 无驳回原因字段
+    const res = await runApprovalAction(ctx.env, {
+      type: "reimburse", appId, action: "reject",
+      comment: "x", reason: "发布时间冲突",
+      user: CAPTAIN, role: CAPTAIN_ROLE,
+    });
+    expect(res.status).toBe("已驳回");
+    expect(rec.fields["驳回原因"]).toBeUndefined();
+    const text = String((ctx.webhookCalls[0].body.content as { text: string }).text);
+    expect(text).toContain("驳回原因：发布时间冲突");
+  });
+
   it("start 仅申请人本人；单号不存在 → 404", async () => {
     const ctx = createCtx();
     const { appId, rec } = await seedPending(ctx);
@@ -279,6 +372,47 @@ describe("runApprovalAction（状态机）", () => {
     await expect(
       runApprovalAction(ctx.env, { type: "reimburse", appId: "BX-2026-9999", action: "approve", user: CAPTAIN, role: CAPTAIN_ROLE }),
     ).rejects.toThrow("未找到申请单号");
+  });
+});
+
+describe("POST /api/approvals/upload（R-01 凭证上传）", () => {
+  function uploadReq(sid: string, files: Array<[string, File]>): Request {
+    const fd = new FormData();
+    for (const [k, f] of files) fd.append(k, f);
+    return new Request("https://hub.test/api/approvals/upload", {
+      method: "POST",
+      headers: { cookie: `nec_session=${sid}` },
+      body: fd,
+    });
+  }
+
+  it("未登录 401；空表单 400；合法文件写 R2 receipts/ 并返回 key", async () => {
+    const ctx = createCtx();
+    const noAuth = await handleApprovalUpload(uploadReq("nope", [["receipt", new File(["x"], "f.jpg")]]), ctx.env);
+    expect(noAuth.status).toBe(401);
+    const empty = await handleApprovalUpload(uploadReq("sid-member", []), ctx.env);
+    expect(empty.status).toBe(400);
+
+    const res = await handleApprovalUpload(
+      uploadReq("sid-member", [["receipt", new File(["abc"], "发票.jpg", { type: "image/jpeg" })]]),
+      ctx.env,
+    );
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { ok: boolean; files: Array<{ field: string; key: string; size: number }> };
+    expect(data.ok).toBe(true);
+    expect(data.files[0].field).toBe("receipt");
+    expect(data.files[0].key).toMatch(/^receipts\/\d{8}\/.+-发票\.jpg$/);
+    expect(data.files[0].size).toBe(3);
+    expect(ctx.env.APPS_BUCKET.put).toHaveBeenCalledTimes(1);
+  });
+
+  it("超过 10MB → 400，且不写 R2", async () => {
+    const ctx = createCtx();
+    const big = new File([new Uint8Array(10 * 1024 * 1024 + 1)], "big.pdf", { type: "application/pdf" });
+    const res = await handleApprovalUpload(uploadReq("sid-member", [["receipt", big]]), ctx.env);
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toContain("10MB");
+    expect(ctx.env.APPS_BUCKET.put).not.toHaveBeenCalled();
   });
 });
 

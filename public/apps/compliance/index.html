@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>合规申请 · NEC HUB</title>
+<link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+<link rel="stylesheet" href="/brand/nec-tokens.css" />
+<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin />
+<link rel="dns-prefetch" href="https://cdn.tailwindcss.com" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // VI 规范：把 NEC 品牌 tokens 映射进 Tailwind，不使用默认蓝/青色系
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          nec: {
+            royal: "#1A2FA0",
+            "royal-light": "#3449B9",
+            "royal-dark": "#10277E",
+            "royal-100": "#E8ECFB",
+            navy: "#141B5E",
+            ink: "#0B1033",
+            cyan: "#1FA9E8",
+            sky: "#4FC3F7",
+            fog: "#F4F6FB",
+            gray: "#5A6472",
+            line: "#D9DFF0",
+          },
+        },
+        fontFamily: {
+          sans: ["Source Han Sans SC", "思源黑体 CN", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "system-ui", "sans-serif"],
+          mono: ["IBM Plex Mono", "ui-monospace", "Consolas", "monospace"],
+        },
+      },
+    },
+  };
+</script>
+<style>
+  body { font-family: var(--nec-font-cn); background: var(--nec-fog); color: var(--nec-ink); }
+  .mono { font-family: var(--nec-font-mono); }
+
+  /* KV：蓝图网格 Hero（只铺在头部区域） */
+  .hero {
+    position: relative; overflow: hidden;
+    background-color: var(--nec-paper);
+    background-image:
+      linear-gradient(var(--nec-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--nec-grid) 1px, transparent 1px),
+      linear-gradient(var(--nec-grid-fine) 1px, transparent 1px),
+      linear-gradient(90deg, var(--nec-grid-fine) 1px, transparent 1px);
+    background-size: 92px 92px, 92px 92px, 23px 23px, 23px 23px;
+  }
+  .hero-title { font-weight: 900; letter-spacing: -.015em; color: var(--nec-ink); }
+  .hero-title .accent { color: var(--nec-cyan); }
+  .horizon { position: absolute; left: 0; right: 0; bottom: 30px; height: 3px; background: var(--nec-cyan); }
+  .base-line { height: 5px; background: var(--nec-horizon); }
+
+  .nec-card {
+    background: var(--nec-paper);
+    border: 1px solid var(--nec-line);
+    border-radius: var(--nec-radius);
+    box-shadow: var(--nec-shadow);
+  }
+
+  .step-badge {
+    font-family: var(--nec-font-mono);
+    font-size: 11px; font-weight: 800; letter-spacing: .06em;
+    color: var(--nec-cyan);
+  }
+
+  .field-input {
+    margin-top: 4px; width: 100%;
+    border: 1px solid var(--nec-line); border-radius: 6px;
+    padding: 7px 10px; font-size: 14px; background: #fff; color: var(--nec-ink);
+  }
+  .field-input:focus { outline: none; border-color: var(--nec-cyan); box-shadow: 0 0 0 3px rgba(31,169,232,.18); }
+  .field-input.invalid { border-color: #DC2626; box-shadow: 0 0 0 3px rgba(220,38,38,.12); }
+
+  .status-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 9999px;
+    font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap;
+  }
+
+  .btn-primary {
+    background: var(--nec-navy); color: #fff; padding: 9px 20px; border-radius: 6px;
+    font-weight: 700; transition: opacity .15s ease;
+  }
+  .btn-primary:hover:not(:disabled) { opacity: .9; }
+  .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+
+  .radio-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1.5px solid var(--nec-line); border-radius: 6px;
+    padding: 6px 12px; font-size: 13px; cursor: pointer; background: #fff; color: var(--nec-gray);
+  }
+  .radio-pill:has(input:checked) { border-color: var(--nec-navy); color: var(--nec-navy); font-weight: 700; }
+  .radio-pill input { accent-color: var(--nec-navy); }
+
+  a, .link { color: var(--nec-cyan); }
+  a:hover { color: #1891c9; }
+
+  /* ---- 移动端适配 ---- */
+  input, textarea, select { font-size: 16px; }
+  @media (min-width: 640px) { input, textarea, select { font-size: inherit; } }
+  @media (max-width: 639px) {
+    button, a[class*="rounded"], [role="button"] { touch-action: manipulation; }
+  }
+  .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+</style>
+</head>
+<body class="min-h-screen">
+  <!-- KV Hero：蓝图 × 破晓（embedded 模式隐藏） -->
+  <header id="app-header" class="hero">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-6 pb-8 sm:pb-12 relative">
+      <div class="flex items-center justify-between gap-3 relative z-10">
+        <div class="flex items-center gap-3">
+          <img src="/brand/nec-logo.svg" alt="NEC" class="h-8 w-auto" />
+          <div class="leading-tight">
+            <div class="font-black text-base text-nec-navy">常州工NEC <span class="text-sm font-extrabold text-nec-cyan">in CIT</span></div>
+            <div class="mono text-[11px] text-nec-gray tracking-wider">newenergycoder.club</div>
+          </div>
+        </div>
+        <a href="/" class="text-xs text-nec-gray hover:text-nec-navy">← 返回中台门户</a>
+      </div>
+
+      <div class="mt-8 relative z-10">
+        <p class="mono text-xs tracking-[.22em] mb-3 text-nec-navy"><b>NEC HUB</b> · G-02 · 审批与通知中心</p>
+        <h1 class="hero-title text-3xl sm:text-5xl">合规<span class="accent">申请</span></h1>
+        <p class="mono mt-3 text-xs text-nec-gray tracking-widest">对外发布 / 商务合作 / 授权使用先过审再发布 · 驳回原因标准化可统计</p>
+        <div class="mt-5 flex flex-wrap gap-2 text-sm">
+          <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">01</i>提交申请</span>
+          <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">02</i>待我审批</span>
+          <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">03</i>我的申请</span>
+          <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">04</i>回填发布链接</span>
+        </div>
+      </div>
+
+      <!-- 破晓太阳 -->
+      <svg class="absolute -right-6 sm:right-8 top-16 w-28 sm:w-44 opacity-40 sm:opacity-90 z-0 pointer-events-none" viewBox="0 0 800 800" fill="none" aria-hidden="true">
+        <defs><linearGradient id="sunG" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#4FC3F7"/><stop offset="1" stop-color="#1FA9E8"/></linearGradient></defs>
+        <circle cx="400" cy="400" r="330" stroke="url(#sunG)" stroke-width="10"/>
+        <circle cx="400" cy="400" r="282" stroke="#1FA9E8" stroke-width="2.5" stroke-dasharray="3 14" opacity=".85"/>
+        <g stroke="#141B5E" stroke-width="2"><line x1="400" y1="368" x2="400" y2="432"/><line x1="368" y1="400" x2="432" y2="400"/></g>
+        <circle cx="400" cy="400" r="7" fill="#141B5E"/>
+      </svg>
+    </div>
+    <div class="horizon"></div>
+    <div class="base-line"></div>
+  </header>
+
+  <!-- embedded 模式下的紧凑导航 -->
+  <div id="embed-nav" class="hidden max-w-5xl mx-auto px-4 pt-4">
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-lg font-black text-nec-ink">合规申请</h1>
+      <span class="mono text-xs text-nec-gray">G-02 · NEC HUB</span>
+    </div>
+  </div>
+
+  <main class="max-w-5xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- 登录门禁 -->
+    <section id="login-gate" class="nec-card p-6 hidden">
+      <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div class="text-3xl">🔐</div>
+        <div class="flex-1">
+          <h2 class="font-bold text-nec-ink">登录后使用合规申请</h2>
+          <p class="text-sm text-nec-gray mt-1">使用飞书账号登录 NEC 中台。对外发布、商务合作、授权使用等内容须过审后才可发布。</p>
+        </div>
+        <button id="login-btn" class="btn-primary whitespace-nowrap">飞书登录</button>
+      </div>
+    </section>
+
+    <!-- 主体（登录后可见） -->
+    <div id="app-body" class="space-y-6 hidden">
+
+      <!-- 01 提交申请 -->
+      <section class="nec-card p-5">
+        <div class="mb-4">
+          <span class="step-badge">STEP 01</span>
+          <h2 class="text-lg font-bold text-nec-ink mt-1">提交合规申请</h2>
+          <p class="mono text-xs text-nec-gray tracking-wider">COMPLIANCE SUBMISSION → 审批引擎（状态机落表 + 群通知）</p>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <span class="block text-sm font-medium text-nec-navy">合规类型 <span class="text-red-500">*</span></span>
+            <div class="mt-2 flex flex-wrap gap-2" id="f-ctype">
+              <label class="radio-pill"><input type="radio" name="ctype" value="对外发布" />对外发布</label>
+              <label class="radio-pill"><input type="radio" name="ctype" value="商务合作" />商务合作</label>
+              <label class="radio-pill"><input type="radio" name="ctype" value="授权使用" />授权使用</label>
+              <label class="radio-pill"><input type="radio" name="ctype" value="其他" />其他</label>
+            </div>
+          </div>
+
+          <label class="block text-sm font-medium text-nec-navy">标题 <span class="text-red-500">*</span>
+            <input id="f-title" class="field-input" placeholder="如：公众号推文《赛季中期总结》发布申请" />
+          </label>
+
+          <label class="block text-sm font-medium text-nec-navy">内容说明 <span class="text-red-500">*</span>
+            <textarea id="f-content" rows="4" class="field-input" placeholder="拟发布/合作的内容概述、涉及的平台与对象、需要审批人重点确认的点"></textarea>
+          </label>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            <label class="block text-sm font-medium text-nec-navy">计划发布时间 <span class="text-red-500">*</span>
+              <input id="f-publish-at" type="datetime-local" class="field-input" />
+            </label>
+            <div>
+              <span class="block text-sm font-medium text-nec-navy">赞助商相关 <span class="text-red-500">*</span></span>
+              <div class="mt-2 flex gap-2" id="f-sponsor">
+                <label class="radio-pill"><input type="radio" name="sponsor" value="是" />是</label>
+                <label class="radio-pill"><input type="radio" name="sponsor" value="否" />否</label>
+              </div>
+            </div>
+          </div>
+
+          <label class="block text-sm font-medium text-nec-navy" id="f-sponsor-req-label">赞助商要求（赞助商相关=是 时必填）
+            <textarea id="f-sponsor-req" rows="3" class="field-input" placeholder="如：推文需带赞助商 LOGO 与指定口播文案，发布前需赞助商确认"></textarea>
+            <span id="f-sponsor-req-hint" class="hidden text-xs text-red-600 font-normal">已选择「赞助商相关 = 是」，请填写赞助商要求</span>
+          </label>
+        </div>
+
+        <div class="mt-5 pt-4 flex flex-wrap items-center gap-3" style="border-top:1px solid var(--nec-line)">
+          <button id="submit-btn" class="btn-primary" disabled>提交合规申请</button>
+          <span id="submit-status" aria-live="polite" class="text-xs text-nec-gray"></span>
+        </div>
+
+        <!-- 成功卡片 -->
+        <div id="success-card" class="hidden mt-4 rounded-lg p-5" style="border:1.5px solid #16A34A;background:#F0FDF4">
+          <div class="flex items-center gap-2 text-green-700 font-bold">✅ 已提交，审批中</div>
+          <p class="mt-2 text-sm text-nec-ink">申请单号：<span id="success-id" class="mono font-black text-nec-navy"></span>
+            <span class="ml-2">状态：<span id="success-status" class="mono font-black text-nec-navy">审批中</span></span></p>
+          <p class="mt-1 text-xs text-nec-gray">审批由队长/指导老师或运营、宣传组组长处理，结果将通过飞书群机器人通知；可在下方「我的申请」随时查看状态。</p>
+          <button id="success-again" class="mt-3 text-sm link">再提交一条 →</button>
+        </div>
+      </section>
+
+      <!-- 02 待我审批 -->
+      <section class="nec-card p-5">
+        <div class="mb-4 flex items-baseline justify-between gap-2">
+          <div>
+            <span class="step-badge">STEP 02</span>
+            <h2 class="text-lg font-bold text-nec-ink mt-1">待我审批</h2>
+            <p class="mono text-xs text-nec-gray tracking-wider">PENDING APPROVALS · 仅审批人角色有内容</p>
+          </div>
+          <button id="todos-refresh" class="text-xs link whitespace-nowrap">刷新</button>
+        </div>
+        <div id="todos-list" class="text-sm text-nec-gray">加载中…</div>
+      </section>
+
+      <!-- 03 我的申请 -->
+      <section class="nec-card p-5">
+        <div class="mb-4 flex items-baseline justify-between gap-2">
+          <div>
+            <span class="step-badge">STEP 03</span>
+            <h2 class="text-lg font-bold text-nec-ink mt-1">我的申请</h2>
+            <p class="mono text-xs text-nec-gray tracking-wider">MY APPLICATIONS · 仅本人可见 · 最近 20 条</p>
+          </div>
+          <button id="mine-refresh" class="text-xs link whitespace-nowrap">刷新</button>
+        </div>
+        <div id="mine-list" class="text-sm text-nec-gray">加载中…</div>
+      </section>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="nec-card p-5" style="border-top:3px solid var(--nec-cyan)">
+      <p class="text-xs text-nec-gray leading-relaxed">
+        合规申请 G-02 · 审批与通知中心（PRD V1.1 Plan B）：对外发布、商务合作、授权使用等内容须过审后才可发布；
+        驳回原因标准化（5 个固定选项）便于统计复盘；通过后由申请人回填发布链接，状态流转为「已发布」留档。
+      </p>
+    </footer>
+  </main>
+
+<script>
+/* ========== 基础工具 ========== */
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function $(id) { return document.getElementById(id); }
+
+// embedded 模式：被 hub 主界面 iframe 嵌入时隐藏 Hero、改用紧凑导航
+(function () {
+  const params = new URLSearchParams(location.search);
+  const embedded = params.get("embedded") === "1" || window.parent !== window;
+  if (embedded) {
+    $("app-header").style.display = "none";
+    $("embed-nav").classList.remove("hidden");
+    document.body.style.background = "var(--nec-paper)";
+  }
+})();
+
+/* ========== 登录态（与门户同一套飞书 OAuth + /auth/feishu 兑换） ========== */
+
+let ME = { authenticated: false, user: null };
+let HUB_CONFIG = { feishuAppId: null, loginEnabled: false };
+
+async function handleOAuthCallback() {
+  const params = new URLSearchParams(location.search);
+  const code = params.get("code");
+  if (!code) return;
+  const state = params.get("state");
+  const saved = sessionStorage.getItem("nec_oauth_state");
+  history.replaceState(null, "", location.pathname + location.hash);
+  sessionStorage.removeItem("nec_oauth_state");
+  if (state && saved && state !== saved) {
+    alert("登录校验失败（state 不匹配），请重试");
+    return;
+  }
+  try {
+    const resp = await fetch("/auth/feishu", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || ("HTTP " + resp.status));
+  } catch (e) {
+    alert("飞书登录失败：" + (e.message || e));
+  }
+}
+
+function startLogin() {
+  if (!HUB_CONFIG.loginEnabled) {
+    alert("中台未配置飞书应用，请联系管理员");
+    return;
+  }
+  const state = crypto.randomUUID();
+  sessionStorage.setItem("nec_oauth_state", state);
+  const redirect = location.origin + location.pathname;
+  location.href = "https://open.feishu.cn/open-apis/authen/v1/authorize?app_id="
+    + encodeURIComponent(HUB_CONFIG.feishuAppId)
+    + "&redirect_uri=" + encodeURIComponent(redirect)
+    + "&state=" + state;
+}
+
+function renderAuth() {
+  const authed = !!(ME && ME.authenticated);
+  $("login-gate").classList.toggle("hidden", authed);
+  $("app-body").classList.toggle("hidden", !authed);
+  if (authed) { loadMine(); loadTodos(); }
+}
+
+/* ========== 提交申请 ========== */
+
+const REJECT_REASONS = [
+  "内容事实错误",
+  "排版或 VI 不规范",
+  "涉及未授权信息",
+  "发布时间冲突",
+  "其他（须在审批意见中说明）",
+];
+
+function ctypeValue() {
+  const el = document.querySelector('input[name="ctype"]:checked');
+  return el ? el.value : "";
+}
+function sponsorValue() {
+  const el = document.querySelector('input[name="sponsor"]:checked');
+  return el ? el.value : "";
+}
+
+/** 前端校验：与 DEFAULT_FLOWS.compliance 的 required + conditional 对齐 */
+function missingItems() {
+  const missing = [];
+  if (!ctypeValue()) missing.push("合规类型");
+  if (!$("f-title").value.trim()) missing.push("标题");
+  if (!$("f-content").value.trim()) missing.push("内容说明");
+  if (!$("f-publish-at").value) missing.push("计划发布时间");
+  if (!sponsorValue()) missing.push("赞助商相关");
+  if (sponsorValue() === "是" && !$("f-sponsor-req").value.trim()) missing.push("赞助商要求");
+  return missing;
+}
+
+function validateForm() {
+  const missing = missingItems();
+  const sponsorReqEl = $("f-sponsor-req");
+  const sponsorReqMissing = sponsorValue() === "是" && !sponsorReqEl.value.trim();
+  sponsorReqEl.classList.toggle("invalid", sponsorReqMissing);
+  $("f-sponsor-req-hint").classList.toggle("hidden", !sponsorReqMissing);
+  $("submit-btn").disabled = missing.length > 0;
+  const st = $("submit-status");
+  if (!st.dataset.busy) {
+    st.textContent = missing.length ? "待补齐：" + missing.join("、") : "✅ 信息完整，可以提交";
+  }
+  return missing;
+}
+
+async function submitCompliance() {
+  const st = $("submit-status");
+  const btn = $("submit-btn");
+  if (btn.disabled) return;
+  const missing = validateForm();
+  if (missing.length) return;
+
+  btn.disabled = true;
+  btn.textContent = "提交中…";
+  st.dataset.busy = "1";
+  st.textContent = "发起审批中…";
+  try {
+    const fields = {
+      合规类型: ctypeValue(),
+      标题: $("f-title").value.trim(),
+      内容说明: $("f-content").value.trim(),
+      计划发布时间: new Date($("f-publish-at").value).getTime(),
+      赞助商相关: sponsorValue(),
+    };
+    if (sponsorValue() === "是") fields["赞助商要求"] = $("f-sponsor-req").value.trim();
+
+    const resp = await fetch("/api/approvals", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "compliance", fields }),
+    });
+    const data = await resp.json();
+    if (resp.status === 401) throw new Error("请先登录后再提交");
+    if (!resp.ok || data.error) throw new Error(data.error || ("HTTP " + resp.status));
+
+    $("success-id").textContent = data.application_id;
+    $("success-status").textContent = data.status || "审批中";
+    $("success-card").classList.remove("hidden");
+    $("success-card").scrollIntoView({ behavior: "smooth", block: "center" });
+    resetForm();
+    loadMine();
+  } catch (e) {
+    st.textContent = "❌ 提交失败：" + (e.message || e);
+  } finally {
+    delete st.dataset.busy;
+    btn.disabled = false;
+    btn.textContent = "提交合规申请";
+    validateForm();
+  }
+}
+
+function resetForm() {
+  document.querySelectorAll('input[name="ctype"], input[name="sponsor"]').forEach(el => { el.checked = false; });
+  $("f-title").value = "";
+  $("f-content").value = "";
+  $("f-publish-at").value = "";
+  $("f-sponsor-req").value = "";
+  $("f-sponsor-req").classList.remove("invalid");
+  $("f-sponsor-req-hint").classList.add("hidden");
+}
+
+/* ========== 状态徽章 ========== */
+
+const STATUS_COLORS = {
+  "审批中": "#1FA9E8",
+  "已通过": "#16A34A",
+  "已驳回": "#DC2626",
+  "已撤销": "#9CA3AF",
+  "已打款": "#15803D",
+  "已完成": "#141B5E",
+  "已发布": "#1A2FA0",
+};
+function statusBadge(s) {
+  const color = STATUS_COLORS[s] || "#5A6472";
+  return '<span class="status-badge" style="background:' + color + '">' + esc(s || "—") + "</span>";
+}
+
+function fmtMs(ts) {
+  const n = Number(ts);
+  return n ? new Date(n).toLocaleString("zh-CN") : "—";
+}
+
+/* ========== 我的申请 ========== */
+
+async function loadMine() {
+  const box = $("mine-list");
+  box.innerHTML = "加载中…";
+  try {
+    const resp = await fetch("/api/approvals/mine?type=compliance");
+    if (resp.status === 401) { box.innerHTML = '<p class="text-nec-gray">登录后可见。</p>'; return; }
+    const d = await resp.json();
+    if (d.hint && !(d.records || []).length) {
+      box.innerHTML = '<p class="text-nec-gray">' + esc(d.hint) + "：合规审批底表/flows:config 配置完成后，这里会显示你的申请记录。</p>";
+      return;
+    }
+    const rows = d.records || [];
+    if (!rows.length) { box.innerHTML = '<p class="text-nec-gray">暂无记录，提交第一条合规申请吧。</p>'; return; }
+    box.innerHTML = '<div class="overflow-x-auto"><table class="w-full" style="min-width:760px">' +
+      '<thead><tr class="text-left text-xs text-nec-gray" style="border-bottom:1.5px solid var(--nec-line)">' +
+      '<th class="py-2 pr-3 font-medium">单号</th><th class="py-2 pr-3 font-medium">合规类型</th>' +
+      '<th class="py-2 pr-3 font-medium">标题</th><th class="py-2 pr-3 font-medium">计划发布时间</th>' +
+      '<th class="py-2 pr-3 font-medium">状态</th><th class="py-2 pr-3 font-medium">驳回原因</th>' +
+      '<th class="py-2 pr-3 font-medium">审批意见</th><th class="py-2 font-medium">操作</th>' +
+      "</tr></thead><tbody>" +
+      rows.map(r => {
+        const f = r.fields || {};
+        const no = esc(f["申请单号"] || r.application_id || "—");
+        const noCell = r.url
+          ? '<a href="' + esc(r.url) + '" target="_blank" rel="noopener" class="mono text-xs whitespace-nowrap hover:underline">' + no + "</a>"
+          : '<span class="mono text-xs whitespace-nowrap">' + no + "</span>";
+        const ops = [];
+        if (r.status === "已通过") {
+          ops.push('<button class="btn-primary text-xs px-3 py-1.5 whitespace-nowrap" style="padding:5px 12px" onclick="doPublish(\'' + esc(r.application_id) + "')\">回填发布链接</button>");
+        }
+        return '<tr style="border-top:1px solid var(--nec-line)">' +
+          '<td class="py-2 pr-3">' + noCell + "</td>" +
+          '<td class="py-2 pr-3 whitespace-nowrap">' + esc(f["合规类型"] || "—") + "</td>" +
+          '<td class="py-2 pr-3">' + esc(f["标题"] || "—") + "</td>" +
+          '<td class="py-2 pr-3 text-nec-gray text-xs whitespace-nowrap">' + fmtMs(f["计划发布时间"]) + "</td>" +
+          '<td class="py-2 pr-3 whitespace-nowrap">' + statusBadge(r.status) + "</td>" +
+          '<td class="py-2 pr-3 text-xs" style="color:#B02323">' + esc(f["驳回原因"] || "—") + "</td>" +
+          '<td class="py-2 pr-3 text-nec-gray text-xs">' + esc(f["审批意见"] || "—") + "</td>" +
+          '<td class="py-2">' + (ops.join("") || '<span class="text-nec-gray text-xs">—</span>') + "</td>" +
+        "</tr>";
+      }).join("") + "</tbody></table></div>";
+  } catch (e) {
+    box.innerHTML = '<p class="text-red-500">加载失败，请稍后重试。</p>';
+  }
+}
+
+async function doPublish(appId) {
+  const link = prompt("请输入发布链接（发布后回填留档）：", "");
+  if (link === null) return;
+  if (!link.trim()) { alert("发布链接不能为空"); return; }
+  try {
+    const resp = await fetch("/api/approvals/compliance/" + encodeURIComponent(appId) + "/publish", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ link: link.trim() }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.error) throw new Error(data.error || ("HTTP " + resp.status));
+    loadMine();
+  } catch (e) {
+    alert("回填发布链接失败：" + (e.message || e));
+  }
+}
+
+/* ========== 待我审批 ========== */
+
+let openRejectId = null; // 当前展开驳回面板的申请单号
+
+async function loadTodos() {
+  const box = $("todos-list");
+  box.innerHTML = "加载中…";
+  try {
+    const resp = await fetch("/api/approvals/pending?type=compliance");
+    if (resp.status === 401) { box.innerHTML = '<p class="text-nec-gray">登录后可见。</p>'; return; }
+    const d = await resp.json();
+    const rows = d.records || [];
+    if (!rows.length) { box.innerHTML = '<p class="text-nec-gray">暂无待你审批的合规申请（仅审批人可见待审列表）。</p>'; return; }
+    box.innerHTML = '<div class="space-y-3">' + rows.map(r => {
+      const id = esc(r.application_id || "");
+      return '<div class="rounded-lg p-4" style="border:1px solid var(--nec-line)">' +
+        '<div class="flex items-center justify-between flex-wrap gap-2">' +
+          '<div>' +
+            '<p class="font-bold text-nec-ink"><span class="mono text-nec-royal">' + id + "</span> · " + esc(r.title || "—") + "</p>" +
+            '<p class="mono text-xs text-nec-gray mt-0.5">申请人 ' + esc(r.applicant || "—") + " · 提交于 " + esc(r.submitted_at ? fmtMs(r.submitted_at) : "—") + "</p>" +
+          "</div>" +
+          '<div class="flex gap-2 items-center">' +
+            (r.url ? '<a href="' + esc(r.url) + '" target="_blank" rel="noopener" class="text-xs link hover:underline mono">底表详情 →</a>' : "") +
+            '<button class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:#16A34A" onclick="doApprove(\'' + id + "')\">通过</button>" +
+            '<button class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:#DC2626" onclick="toggleRejectPanel(\'' + id + "')\">驳回</button>" +
+          "</div>" +
+        "</div>" +
+        '<div id="reject-panel-' + id + '" class="hidden mt-3 rounded-lg p-3" style="border:1px solid #F0A8A8;background:#FEF7F7">' +
+          '<label class="block text-xs font-medium text-nec-navy">驳回原因 <span class="text-red-500">*</span>' +
+            '<select id="reject-reason-' + id + '" class="field-input text-xs">' +
+              '<option value="">请选择驳回原因</option>' +
+              REJECT_REASONS.map(o => "<option>" + esc(o) + "</option>").join("") +
+            "</select>" +
+          "</label>" +
+          '<label class="block text-xs font-medium text-nec-navy mt-2">审批意见（选「其他」时必填；驳回均建议填写）' +
+            '<textarea id="reject-comment-' + id + '" rows="2" class="field-input text-xs" placeholder="驳回的具体说明，将通知申请人"></textarea>' +
+          "</label>" +
+          '<p id="reject-err-' + id + '" class="hidden mt-2 text-xs text-red-600"></p>' +
+          '<div class="mt-2 flex gap-2">' +
+            '<button class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:#DC2626" onclick="doReject(\'' + id + "')\">确认驳回</button>" +
+            '<button class="text-xs px-3 py-1.5 rounded-lg link" onclick="toggleRejectPanel(\'' + id + "')\">取消</button>" +
+          "</div>" +
+        "</div>" +
+      "</div>";
+    }).join("") + "</div>";
+  } catch (e) {
+    box.innerHTML = '<p class="text-red-500">加载失败，请稍后重试。</p>';
+  }
+}
+
+function toggleRejectPanel(appId) {
+  const panel = $("reject-panel-" + appId);
+  if (!panel) return;
+  const willOpen = panel.classList.contains("hidden");
+  if (openRejectId && openRejectId !== appId) {
+    const prev = $("reject-panel-" + openRejectId);
+    if (prev) prev.classList.add("hidden");
+  }
+  panel.classList.toggle("hidden", !willOpen);
+  openRejectId = willOpen ? appId : null;
+}
+
+async function doApprove(appId) {
+  const comment = prompt("审批意见（可空）：", "");
+  if (comment === null) return;
+  try {
+    const resp = await fetch("/api/approvals/compliance/" + encodeURIComponent(appId) + "/approve", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ comment: comment || "" }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.error) throw new Error(data.error || ("HTTP " + resp.status));
+    loadTodos();
+    loadMine();
+  } catch (e) {
+    alert("通过失败：" + (e.message || e));
+  }
+}
+
+async function doReject(appId) {
+  const reason = $("reject-reason-" + appId).value;
+  const comment = $("reject-comment-" + appId).value.trim();
+  const errEl = $("reject-err-" + appId);
+  errEl.classList.add("hidden");
+  if (!reason) {
+    errEl.textContent = "请选择驳回原因（必选，用于标准化统计）";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  if (reason === REJECT_REASONS[4] && !comment) {
+    errEl.textContent = "选择「其他」时必须填写审批意见说明具体原因";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  try {
+    const resp = await fetch("/api/approvals/compliance/" + encodeURIComponent(appId) + "/reject", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason, comment }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.error) throw new Error(data.error || ("HTTP " + resp.status));
+    openRejectId = null;
+    loadTodos();
+    loadMine();
+  } catch (e) {
+    errEl.textContent = "驳回失败：" + (e.message || e);
+    errEl.classList.remove("hidden");
+  }
+}
+
+/* ========== 启动 ========== */
+
+$("login-btn").addEventListener("click", startLogin);
+["f-title", "f-content", "f-publish-at", "f-sponsor-req"].forEach(id => {
+  $(id).addEventListener("input", validateForm);
+});
+document.querySelectorAll('input[name="ctype"], input[name="sponsor"]').forEach(el => {
+  el.addEventListener("change", validateForm);
+});
+$("submit-btn").addEventListener("click", submitCompliance);
+$("success-again").addEventListener("click", function () {
+  $("success-card").classList.add("hidden");
+  resetForm();
+  validateForm();
+  $("f-title").focus();
+});
+$("mine-refresh").addEventListener("click", loadMine);
+$("todos-refresh").addEventListener("click", loadTodos);
+
+(async function boot() {
+  validateForm();
+  await handleOAuthCallback();
+  try { HUB_CONFIG = await (await fetch("/api/config")).json(); } catch { /* 保持默认 */ }
+  try { ME = await (await fetch("/api/whoami")).json(); } catch { ME = { authenticated: false, user: null }; }
+  renderAuth();
+})();
+</script>
+</body>
+</html>

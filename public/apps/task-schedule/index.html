@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>任务排期 · NEC HUB</title>
+<link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  html, body { background: #000; }
+  body { font-family: -apple-system, "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif; }
+
+  .logo {
+    font-weight: 800; font-style: italic; letter-spacing: .02em;
+    position: relative; display: inline-block; padding-bottom: 6px;
+  }
+  .logo::after {
+    content: ""; position: absolute; left: 2px; bottom: 0;
+    width: 62%; height: 3px; background: #fff; border-radius: 2px;
+  }
+
+  .row-check {
+    width: 26px; height: 26px; border-radius: 9999px;
+    border: 2px solid rgba(255,255,255,.85);
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s ease; flex: none; cursor: pointer;
+    background: transparent;
+  }
+  .row-check:hover { border-color: #fff; box-shadow: 0 0 0 4px rgba(255,255,255,.08); }
+  .row-check.done { background: #fff; border-color: #fff; color: #000; }
+
+  .task-row { transition: background .15s ease; }
+  .task-row:hover { background: rgba(255,255,255,.04); }
+
+  .done-text { text-decoration: line-through; color: rgba(255,255,255,.45); }
+
+  select {
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center;
+  }
+
+  dialog::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(3px); }
+
+  .map-stop { cursor: pointer; }
+  .map-stop:hover { filter: brightness(1.4); }
+
+  .fade-in { animation: fadeIn .25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: none;} }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 4px; }
+</style>
+</head>
+<body class="text-white min-h-screen">
+
+<div class="max-w-4xl mx-auto px-5 py-6">
+
+  <!-- 顶栏 -->
+  <header class="flex items-center justify-between mb-6">
+    <h1 class="logo text-3xl">Taskto</h1>
+    <div class="flex items-center gap-3">
+      <a href="./animated.html" class="text-xs text-neutral-500 hover:text-white transition underline underline-offset-4 decoration-neutral-700">动态版</a>
+      <button id="btn-settings"
+      class="flex items-center gap-2 bg-white text-black font-semibold text-sm px-5 py-2.5 rounded-full hover:bg-neutral-200 transition">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+    </div>
+  </header>
+
+  <!-- 工具栏 -->
+  <div class="flex items-center justify-between gap-3 mb-4">
+    <div class="relative">
+      <select id="filter"
+        class="bg-transparent border border-neutral-700 rounded-lg pl-4 pr-10 py-2 text-sm text-white focus:outline-none focus:border-neutral-400 cursor-pointer">
+        <option value="all" class="bg-black">All</option>
+        <option value="todo" class="bg-black">待办</option>
+        <option value="done" class="bg-black">已完成</option>
+        <optgroup label="线路" class="bg-black" id="filter-lines"></optgroup>
+      </select>
+    </div>
+    <button id="btn-add"
+      class="flex items-center gap-1.5 bg-white text-black font-semibold text-sm px-5 py-2 rounded-full hover:bg-neutral-200 transition">
+      <span class="text-lg leading-none">+</span> Add Todo
+    </button>
+  </div>
+
+  <!-- 统计折叠条 -->
+  <button id="stat-bar"
+    class="w-full border border-neutral-800 rounded-lg py-1.5 flex flex-col items-center justify-center text-neutral-500 hover:text-neutral-300 transition mb-4">
+    <span id="stat-text" class="text-xs mb-0.5 hidden"></span>
+    <svg id="stat-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform"><path d="m6 9 6 6 6-6"/></svg>
+  </button>
+
+  <!-- 主体：线路图 + 任务列表 -->
+  <div class="flex gap-3 items-stretch">
+
+    <!-- 地铁线路图面板 -->
+    <div id="map-panel" class="relative flex-none border border-neutral-800 rounded-2xl overflow-hidden transition-all duration-300" style="width:132px">
+      <div id="map-scroll" class="absolute inset-0 overflow-hidden">
+        <svg id="map-svg" class="block" width="132" height="100%" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <button id="btn-collapse-map" title="收起线路图"
+        class="absolute left-0 top-1/2 -translate-y-1/2 text-neutral-600 hover:text-white transition p-1">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+    </div>
+    <button id="btn-expand-map" title="展开线路图"
+      class="hidden flex-none self-center border border-neutral-800 rounded-full w-8 h-8 items-center justify-center text-neutral-500 hover:text-white transition">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </button>
+
+    <!-- 任务列表 -->
+    <div id="task-list" class="flex-1 min-w-0 flex flex-col gap-2.5"></div>
+  </div>
+</div>
+
+<!-- Add Todo 弹窗 -->
+<dialog id="dlg-add" class="bg-neutral-950 text-white border border-neutral-800 rounded-2xl p-6 w-[92vw] max-w-md">
+  <h2 class="text-lg font-bold mb-5">Add Todo</h2>
+  <form id="form-add" class="flex flex-col gap-4">
+    <div>
+      <label class="text-xs text-neutral-400 block mb-1.5">任务标题</label>
+      <input id="f-title" required maxlength="80" placeholder="要做点什么？"
+        class="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-white" />
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="text-xs text-neutral-400 block mb-1.5">截止时间</label>
+        <input id="f-date" type="datetime-local" required
+          class="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-white [color-scheme:dark]" />
+      </div>
+      <div>
+        <label class="text-xs text-neutral-400 block mb-1.5">所属线路</label>
+        <select id="f-line" class="w-full bg-black border border-neutral-700 rounded-lg pl-3 pr-9 py-2.5 text-sm focus:outline-none focus:border-white"></select>
+      </div>
+    </div>
+    <div>
+      <label class="text-xs text-neutral-400 block mb-1.5">备注（可选）</label>
+      <textarea id="f-note" rows="2" maxlength="300" placeholder="补充说明…"
+        class="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-white resize-none"></textarea>
+    </div>
+    <div class="flex justify-end gap-3 mt-1">
+      <button type="button" id="f-cancel"
+        class="px-5 py-2 rounded-full text-sm border border-neutral-700 hover:border-neutral-400 transition">取消</button>
+      <button type="submit"
+        class="px-5 py-2 rounded-full text-sm bg-white text-black font-semibold hover:bg-neutral-200 transition">添加</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Settings 弹窗 -->
+<dialog id="dlg-settings" class="bg-neutral-950 text-white border border-neutral-800 rounded-2xl p-6 w-[92vw] max-w-md">
+  <h2 class="text-lg font-bold mb-1">Settings</h2>
+  <p class="text-xs text-neutral-500 mb-5">数据保存在浏览器 localStorage</p>
+
+  <h3 class="text-sm font-semibold mb-2 text-neutral-300">线路管理</h3>
+  <div id="line-list" class="flex flex-col gap-2 mb-3"></div>
+  <form id="form-line" class="flex gap-2 mb-6">
+    <input id="f-line-name" required maxlength="12" placeholder="新线路名称"
+      class="flex-1 min-w-0 bg-black border border-neutral-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-white" />
+    <input id="f-line-color" type="color" value="#3b82f6"
+      class="w-10 h-9 bg-black border border-neutral-700 rounded-lg cursor-pointer p-1" />
+    <button class="px-4 py-2 rounded-lg text-sm bg-white text-black font-semibold hover:bg-neutral-200 transition">加</button>
+  </form>
+
+  <h3 class="text-sm font-semibold mb-2 text-neutral-300">数据</h3>
+  <div class="flex flex-wrap gap-2">
+    <button id="btn-clear-done" class="px-4 py-2 rounded-lg text-sm border border-neutral-700 hover:border-neutral-400 transition">清除已完成</button>
+    <button id="btn-export" class="px-4 py-2 rounded-lg text-sm border border-neutral-700 hover:border-neutral-400 transition">导出 JSON</button>
+    <button id="btn-reset" class="px-4 py-2 rounded-lg text-sm border border-red-900 text-red-400 hover:border-red-500 transition">恢复示例数据</button>
+  </div>
+
+  <div class="flex justify-end mt-6">
+    <button id="settings-close" class="px-5 py-2 rounded-full text-sm bg-white text-black font-semibold hover:bg-neutral-200 transition">完成</button>
+  </div>
+</dialog>
+
+<script>
+(() => {
+  "use strict";
+  const LS_KEY = "nec-taskto-v1";
+
+  /* ---------------- 状态 ---------------- */
+  const DEFAULT_DATA = {
+    lines: [
+      { id: "main", name: "论文主线", color: "#3b82f6" },
+      { id: "doc",  name: "文档",     color: "#ef4444" },
+      { id: "exp",  name: "实验",     color: "#facc15" }
+    ],
+    tasks: [
+      { id: "t1",  title: "Write Literature Review",      date: "2025-03-04T17:35", line: "main", done: false, note: "" },
+      { id: "t2",  title: "Read Literature",              date: "2025-03-04T17:37", line: "main", done: true,  note: "" },
+      { id: "t3",  title: "Design Experiment Plan",       date: "2025-03-04T17:37", line: "main", done: false, note: "" },
+      { id: "t4",  title: "Organize Literature Comparison", date: "2025-03-04T17:38", line: "doc", done: true, note: "" },
+      { id: "t5",  title: "Doc Done",                     date: "2025-03-04T17:43", line: "doc",  done: true,  note: "" },
+      { id: "t6",  title: "Collect Experimental Data",    date: "2025-03-04T17:39", line: "exp",  done: false, note: "" },
+      { id: "t7",  title: "Analyze Experimental Results", date: "2025-03-04T17:39", line: "exp",  done: false, note: "" },
+      { id: "t8",  title: "Experiment Done",              date: "2025-03-04T17:43", line: "main", done: true,  note: "" },
+      { id: "t9",  title: "Compete the paper",            date: "2025-03-04T17:40", line: "main", done: false, note: "" },
+      { id: "t10", title: "Submit Paper",                 date: "2025-03-04T17:40", line: "main", done: false, note: "" }
+    ]
+  };
+
+  let state = load();
+  let filter = "all";
+  let expandedId = null;
+  let mapVisible = true;
+  let statOpen = false;
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d && Array.isArray(d.tasks) && Array.isArray(d.lines)) return d;
+      }
+    } catch (e) { /* ignore */ }
+    return structuredClone(DEFAULT_DATA);
+  }
+  function save() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+
+  const $ = s => document.querySelector(s);
+  const uid = () => "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const lineOf = id => state.lines.find(l => l.id === id) || state.lines[0];
+
+  function fmtDate(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return "";
+    const mon = d.toLocaleString("en-US", { month: "short" });
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return `${mon} ${d.getDate()}, ${d.getFullYear()} at ${hh}:${mm}`;
+  }
+
+  /* ---------------- 渲染：筛选 ---------------- */
+  function renderFilterLines() {
+    const og = $("#filter-lines");
+    og.innerHTML = "";
+    state.lines.forEach(l => {
+      const o = document.createElement("option");
+      o.value = "line:" + l.id;
+      o.textContent = l.name;
+      o.className = "bg-black";
+      og.appendChild(o);
+    });
+  }
+
+  function visibleTasks() {
+    return state.tasks.filter(t => {
+      if (filter === "all") return true;
+      if (filter === "todo") return !t.done;
+      if (filter === "done") return t.done;
+      if (filter.startsWith("line:")) return t.line === filter.slice(5);
+      return true;
+    });
+  }
+
+  /* ---------------- 渲染：任务列表 ---------------- */
+  function renderTasks() {
+    const list = $("#task-list");
+    list.innerHTML = "";
+    const tasks = visibleTasks();
+
+    if (!tasks.length) {
+      list.innerHTML = `<div class="border border-dashed border-neutral-800 rounded-xl py-14 text-center text-neutral-600 text-sm">没有匹配的任务</div>`;
+      return;
+    }
+
+    tasks.forEach(t => {
+      const expanded = expandedId === t.id;
+      const row = document.createElement("div");
+      row.className = "task-row fade-in border border-neutral-800 rounded-xl px-5 py-4";
+      row.dataset.id = t.id;
+
+      const head = document.createElement("div");
+      head.className = "flex items-center gap-4";
+
+      const check = document.createElement("button");
+      check.className = "row-check" + (t.done ? " done" : "");
+      check.setAttribute("aria-label", t.done ? "标记为未完成" : "标记为完成");
+      if (t.done) check.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
+      check.addEventListener("click", e => { e.stopPropagation(); toggleDone(t.id); });
+
+      const body = document.createElement("div");
+      body.className = "flex-1 min-w-0 cursor-pointer";
+      const title = document.createElement("div");
+      title.className = "font-bold text-[15px] truncate" + (t.done ? " done-text" : "");
+      title.textContent = t.title;
+      const meta = document.createElement("div");
+      meta.className = "flex items-center gap-1.5 text-xs text-neutral-500 mt-1";
+      const dot = lineOf(t.line).color;
+      meta.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="9" cy="15" r="1.6" fill="currentColor" stroke="none"/></svg>
+        <span>${fmtDate(t.date)}</span>
+        <span class="inline-block w-2 h-2 rounded-full ml-1" style="background:${dot}"></span>
+        <span>${lineOf(t.line).name}</span>`;
+      body.append(title, meta);
+      body.addEventListener("click", () => { expandedId = expanded ? null : t.id; render(); });
+
+      const chev = document.createElement("button");
+      chev.className = "text-neutral-500 hover:text-white transition p-1" + (expanded ? " rotate-180" : "");
+      chev.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform ${expanded ? "rotate-180" : ""}"><path d="m6 9 6 6 6-6"/></svg>`;
+      chev.addEventListener("click", () => { expandedId = expanded ? null : t.id; render(); });
+
+      head.append(check, body, chev);
+      row.appendChild(head);
+
+      if (expanded) {
+        const detail = document.createElement("div");
+        detail.className = "mt-3 pt-3 border-t border-neutral-800 fade-in";
+        const note = document.createElement("p");
+        note.className = "text-sm text-neutral-400 whitespace-pre-wrap mb-3";
+        note.textContent = t.note || "（无备注）";
+        const actions = document.createElement("div");
+        actions.className = "flex gap-2 justify-end";
+        const doneBtn = document.createElement("button");
+        doneBtn.className = "px-4 py-1.5 rounded-full text-xs border border-neutral-700 hover:border-neutral-400 transition";
+        doneBtn.textContent = t.done ? "重新打开" : "标记完成";
+        doneBtn.addEventListener("click", () => toggleDone(t.id));
+        const delBtn = document.createElement("button");
+        delBtn.className = "px-4 py-1.5 rounded-full text-xs border border-red-900 text-red-400 hover:border-red-500 transition";
+        delBtn.textContent = "删除";
+        delBtn.addEventListener("click", () => {
+          if (confirm(`删除任务「${t.title}」？`)) {
+            state.tasks = state.tasks.filter(x => x.id !== t.id);
+            if (expandedId === t.id) expandedId = null;
+            save(); render();
+          }
+        });
+        actions.append(doneBtn, delBtn);
+        detail.append(note, actions);
+        row.appendChild(detail);
+      }
+
+      list.appendChild(row);
+    });
+  }
+
+  /* ---------------- 渲染：地铁线路图 ---------------- */
+  function renderMap() {
+    const svg = $("#map-svg");
+    const list = $("#task-list");
+    svg.innerHTML = "";
+
+    const rows = [...list.querySelectorAll(".task-row")];
+    if (!rows.length) { svg.setAttribute("height", 120); return; }
+
+    const listRect = list.getBoundingClientRect();
+    const panelRect = $("#map-panel").getBoundingClientRect();
+    const top0 = listRect.top - panelRect.top;
+
+    const laneX = id => {
+      const i = Math.max(0, state.lines.findIndex(l => l.id === id));
+      return 42 + i * 27;
+    };
+    const maxLane = 42 + Math.max(0, state.lines.length - 1) * 27;
+    $("#map-panel").style.width = Math.max(96, maxLane + 34) + "px";
+    svg.setAttribute("width", Math.max(96, maxLane + 34));
+
+    const tasks = visibleTasks();
+    const stops = rows.map((el, i) => {
+      const r = el.getBoundingClientRect();
+      const t = tasks.find(x => x.id === el.dataset.id);
+      return t ? { task: t, x: laneX(t.line), y: top0 + (r.top - listRect.top) + r.height / 2 } : null;
+    }).filter(Boolean);
+
+    const H = top0 + listRect.height;
+    svg.setAttribute("height", Math.max(120, H));
+    svg.style.height = Math.max(120, H) + "px";
+
+    const NS = "http://www.w3.org/2000/svg";
+
+    // 每条线路：按任务顺序连接站点，转角处用圆弧；
+    // 非首条线路从主干车道以弧线分出，形成支线效果
+    const trunkX = laneX(state.lines[0].id);
+    state.lines.forEach((line, li) => {
+      const pts = stops.filter(s => s.task.line === line.id).map(s => ({ ...s }));
+      if (pts.length < 1) return;
+      if (li > 0 && pts[0].x !== trunkX) {
+        pts.unshift({ task: null, x: trunkX, y: pts[0].y });
+      }
+      if (pts.length === 1) {
+        // 单点也要画一小段竖线
+        const p = document.createElementNS(NS, "path");
+        p.setAttribute("d", `M ${pts[0].x} ${pts[0].y - 18} L ${pts[0].x} ${pts[0].y + 18}`);
+        p.setAttribute("stroke", line.color);
+        p.setAttribute("stroke-width", "4");
+        p.setAttribute("stroke-linecap", "round");
+        p.setAttribute("fill", "none");
+        svg.appendChild(p);
+        return;
+      }
+      let d = `M ${pts[0].x} ${pts[0].y}`;
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i];
+        if (a.x === b.x) {
+          d += ` L ${b.x} ${b.y}`;
+        } else {
+          const dir = Math.sign(b.x - a.x);
+          const R = Math.min(22, Math.abs(b.y - a.y) / 2, Math.abs(b.x - a.x));
+          d += ` L ${a.x} ${b.y - R}`;
+          d += ` Q ${a.x} ${b.y} ${a.x + dir * R} ${b.y}`;
+          d += ` L ${b.x} ${b.y}`;
+        }
+      }
+      const path = document.createElementNS(NS, "path");
+      path.setAttribute("d", d);
+      path.setAttribute("stroke", line.color);
+      path.setAttribute("stroke-width", "4");
+      path.setAttribute("stroke-linecap", "round");
+      path.setAttribute("fill", "none");
+      svg.appendChild(path);
+    });
+
+    // 站点圆点
+    stops.forEach(s => {
+      const c = document.createElementNS(NS, "circle");
+      c.setAttribute("cx", s.x);
+      c.setAttribute("cy", s.y);
+      c.setAttribute("r", "8");
+      c.setAttribute("fill", s.task.done ? lineOf(s.task.line).color : "#000");
+      c.setAttribute("stroke", lineOf(s.task.line).color);
+      c.setAttribute("stroke-width", "3.5");
+      c.setAttribute("class", "map-stop");
+      const title = document.createElementNS(NS, "title");
+      title.textContent = s.task.title;
+      c.appendChild(title);
+      c.addEventListener("click", () => {
+        expandedId = s.task.id;
+        render();
+        const el = $(`.task-row[data-id="${s.task.id}"]`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      svg.appendChild(c);
+    });
+  }
+
+  /* ---------------- 渲染：统计 ---------------- */
+  function renderStats() {
+    const total = state.tasks.length;
+    const done = state.tasks.filter(t => t.done).length;
+    $("#stat-text").textContent = `共 ${total} 项 · 已完成 ${done} · 待办 ${total - done}`;
+    $("#stat-text").classList.toggle("hidden", !statOpen);
+    $("#stat-chevron").style.transform = statOpen ? "rotate(180deg)" : "";
+  }
+
+  /* ---------------- 渲染：设置 ---------------- */
+  function renderLineSettings() {
+    const box = $("#line-list");
+    box.innerHTML = "";
+    state.lines.forEach(l => {
+      const count = state.tasks.filter(t => t.line === l.id).length;
+      const row = document.createElement("div");
+      row.className = "flex items-center gap-3 border border-neutral-800 rounded-lg px-3 py-2";
+      row.innerHTML = `
+        <span class="w-3 h-3 rounded-full flex-none" style="background:${l.color}"></span>
+        <span class="flex-1 text-sm truncate">${l.name}</span>
+        <span class="text-xs text-neutral-500">${count} 项</span>`;
+      const del = document.createElement("button");
+      del.className = "text-xs text-red-400 hover:text-red-300 disabled:opacity-30 disabled:cursor-not-allowed";
+      del.textContent = "删除";
+      del.disabled = state.lines.length <= 1 || count > 0;
+      del.title = count > 0 ? "该线路下还有任务" : "";
+      del.addEventListener("click", () => {
+        state.lines = state.lines.filter(x => x.id !== l.id);
+        save(); render(); renderLineSettings();
+      });
+      row.appendChild(del);
+      box.appendChild(row);
+    });
+  }
+
+  function renderLineSelect() {
+    const sel = $("#f-line");
+    sel.innerHTML = "";
+    state.lines.forEach(l => {
+      const o = document.createElement("option");
+      o.value = l.id;
+      o.textContent = l.name;
+      o.className = "bg-black";
+      sel.appendChild(o);
+    });
+  }
+
+  function render() {
+    renderFilterLines();
+    renderTasks();
+    renderStats();
+    // 等 DOM 绘制后再量坐标
+    requestAnimationFrame(renderMap);
+  }
+
+  /* ---------------- 行为 ---------------- */
+  function toggleDone(id) {
+    const t = state.tasks.find(x => x.id === id);
+    if (!t) return;
+    t.done = !t.done;
+    save(); render();
+  }
+
+  $("#filter").addEventListener("change", e => { filter = e.target.value; expandedId = null; render(); });
+
+  $("#btn-add").addEventListener("click", () => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    $("#f-date").value = now.toISOString().slice(0, 16);
+    renderLineSelect();
+    $("#form-add").reset();
+    $("#f-date").value = now.toISOString().slice(0, 16);
+    $("#dlg-add").showModal();
+    $("#f-title").focus();
+  });
+  $("#f-cancel").addEventListener("click", () => $("#dlg-add").close());
+  $("#form-add").addEventListener("submit", e => {
+    e.preventDefault();
+    state.tasks.unshift({
+      id: uid(),
+      title: $("#f-title").value.trim(),
+      date: $("#f-date").value,
+      line: $("#f-line").value,
+      note: $("#f-note").value.trim(),
+      done: false
+    });
+    save(); render();
+    $("#dlg-add").close();
+  });
+
+  $("#btn-settings").addEventListener("click", () => { renderLineSettings(); $("#dlg-settings").showModal(); });
+  $("#settings-close").addEventListener("click", () => $("#dlg-settings").close());
+
+  $("#form-line").addEventListener("submit", e => {
+    e.preventDefault();
+    const name = $("#f-line-name").value.trim();
+    if (!name) return;
+    state.lines.push({ id: "line-" + uid(), name, color: $("#f-line-color").value });
+    $("#f-line-name").value = "";
+    save(); render(); renderLineSettings();
+  });
+
+  $("#btn-clear-done").addEventListener("click", () => {
+    if (!confirm("清除所有已完成任务？")) return;
+    state.tasks = state.tasks.filter(t => !t.done);
+    save(); render(); renderLineSettings();
+  });
+  $("#btn-export").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "taskto-export.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  $("#btn-reset").addEventListener("click", () => {
+    if (!confirm("恢复示例数据？当前数据将被覆盖。")) return;
+    state = structuredClone(DEFAULT_DATA);
+    save(); render(); renderLineSettings();
+  });
+
+  $("#stat-bar").addEventListener("click", () => { statOpen = !statOpen; renderStats(); });
+
+  $("#btn-collapse-map").addEventListener("click", () => {
+    mapVisible = false;
+    $("#map-panel").classList.add("hidden");
+    $("#btn-expand-map").classList.remove("hidden");
+    $("#btn-expand-map").classList.add("flex");
+  });
+  $("#btn-expand-map").addEventListener("click", () => {
+    mapVisible = true;
+    $("#map-panel").classList.remove("hidden");
+    $("#btn-expand-map").classList.add("hidden");
+    $("#btn-expand-map").classList.remove("flex");
+    requestAnimationFrame(renderMap);
+  });
+
+  // 弹窗点击遮罩关闭
+  [$("#dlg-add"), $("#dlg-settings")].forEach(dlg => {
+    dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+  });
+
+  window.addEventListener("resize", () => { if (mapVisible) renderMap(); });
+
+  render();
+})();
+</script>
+</body>
+</html>

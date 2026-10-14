@@ -73,8 +73,33 @@
 
   /* 导航按钮 */
   .nav-btn { border: 1.5px solid var(--nec-line); color: var(--nec-gray); background: var(--nec-paper); }
-  .nav-btn:hover { border-color: var(--nec-cyan); color: var(--nec-navy); }
-  .nav-btn.on { border-color: var(--nec-navy); color: #fff; background: var(--nec-navy); }
+  .nav-btn:hover { border-color: var(--nec-royal); color: var(--nec-royal); }
+  .nav-btn.on { border-color: var(--nec-royal); color: #fff; background: var(--nec-royal); }
+
+  /* 必填标记与字段级错误 */
+  .req::after { content: " *"; color: #C22E2E; }
+  .field-error { color: #C22E2E; font-size: 12px; margin-top: 4px; }
+  .input-invalid { border-color: #C22E2E !important; }
+
+  /* 流程步骤条 */
+  .flow-step { display: flex; align-items: center; gap: 6px; }
+  .flow-step .dot {
+    width: 22px; height: 22px; border-radius: 999px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; border: 1.5px solid var(--nec-line);
+    background: var(--nec-paper); color: var(--nec-gray);
+  }
+  .flow-step.done .dot { background: var(--nec-royal); border-color: var(--nec-royal); color: #fff; }
+  .flow-step.current .dot { background: var(--nec-royal-100); border-color: var(--nec-royal); color: var(--nec-royal); }
+  .flow-step .lbl { font-size: 12px; color: var(--nec-gray); white-space: nowrap; }
+  .flow-step.done .lbl { color: var(--nec-navy); font-weight: 600; }
+  .flow-step.current .lbl { color: var(--nec-royal); font-weight: 700; }
+  .flow-conn { flex: 1; min-width: 12px; height: 1.5px; background: var(--nec-line); }
+  .flow-conn.done { background: var(--nec-royal); }
+
+  /* 文件上传拖放区 */
+  .dropzone { border: 1.5px dashed var(--nec-line); border-radius: var(--nec-radius); transition: border-color .15s, background .15s; cursor: pointer; }
+  .dropzone:hover, .dropzone.dragover { border-color: var(--nec-royal); background: var(--nec-royal-100); }
 
   /* 主按钮 */
   .btn-primary { background: var(--nec-royal); color: #fff; }
@@ -107,7 +132,7 @@
 <body class="min-h-screen">
   <!-- KV Hero：蓝图 × 破晓（embedded 模式隐藏） -->
   <header id="app-header" class="hero">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-6 pb-8 sm:pb-12 relative">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-6 pb-6 sm:pb-8 relative">
       <div class="flex items-center gap-3 relative z-10 flex-wrap">
         <img src="/brand/nec-logo.svg" alt="NEC" class="h-8 w-auto" />
         <div class="leading-tight">
@@ -120,20 +145,24 @@
         </nav>
       </div>
 
-      <div class="mt-8 relative z-10">
-        <p class="mono text-xs tracking-[.22em] mb-3 text-nec-navy"><b>NEC HUB</b> · 硬件评审 · KEEP BUILDING</p>
-        <h1 class="hero-title text-3xl sm:text-5xl">硬件<span class="accent">评审</span>流程</h1>
-        <p class="mono mt-3 text-xs text-nec-gray tracking-widest">提交评审单 → 预约会议 → 保存纪要 → 生成评审报告 → 评估归档</p>
-        <div class="mt-5 flex flex-wrap gap-2 text-sm">
-          <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">01</i>提交</span>
-          <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">02</i>评审</span>
-          <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">03</i>报告</span>
-          <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">04</i>归档</span>
+      <div class="mt-5 relative z-10">
+        <p class="mono text-xs tracking-[.22em] mb-2 text-nec-navy"><b>NEC HUB</b> · 硬件评审 · KEEP BUILDING</p>
+        <h1 class="hero-title text-3xl sm:text-4xl">硬件<span class="accent">评审</span>流程</h1>
+        <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span class="flow-step done"><span class="dot">01</span><span class="lbl">提交评审单</span></span>
+          <span class="flow-conn" style="max-width:24px"></span>
+          <span class="flow-step"><span class="dot">02</span><span class="lbl">预约会议</span></span>
+          <span class="flow-conn" style="max-width:24px"></span>
+          <span class="flow-step"><span class="dot">03</span><span class="lbl">保存纪要</span></span>
+          <span class="flow-conn" style="max-width:24px"></span>
+          <span class="flow-step"><span class="dot">04</span><span class="lbl">评审报告</span></span>
+          <span class="flow-conn" style="max-width:24px"></span>
+          <span class="flow-step"><span class="dot">05</span><span class="lbl">评估归档</span></span>
         </div>
       </div>
 
       <!-- 破晓太阳 -->
-      <svg class="absolute -right-6 sm:right-8 top-16 w-28 sm:w-44 opacity-40 sm:opacity-90 z-0 pointer-events-none" viewBox="0 0 800 800" fill="none" aria-hidden="true">
+      <svg class="absolute -right-6 sm:right-8 top-12 w-24 sm:w-32 opacity-30 sm:opacity-50 z-0 pointer-events-none" viewBox="0 0 800 800" fill="none" aria-hidden="true">
         <defs><linearGradient id="sunG" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stop-color="#4FC3F7"/><stop offset="1" stop-color="#1FA9E8"/></linearGradient></defs>
         <circle cx="400" cy="400" r="330" stroke="url(#sunG)" stroke-width="10"/>
@@ -166,22 +195,39 @@
 
     <!-- 提交视图 -->
     <section id="view-submit" class="view">
-      <div class="nec-card p-5">
-        <h2 class="text-lg font-bold text-nec-ink mb-1">提交硬件评审单</h2>
-        <p class="mono text-xs text-nec-gray mb-4 tracking-wider">HARDWARE REVIEW SUBMISSION</p>
-        <form id="submit-form" class="space-y-4">
+      <div class="nec-card p-5 sm:p-7">
+        <div class="flex items-start justify-between flex-wrap gap-2 mb-1">
+          <div>
+            <h2 class="text-lg font-bold text-nec-ink">提交硬件评审单</h2>
+            <p class="mono text-xs text-nec-gray tracking-wider">HARDWARE REVIEW SUBMISSION</p>
+          </div>
+          <span id="draft-status" class="mono text-xs text-nec-gray self-center"></span>
+        </div>
+
+        <!-- 草稿恢复提示 -->
+        <div id="draft-banner" class="hidden rounded-lg p-3 mb-4 flex items-center justify-between flex-wrap gap-2" style="background:var(--nec-royal-100);border:1px solid var(--nec-line)">
+          <p class="text-sm text-nec-navy">检测到上次未完成的草稿<span id="draft-time" class="mono text-xs text-nec-gray ml-1"></span></p>
+          <div class="flex gap-2">
+            <button type="button" onclick="restoreDraft()" class="text-sm font-medium px-3 py-1 rounded-lg text-white" style="background:var(--nec-royal)">恢复草稿</button>
+            <button type="button" onclick="discardDraft()" class="text-sm px-3 py-1 rounded-lg link">丢弃</button>
+          </div>
+        </div>
+
+        <form id="submit-form" novalidate class="space-y-5 mt-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-nec-navy mb-1">项目编号</label>
-              <input type="text" name="projectId" required class="mono w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="PRJ-2026-001" />
+              <label class="req block text-sm font-medium text-nec-navy mb-1">项目编号</label>
+              <input type="text" name="projectId" class="mono w-full rounded-lg border border-nec-line px-3 py-2.5 text-sm" placeholder="示例：PRJ-2026-001" />
+              <p class="field-error hidden" data-for="projectId"></p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-nec-navy mb-1">硬件名称</label>
-              <input type="text" name="hardwareName" required class="w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="主控板 / 激光雷达 / 驱动电机" />
+              <label class="req block text-sm font-medium text-nec-navy mb-1">硬件名称</label>
+              <input type="text" name="hardwareName" class="w-full rounded-lg border border-nec-line px-3 py-2.5 text-sm" placeholder="主控板 / 激光雷达 / 驱动电机" />
+              <p class="field-error hidden" data-for="hardwareName"></p>
             </div>
             <div>
               <label class="block text-sm font-medium text-nec-navy mb-1">硬件类型</label>
-              <select name="hardwareType" class="w-full rounded-lg border border-nec-line px-3 py-2 text-sm bg-white">
+              <select name="hardwareType" class="w-full rounded-lg border border-nec-line px-3 py-2.5 text-sm bg-white">
                 <option value="controller">控制器</option>
                 <option value="sensor">传感器</option>
                 <option value="actuator">执行器</option>
@@ -193,31 +239,72 @@
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-nec-navy mb-1">硬件版本</label>
-              <input type="text" name="hardwareVersion" required class="mono w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="V1.0" />
+              <label class="req block text-sm font-medium text-nec-navy mb-1">硬件版本</label>
+              <input type="text" name="hardwareVersion" class="mono w-full rounded-lg border border-nec-line px-3 py-2.5 text-sm" placeholder="V1.0" />
+              <p class="field-error hidden" data-for="hardwareVersion"></p>
             </div>
             <div class="md:col-span-2">
-              <label class="block text-sm font-medium text-nec-navy mb-1">设计负责人 open_id</label>
-              <input type="text" name="designerId" required class="mono w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="ou_xxx" />
+              <label class="req block text-sm font-medium text-nec-navy mb-1">设计负责人</label>
+              <input type="hidden" name="designerId" />
+              <div class="flex items-center gap-2 flex-wrap">
+                <span id="designer-chip" class="inline-flex items-center gap-2 rounded-lg border border-nec-line bg-white px-3 py-2 text-sm text-nec-ink">
+                  <img id="designer-avatar" class="w-5 h-5 rounded-full hidden" alt="" />
+                  <span id="designer-name" class="text-nec-gray">加载中…</span>
+                </span>
+                <details class="text-xs text-nec-gray">
+                  <summary class="link cursor-pointer select-none">代他人提交</summary>
+                  <input type="text" id="designer-override" class="mono mt-2 w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="对方 open_id（ou_ 开头），仅代提交时填写" />
+                </details>
+              </div>
+              <p class="field-error hidden" data-for="designerId"></p>
             </div>
           </div>
+
           <div>
-            <label class="block text-sm font-medium text-nec-navy mb-1">硬件资料 <span class="text-nec-gray font-normal">（每行一条：名称|文件token|链接，后两项可省略）</span></label>
-            <textarea name="hardwareFiles" rows="2" required class="mono w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="原理图 V1.0.pdf|file_token_xxx&#10;BOM 表.xlsx"></textarea>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-sm font-medium text-nec-navy">规格参数</label>
+              <button type="button" id="spec-template-btn" onclick="applySpecTemplate()" class="text-xs link">按类型填充常用参数</button>
+            </div>
+            <div class="rounded-lg border border-nec-line overflow-hidden">
+              <div class="hidden sm:grid grid-cols-12 gap-2 px-3 py-2 text-xs text-nec-gray" style="background:var(--nec-fog)">
+                <span class="col-span-4">参数名</span><span class="col-span-4">参数值</span><span class="col-span-3">备注</span><span class="col-span-1"></span>
+              </div>
+              <div id="spec-rows"></div>
+            </div>
+            <button type="button" onclick="addSpecRow()" class="mt-2 text-xs link">+ 添加参数行</button>
           </div>
+
           <div>
-            <label class="block text-sm font-medium text-nec-navy mb-1">规格参数</label>
-            <textarea name="specification" rows="2" class="w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="电压 / 电流 / 功率 / 接口 / 防护等级等"></textarea>
+            <label class="req block text-sm font-medium text-nec-navy mb-1">硬件资料</label>
+            <div id="file-drop" class="dropzone p-5 text-center">
+              <p class="text-sm text-nec-navy font-medium">拖拽文件到这里，或 <span class="link">点击选择</span></p>
+              <p class="mono text-xs text-nec-gray mt-1">PDF / XLSX / ZIP / DXF / STEP 等，单文件 ≤ 10MB，可多选</p>
+              <input type="file" id="file-input" multiple class="hidden"
+                accept=".pdf,.xlsx,.xls,.csv,.zip,.doc,.docx,.pptx,.png,.jpg,.jpeg,.dxf,.step,.stp" />
+            </div>
+            <div id="file-list" class="mt-2 space-y-2"></div>
+            <p class="field-error hidden" data-for="hardwareFiles"></p>
+            <details class="mt-2 text-xs text-nec-gray">
+              <summary class="link cursor-pointer select-none">批量导入（高级：名称|文件token|链接，每行一条）</summary>
+              <textarea id="files-batch" rows="2" class="mono mt-2 w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="原理图 V1.0.pdf|file_token_xxx&#10;BOM 表.xlsx"></textarea>
+            </details>
           </div>
+
           <div>
-            <label class="block text-sm font-medium text-nec-navy mb-1">设计说明</label>
-            <textarea name="designNotes" rows="3" required class="w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="选型理由、关键设计点、风险与验证计划"></textarea>
+            <div class="flex items-center justify-between mb-1">
+              <label class="req block text-sm font-medium text-nec-navy">设计说明</label>
+              <button type="button" onclick="insertDesignTemplate()" class="text-xs link">插入模板</button>
+            </div>
+            <textarea name="designNotes" rows="4" class="w-full rounded-lg border border-nec-line px-3 py-2.5 text-sm" placeholder="选型理由、关键设计点、风险与验证计划。可点右上角「插入模板」获取提纲。"></textarea>
+            <p class="field-error hidden" data-for="designNotes"></p>
           </div>
-          <div class="flex justify-end">
+
+          <div class="flex items-center justify-end gap-3 pt-2" style="border-top:1px solid var(--nec-line)">
+            <p id="submit-result" class="mr-auto text-sm"></p>
+            <button type="button" onclick="saveDraft(true)" class="nav-btn text-sm font-medium px-4 py-2 rounded-lg">保存草稿</button>
             <button type="submit" class="btn-primary text-sm font-medium px-5 py-2 rounded-lg">提交评审单</button>
           </div>
         </form>
-        <p id="submit-result" class="mt-3 text-sm"></p>
       </div>
     </section>
 
@@ -297,7 +384,7 @@
         btn.classList.toggle("on", btn.dataset.view === view);
       });
       if (view === "list") loadReviews();
-      if (view === "submit") prefillSubmitForm();
+      if (view === "submit") { prefillSubmitForm(); checkDraft(); }
       if (view === "detail" && params.id) loadDetail(params.id);
     }
 
@@ -349,13 +436,17 @@
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
-    // 提交表单智能预填：当前用户 + /api/hardware-review/start 的默认值（版本号递增、设计说明模板等）
+    // 提交表单智能预填：当前用户 + /api/hardware-review/start 的默认值（版本号递增等）
     let prefilled = false;
+    let designNotesTemplate = "";
     async function prefillSubmitForm() {
       if (prefilled) return;
       prefilled = true;
       const form = document.getElementById("submit-form");
-      if (currentUser && !form.designerId.value) form.designerId.value = currentUser.open_id;
+      if (currentUser && !form.designerId.value) {
+        form.designerId.value = currentUser.open_id;
+        renderDesignerChip(currentUser.name, currentUser.avatar_url);
+      }
       try {
         const data = await api("/api/hardware-review/start");
         const d = data.defaults || {};
@@ -363,11 +454,288 @@
         if (!form.hardwareName.value && d.hardwareName) form.hardwareName.value = d.hardwareName;
         if (d.hardwareType) form.hardwareType.value = d.hardwareType;
         if (!form.hardwareVersion.value && d.hardwareVersion) form.hardwareVersion.value = d.hardwareVersion;
-        if (!form.designerId.value && d.designerId) form.designerId.value = d.designerId;
-        if (!form.designNotes.value && d.designNotes) form.designNotes.value = d.designNotes;
-        if (!form.specification.value && d.specification) form.specification.value = d.specification;
+        if (!form.designerId.value && d.designerId) {
+          form.designerId.value = d.designerId;
+          renderDesignerChip(personLabel(d.designerId));
+        }
+        // 设计说明模板不再直接填入正文，存起来供「插入模板」按钮使用
+        if (d.designNotes && d.designNotes.startsWith("【硬件设计说明模板】")) {
+          designNotesTemplate = d.designNotes;
+        } else if (!form.designNotes.value && d.designNotes) {
+          form.designNotes.value = d.designNotes;
+        }
       } catch {}
+      // 规格参数编辑器默认给一行空行，避免空白区域看起来损坏
+      if (!document.querySelector("#spec-rows .spec-row")) addSpecRow();
     }
+
+    function renderDesignerChip(name, avatarUrl) {
+      const chipName = document.getElementById("designer-name");
+      const chipAvatar = document.getElementById("designer-avatar");
+      chipName.textContent = name || "未选择";
+      chipName.classList.toggle("text-nec-gray", !name);
+      if (avatarUrl) {
+        chipAvatar.src = avatarUrl;
+        chipAvatar.classList.remove("hidden");
+      } else {
+        chipAvatar.classList.add("hidden");
+      }
+    }
+
+    function personLabel(openId) {
+      if (!openId) return "—";
+      if (currentUser && openId === currentUser.open_id) return currentUser.name || "我";
+      return `ou_…${openId.slice(-6)}`;
+    }
+
+    /* ---------- 规格参数：键值对编辑器 + 类型模板 ---------- */
+    const SPEC_TEMPLATES = {
+      controller: ["主控芯片", "工作电压", "工作电流", "通信接口", "防护等级"],
+      sensor: ["测量范围", "精度", "供电电压", "输出接口", "防护等级"],
+      actuator: ["额定电压", "额定电流", "行程/角度", "负载能力", "防护等级"],
+      motor: ["额定电压", "额定功率", "额定转速", "额定扭矩", "防护等级"],
+      power: ["额定电压", "容量", "充放电倍率", "循环寿命", "防护等级"],
+      communication: ["通信协议", "工作频段", "传输速率", "供电电压", "防护等级"],
+      structure: ["材料", "外形尺寸", "重量", "表面处理", "公差等级"],
+      other: [],
+    };
+
+    function addSpecRow(key = "", value = "", note = "") {
+      const row = document.createElement("div");
+      row.className = "spec-row grid grid-cols-12 gap-2 px-3 py-2 items-center";
+      row.style.borderTop = "1px solid var(--nec-line)";
+      row.innerHTML = `
+        <input type="text" class="spec-key col-span-4 rounded border border-nec-line px-2 py-1.5 text-sm" placeholder="参数名" value="${escapeAttr(key)}" />
+        <input type="text" class="spec-value col-span-4 rounded border border-nec-line px-2 py-1.5 text-sm" placeholder="参数值" value="${escapeAttr(value)}" />
+        <input type="text" class="spec-note col-span-3 rounded border border-nec-line px-2 py-1.5 text-sm" placeholder="备注" value="${escapeAttr(note)}" />
+        <button type="button" class="col-span-1 text-nec-gray hover:text-red-600 text-lg leading-none" onclick="this.closest('.spec-row').remove();scheduleDraftSave()" title="删除本行">×</button>
+      `;
+      document.getElementById("spec-rows").appendChild(row);
+    }
+
+    function specRowsEmpty() {
+      return [...document.querySelectorAll("#spec-rows .spec-key")].every(el => !el.value.trim());
+    }
+
+    function applySpecTemplate() {
+      const type = document.getElementById("submit-form").hardwareType.value;
+      const keys = SPEC_TEMPLATES[type] || [];
+      if (!keys.length) { addSpecRow(); return; }
+      if (!specRowsEmpty() && !confirm("已有参数行，仍要追加类型模板吗？")) return;
+      for (const k of keys) addSpecRow(k);
+      scheduleDraftSave();
+    }
+
+    function serializeSpec() {
+      return [...document.querySelectorAll("#spec-rows .spec-row")]
+        .map(row => {
+          const k = row.querySelector(".spec-key").value.trim();
+          const v = row.querySelector(".spec-value").value.trim();
+          const n = row.querySelector(".spec-note").value.trim();
+          if (!k && !v) return "";
+          return `${k}: ${v}${n ? `（${n}）` : ""}`;
+        })
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    /* ---------- 硬件资料：文件上传（复用 /api/approvals/upload） ---------- */
+    let uploadedFiles = []; // { name, token, url?, size }
+
+    function formatSize(bytes) {
+      if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + " MB";
+      return Math.max(1, Math.round(bytes / 1024)) + " KB";
+    }
+
+    function renderFileList() {
+      const el = document.getElementById("file-list");
+      el.innerHTML = uploadedFiles.map((f, i) => `
+        <div class="flex items-center gap-2 rounded-lg border border-nec-line bg-white px-3 py-2 text-sm">
+          <span class="mono text-xs text-nec-royal font-bold">FILE</span>
+          <span class="text-nec-ink truncate">${escapeHtml(f.name)}</span>
+          <span class="mono text-xs text-nec-gray flex-none">${f.uploading ? "上传中…" : formatSize(f.size || 0)}</span>
+          <button type="button" class="ml-auto text-nec-gray hover:text-red-600 leading-none" onclick="removeFile(${i})" title="移除">×</button>
+        </div>
+      `).join("");
+    }
+
+    function removeFile(i) {
+      uploadedFiles.splice(i, 1);
+      renderFileList();
+      scheduleDraftSave();
+    }
+
+    async function uploadFiles(fileList) {
+      for (const file of fileList) {
+        if (file.size > 10 * 1024 * 1024) {
+          setFieldError("hardwareFiles", `「${file.name}」超过 10MB 上限`);
+          continue;
+        }
+        const entry = { name: file.name, size: file.size, uploading: true };
+        uploadedFiles.push(entry);
+        renderFileList();
+        try {
+          const fd = new FormData();
+          fd.append("file", file);
+          const data = await api("/api/approvals/upload", { method: "POST", body: fd });
+          const saved = data.files?.[0];
+          entry.token = saved?.key || "";
+          entry.name = saved?.name || file.name;
+          entry.size = saved?.size ?? file.size;
+        } catch (err) {
+          uploadedFiles = uploadedFiles.filter(f => f !== entry);
+          setFieldError("hardwareFiles", `「${file.name}」上传失败：${err.message}`);
+        } finally {
+          entry.uploading = false;
+          renderFileList();
+          scheduleDraftSave();
+        }
+      }
+    }
+
+    function collectHardwareFiles() {
+      const batch = parseLines(document.getElementById("files-batch").value).map(line => {
+        const [name, token, url] = line.split("|").map(s => (s || "").trim());
+        return { name, token: token || "manual", ...(url ? { url } : {}) };
+      });
+      const uploaded = uploadedFiles.filter(f => f.token).map(f => ({ name: f.name, token: f.token, size: f.size }));
+      return [...uploaded, ...batch];
+    }
+
+    /* ---------- 设计说明模板 ---------- */
+    function insertDesignTemplate() {
+      const form = document.getElementById("submit-form");
+      const tpl = designNotesTemplate ||
+        "【硬件设计说明模板】\n\n1. 设计背景与目标：\n2. 关键规格参数：\n3. 选型理由与替代方案：\n4. 安全与可靠性考虑：\n5. 测试验证计划：\n6. 相关文档与标准：\n";
+      form.designNotes.value = form.designNotes.value.trim()
+        ? form.designNotes.value.replace(/\s*$/, "\n") + tpl
+        : tpl;
+      form.designNotes.focus();
+      scheduleDraftSave();
+    }
+
+    /* ---------- 草稿（localStorage 自动保存 + 恢复） ---------- */
+    const DRAFT_KEY = "hw-review-draft";
+    let draftSaveTimer = null;
+
+    function collectFormState() {
+      const form = document.getElementById("submit-form");
+      return {
+        projectId: form.projectId.value,
+        hardwareName: form.hardwareName.value,
+        hardwareType: form.hardwareType.value,
+        hardwareVersion: form.hardwareVersion.value,
+        designerId: form.designerId.value,
+        designerName: document.getElementById("designer-name").textContent,
+        spec: [...document.querySelectorAll("#spec-rows .spec-row")].map(row => ({
+          key: row.querySelector(".spec-key").value,
+          value: row.querySelector(".spec-value").value,
+          note: row.querySelector(".spec-note").value,
+        })),
+        filesBatch: document.getElementById("files-batch").value,
+        uploadedFiles: uploadedFiles.filter(f => f.token).map(({ name, token, size }) => ({ name, token, size })),
+        designNotes: form.designNotes.value,
+        savedAt: new Date().toISOString(),
+      };
+    }
+
+    function saveDraft(manual = false) {
+      const state = collectFormState();
+      const hasContent = state.projectId || state.hardwareName || state.designNotes ||
+        state.spec.some(r => r.key || r.value) || state.uploadedFiles.length || state.filesBatch;
+      if (!hasContent && !manual) return;
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(state));
+      const el = document.getElementById("draft-status");
+      el.textContent = `草稿已保存 ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`;
+    }
+
+    function scheduleDraftSave() {
+      clearTimeout(draftSaveTimer);
+      draftSaveTimer = setTimeout(() => saveDraft(false), 600);
+    }
+
+    function applyDraft(state) {
+      const form = document.getElementById("submit-form");
+      form.projectId.value = state.projectId || "";
+      form.hardwareName.value = state.hardwareName || "";
+      if (state.hardwareType) form.hardwareType.value = state.hardwareType;
+      form.hardwareVersion.value = state.hardwareVersion || "";
+      if (state.designerId) {
+        form.designerId.value = state.designerId;
+        renderDesignerChip(state.designerName && state.designerName !== "加载中…" ? state.designerName : personLabel(state.designerId),
+          state.designerId === currentUser?.open_id ? currentUser?.avatar_url : undefined);
+      }
+      document.getElementById("spec-rows").innerHTML = "";
+      for (const r of state.spec || []) addSpecRow(r.key, r.value, r.note);
+      document.getElementById("files-batch").value = state.filesBatch || "";
+      uploadedFiles = (state.uploadedFiles || []).map(f => ({ ...f }));
+      renderFileList();
+      form.designNotes.value = state.designNotes || "";
+    }
+
+    function checkDraft() {
+      let state = null;
+      try { state = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); } catch {}
+      if (!state) return;
+      const hasContent = state.projectId || state.hardwareName || state.designNotes || (state.uploadedFiles || []).length;
+      if (!hasContent) return;
+      document.getElementById("draft-time").textContent =
+        state.savedAt ? `（${new Date(state.savedAt).toLocaleString("zh-CN")}）` : "";
+      document.getElementById("draft-banner").classList.remove("hidden");
+      pendingDraft = state;
+    }
+
+    let pendingDraft = null;
+    function restoreDraft() {
+      if (pendingDraft) applyDraft(pendingDraft);
+      document.getElementById("draft-banner").classList.add("hidden");
+    }
+
+    function discardDraft() {
+      localStorage.removeItem(DRAFT_KEY);
+      pendingDraft = null;
+      document.getElementById("draft-banner").classList.add("hidden");
+    }
+
+    /* ---------- 字段级校验 ---------- */
+    function setFieldError(field, msg) {
+      const errEl = document.querySelector(`.field-error[data-for="${field}"]`);
+      if (!errEl) return;
+      errEl.textContent = msg || "";
+      errEl.classList.toggle("hidden", !msg);
+      const form = document.getElementById("submit-form");
+      const input = form[field];
+      if (input && input.classList) input.classList.toggle("input-invalid", !!msg);
+      if (field === "hardwareFiles") document.getElementById("file-drop").classList.toggle("input-invalid", !!msg);
+    }
+
+    function validateSubmitForm() {
+      const form = document.getElementById("submit-form");
+      const checks = [
+        ["projectId", form.projectId.value.trim(), "请填写项目编号"],
+        ["hardwareName", form.hardwareName.value.trim(), "请填写硬件名称"],
+        ["hardwareVersion", form.hardwareVersion.value.trim(), "请填写硬件版本"],
+        ["designerId", form.designerId.value.trim(), "请选择设计负责人"],
+        ["hardwareFiles", collectHardwareFiles().length, "请至少上传或导入一条硬件资料"],
+        ["designNotes", form.designNotes.value.trim(), "请填写设计说明"],
+      ];
+      let firstBad = null;
+      for (const [field, val, msg] of checks) {
+        const bad = !val || (typeof val === "string" && !val.trim());
+        setFieldError(field, bad ? msg : "");
+        if (bad && !firstBad) firstBad = field;
+      }
+      if (firstBad) {
+        const errEl = document.querySelector(`.field-error[data-for="${firstBad}"]`);
+        errEl?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return !firstBad;
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+    function escapeAttr(s) { return escapeHtml(s); }
 
     function renderStatus(status) {
       const s = statusMap[status] || { label: status, color: "background:#EEF1F8;color:#5A6472" };
@@ -376,6 +744,26 @@
 
     function renderType(t) {
       return typeMap[t] || t || "其他";
+    }
+
+    // 流程步骤条：提交 → 预约会议 → 保存纪要 → 评审报告 → 评估归档
+    const FLOW_STEPS = ["提交评审单", "预约会议", "保存纪要", "评审报告", "评估归档"];
+    const STATUS_STEP = {
+      draft: 0, pending_review: 1, in_review: 2, rectifying: 2,
+      report_generating: 3, assessing: 4, approved: 4, archived: 5,
+    };
+    function renderStepBar(status) {
+      const cur = STATUS_STEP[status] ?? 0;
+      const parts = FLOW_STEPS.map((label, i) => {
+        const done = i < cur || cur >= FLOW_STEPS.length;
+        const current = i === cur;
+        const cls = done ? "done" : current ? "current" : "";
+        const dot = done ? "✓" : String(i + 1).padStart(2, "0");
+        return `<span class="flow-step ${cls}"><span class="dot">${dot}</span><span class="lbl">${label}</span></span>`;
+      });
+      return `<div class="mt-4 flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">${
+        parts.map((p, i) => (i ? `<span class="flow-conn ${i <= cur ? "done" : ""}"></span>${p}` : p)).join("")
+      }</div>`;
     }
 
     async function loadReviews() {
@@ -416,7 +804,7 @@
             </div>
             <p class="text-sm text-nec-gray mt-2 line-clamp-2">${r.designNotes}</p>
             <div class="mt-3 flex gap-3 text-xs items-center">
-              <span class="text-nec-gray">负责人：<span class="mono">${r.designerId}</span></span>
+              <span class="text-nec-gray">负责人：<span title="${r.designerId}">${personLabel(r.designerId)}</span></span>
               ${r.meetingLink ? `<a href="${r.meetingLink}" target="_blank" class="link hover:underline" onclick="event.stopPropagation()">会议链接 →</a>` : ""}
             </div>
           </div>
@@ -469,8 +857,9 @@
               </div>
               ${renderStatus(r.status)}
             </div>
+            ${renderStepBar(r.status)}
             <div class="mt-4 grid grid-cols-2 gap-4 text-sm">
-              <div><span class="text-nec-gray">设计负责人：</span><span class="mono">${r.designerId}</span></div>
+              <div><span class="text-nec-gray">设计负责人：</span><span title="${r.designerId}">${personLabel(r.designerId)}</span></div>
               <div><span class="text-nec-gray">创建时间：</span><span class="mono">${new Date(r.createdAt).toLocaleString()}</span></div>
               ${r.meetingId ? `<div><span class="text-nec-gray">会议号：</span><span class="mono">${r.meetingId}</span></div>` : ""}
               ${r.meetingStartTime ? `<div><span class="text-nec-gray">会议时间：</span><span class="mono">${new Date(r.meetingStartTime).toLocaleString()}</span></div>` : ""}
@@ -731,37 +1120,84 @@
       e.preventDefault();
       const form = e.target;
       const resultEl = document.getElementById("submit-result");
-      const hardwareFiles = parseLines(form.hardwareFiles.value).map(line => {
-        const [name, token, url] = line.split("|").map(s => (s || "").trim());
-        return { name, token: token || "manual", ...(url ? { url } : {}) };
-      });
+      if (!validateSubmitForm()) {
+        resultEl.style.color = "#C22E2E";
+        resultEl.textContent = "请先补全上方标记为必填的内容";
+        return;
+      }
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = "提交中…";
       try {
-        if (!hardwareFiles.length) throw new Error("请至少填写一条硬件资料");
         const data = await api("/api/hardware-review/submit", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            projectId: form.projectId.value,
-            hardwareName: form.hardwareName.value,
+            projectId: form.projectId.value.trim(),
+            hardwareName: form.hardwareName.value.trim(),
             hardwareType: form.hardwareType.value,
-            hardwareVersion: form.hardwareVersion.value,
-            designerId: form.designerId.value,
-            hardwareFiles,
-            designNotes: form.designNotes.value,
-            specification: form.specification.value,
+            hardwareVersion: form.hardwareVersion.value.trim(),
+            designerId: form.designerId.value.trim(),
+            hardwareFiles: collectHardwareFiles(),
+            designNotes: form.designNotes.value.trim(),
+            specification: serializeSpec(),
           }),
         });
-        resultEl.className = "mt-3 text-sm";
+        localStorage.removeItem(DRAFT_KEY);
+        document.getElementById("draft-status").textContent = "";
         resultEl.style.color = "#177A4C";
         resultEl.textContent = `提交成功：${data.reviewId}`;
         form.reset();
+        uploadedFiles = [];
+        renderFileList();
+        document.getElementById("spec-rows").innerHTML = "";
         router("list");
       } catch (err) {
-        resultEl.className = "mt-3 text-sm";
         resultEl.style.color = "#C22E2E";
         resultEl.textContent = "失败：" + err.message;
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "提交评审单";
       }
     });
+
+    /* ---------- 提交页交互接线：上传拖放 / 代提交 / 自动保存 ---------- */
+    (function wireSubmitForm() {
+      const form = document.getElementById("submit-form");
+      const drop = document.getElementById("file-drop");
+      const input = document.getElementById("file-input");
+
+      drop.addEventListener("click", () => input.click());
+      input.addEventListener("change", () => { uploadFiles(input.files); input.value = ""; });
+      ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => {
+        e.preventDefault(); drop.classList.add("dragover");
+      }));
+      ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => {
+        e.preventDefault(); drop.classList.remove("dragover");
+      }));
+      drop.addEventListener("drop", e => uploadFiles(e.dataTransfer.files));
+
+      const override = document.getElementById("designer-override");
+      override.addEventListener("input", () => {
+        const v = override.value.trim();
+        if (v) {
+          form.designerId.value = v;
+          renderDesignerChip(personLabel(v));
+        } else if (currentUser) {
+          form.designerId.value = currentUser.open_id;
+          renderDesignerChip(currentUser.name, currentUser.avatar_url);
+        }
+        scheduleDraftSave();
+      });
+
+      form.addEventListener("input", e => {
+        if (e.target.classList?.contains("field-error")) return;
+        if (e.target.name) setFieldError(e.target.name, "");
+        scheduleDraftSave();
+      });
+      document.getElementById("files-batch").addEventListener("input", scheduleDraftSave);
+      document.getElementById("spec-rows").addEventListener("input", scheduleDraftSave);
+    })();
 
     async function init() {
       await loadCurrentUser();

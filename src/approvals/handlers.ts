@@ -8,15 +8,17 @@
  */
 
 import { resolveUserRole } from "../auth/role";
-import { fieldNum, fieldText, getTenantAccessToken, listBitableRecords } from "../feishu/bitable";
+import { fieldNum, fieldText, findFieldKey, firstFieldText, getTenantAccessToken, listBitableRecords } from "../feishu/bitable";
 import { notifyFeishu } from "../feishu/bot";
 import { json } from "../shared/http";
 import { applyRenewedSession, resolveSession } from "../shared/session";
+import { buildRecordLink } from "../validation/service";
 import {
   APPROVAL_TYPES,
   ApprovalError,
   getFlowBase,
   getFlowsConfig,
+  isApprover,
   type ApprovalType,
   type FlowConfig,
 } from "./flows";
@@ -66,7 +68,7 @@ export async function handleApprovalAction(
   if (!session) return json({ error: "unauthorized" }, 401);
   if (!APPROVAL_TYPES.includes(type as ApprovalType)) return applyRenewedSession(json({ error: `未知流程 type：${type}` }, 400), session.renewed);
   if (!APPROVAL_ACTIONS.includes(action as ApprovalAction)) return applyRenewedSession(json({ error: `未知动作：${action}` }, 400), session.renewed);
-  const body = (await request.json().catch(() => ({}))) as { comment?: string; link?: string };
+  const body = (await request.json().catch(() => ({}))) as { comment?: string; link?: string; reason?: string };
   try {
     return applyRenewedSession(json(
       await runApprovalAction(env, {
@@ -75,6 +77,7 @@ export async function handleApprovalAction(
         action: action as ApprovalAction,
         comment: body.comment,
         link: body.link,
+        reason: body.reason,
         user: session.user,
         role: await resolveUserRole(env, session.user, ctx),
       }),
@@ -85,7 +88,79 @@ export async function handleApprovalAction(
   }
 }
 
-/** 我的申请列表（R-01「我的报销」数据源）：按 open_id 过滤 → 提交时间降序 → 前 20 条 */
+/**
+ * 凭证上传（R-01 报销助手应用页）：multipart 文件 → R2 receipts/ 存档，返回 key 供
+ * POST /api/approvals 的 fields（如「发票照片」）引用。≤10MB，与 /api/reimburse 同一存档前缀。
+ */
+export async function handleApprovalUpload(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
+  const session = await resolveSession(env, request, ctx);
+  if (!session) return json({ error: "请先登录后再上传凭证" }, 401);
+
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return json({ error: "请求必须是 multipart/form-data" }, 400);
+  }
+
+  const day = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const files: Array<{ field: string; key: string; name: string; size: number }> = [];
+  for (const [field, value] of form.entries()) {
+    if (!(value instanceof File) || value.size === 0) continue;
+    if (value.size > 10 * 1024 * 1024) {
+      return applyRenewedSession(json({ error: `文件超过 10MB 上限（${value.name || field}）` }, 400), session.renewed);
+    }
+    const safe = (value.name || field).replace(/[^\w.\-一-龥]+/g, "_").slice(-60);
+    const key = `receipts/${day}/${crypto.randomUUID()}-${safe}`;
+    await env.APPS_BUCKET.put(key, await value.arrayBuffer(), {
+      httpMetadata: { contentType: value.type || "application/octet-stream" },
+    });
+    files.push({ field, key, name: value.name || field, size: value.size });
+  }
+  if (!files.length) return applyRenewedSession(json({ error: "未收到文件" }, 400), session.renewed);
+  return applyRenewedSession(json({ ok: true, files }), session.renewed);
+}
+
+/**
+ * 待我审批列表（G-02 各流程申请页「待我审批」数据源）：当前角色可审（isApprover）且状态=审批中的行，
+ * 提交时间升序（先提交先审）。非审批人返回空列表（不 403，前端据此只显示空态）。
+ */
+export async function handleApprovalPending(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
+  const session = await resolveSession(env, request, ctx);
+  if (!session) return json({ error: "unauthorized" }, 401);
+  const url = new URL(request.url);
+  const type = (url.searchParams.get("type") ?? "") as ApprovalType;
+  if (!APPROVAL_TYPES.includes(type)) {
+    return applyRenewedSession(json({ error: `type 必须是：${APPROVAL_TYPES.join(" | ")}` }, 400), session.renewed);
+  }
+  const role = await resolveUserRole(env, session.user, ctx);
+  const cfg = await getFlowsConfig(env);
+  const flow = cfg[type];
+  if (!flow.tableId || !isApprover(role, flow.approvers)) {
+    return applyRenewedSession(json({ records: [] }), session.renewed);
+  }
+  const base = await getFlowBase(env, flow);
+  if (!base) return applyRenewedSession(json({ records: [] }), session.renewed);
+  const token = await getTenantAccessToken(env);
+  const records = await listBitableRecords(token, base, flow.tableId);
+  const statusKey = findFieldKey(records, [/^状态$/, /状态/, /进度/]) ?? "状态";
+  const pending = records
+    .filter((r) => fieldText(r.fields[statusKey]) === "审批中")
+    .sort((a, b) => (fieldNum(a.fields["提交时间"]) ?? 0) - (fieldNum(b.fields["提交时间"]) ?? 0))
+    .slice(0, 20);
+  return applyRenewedSession(json({
+    records: pending.map((r) => ({
+      application_id: fieldText(r.fields["申请单号"]),
+      title: firstFieldText(r),
+      applicant: fieldText(r.fields["申请人"]),
+      record_id: r.record_id,
+      url: buildRecordLink(base, flow.tableId, r.record_id),
+      submitted_at: fieldNum(r.fields["提交时间"]) ?? null,
+    })),
+  }), session.renewed);
+}
+
+/** 我的申请列表（各流程申请页「我的申请」数据源）：按 open_id 过滤 → 提交时间降序 → 前 20 条 */
 export async function handleApprovalMine(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
   const session = await resolveSession(env, request, ctx);
   if (!session) return json({ error: "unauthorized" }, 401);
@@ -108,18 +183,17 @@ export async function handleApprovalMine(request: Request, env: Env, ctx?: Execu
   return applyRenewedSession(json({
     records: mine.map((r) => {
       const f = r.fields;
+      // 全量字段透传（数字保持 number，其余转文本），各流程申请页按各自字段名取用
+      const fields: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(f)) {
+        fields[k] = typeof v === "number" ? v : fieldText(v);
+      }
       return {
         application_id: fieldText(f["申请单号"]),
         status: fieldText(f["状态"]),
-        fields: {
-          申请单号: fieldText(f["申请单号"]),
-          事项: fieldText(f["事项"]),
-          金额: fieldNum(f["金额"]),
-          状态: fieldText(f["状态"]),
-          提交时间: fieldNum(f["提交时间"]),
-          审批人: fieldText(f["审批人"]),
-          审批意见: fieldText(f["审批意见"]),
-        },
+        record_id: r.record_id,
+        url: buildRecordLink(base, flow.tableId, r.record_id),
+        fields,
       };
     }),
   }), session.renewed);

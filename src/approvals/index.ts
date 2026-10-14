@@ -4,7 +4,7 @@
  * /api/approvals 前缀的三类端点分发到 ./handlers；引擎核心在 ./engine，流程配置在 ./flows。
  */
 
-import { handleApprovalAction, handleApprovalMine, handleApprovalSubmit } from "./handlers";
+import { handleApprovalAction, handleApprovalMine, handleApprovalPending, handleApprovalSubmit, handleApprovalUpload } from "./handlers";
 
 export async function handleApprovals(
   request: Request,
@@ -17,6 +17,12 @@ export async function handleApprovals(
   }
   if (pathname === "/api/approvals/mine" && request.method === "GET") {
     return await handleApprovalMine(request, env, ctx);
+  }
+  if (pathname === "/api/approvals/pending" && request.method === "GET") {
+    return await handleApprovalPending(request, env, ctx);
+  }
+  if (pathname === "/api/approvals/upload" && request.method === "POST") {
+    return await handleApprovalUpload(request, env, ctx);
   }
   const actionMatch = pathname.match(/^\/api\/approvals\/([a-z]+)\/([^/]+)\/(approve|reject|pay|start|archive|arrive|issue|publish)$/);
   if (actionMatch && request.method === "POST") {

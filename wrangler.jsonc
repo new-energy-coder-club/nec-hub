@@ -25,6 +25,14 @@
       "preview_bucket_name": "nec-hub-apps-preview"
     }
   ],
+  "d1_databases": [
+    {
+      "binding": "ERP_DB",
+      "database_name": "nec-hub-erp",
+      "database_id": "aefb1970-6a30-4be5-aa4d-6481f3f89727",
+      "migrations_dir": "migrations/erp"
+    }
+  ],
   "routes": [
     {
       "pattern": "hub.newenergycoder.club",

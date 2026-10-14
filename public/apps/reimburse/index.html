@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>报销助手 · 费用报销单 · NEC HUB</title>
+<link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+<link rel="stylesheet" href="/brand/nec-tokens.css" />
+<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin />
+<link rel="dns-prefetch" href="https://cdn.tailwindcss.com" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // VI 规范：把 NEC 品牌 tokens 映射进 Tailwind，不使用默认蓝/青色系
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          nec: {
+            royal: "#1A2FA0",
+            "royal-light": "#3449B9",
+            "royal-dark": "#10277E",
+            "royal-100": "#E8ECFB",
+            navy: "#141B5E",
+            ink: "#0B1033",
+            cyan: "#1FA9E8",
+            sky: "#4FC3F7",
+            fog: "#F4F6FB",
+            gray: "#5A6472",
+            line: "#D9DFF0",
+          },
+        },
+        fontFamily: {
+          sans: ["Source Han Sans SC", "思源黑体 CN", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "system-ui", "sans-serif"],
+          mono: ["IBM Plex Mono", "ui-monospace", "Consolas", "monospace"],
+        },
+      },
+    },
+  };
+</script>
+<style>
+  body { font-family: var(--nec-font-cn); background: #EEF1F7; color: var(--nec-ink); }
+  .mono { font-family: var(--nec-font-mono); }
+  .ocr-filled { border-color: var(--nec-cyan) !important; background: #EAF7FD; transition: background 1.2s ease, border-color 1.2s ease; }
+
+  /* ===== ERP 骨架 ===== */
+  .erp-topbar {
+    background: var(--nec-navy); color: #fff;
+    position: sticky; top: 0; z-index: 40;
+  }
+  .erp-breadcrumb a { color: #9FB3FF; }
+  .erp-breadcrumb a:hover { color: #fff; }
+
+  .erp-toolbar {
+    background: #fff; border-bottom: 1px solid var(--nec-line);
+    position: sticky; z-index: 30;
+  }
+  .tool-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: 600;
+    border: 1px solid transparent; white-space: nowrap; transition: all .15s ease;
+  }
+  .tool-btn.primary { background: var(--nec-navy); color: #fff; }
+  .tool-btn.primary:hover:not(:disabled) { background: var(--nec-royal-dark); }
+  .tool-btn.ghost { border-color: var(--nec-line); color: var(--nec-navy); background: #fff; }
+  .tool-btn.ghost:hover:not(:disabled) { border-color: var(--nec-cyan); color: var(--nec-cyan); }
+  .tool-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  .erp-section { background: #fff; border: 1px solid var(--nec-line); border-radius: 6px; }
+  .erp-section > summary {
+    cursor: pointer; list-style: none; user-select: none;
+    padding: 10px 16px; font-weight: 700; font-size: 14px; color: var(--nec-navy);
+    border-bottom: 1px solid transparent; display: flex; align-items: center; gap: 6px;
+  }
+  .erp-section[open] > summary { border-bottom-color: var(--nec-line); }
+  .erp-section > summary::-webkit-details-marker { display: none; }
+  .erp-section > summary::before {
+    content: ""; display: inline-block; width: 0; height: 0;
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 6px solid var(--nec-gray); transition: transform .15s ease;
+    transform: rotate(-90deg);
+  }
+  .erp-section[open] > summary::before { transform: rotate(0); }
+  .erp-section .body { padding: 16px; }
+
+  /* 基本信息表单域：ERP 下划线风格 */
+  .ef { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .ef > label { font-size: 12px; color: var(--nec-gray); }
+  .ef > label .req { color: #DC2626; margin-left: 1px; }
+  .ef .ef-ctl {
+    border: none; border-bottom: 1px solid var(--nec-line); background: transparent;
+    padding: 5px 2px; font-size: 14px; color: var(--nec-ink); width: 100%; border-radius: 0;
+  }
+  .ef .ef-ctl:focus { outline: none; border-bottom-color: var(--nec-cyan); box-shadow: 0 1px 0 var(--nec-cyan); }
+  .ef .ef-ctl[readonly] { color: var(--nec-gray); background: transparent; }
+  .ef .ef-ctl.input { border: none; border-bottom: 1px solid var(--nec-line); background: transparent; }
+  .ef .ef-ctl.input:focus { outline: none; border-bottom-color: var(--nec-cyan); box-shadow: 0 1px 0 var(--nec-cyan); }
+  .ef-static { padding: 5px 2px; font-size: 14px; border-bottom: 1px solid var(--nec-line); min-height: 32px; }
+
+  /* 明细表 */
+  .line-table { width: 100%; border-collapse: collapse; min-width: 860px; }
+  .line-table th {
+    background: #F5F7FC; color: var(--nec-gray); font-size: 12px; font-weight: 600;
+    padding: 8px 8px; text-align: left; border-bottom: 1px solid var(--nec-line); white-space: nowrap;
+  }
+  .line-table td { padding: 4px 8px; border-bottom: 1px solid #EDF0F7; font-size: 13px; vertical-align: middle; }
+  .line-table tr.selected td { background: var(--nec-royal-100); }
+  .line-table tbody tr { cursor: pointer; }
+  .line-table tbody tr:hover td { background: #F0F5FF; }
+  .line-table tr.selected:hover td { background: var(--nec-royal-100); }
+  .line-input {
+    width: 100%; border: 1px solid transparent; background: transparent; border-radius: 3px;
+    padding: 4px 6px; font-size: 13px;
+  }
+  .line-input:focus { outline: none; border-color: var(--nec-cyan); background: #fff; }
+  .line-input.ng { border-color: #FCA5A5; background: #FEF2F2; }
+  th.req::before { content: "*"; color: #DC2626; margin-right: 2px; }
+
+  .link-btn { color: var(--nec-cyan); font-size: 13px; font-weight: 600; }
+  .link-btn:hover { color: #1891c9; }
+  .link-btn.danger { color: #DC2626; }
+  .link-btn:disabled { color: var(--nec-line); cursor: not-allowed; }
+
+  .status-badge {
+    display: inline-block; padding: 2px 10px; border-radius: 9999px;
+    font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap;
+  }
+
+  /* 弹窗（费用项目 / 流程图） */
+  .modal-mask {
+    position: fixed; inset: 0; background: rgba(11,16,51,.45); z-index: 50;
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-box {
+    background: #fff; border-radius: 8px; width: 100%; max-width: 880px;
+    max-height: 86vh; display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(11,16,51,.3);
+  }
+  .modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--nec-line);
+  }
+  .tree-item { padding: 7px 12px; font-size: 13px; cursor: pointer; border-radius: 4px; }
+  .tree-item:hover { background: var(--nec-fog); }
+  .tree-item.on { background: var(--nec-royal-100); color: var(--nec-navy); font-weight: 700; }
+  .pick-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #F0F2F8; }
+  .pick-row:hover { background: #F0F5FF; }
+
+  /* SOP 校验 */
+  .sop-item { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; padding: 5px 0; }
+  .sop-dot {
+    flex: none; width: 18px; height: 18px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; margin-top: 1px;
+  }
+  .sop-pass { background: #E8F8EF; color: #15803D; }
+  .sop-fail { background: #FDECEC; color: #DC2626; }
+  .sop-item.fail { color: #B91C1C; }
+  .sop-item.pass { color: var(--nec-gray); }
+
+  /* 附件槽 */
+  .attach-slot {
+    border: 1.5px dashed var(--nec-line); border-radius: 8px; padding: 14px;
+    text-align: center; cursor: pointer; transition: border-color .15s ease;
+  }
+  .attach-slot:hover { border-color: var(--nec-cyan); }
+  .attach-slot.has { border-style: solid; border-color: var(--nec-cyan); background: #F5FBFE; }
+
+  /* 移动端：基本信息列数收敛 */
+  input, textarea, select { font-size: 16px; }
+  @media (min-width: 640px) { input, textarea, select { font-size: inherit; } }
+  @media (max-width: 639px) {
+    button, a[class*="rounded"], [role="button"] { touch-action: manipulation; }
+    .erp-toolbar { position: static; }
+  }
+  .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+</style>
+</head>
+<body class="min-h-screen">
+
+  <!-- ERP 顶栏 -->
+  <div id="app-topbar" class="erp-topbar">
+    <div class="max-w-6xl mx-auto px-4 h-12 flex items-center gap-3">
+      <img src="/brand/nec-logo.svg" alt="NEC" class="h-6 w-auto" />
+      <span class="font-black text-sm">NEC 中台</span>
+      <span class="text-white/30">|</span>
+      <nav class="erp-breadcrumb text-xs">
+        <a href="/">门户首页</a>
+        <span class="mx-1 text-white/40">/</span>
+        <span class="text-white/80">财务报销</span>
+        <span class="mx-1 text-white/40">/</span>
+        <span class="text-white font-semibold">费用报销单</span>
+      </nav>
+      <span id="topbar-user" class="ml-auto text-xs text-white/70"></span>
+    </div>
+  </div>
+
+  <!-- ERP 工具栏 -->
+  <div class="erp-toolbar" style="top:48px">
+    <div class="max-w-6xl mx-auto px-4 py-2 flex items-center gap-2 flex-wrap">
+      <button id="btn-save" class="tool-btn ghost" title="草稿保存在浏览器本地">💾 保存</button>
+      <button id="btn-submit" class="tool-btn primary">提交</button>
+      <button id="btn-submit-new" class="tool-btn ghost">提交并新增</button>
+      <button id="btn-flow" class="tool-btn ghost">查看流程图</button>
+      <button id="btn-attach" class="tool-btn ghost">查看附件</button>
+      <button id="btn-exit" class="tool-btn ghost">退出</button>
+      <span class="ml-auto flex items-center gap-3">
+        <span class="text-xs text-nec-gray">单据状态</span>
+        <span id="doc-status" class="status-badge" style="background:#9CA3AF">暂存</span>
+      </span>
+    </div>
+  </div>
+
+  <main class="max-w-6xl mx-auto px-4 py-4 space-y-4">
+
+    <!-- 登录门禁 -->
+    <section id="login-gate" class="erp-section hidden">
+      <div class="body flex flex-col sm:flex-row sm:items-center gap-4">
+        <div class="text-3xl">🔐</div>
+        <div class="flex-1">
+          <h2 class="font-bold text-nec-ink">登录后使用报销助手</h2>
+          <p class="text-sm text-nec-gray mt-1">使用飞书账号登录 NEC 中台。发票识别全程在浏览器本地完成，凭证文件仅存入团队 R2 存档。</p>
+        </div>
+        <button id="login-btn" class="tool-btn primary">飞书登录</button>
+      </div>
+    </section>
+
+    <div id="app-body" class="space-y-4 hidden">
+
+      <!-- 基本信息 -->
+      <details class="erp-section" open>
+        <summary>基本信息</summary>
+        <div class="body">
+          <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-x-8 gap-y-4">
+            <div class="ef">
+              <label>单据编号<span class="req">*</span></label>
+              <div id="doc-no" class="ef-static mono text-nec-gray">提交后自动生成</div>
+            </div>
+            <div class="ef">
+              <label>单据类型<span class="req">*</span></label>
+              <div class="ef-static">标准报销单</div>
+            </div>
+            <div class="ef">
+              <label>申请日期<span class="req">*</span></label>
+              <input id="doc-date" type="date" class="ef-ctl" readonly />
+            </div>
+            <div class="ef">
+              <label>申请人<span class="req">*</span></label>
+              <div id="doc-applicant" class="ef-static">—</div>
+            </div>
+            <div class="ef">
+              <label>所属组别</label>
+              <div id="doc-group" class="ef-static">—</div>
+            </div>
+            <div class="ef">
+              <label>价税合计（人民币）</label>
+              <div id="doc-total" class="ef-static mono font-black text-nec-navy">¥0.00</div>
+            </div>
+            <div class="ef">
+              <label>结算币别</label>
+              <div class="ef-static">人民币（CNY）</div>
+            </div>
+            <div class="ef">
+              <label>审批人</label>
+              <div class="ef-static">财务 / 队长</div>
+            </div>
+            <div class="ef col-span-2 md:col-span-3 xl:col-span-2">
+              <label>无票说明（整单无发票时必填）</label>
+              <input id="doc-noinv" class="ef-ctl" placeholder="如：小额收据无发票，已附付款截图" />
+            </div>
+            <div class="ef col-span-2 md:col-span-3 xl:col-span-5">
+              <label>备注</label>
+              <input id="doc-note" class="ef-ctl" placeholder="补充说明，如关联任务 / 机构 / 项目" />
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- 报销明细 -->
+      <details class="erp-section" open>
+        <summary>报销明细</summary>
+        <div class="body !pt-2">
+          <div class="flex items-center gap-4 py-2">
+            <button id="btn-add-line" class="link-btn">＋ 增行</button>
+            <button id="btn-del-line" class="link-btn danger">－ 删行</button>
+            <span class="text-xs text-nec-gray ml-auto hidden sm:inline">点击行选中；费用项目/附件 OCR 均作用于选中行</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="line-table">
+              <thead>
+                <tr>
+                  <th class="w-8"></th>
+                  <th class="w-8">#</th>
+                  <th class="req" style="min-width:170px">费用项目</th>
+                  <th class="req" style="min-width:180px">事项说明</th>
+                  <th style="min-width:130px">开票日期</th>
+                  <th style="min-width:130px">发票号</th>
+                  <th class="req" style="min-width:110px">金额（元）</th>
+                  <th style="min-width:120px">备注</th>
+                </tr>
+              </thead>
+              <tbody id="line-body"></tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="6" class="text-right text-xs text-nec-gray font-semibold">合计</td>
+                  <td id="line-total" class="mono font-black text-nec-navy">¥0.00</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </details>
+
+      <!-- 收款信息（存 D1，可存为默认账户下次自动带出） -->
+      <details class="erp-section" open>
+        <summary>收款信息</summary>
+        <div class="body">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-4">
+            <div class="ef">
+              <label>支付方式</label>
+              <select id="p-method" class="ef-ctl">
+                <option value="">请选择</option><option>电汇</option><option>微信</option><option>支付宝</option><option>现金</option>
+              </select>
+            </div>
+            <div class="ef">
+              <label>收款人</label>
+              <input id="p-name" class="ef-ctl" placeholder="默认本人" />
+            </div>
+            <div class="ef">
+              <label>收款账号</label>
+              <input id="p-account" class="ef-ctl mono" placeholder="银行卡号 / 微信 / 支付宝账号" />
+            </div>
+            <div class="ef">
+              <label>开户银行</label>
+              <input id="p-bank" class="ef-ctl" placeholder="电汇必填" />
+            </div>
+          </div>
+          <label class="flex items-center gap-2 mt-3 text-xs text-nec-gray select-none">
+            <input id="p-save-default" type="checkbox" checked /> 存为我的默认收款账户（提交成功后保存，下次自动带出）
+          </label>
+        </div>
+      </details>
+
+      <!-- 附件 -->
+      <details class="erp-section" open>
+        <summary>附件（发票 / 付款凭证 · 本地 OCR 识别回填选中行 · 支持 Ctrl+V 粘贴）</summary>
+        <div class="body">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <div id="slot-receipt" class="attach-slot">
+                <input id="f-receipt" type="file" accept="image/*,application/pdf" class="hidden" />
+                <div class="text-2xl mb-1">🧾</div>
+                <div class="text-sm font-semibold text-nec-navy">发票 / 单据</div>
+                <div class="text-xs text-nec-gray mt-1">点击上传，自动识别金额、日期与发票号（≤10MB）</div>
+              </div>
+              <div id="f-receipt-status" aria-live="polite" class="text-xs text-nec-gray mt-2 min-h-4"></div>
+            </div>
+            <div>
+              <div id="slot-payment" class="attach-slot">
+                <input id="f-payment" type="file" accept="image/*,application/pdf" class="hidden" />
+                <div class="text-2xl mb-1">💳</div>
+                <div class="text-sm font-semibold text-nec-navy">付款凭证（选填）</div>
+                <div class="text-xs text-nec-gray mt-1">微信/支付宝付款截图，可识别金额（≤10MB）</div>
+              </div>
+              <div id="f-payment-status" aria-live="polite" class="text-xs text-nec-gray mt-2 min-h-4"></div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- SOP 校验 -->
+      <details class="erp-section" open>
+        <summary>SOP 校验（财务报销规范 · 全部通过后方可提交）</summary>
+        <div class="body">
+          <div id="sop-list"></div>
+          <div class="flex items-center gap-3 mt-4 pt-3" style="border-top:1px solid var(--nec-line)">
+            <button id="btn-submit-2" class="tool-btn primary">提交报销申请</button>
+            <span id="submit-status" aria-live="polite" class="text-xs text-nec-gray"></span>
+          </div>
+          <div id="success-card" class="hidden mt-4 rounded-lg p-5" style="border:1.5px solid #16A34A;background:#F0FDF4">
+            <div class="flex items-center gap-2 text-green-700 font-bold">✅ 已提交，审批中</div>
+            <p class="mt-2 text-sm text-nec-ink">申请单号：<span id="success-id" class="mono font-black text-nec-navy"></span></p>
+            <p class="mt-1 text-xs text-nec-gray">审批由财务/队长处理，结果将通过飞书群机器人通知；可在下方「我的报销」随时查看状态。</p>
+            <button id="success-again" class="mt-3 link-btn">再报一笔 →</button>
+          </div>
+        </div>
+      </details>
+
+      <!-- 我的报销 -->
+      <details class="erp-section" open>
+        <summary>我的报销（最近 20 条 · 仅本人可见）</summary>
+        <div class="body">
+          <div class="flex justify-end mb-2"><button id="mine-refresh" class="link-btn">刷新</button></div>
+          <div id="mine-list" class="text-sm text-nec-gray">加载中…</div>
+        </div>
+      </details>
+
+      <!-- 制单信息 -->
+      <details class="erp-section">
+        <summary>制单信息</summary>
+        <div class="body flex flex-wrap gap-x-10 gap-y-2 text-sm text-nec-gray">
+          <span>创建人：<b id="creator-name" class="text-nec-ink">—</b></span>
+          <span>创建时间：<b id="creator-time" class="text-nec-ink mono text-xs">—</b></span>
+          <span>数据来源：报销助手（R-01 · 审批与通知中心 PRD V1.1 Plan B）</span>
+        </div>
+      </details>
+    </div>
+  </main>
+
+  <!-- 费用项目选择弹窗 -->
+  <div id="cat-modal" class="modal-mask hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 class="font-bold text-nec-ink">费用项目</h3>
+        <div class="flex items-center gap-3">
+          <input id="cat-search" class="line-input" style="border:1px solid var(--nec-line);width:200px" placeholder="搜索编码/名称" />
+          <button id="cat-close" class="text-nec-gray text-lg leading-none px-1">✕</button>
+        </div>
+      </div>
+      <div class="flex flex-1 min-h-0">
+        <div id="cat-tree" class="w-44 flex-none overflow-y-auto border-r p-2 space-y-0.5" style="border-color:var(--nec-line)"></div>
+        <div class="flex-1 overflow-y-auto" id="cat-list"></div>
+        <div class="w-40 flex-none border-l p-3" style="border-color:var(--nec-line)">
+          <p class="text-xs text-nec-gray mb-2">已选（作用于第 <b id="cat-row-no" class="text-nec-navy">1</b> 行）</p>
+          <p id="cat-selected" class="text-sm font-semibold text-nec-navy break-all">—</p>
+        </div>
+      </div>
+      <div class="modal-head" style="border-top:1px solid var(--nec-line);border-bottom:none">
+        <span class="text-xs text-nec-gray">单击列表项即选定</span>
+        <div class="flex gap-2">
+          <button id="cat-cancel" class="tool-btn ghost">取消</button>
+          <button id="cat-ok" class="tool-btn primary">确定</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 流程图弹窗 -->
+  <div id="flow-modal" class="modal-mask hidden">
+    <div class="modal-box" style="max-width:640px">
+      <div class="modal-head">
+        <h3 class="font-bold text-nec-ink">报销审批流程</h3>
+        <button id="flow-close" class="text-nec-gray text-lg leading-none px-1">✕</button>
+      </div>
+      <div class="p-6 overflow-y-auto">
+        <svg viewBox="0 0 560 240" class="w-full" role="img" aria-label="报销审批流程图">
+          <defs><marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#1FA9E8"/></marker></defs>
+          <g font-family="inherit">
+            <rect x="10" y="30" width="96" height="44" rx="6" fill="#E8ECFB" stroke="#141B5E" stroke-width="1.5"/>
+            <text x="58" y="56" text-anchor="middle" font-size="13" font-weight="700" fill="#141B5E">提交申请</text>
+            <line x1="106" y1="52" x2="146" y2="52" stroke="#1FA9E8" stroke-width="2" marker-end="url(#arr)"/>
+            <rect x="150" y="30" width="120" height="44" rx="6" fill="#fff" stroke="#1FA9E8" stroke-width="1.5"/>
+            <text x="210" y="48" text-anchor="middle" font-size="13" font-weight="700" fill="#141B5E">财务/队长审批</text>
+            <text x="210" y="64" text-anchor="middle" font-size="10" fill="#5A6472">群机器人通知</text>
+            <line x1="270" y1="52" x2="310" y2="52" stroke="#1FA9E8" stroke-width="2" marker-end="url(#arr)"/>
+            <rect x="314" y="30" width="96" height="44" rx="6" fill="#F0FDF4" stroke="#16A34A" stroke-width="1.5"/>
+            <text x="362" y="56" text-anchor="middle" font-size="13" font-weight="700" fill="#15803D">已通过</text>
+            <line x1="410" y1="52" x2="450" y2="52" stroke="#1FA9E8" stroke-width="2" marker-end="url(#arr)"/>
+            <rect x="454" y="30" width="96" height="44" rx="6" fill="#F0FDF4" stroke="#16A34A" stroke-width="1.5"/>
+            <text x="502" y="48" text-anchor="middle" font-size="13" font-weight="700" fill="#15803D">已打款</text>
+            <text x="502" y="64" text-anchor="middle" font-size="10" fill="#5A6472">财务标记</text>
+            <path d="M210 74 C 210 130, 480 130, 502 80" fill="none" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+            <rect x="150" y="150" width="120" height="40" rx="6" fill="#FEF2F2" stroke="#DC2626" stroke-width="1.5"/>
+            <text x="210" y="174" text-anchor="middle" font-size="13" font-weight="700" fill="#DC2626">已驳回（附意见）</text>
+            <path d="M210 74 L 210 146" fill="none" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+            <text x="330" y="220" text-anchor="middle" font-size="11" fill="#5A6472">驳回后修改明细可重新提交（新单号）；状态变更实时推飞书群</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- 附件清单弹窗 -->
+  <div id="attach-modal" class="modal-mask hidden">
+    <div class="modal-box" style="max-width:560px">
+      <div class="modal-head">
+        <h3 class="font-bold text-nec-ink">附件清单</h3>
+        <button id="attach-close" class="text-nec-gray text-lg leading-none px-1">✕</button>
+      </div>
+      <div class="p-5 overflow-y-auto text-sm" id="attach-list"></div>
+    </div>
+  </div>
+
+  <!-- 单据详情弹窗（查看 / 复制为新增） -->
+  <div id="doc-modal" class="modal-mask hidden">
+    <div class="modal-box" style="max-width:760px">
+      <div class="modal-head">
+        <h3 id="doc-modal-title" class="font-bold text-nec-ink">单据详情</h3>
+        <button id="doc-close" class="text-nec-gray text-lg leading-none px-1">✕</button>
+      </div>
+      <div class="p-5 overflow-y-auto text-sm" id="doc-modal-body"></div>
+      <div class="modal-head" style="border-top:1px solid var(--nec-line);border-bottom:none">
+        <span class="text-xs text-nec-gray">复制为新增会带出明细与收款信息，附件需重新上传</span>
+        <div class="flex gap-2">
+          <button id="doc-copy" class="tool-btn primary">复制为新增</button>
+          <button id="doc-close-2" class="tool-btn ghost">关闭</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ========== 基础工具 ========== */
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function $(id) { return document.getElementById(id); }
+const fmtMoney = n => "¥" + Number(n || 0).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/* ========== 费用项目目录（D1 expense_items；未登录/接口失败时用内置兜底） ========== */
+
+const DEFAULT_CATALOG = [
+  { group: "研发费用支出", items: [{ code: "F38.01", name: "材料费" }, { code: "F38.02", name: "差旅费" }, { code: "F38.03", name: "招待费" }, { code: "F38.04", name: "检测费" }, { code: "F38.05", name: "认证费" }, { code: "F38.06", name: "服务费" }] },
+  { group: "生产加工", items: [{ code: "F39.01", name: "打样费" }, { code: "F39.02", name: "外协加工费" }, { code: "F39.03", name: "模具费" }] },
+  { group: "物料采购", items: [{ code: "F40.01", name: "元器件" }, { code: "F40.02", name: "结构件" }, { code: "F40.03", name: "工具耗材" }] },
+  { group: "运营办公", items: [{ code: "F41.01", name: "办公用品" }, { code: "F41.02", name: "快递运费" }, { code: "F41.03", name: "宣传物料" }, { code: "F41.04", name: "团建活动" }] },
+  { group: "其他", items: [{ code: "F99.01", name: "其他费用" }] },
+];
+let CATALOG = DEFAULT_CATALOG;
+
+/* ========== 明细行状态 ========== */
+/* line: { cat, item, date, invno, amount, note } */
+let LINES = [];
+let SELECTED = 0;
+let DOC_STATUS = "暂存"; // 暂存 / 审批中
+
+function newLine() { return { cat: "", item: "", date: "", invno: "", amount: "", note: "" }; }
+
+function renderLines() {
+  const tbody = $("line-body");
+  tbody.innerHTML = LINES.map((l, i) => `
+    <tr data-i="${i}" class="${i === SELECTED ? "selected" : ""}">
+      <td><input type="checkbox" class="line-check" data-i="${i}" /></td>
+      <td class="mono text-nec-gray">${i + 1}</td>
+      <td>
+        <button type="button" class="line-input text-left cat-pick ${!l.cat ? "ng" : ""}" data-i="${i}" style="border:1px solid var(--nec-line);background:#fff;display:flex;justify-content:space-between;align-items:center;gap:4px">
+          <span class="${l.cat ? "" : "text-nec-gray"}">${esc(l.cat || "请选择")}</span><span class="text-nec-gray">🔍</span>
+        </button>
+      </td>
+      <td><input class="line-input ${!l.item ? "ng" : ""}" data-i="${i}" data-k="item" value="${esc(l.item)}" placeholder="如：铝型材打样运费" /></td>
+      <td><input type="date" class="line-input ${l.date && !dateInSeason(l.date) ? "ng" : ""}" data-i="${i}" data-k="date" value="${esc(l.date)}" /></td>
+      <td><input class="line-input mono ${l.invno && !/^\d{8}$|^\d{20}$/.test(l.invno) ? "ng" : ""}" data-i="${i}" data-k="invno" value="${esc(l.invno)}" placeholder="8 或 20 位" /></td>
+      <td><input inputmode="decimal" class="line-input mono text-right ${!validAmount(l.amount) ? "ng" : ""}" data-i="${i}" data-k="amount" value="${esc(l.amount)}" placeholder="0.00" /></td>
+      <td><input class="line-input" data-i="${i}" data-k="note" value="${esc(l.note)}" /></td>
+    </tr>
+  `).join("");
+  const total = LINES.reduce((s, l) => s + (validAmount(l.amount) ? Number(l.amount) : 0), 0);
+  $("line-total").textContent = fmtMoney(total);
+  $("doc-total").textContent = fmtMoney(total);
+}
+
+function validAmount(v) { return /^\d{1,7}(\.\d{1,2})?$/.test(String(v).trim()) && Number(v) > 0; }
+function seasonStart() { return new Date(new Date().getFullYear(), 0, 1); }
+function dateInSeason(s) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(s + "T00:00:00");
+  const today = new Date(); today.setHours(23, 59, 59, 999);
+  return d >= seasonStart() && d <= today;
+}
+
+function bindLineEvents() {
+  $("line-body").addEventListener("input", ev => {
+    const t = ev.target;
+    const i = Number(t.dataset.i), k = t.dataset.k;
+    if (!Number.isInteger(i) || !k) return;
+    LINES[i][k] = t.value;
+    t.classList.remove("ocr-filled");
+    refreshDerived();
+  });
+  $("line-body").addEventListener("click", ev => {
+    const tr = ev.target.closest("tr[data-i]");
+    if (tr) { SELECTED = Number(tr.dataset.i); markSelected(); }
+    const pick = ev.target.closest(".cat-pick");
+    if (pick) { SELECTED = Number(pick.dataset.i); markSelected(); openCatModal(); }
+  });
+  $("line-body").addEventListener("change", ev => {
+    const t = ev.target;
+    if (t.classList.contains("line-check")) return;
+    if (t.dataset.k) refreshDerived(true);
+  });
+}
+function markSelected() {
+  document.querySelectorAll("#line-body tr[data-i]").forEach(tr => {
+    tr.classList.toggle("selected", Number(tr.dataset.i) === SELECTED);
+  });
+}
+/** 轻量刷新：合计 + SOP，不重建表格（避免输入中丢焦点） */
+function refreshDerived(rebuild) {
+  const total = LINES.reduce((s, l) => s + (validAmount(l.amount) ? Number(l.amount) : 0), 0);
+  $("line-total").textContent = fmtMoney(total);
+  $("doc-total").textContent = fmtMoney(total);
+  if (rebuild) renderLines();
+  validateSop();
+  queueDraft();
+}
+
+/* ========== 费用项目选择弹窗 ========== */
+
+let CAT_GROUP = CATALOG[0].group;
+let CAT_TEMP = "";
+
+function openCatModal() {
+  CAT_TEMP = LINES[SELECTED] ? LINES[SELECTED].cat : "";
+  $("cat-row-no").textContent = String(SELECTED + 1);
+  $("cat-search").value = "";
+  renderCatTree();
+  renderCatList();
+  renderCatSelected();
+  $("cat-modal").classList.remove("hidden");
+}
+function closeCatModal() { $("cat-modal").classList.add("hidden"); }
+function renderCatTree() {
+  $("cat-tree").innerHTML = CATALOG.map(g =>
+    `<div class="tree-item ${g.group === CAT_GROUP ? "on" : ""}" data-g="${esc(g.group)}">▸ ${esc(g.group)}</div>`
+  ).join("");
+}
+function renderCatList() {
+  const q = $("cat-search").value.trim().toLowerCase();
+  const groups = q ? CATALOG : CATALOG.filter(g => g.group === CAT_GROUP);
+  const rows = [];
+  groups.forEach(g => g.items.forEach(it => {
+    const full = g.group + "." + it.name;
+    if (q && !full.toLowerCase().includes(q) && !it.code.toLowerCase().includes(q)) return;
+    rows.push(`<div class="pick-row" data-v="${esc(full)}">
+      <input type="checkbox" ${CAT_TEMP === full ? "checked" : ""} style="pointer-events:none" />
+      <span class="mono text-xs text-nec-gray w-14">${esc(it.code)}</span>
+      <span class="flex-1">${esc(full)}</span>
+      <span class="text-xs text-green-600">可用</span>
+    </div>`);
+  }));
+  $("cat-list").innerHTML = rows.join("") || '<p class="p-4 text-sm text-nec-gray">无匹配项</p>';
+}
+function renderCatSelected() { $("cat-selected").textContent = CAT_TEMP || "—"; }
+function pickCat(v) { CAT_TEMP = v; renderCatList(); renderCatSelected(); }
+function confirmCat() {
+  if (CAT_TEMP && LINES[SELECTED]) {
+    LINES[SELECTED].cat = CAT_TEMP;
+    closeCatModal();
+    refreshDerived(true);
+  } else closeCatModal();
+}
+
+/* ========== SOP 校验（财务报销规范） ========== */
+
+function sopChecks() {
+  const filled = LINES.filter(l => l.cat || l.item || l.amount || l.invno || l.date);
+  const linesOk = filled.length > 0 && filled.every(l => l.cat && l.item.trim() && validAmount(l.amount));
+  const invnoOk = filled.every(l => !l.invno.trim() || /^\d{8}$|^\d{20}$/.test(l.invno.trim()));
+  const dateOk = filled.every(l => !l.date || dateInSeason(l.date));
+  const hasReceipt = !!($("f-receipt").files && $("f-receipt").files[0]);
+  const noinv = $("doc-noinv").value.trim();
+  // 与审批引擎 conditional 对齐：无发票照片附件 → 无票说明必填；有票时至少一行填合规发票号
+  const materialOk = hasReceipt || !!noinv;
+  const invnoRequiredOk = noinv ? true : filled.some(l => /^\d{8}$|^\d{20}$/.test(l.invno.trim()));
+  return [
+    { key: "lines", label: "至少一行明细，且每行费用项目 / 事项说明 / 金额齐全（金额 > 0，最多两位小数）", pass: linesOk },
+    { key: "invno", label: "发票号为 8 或 20 位数字；未填「无票说明」时至少一行须填发票号", pass: invnoOk && invnoRequiredOk },
+    { key: "date", label: "开票日期在本赛季内（" + new Date().getFullYear() + " 赛季，且不晚于今天）", pass: dateOk },
+    { key: "material", label: "有发票照片（附件区上传），或填写整单「无票说明」", pass: materialOk },
+    { key: "ocr", label: "无进行中的识别任务", pass: _ocrRunning === 0 },
+  ];
+}
+
+function validateSop() {
+  const checks = sopChecks();
+  const failed = checks.filter(c => !c.pass);
+  $("sop-list").innerHTML =
+    '<p class="mono text-[11px] text-nec-gray tracking-wider mb-1">SOP CHECKLIST · ' +
+    (checks.length - failed.length) + "/" + checks.length + " 通过</p>" +
+    checks.map(c =>
+      '<div class="sop-item ' + (c.pass ? "pass" : "fail") + '">' +
+        '<span class="sop-dot ' + (c.pass ? "sop-pass" : "sop-fail") + '">' + (c.pass ? "✓" : "✕") + "</span>" +
+        "<span>" + esc(c.label) + "</span>" +
+      "</div>"
+    ).join("");
+  const can = failed.length === 0 && DOC_STATUS !== "审批中";
+  $("btn-submit").disabled = !can;
+  $("btn-submit-2").disabled = !can;
+  $("btn-submit-new").disabled = !can;
+  return failed;
+}
+
+/* ========== 草稿（localStorage） ========== */
+
+const DRAFT_KEY = "nec_reimburse_erp_draft";
+let _draftTimer = null;
+function queueDraft() {
+  clearTimeout(_draftTimer);
+  _draftTimer = setTimeout(() => {
+    try {
+      const draft = { lines: LINES, noinv: $("doc-noinv").value, note: $("doc-note").value, savedAt: Date.now() };
+      const hasContent = LINES.some(l => l.cat || l.item || l.amount) || draft.noinv || draft.note;
+      if (hasContent) localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      else localStorage.removeItem(DRAFT_KEY);
+    } catch { /* 隐私模式跳过 */ }
+  }, 400);
+}
+function restoreDraft() {
+  let draft = null;
+  try { draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); } catch { return; }
+  if (!draft) return;
+  if (Array.isArray(draft.lines) && draft.lines.length) LINES = draft.lines.map(l => Object.assign(newLine(), l));
+  if (draft.noinv) $("doc-noinv").value = draft.noinv;
+  if (draft.note) $("doc-note").value = draft.note;
+  if (draft.lines || draft.noinv || draft.note) {
+    $("submit-status").textContent = "📝 已恢复 " + new Date(draft.savedAt).toLocaleString("zh-CN") + " 的未提交草稿（附件需重新上传）";
+  }
+}
+function clearDraft() {
+  clearTimeout(_draftTimer);
+  try { localStorage.removeItem(DRAFT_KEY); } catch {}
+}
+
+/* ========== OCR（Tesseract.js 本地识别，与门户同源） ========== */
+
+const CDN_FASTLY = "https://fastly.jsdelivr.net/npm";
+const CDN_JSDELIVR = "https://cdn.jsdelivr.net/npm";
+const TESS_OPTS = {
+  workerPath: CDN_FASTLY + "/tesseract.js@5/dist/worker.min.js",
+  corePath: CDN_FASTLY + "/tesseract.js-core@5",
+  langPath: "https://tessdata.projectnaptha.com/4.0.0",
+};
+function injectScript(url) {
+  return new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = url;
+    s.onload = res;
+    s.onerror = () => { s.remove(); rej(new Error(url)); };
+    document.head.appendChild(s);
+  });
+}
+let _tessLoading = null;
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  if (!_tessLoading) {
+    _tessLoading = injectScript(CDN_FASTLY + "/tesseract.js@5/dist/tesseract.min.js")
+      .catch(() => injectScript(CDN_JSDELIVR + "/tesseract.js@5/dist/tesseract.min.js"))
+      .then(() => window.Tesseract)
+      .catch(() => { _tessLoading = null; throw new Error("识别引擎加载失败（网络）"); });
+  }
+  return _tessLoading;
+}
+let _pdfLoading = null;
+function loadPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (!_pdfLoading) {
+    _pdfLoading = injectScript(CDN_FASTLY + "/pdfjs-dist@3.11.174/build/pdf.min.js")
+      .catch(() => injectScript(CDN_JSDELIVR + "/pdfjs-dist@3.11.174/build/pdf.min.js"))
+      .then(() => {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = CDN_FASTLY + "/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+        return window.pdfjsLib;
+      })
+      .catch(() => { _pdfLoading = null; throw new Error("PDF 解析组件加载失败（网络）"); });
+  }
+  return _pdfLoading;
+}
+async function ocrPdfText(file, Tesseract, st) {
+  const pdfjsLib = await loadPdfJs();
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const pages = Math.min(pdf.numPages, 3);
+  let text = "";
+  for (let p = 1; p <= pages; p++) {
+    st.textContent = "🔍 PDF 识别中（第 " + p + "/" + pages + " 页，首次需加载识别引擎）…";
+    const page = await pdf.getPage(p);
+    const viewport = page.getViewport({ scale: 2 });
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+    const res = await Tesseract.recognize(canvas, "chi_sim+eng", TESS_OPTS);
+    text += "\n" + ((res && res.data && res.data.text) || "");
+  }
+  return text;
+}
+function parseFinanceText(text) {
+  const t = String(text || "").replace(/[，\s]/g, "");
+  const out = {};
+  const amtPatterns = [
+    /[（(]小写[)）][^0-9]{0,8}(\d{1,7}(?:\.\d{1,2})?)/,
+    /价税合计[^0-9]{0,25}(\d{1,7}(?:\.\d{1,2})?)/,
+    /(?:合计|总计|实付|金额|付款|支付)\D{0,6}(\d{1,7}(?:\.\d{1,2})?)/,
+    /[¥￥]\s*(\d{1,7}(?:\.\d{1,2})?)/
+  ];
+  for (const re of amtPatterns) { const m = t.match(re); if (m) { out.amount = m[1]; break; } }
+  const di = t.match(/开票日期\D{0,4}(20\d{2})[-\/年.]?(\d{1,2})[-\/月.]?(\d{1,2})/);
+  const d = di || t.match(/(20\d{2})[-\/年.](\d{1,2})[-\/月.](\d{1,2})/);
+  if (d) out.date = d[1] + "-" + String(d[2]).padStart(2, "0") + "-" + String(d[3]).padStart(2, "0");
+  const inv = t.match(/发票号码\D{0,4}(\d{20}|\d{8})/) || t.match(/\b(\d{20})\b/);
+  if (inv) out.invno = inv[1];
+  return out;
+}
+
+let _ocrRunning = 0;
+async function recognizeFile(input, kind) {
+  const st = $(kind === 1 ? "f-receipt-status" : "f-payment-status");
+  const slot = $(kind === 1 ? "slot-receipt" : "slot-payment");
+  const f = input.files && input.files[0];
+  if (!f) { slot.classList.remove("has"); validateSop(); return; }
+  slot.classList.add("has");
+  if (f.size > 10 * 1024 * 1024) {
+    st.textContent = "⚠ 文件超过 10MB 上限，请压缩后再上传";
+    input.value = "";
+    slot.classList.remove("has");
+    validateSop();
+    return;
+  }
+  _ocrRunning++;
+  validateSop();
+  st.textContent = "🔍 识别中（首次需加载识别引擎，约十几秒）…";
+  try {
+    const Tesseract = await loadTesseract();
+    let text;
+    if (f.type === "application/pdf") {
+      text = await ocrPdfText(f, Tesseract, st);
+    } else {
+      const res = await Tesseract.recognize(f, "chi_sim+eng", Object.assign({}, TESS_OPTS, {
+        logger: m => { if (m.status === "recognizing text") st.textContent = "🔍 识别中 " + Math.round(m.progress * 100) + "%…"; }
+      }));
+      text = res && res.data && res.data.text;
+    }
+    const found = parseFinanceText(text);
+    // OCR 回填选中行：不覆盖用户手改（行内字段已有值则跳过该字段）
+    const line = LINES[SELECTED] || (LINES.push(newLine()), SELECTED = LINES.length - 1, LINES[SELECTED]);
+    const hints = [], skipped = [];
+    if (found.amount) (line.amount ? skipped : hints).push("金额 ¥" + found.amount) && (line.amount = line.amount || found.amount);
+    if (found.date) (line.date ? skipped : hints).push("日期 " + found.date) && (line.date = line.date || found.date);
+    if (found.invno && kind === 1) (line.invno ? skipped : hints).push("发票号 " + found.invno) && (line.invno = line.invno || found.invno);
+    st.textContent = "✅ " + esc(f.name) + " · 识别回填到第 " + (SELECTED + 1) + " 行："
+      + (hints.length ? hints.join(" · ") : "无新字段（已有值未覆盖）")
+      + (skipped.length ? "；跳过 " + skipped.join(" · ") : "");
+    refreshDerived(true);
+  } catch (e) {
+    st.textContent = "⚠ 识别失败：" + (e.message || e) + "，请手动填写";
+  } finally {
+    _ocrRunning--;
+    validateSop();
+  }
+}
+
+/* ========== 提交 ========== */
+
+async function uploadFiles() {
+  const fd = new FormData();
+  const receipt = $("f-receipt").files && $("f-receipt").files[0];
+  const payment = $("f-payment").files && $("f-payment").files[0];
+  if (receipt) fd.set("receipt", receipt);
+  if (payment) fd.set("payment", payment);
+  if (!receipt && !payment) return [];
+  const resp = await fetch("/api/approvals/upload", { method: "POST", body: fd });
+  const data = await resp.json();
+  if (!resp.ok || data.error) throw new Error(data.error || ("凭证上传失败 HTTP " + resp.status));
+  return data.files || [];
+}
+
+function buildFields() {
+  const filled = LINES.filter(l => l.cat && l.item.trim() && validAmount(l.amount));
+  const total = filled.reduce((s, l) => s + Number(l.amount), 0);
+  const invnos = [...new Set(filled.map(l => l.invno.trim()).filter(Boolean))];
+  const detail = filled.map(l =>
+    l.item.trim() + "（" + l.cat + " ¥" + Number(l.amount).toFixed(2)
+    + (l.date ? " · 开票 " + l.date : "")
+    + (l.invno.trim() ? " · 发票 " + l.invno.trim() : "")
+    + (l.note.trim() ? " · " + l.note.trim() : "") + "）"
+  ).join("\n");
+  const note = $("doc-note").value.trim();
+  return {
+    事项: detail + (note ? "\n备注：" + note : ""),
+    报销金额: Math.round(total * 100) / 100,
+    发票号: invnos.join("、"),
+    无票说明: $("doc-noinv").value.trim(),
+    来源: "报销助手",
+  };
+}
+
+async function submitReimburse(andNew) {
+  const st = $("submit-status");
+  if (DOC_STATUS === "审批中") { st.textContent = "⚠ 当前单据已提交，请「再报一笔」新建"; return; }
+  const failed = validateSop();
+  if (failed.length) { st.textContent = "⚠ 请先补齐 SOP 缺项"; return; }
+  ["btn-submit", "btn-submit-2", "btn-submit-new"].forEach(id => $(id).disabled = true);
+  try {
+    st.textContent = "上传凭证中…";
+    const uploaded = await uploadFiles();
+    const fields = buildFields();
+    const keys = uploaded.map(f => f.key);
+    if (keys.length) fields["发票照片"] = keys.join("\n");
+
+    st.textContent = "发起审批中…";
+    const resp = await fetch("/api/approvals", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "reimburse", fields }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || ("HTTP " + resp.status));
+
+    DOC_STATUS = "审批中";
+    setDocStatus("审批中");
+    $("doc-no").textContent = data.application_id;
+    $("doc-no").classList.remove("text-nec-gray");
+    $("success-id").textContent = data.application_id;
+    $("success-card").classList.remove("hidden");
+    st.textContent = "";
+    clearDraft();
+    loadMine();
+    if (andNew) {
+      const doneId = data.application_id;
+      resetAll();
+      st.textContent = "✅ 已提交 " + doneId + "（审批中），可继续录入下一笔";
+    } else {
+      $("success-card").scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  } catch (e) {
+    st.textContent = "❌ 提交失败：" + (e.message || e);
+  } finally {
+    validateSop();
+  }
+}
+
+function setDocStatus(s) {
+  const colors = { "暂存": "#9CA3AF", "审批中": "#1FA9E8" };
+  const el = $("doc-status");
+  el.textContent = s;
+  el.style.background = colors[s] || "#5A6472";
+}
+
+function resetAll() {
+  DOC_STATUS = "暂存";
+  setDocStatus("暂存");
+  $("doc-no").textContent = "提交后自动生成";
+  $("doc-no").classList.add("text-nec-gray");
+  LINES = [newLine()];
+  SELECTED = 0;
+  $("doc-noinv").value = "";
+  $("doc-note").value = "";
+  $("f-receipt").value = "";
+  $("f-payment").value = "";
+  $("slot-receipt").classList.remove("has");
+  $("slot-payment").classList.remove("has");
+  $("f-receipt-status").textContent = "";
+  $("f-payment-status").textContent = "";
+  $("success-card").classList.add("hidden");
+  $("doc-date").value = new Date().toLocaleDateString("sv-SE");
+  renderLines();
+  validateSop();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ========== 我的报销 ========== */
+
+const STATUS_COLORS = {
+  "审批中": "#1FA9E8", "已通过": "#16A34A", "已驳回": "#DC2626",
+  "已撤销": "#9CA3AF", "已打款": "#15803D", "已完成": "#141B5E",
+};
+function statusBadge(s) {
+  return '<span class="status-badge" style="background:' + (STATUS_COLORS[s] || "#5A6472") + '">' + esc(s || "—") + "</span>";
+}
+async function loadMine() {
+  const box = $("mine-list");
+  box.innerHTML = "加载中…";
+  try {
+    const resp = await fetch("/api/approvals/mine?type=reimburse");
+    if (resp.status === 401) { box.innerHTML = '<p class="text-nec-gray">登录后可见。</p>'; return; }
+    const d = await resp.json();
+    if (d.hint && !(d.records || []).length) {
+      box.innerHTML = '<p class="text-nec-gray">' + esc(d.hint) + "：财务报销底表/flows:config 配置完成后，这里会显示你的申请记录。</p>";
+      return;
+    }
+    const rows = d.records || [];
+    if (!rows.length) { box.innerHTML = '<p class="text-nec-gray">暂无记录，提交第一笔报销吧。</p>'; return; }
+    box.innerHTML = '<div class="overflow-x-auto"><table class="line-table" style="min-width:640px">' +
+      '<thead><tr><th>单号</th><th>事项</th><th>金额</th><th>状态</th><th>提交时间</th><th>审批意见</th></tr></thead><tbody>' +
+      rows.map(r => {
+        const f = r.fields || {};
+        return "<tr style='cursor:default'><td class='mono text-xs whitespace-nowrap'>" + esc(f["申请单号"] || r.application_id || "—") + "</td>" +
+          "<td style='white-space:pre-line'>" + esc(f["事项"] || "—") + "</td>" +
+          "<td class='mono whitespace-nowrap'>" + (f["金额"] != null ? "¥" + esc(String(f["金额"])) : "—") + "</td>" +
+          "<td class='whitespace-nowrap'>" + statusBadge(r.status) + "</td>" +
+          "<td class='text-nec-gray text-xs whitespace-nowrap'>" + (f["提交时间"] ? new Date(f["提交时间"]).toLocaleDateString("zh-CN") : "—") + "</td>" +
+          "<td class='text-nec-gray text-xs'>" + esc(f["审批意见"] || "—") + "</td></tr>";
+      }).join("") + "</tbody></table></div>";
+  } catch (e) {
+    box.innerHTML = '<p class="text-red-500">加载失败，请稍后重试。</p>';
+  }
+}
+
+/* ========== 登录态（与门户同一套飞书 OAuth + /auth/feishu 兑换） ========== */
+
+let ME = { authenticated: false, user: null };
+let HUB_CONFIG = { feishuAppId: null, loginEnabled: false };
+
+async function handleOAuthCallback() {
+  const params = new URLSearchParams(location.search);
+  const code = params.get("code");
+  if (!code) return;
+  const state = params.get("state");
+  const saved = sessionStorage.getItem("nec_oauth_state");
+  history.replaceState(null, "", location.pathname + location.hash);
+  sessionStorage.removeItem("nec_oauth_state");
+  if (state && saved && state !== saved) { alert("登录校验失败（state 不匹配），请重试"); return; }
+  try {
+    const resp = await fetch("/auth/feishu", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || ("HTTP " + resp.status));
+  } catch (e) {
+    alert("飞书登录失败：" + (e.message || e));
+  }
+}
+function startLogin() {
+  if (!HUB_CONFIG.loginEnabled) { alert("中台未配置飞书应用，请联系管理员"); return; }
+  const state = crypto.randomUUID();
+  sessionStorage.setItem("nec_oauth_state", state);
+  const redirect = location.origin + location.pathname;
+  location.href = "https://open.feishu.cn/open-apis/authen/v1/authorize?app_id="
+    + encodeURIComponent(HUB_CONFIG.feishuAppId)
+    + "&redirect_uri=" + encodeURIComponent(redirect)
+    + "&state=" + state;
+}
+function renderAuth() {
+  const authed = !!(ME && ME.authenticated);
+  $("login-gate").classList.toggle("hidden", authed);
+  $("app-body").classList.toggle("hidden", !authed);
+  if (authed && ME.user) {
+    $("topbar-user").textContent = ME.user.name + (ME.user.group ? " · " + ME.user.group : "");
+    $("doc-applicant").textContent = ME.user.name;
+    $("doc-group").textContent = ME.user.group || "—";
+    $("creator-name").textContent = ME.user.name;
+    $("creator-time").textContent = new Date().toLocaleString("zh-CN");
+    loadMine();
+  }
+}
+
+/* ========== 事件绑定与启动 ========== */
+
+$("login-btn").addEventListener("click", startLogin);
+$("btn-add-line").addEventListener("click", () => {
+  LINES.push(newLine());
+  SELECTED = LINES.length - 1;
+  refreshDerived(true);
+});
+$("btn-del-line").addEventListener("click", () => {
+  const checked = [...document.querySelectorAll(".line-check:checked")].map(c => Number(c.dataset.i));
+  const drop = new Set(checked.length ? checked : [SELECTED]);
+  if (LINES.length - drop.size < 1) { alert("至少保留一行明细"); return; }
+  LINES = LINES.filter((_, i) => !drop.has(i));
+  SELECTED = Math.min(SELECTED, LINES.length - 1);
+  refreshDerived(true);
+});
+$("btn-save").addEventListener("click", () => { queueDraft(); $("submit-status").textContent = "💾 草稿已保存到浏览器本地"; });
+$("btn-submit").addEventListener("click", () => submitReimburse(false));
+$("btn-submit-2").addEventListener("click", () => submitReimburse(false));
+$("btn-submit-new").addEventListener("click", () => submitReimburse(true));
+$("btn-flow").addEventListener("click", () => $("flow-modal").classList.remove("hidden"));
+$("flow-close").addEventListener("click", () => $("flow-modal").classList.add("hidden"));
+$("flow-modal").addEventListener("click", ev => { if (ev.target === $("flow-modal")) $("flow-modal").classList.add("hidden"); });
+$("btn-exit").addEventListener("click", () => { location.href = "/"; });
+$("slot-receipt").addEventListener("click", () => $("f-receipt").click());
+$("slot-payment").addEventListener("click", () => $("f-payment").click());
+$("f-receipt").addEventListener("change", function () { recognizeFile(this, 1); });
+$("f-payment").addEventListener("change", function () { recognizeFile(this, 2); });
+$("doc-noinv").addEventListener("input", () => { validateSop(); queueDraft(); });
+$("doc-note").addEventListener("input", () => queueDraft());
+$("success-again").addEventListener("click", resetAll);
+$("mine-refresh").addEventListener("click", loadMine);
+$("cat-close").addEventListener("click", closeCatModal);
+$("cat-cancel").addEventListener("click", closeCatModal);
+$("cat-ok").addEventListener("click", confirmCat);
+$("cat-modal").addEventListener("click", ev => { if (ev.target === $("cat-modal")) closeCatModal(); });
+$("cat-tree").addEventListener("click", ev => {
+  const t = ev.target.closest(".tree-item");
+  if (t) { CAT_GROUP = t.dataset.g; renderCatTree(); renderCatList(); }
+});
+$("cat-list").addEventListener("click", ev => {
+  const t = ev.target.closest(".pick-row");
+  if (t) pickCat(t.dataset.v);
+});
+$("cat-list").addEventListener("dblclick", ev => {
+  const t = ev.target.closest(".pick-row");
+  if (t) { pickCat(t.dataset.v); confirmCat(); }
+});
+$("cat-search").addEventListener("input", renderCatList);
+bindLineEvents();
+
+(async function boot() {
+  // embedded 模式（被门户 iframe 嵌入时隐藏顶栏）
+  const params = new URLSearchParams(location.search);
+  if (params.get("embedded") === "1" || window.parent !== window) {
+    $("app-topbar").style.display = "none";
+    document.querySelector(".erp-toolbar").style.top = "0";
+  }
+  LINES = [newLine()];
+  restoreDraft();
+  renderLines();
+  validateSop();
+  $("doc-date").value = new Date().toLocaleDateString("sv-SE");
+  await handleOAuthCallback();
+  try { HUB_CONFIG = await (await fetch("/api/config")).json(); } catch { /* 保持默认 */ }
+  try { ME = await (await fetch("/api/whoami")).json(); } catch { ME = { authenticated: false, user: null }; }
+  renderAuth();
+})();
+</script>
+</body>
+</html>

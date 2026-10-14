@@ -27,6 +27,8 @@ import {
   updateBitableRecord,
 } from "../feishu/bitable";
 import { readIndex, upsertIndex, inferSkillCategory, normalizeSkillCategory, normalizeSkillTags, type AppEntry, type SkillEntry } from "../hosting";
+import { applyInventoryDelta, type InventoryAction } from "../approvals/inventory";
+import { notifyFeishu } from "../feishu/bot";
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
 
@@ -356,9 +358,73 @@ export async function toolQueryBitable(args: Record<string, unknown>, env: Env, 
   };
 }
 
+/**
+ * update_inventory：物资台账手工调账（仅管理端）。盘点修正/历史补录/联动失败补偿。
+ * 与审批台账联动共用 applyInventoryDelta；负库存放行，返回与群通知中带 ⚠️ 提示。
+ */
+export async function toolUpdateInventory(args: Record<string, unknown>, env: Env, hasMcpToken: boolean) {
+  if (!hasMcpToken) {
+    throw new Error("update_inventory 仅管理端可用（需 MCP_TOKEN）：台账调账会改变团队物资数据");
+  }
+  const action = String(args.action ?? "") as InventoryAction;
+  if (!["inbound", "outbound", "adjust"].includes(action)) {
+    throw new Error("action 必须是 inbound | outbound | adjust");
+  }
+  const itemName = String(args.item_name ?? "").trim();
+  if (!itemName) throw new Error("item_name 不能为空");
+  const operator = String(args.operator ?? "").trim();
+  if (!operator) throw new Error("operator 不能为空（操作人姓名，出库写「领用人」并进通知）");
+  const quantity = Number(args.quantity);
+
+  const result = await applyInventoryDelta(env, {
+    action,
+    itemName,
+    spec: String(args.spec ?? ""),
+    quantity,
+    operator,
+    location: args.location ? String(args.location) : undefined,
+  });
+  if (!result) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: "⚠️ 未配置物资台账：先用 config_dashboard（action=set）写入 tables.inventory，或用 setup_bitable 一键建标准四表。",
+        },
+      ],
+    };
+  }
+  const actionLabel = action === "inbound" ? "入库" : action === "outbound" ? "出库" : "调账";
+  const approvalId = String(args.approval_id ?? "").trim();
+  const note = String(args.note ?? "").trim();
+  await notifyFeishu(
+    env,
+    "hardware",
+    `📦 台账${actionLabel} ${result.itemKey}`,
+    [
+      `${result.before} → ${result.after}（${result.created ? "新建行" : "更新"}）`,
+      `操作人：${operator}`,
+      approvalId ? `关联单号：${approvalId}` : "",
+      note ? `备注：${note}` : "",
+      result.negative ? "⚠️ 库存为负，请尽快补货或核对台账" : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  );
+  return {
+    content: [
+      {
+        type: "text",
+        text:
+          `✅ 台账${actionLabel}完成：${result.itemKey} ${result.before} → ${result.after}（${result.created ? "新建行" : "更新"}，record_id=${result.recordId}）` +
+          (result.negative ? "\n⚠️ 库存为负，已放行并发群告警，请尽快补货或核对台账" : ""),
+      },
+    ],
+  };
+}
+
 export async function toolConfigDashboard(args: Record<string, unknown>, env: Env) {
-  const action = String(args.action ?? "get");
-  if (action === "get") {
+  const action = String(args.action ?? "get");  if (action === "get") {
     const cfg = await getDashboardConfig(env);
     return {
       content: [

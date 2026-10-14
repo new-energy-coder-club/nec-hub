@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>开源社区贡献协议签署 · NEC HUB</title>
+<link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+<link rel="stylesheet" href="/brand/nec-tokens.css" />
+<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin />
+<link rel="dns-prefetch" href="https://cdn.tailwindcss.com" />
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: var(--nec-font-cn); background: var(--nec-fog); color: var(--nec-ink); }
+  .mono { font-family: var(--nec-font-mono); }
+  .terminal {
+    background: var(--nec-navy);
+    color: #D6E4FF;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 30px rgba(11, 16, 51, .25);
+    overflow: hidden;
+  }
+  .terminal-bar { background: rgba(255,255,255,.06); }
+  .dot { width: 10px; height: 10px; border-radius: 9999px; display: inline-block; }
+  .term-body { max-height: 22rem; overflow-y: auto; }
+  .term-body::-webkit-scrollbar { width: 8px; }
+  .term-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 4px; }
+  .prompt { color: var(--nec-sky); }
+  .ok { color: #34D399; }
+  .warn { color: #FBBF24; }
+  .cursor { display: inline-block; width: .55em; background: var(--nec-cyan); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  input, textarea { font-size: 16px; }
+  @media (min-width: 640px) { input, textarea { font-size: inherit; } }
+  .field-input {
+    width: 100%; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.15);
+    border-radius: .5rem; padding: .5rem .75rem; color: #fff; outline: none;
+  }
+  .field-input:focus { border-color: var(--nec-cyan); box-shadow: 0 0 0 2px rgba(31,169,232,.25); }
+  .field-input::placeholder { color: rgba(214,228,255,.35); }
+  .sign-btn {
+    background: linear-gradient(90deg, var(--nec-cyan), var(--nec-sky));
+    color: var(--nec-navy); font-weight: 800;
+  }
+  .sign-btn:disabled { opacity: .45; cursor: not-allowed; }
+  .pdf-btn {
+    background: var(--nec-royal-500); color: #fff; font-weight: 700;
+  }
+  .pdf-btn:disabled { opacity: .45; cursor: not-allowed; }
+  .fade-in { animation: fadeIn .35s ease both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* ---- PDF 证书模板（屏幕外渲染，html2canvas 截取；打印回退时可见） ---- */
+  #cert {
+    position: absolute; left: -9999px; top: 0; width: 794px;
+    background: #fff; color: var(--nec-ink); padding: 56px 64px;
+    font-family: var(--nec-font-cn);
+  }
+  #cert .cert-horizon { height: 4px; background: var(--nec-horizon); border-radius: 2px; }
+  #cert h1 { font-family: var(--nec-font-display); letter-spacing: .02em; }
+  #cert .cert-body { font-size: 13px; line-height: 1.9; white-space: pre-wrap; }
+  #cert .cert-kv { display: flex; gap: 8px; font-size: 13px; }
+  #cert .cert-kv dt { color: var(--nec-gray); min-width: 88px; }
+  #cert .cert-kv dd { font-weight: 600; }
+  @media print {
+    body.printing > div { display: none !important; }
+    body.printing #cert { position: static; left: 0; width: auto; padding: 0; }
+  }
+</style>
+</head>
+<body class="min-h-screen">
+  <div class="max-w-5xl mx-auto px-4 py-6">
+    <header id="app-header" class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h1 class="text-xl font-black text-slate-800">常州工学院 NEC 开源社区 · 贡献协议签署</h1>
+          <p class="text-xs text-gray-500 mono">$ nec cla sign — 签署 Contributor License Agreement 后，你的贡献才会被合入官方仓库</p>
+        </div>
+        <div id="whoami" class="text-xs text-gray-500"></div>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <!-- 协议正文（终端） -->
+      <section class="lg:col-span-3 terminal">
+        <div class="terminal-bar flex items-center gap-2 px-4 py-2.5">
+          <span class="dot bg-red-400"></span><span class="dot bg-yellow-400"></span><span class="dot bg-green-400"></span>
+          <span class="mono text-xs text-slate-300 ml-2">nec-hub — cla — zsh</span>
+        </div>
+        <div id="term" class="term-body mono text-[13px] leading-relaxed px-4 py-4 whitespace-pre-wrap"></div>
+      </section>
+
+      <!-- 签署表单 -->
+      <section class="lg:col-span-2 terminal flex flex-col">
+        <div class="terminal-bar flex items-center gap-2 px-4 py-2.5">
+          <span class="dot bg-red-400"></span><span class="dot bg-yellow-400"></span><span class="dot bg-green-400"></span>
+          <span class="mono text-xs text-slate-300 ml-2">nec cla sign</span>
+        </div>
+        <form id="sign-form" class="p-4 space-y-4 flex-1">
+          <div>
+            <label class="mono text-xs block mb-1"><span class="prompt">$</span> --name <span class="text-slate-400">真实姓名 *</span></label>
+            <input name="name" required maxlength="40" class="field-input" placeholder="张三" />
+          </div>
+          <div>
+            <label class="mono text-xs block mb-1"><span class="prompt">$</span> --github <span class="text-slate-400">GitHub 用户名 *</span></label>
+            <input name="github" required maxlength="39" class="field-input mono" placeholder="octocat" />
+          </div>
+          <div>
+            <label class="mono text-xs block mb-1"><span class="prompt">$</span> --email <span class="text-slate-400">邮箱（可选，不公开）</span></label>
+            <input name="email" type="email" class="field-input mono" placeholder="you@example.com" />
+          </div>
+          <div>
+            <label class="mono text-xs block mb-1"><span class="prompt">$</span> --org <span class="text-slate-400">单位 / 组织（可选）</span></label>
+            <input name="org" maxlength="60" class="field-input" placeholder="常州工学院" />
+          </div>
+          <label class="flex items-start gap-2 text-xs text-slate-300 cursor-pointer select-none">
+            <input id="agree" type="checkbox" class="mt-0.5 accent-[#1FA9E8]" />
+            <span>我已完整阅读左侧《贡献者许可协议 v<span id="ver-agree">1.0</span>》，并同意按其条款授予许可。</span>
+          </label>
+          <button id="sign-btn" type="submit" disabled class="sign-btn mono w-full rounded-lg py-2.5 text-sm transition">
+            ⏎ 执行签署
+          </button>
+          <p id="form-msg" class="mono text-xs min-h-[1rem]"></p>
+        </form>
+      </section>
+    </div>
+
+    <!-- 签署成功 / 已签署：PDF 下载 -->
+    <section id="signed-panel" class="hidden mt-6 terminal fade-in">
+      <div class="terminal-bar flex items-center gap-2 px-4 py-2.5">
+        <span class="dot bg-red-400"></span><span class="dot bg-yellow-400"></span><span class="dot bg-green-400"></span>
+        <span class="mono text-xs text-slate-300 ml-2">nec cla export --pdf</span>
+      </div>
+      <div class="p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+        <p id="signed-msg" class="mono text-xs ok flex-1"></p>
+        <button id="pdf-btn" type="button" class="pdf-btn mono rounded-lg px-5 py-2.5 text-sm whitespace-nowrap">
+          ⬇ 下载 PDF 证书
+        </button>
+      </div>
+    </section>
+
+    <!-- 签署荣誉榜 -->
+    <section class="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-slate-800">签署荣誉榜</h2>
+        <span id="signer-count" class="mono text-xs text-gray-400"></span>
+      </div>
+      <div id="signer-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <p class="text-sm text-gray-400 col-span-full">加载中…</p>
+      </div>
+    </section>
+
+    <p class="mono text-center text-xs text-gray-400 mt-6">$ echo "BUILT TO DAWN" · NEC 开源社区 · 协议版本 <span id="ver-foot">1.0</span></p>
+  </div>
+
+  <!-- PDF 证书模板（屏幕外，html2canvas 截取渲染） -->
+  <div id="cert" aria-hidden="true">
+    <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+      <div>
+        <p style="font-family:var(--nec-font-display); font-size:22px; font-weight:900; color:var(--nec-royal-500);">NEC 新能源开发者社区</p>
+        <p class="mono" style="font-size:11px; color:var(--nec-gray); letter-spacing:.18em;">NEW ENERGY CODER · BUILT TO DAWN</p>
+      </div>
+      <p class="mono" style="font-size:11px; color:var(--nec-gray); text-align:right;">hub.newenergycoder.club<br/>常州工学院</p>
+    </div>
+    <div class="cert-horizon" style="margin:18px 0 28px;"></div>
+
+    <h1 style="font-size:26px; color:var(--nec-ink);">贡献者许可协议（CLA）签署证明</h1>
+    <p class="mono" style="font-size:12px; color:var(--nec-gray); margin-top:6px;">
+      Contributor License Agreement Certificate · 协议版本 v<span data-cert="version"></span> · <span data-cert="updatedAt"></span> 生效
+    </p>
+
+    <div style="margin-top:24px; border:1px solid var(--nec-line); border-radius:10px; padding:18px 20px; background:var(--nec-fog);">
+      <dl style="display:grid; grid-template-columns:1fr 1fr; row-gap:10px;">
+        <div class="cert-kv"><dt>签署人</dt><dd data-cert="name"></dd></div>
+        <div class="cert-kv"><dt>GitHub</dt><dd class="mono" data-cert="github"></dd></div>
+        <div class="cert-kv"><dt>单位 / 组织</dt><dd data-cert="org"></dd></div>
+        <div class="cert-kv"><dt>签署时间</dt><dd class="mono" data-cert="signedAt"></dd></div>
+        <div class="cert-kv" style="grid-column:1 / -1;"><dt>存证编号</dt><dd class="mono" data-cert="certId"></dd></div>
+      </dl>
+    </div>
+
+    <p style="font-size:13px; margin-top:20px; font-weight:700; color:var(--nec-navy);">附：协议全文</p>
+    <pre class="cert-body mono" data-cert="agreement" style="margin-top:10px;"></pre>
+
+    <div class="cert-horizon" style="margin-top:28px;"></div>
+    <p style="font-size:11px; color:var(--nec-gray); margin-top:12px;">
+      本证明由 NEC 团队 AI 中台自动生成，记录签署人对上述版本协议的同意。存证编号可由签署信息与协议版本重新计算校验。
+    </p>
+  </div>
+
+<script>
+const AGREEMENT = `
+  常州工学院 NEC 开源社区
+  贡献者许可协议（Contributor License Agreement, CLA）
+  版本 1.0 · 2026-10-14 生效
+
+  感谢你为 NEC（New Energy Coder）开源社区做出贡献。
+  为明确贡献的知识产权归属与许可方式，请在提交代码、
+  文档、设计或其他贡献前阅读并签署本协议。
+
+  第一条  定义
+  1.1 "贡献"指你以任何形式有意提交给本社区任一项目
+      的作品，包括源代码、文档、设计稿、数据等。
+  1.2 "项目"指本社区在 GitHub / Gitee 等平台维护的
+      任一开源仓库。
+
+  第二条  版权许可
+  你就你的贡献，授予本社区及项目的所有接收者一项
+  永久的、全球范围的、非独占的、免费的、不可撤销
+  的版权许可，允许以项目所采用的开源许可证（如
+  MIT / Apache-2.0）使用、复制、修改、再分发你的
+  贡献。你保留对贡献的著作权。
+
+  第三条  专利许可
+  你就贡献中由你持有的专利权利要求，授予本社区及
+  接收者一项永久的、全球范围的、非独占的、免费的、
+  不可撤销的专利许可。
+
+  第四条  原创性声明
+  4.1 你声明贡献为你的原创作品，或你已获得充分授
+      权按本协议提交。
+  4.2 你声明贡献不侵犯任何第三方的知识产权；如贡
+      献包含第三方内容，你已在提交时明确标识其来
+      源与许可证。
+  4.3 如你的贡献属于职务作品，你声明已获得所在单
+      位的许可。
+
+  第五条  免责
+  贡献按"现状"提供，你不对贡献提供任何明示或默示
+  担保。本协议不影响项目开源许可证中的免责条款。
+
+  第六条  生效与版本
+  6.1 本协议自你完成签署之时起生效，适用于你在生
+      效前后向本社区提交的全部贡献。
+  6.2 社区可发布协议新版本；你已完成的签署仍对应
+      你签署时的版本。
+
+  ────────────────────────────────────────────
+  阅读完毕后，在右侧终端执行签署命令。
+`.trim();
+
+const $ = (s) => document.querySelector(s);
+let currentSig = null;
+
+// ---------- 协议打字机渲染 ----------
+(async () => {
+  const term = $("#term");
+  term.innerHTML = '<span class="prompt">nec@hub</span> <span class="text-slate-400">~ %</span> nec cla show\n\n';
+  const body = document.createElement("span");
+  term.appendChild(body);
+  const cursor = document.createElement("span");
+  cursor.className = "cursor";
+  cursor.innerHTML = "&nbsp;";
+  term.appendChild(cursor);
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) { body.textContent = AGREEMENT; }
+  else {
+    for (let i = 0; i < AGREEMENT.length; i++) {
+      body.textContent += AGREEMENT[i];
+      term.scrollTop = term.scrollHeight;
+      if (i % 3 === 0) await new Promise((r) => setTimeout(r, 8));
+    }
+  }
+  cursor.remove();
+  const tail = document.createElement("div");
+  tail.innerHTML = '\n<span class="prompt">nec@hub</span> <span class="text-slate-400">~ %</span> <span class="cursor">&nbsp;</span>';
+  term.appendChild(tail);
+  term.scrollTop = term.scrollHeight;
+})();
+
+// ---------- 登录态：已登录则预填姓名、检查是否已签署 ----------
+fetch("/api/whoami").then((r) => r.json()).then(async (d) => {
+  if (d.authenticated && d.user) {
+    $("#whoami").innerHTML = `已登录：<b class="text-slate-700">${escapeHtml(d.user.name)}</b>（签署将绑定飞书身份）`;
+    const nameInput = document.querySelector('input[name="name"]');
+    if (!nameInput.value) nameInput.value = d.user.name;
+    const st = await (await fetch("/api/cla/status")).json();
+    if (st.signed) showSignedPanel(st.signature, true);
+  } else {
+    $("#whoami").innerHTML = '未登录 · <a class="text-sky-600 underline" href="/">去门户登录</a>（可不登录直接签署）';
+  }
+}).catch(() => {});
+
+// ---------- 签署 ----------
+$("#agree").addEventListener("change", (e) => { $("#sign-btn").disabled = !e.target.checked; });
+
+$("#sign-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = $("#form-msg");
+  const btn = $("#sign-btn");
+  const fd = new FormData(e.target);
+  msg.className = "mono text-xs text-slate-300";
+  msg.textContent = "$ nec cla sign … 提交中";
+  btn.disabled = true;
+  try {
+    const res = await fetch("/api/cla/sign", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: fd.get("name"), github: fd.get("github"),
+        email: fd.get("email") || undefined, org: fd.get("org") || undefined,
+        agree: true,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    msg.className = "mono text-xs ok";
+    msg.textContent = data.alreadySigned
+      ? `✓ @${data.signature.github} 已签署过（${fmtDate(data.signature.signedAt)}），无需重复签署`
+      : `✓ 签署成功！欢迎 @${data.signature.github} 成为第 ${data.count} 位签署者`;
+    showSignedPanel(data.signature, data.alreadySigned);
+    loadSigners();
+  } catch (err) {
+    msg.className = "mono text-xs warn";
+    msg.textContent = `✗ 签署失败：${err.message}`;
+  } finally {
+    btn.disabled = !$("#agree").checked;
+  }
+});
+
+// ---------- 签署成功面板 / PDF 下载 ----------
+function showSignedPanel(sig, already) {
+  currentSig = sig;
+  $("#signed-msg").textContent = already
+    ? `✓ @${sig.github} 已签署协议 v${sig.version}（${fmtDate(sig.signedAt)}），可随时导出 PDF 证书。`
+    : `✓ 协议 v${sig.version} 签署完成，点击下方按钮留存 PDF 证书。`;
+  $("#signed-panel").classList.remove("hidden");
+  $("#signed-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+/** 存证编号：协议版本 + GitHub + 签署时间的 SHA-256 前 16 位（可离线复算校验） */
+async function certId(sig) {
+  const raw = `nec-cla|v${sig.version}|${sig.github.toLowerCase()}|${sig.signedAt}`;
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16).toUpperCase();
+}
+
+async function fillCert(sig) {
+  const set = (k, v) => { document.querySelector(`[data-cert="${k}"]`).textContent = v; };
+  set("version", sig.version);
+  set("updatedAt", "2026-10-14");
+  set("name", sig.name);
+  set("github", "@" + sig.github);
+  set("org", sig.org || "—");
+  set("signedAt", fmtCN(sig.signedAt));
+  set("certId", await certId(sig));
+  set("agreement", AGREEMENT);
+}
+
+let _pdfLibs = null;
+function loadPdfLibs() {
+  if (_pdfLibs) return _pdfLibs;
+  const load = (src) => new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = src; s.onload = res; s.onerror = () => rej(new Error("CDN 加载失败"));
+    document.head.appendChild(s);
+  });
+  _pdfLibs = load("https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js")
+    .then(() => load("https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"))
+    .then(() => ({ html2canvas: window.html2canvas, jspdf: window.jspdf }));
+  return _pdfLibs;
+}
+
+$("#pdf-btn").addEventListener("click", async () => {
+  if (!currentSig) return;
+  const btn = $("#pdf-btn");
+  btn.disabled = true;
+  btn.textContent = "生成中…";
+  await fillCert(currentSig);
+  try {
+    const { html2canvas, jspdf } = await loadPdfLibs();
+    const el = $("#cert");
+    const canvas = await html2canvas(el, { scale: 2, backgroundColor: "#ffffff" });
+    const pdf = new jspdf.jsPDF("p", "mm", "a4");
+    const PW = 210, PH = 297;
+    const pxPerMm = canvas.width / PW;
+    const pagePx = Math.floor(PH * pxPerMm);
+    let y = 0, page = 0;
+    while (y < canvas.height) {
+      const h = Math.min(pagePx, canvas.height - y);
+      const c = document.createElement("canvas");
+      c.width = canvas.width; c.height = h;
+      c.getContext("2d").drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
+      if (page > 0) pdf.addPage();
+      pdf.addImage(c.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, PW, h / pxPerMm);
+      y += h; page++;
+    }
+    pdf.save(`NEC-CLA-v${currentSig.version}-${currentSig.github}.pdf`);
+  } catch {
+    // CDN 不可用时回退：浏览器打印（另存为 PDF），原生支持中文
+    document.body.classList.add("printing");
+    window.print();
+    document.body.classList.remove("printing");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "⬇ 下载 PDF 证书";
+  }
+});
+
+// ---------- 荣誉榜 ----------
+async function loadSigners() {
+  try {
+    const d = await (await fetch("/api/cla")).json();
+    $("#ver-agree").textContent = d.agreement.version;
+    $("#ver-foot").textContent = d.agreement.version;
+    $("#signer-count").textContent = `total ${d.count}`;
+    const list = $("#signer-list");
+    if (!d.count) { list.innerHTML = '<p class="text-sm text-gray-400 col-span-full">还没有人签署，来当第一位贡献者吧。</p>'; return; }
+    list.innerHTML = d.signatures.map((s, i) => `
+      <div class="fade-in flex items-center gap-3 border border-gray-200 rounded-lg px-3 py-2.5">
+        <img src="https://github.com/${encodeURIComponent(s.github)}.png?size=64" alt="" loading="lazy"
+             class="w-9 h-9 rounded-full bg-gray-100" onerror="this.style.visibility='hidden'" />
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-slate-800 truncate">${escapeHtml(s.name)}
+            <a class="mono text-xs text-sky-600 font-normal" href="https://github.com/${encodeURIComponent(s.github)}" target="_blank" rel="noopener">@${escapeHtml(s.github)}</a>
+          </p>
+          <p class="mono text-[11px] text-gray-400">#${i + 1} · v${escapeHtml(s.version)} · ${fmtDate(s.signedAt)}${s.org ? " · " + escapeHtml(s.org) : ""}</p>
+        </div>
+      </div>`).join("");
+  } catch {
+    $("#signer-list").innerHTML = '<p class="text-sm text-red-400 col-span-full">签署名单加载失败，请刷新重试。</p>';
+  }
+}
+
+function fmtDate(iso) { return (iso || "").slice(0, 10); }
+function fmtCN(iso) {
+  try { return new Date(iso).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false }) + " (UTC+8)"; }
+  catch { return iso; }
+}
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// 门户 iframe 嵌入时隐藏页头
+if (new URLSearchParams(location.search).get("embedded") === "1") $("#app-header").classList.add("hidden");
+
+loadSigners();
+</script>
+</body>
+</html>

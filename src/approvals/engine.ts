@@ -32,6 +32,7 @@ import {
   nextAppId,
   type ApprovalType,
 } from "./flows";
+import { applyInventoryDelta } from "./inventory";
 
 export const APPROVAL_LABELS: Record<ApprovalType, string> = {
   reimburse: "报销申请",
@@ -99,8 +100,13 @@ export async function submitApprovalCore(env: Env, input: ApprovalSubmitInput): 
   const token = await getTenantAccessToken(env);
   const existing = await listBitableRecords(token, base, flow.tableId);
   const applicationId = nextAppId(flow.prefix, existing.length);
+  // "@appId" 占位符：写表前替换为本次分配的申请单号（如图纸流程的"图号"自动绑定 MECH 单号）
+  const fields: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(input.fields)) {
+    fields[k] = v === "@appId" ? applicationId : v;
+  }
   const row: Record<string, unknown> = {
-    ...input.fields,
+    ...fields,
     申请人: applicant,
     "申请人 open_id": applicantOpenId,
     组别: input.role?.group ?? "",
@@ -116,11 +122,11 @@ export async function submitApprovalCore(env: Env, input: ApprovalSubmitInput): 
     { expirationTtl: 90 * 24 * 3600 },
   );
   const link = buildRecordLink(base, flow.tableId, recordId);
-  await notifyFeishu(env, input.type, approvalNotifyTitle(input.type, applicationId, applicant, input.fields), approvalNotifyContent(input.fields), link);
+  await notifyFeishu(env, input.type, approvalNotifyTitle(input.type, applicationId, applicant, fields), approvalNotifyContent(fields), link);
   // Plan B 会签：金额达阈值时额外提醒（两级审批为 Plan A 能力，Plan B 用通知实现）
   const coField = flow.thresholds?.amountField ?? "";
   const coSign = flow.thresholds?.coSign ?? 0;
-  const amount = coField ? fieldNum(input.fields[coField]) : null;
+  const amount = coField ? fieldNum(fields[coField]) : null;
   if (coSign > 0 && amount !== null && amount >= coSign && flow.thresholds?.notifyRoles) {
     await notifyFeishu(
       env,
@@ -154,6 +160,8 @@ export interface ApprovalActionInput {
   action: ApprovalAction;
   comment?: string;
   link?: string;
+  /** G-02 驳回原因标准化：reject 时可带标准化原因（合规流程 5 个固定选项），写入底表「驳回原因」字段 */
+  reason?: string;
   user: HubUser;
   role: UserRole;
 }
@@ -212,23 +220,103 @@ export async function runApprovalAction(env: Env, input: ApprovalActionInput): P
     patch["审批意见"] = input.comment ?? "";
     patch["审批完成时间"] = Date.now();
   }
+  // G-02：驳回原因标准化。底表有「驳回原因」字段才写（findFieldKey 定位），没有则跳过，对其他流程零影响
+  const reason = (input.reason ?? "").trim();
+  if (input.action === "reject" && reason) {
+    const reasonKey = findFieldKey(records, [/^驳回原因$/, /驳回原因/]);
+    if (reasonKey) patch[reasonKey] = reason;
+  }
   if (input.action === "publish") patch["发布后链接"] = (input.link ?? "").trim();
   await updateBitableRecord(token, base, flow.tableId, record.record_id, patch);
 
   const link = buildRecordLink(base, flow.tableId, record.record_id);
   if (input.action === "approve" || input.action === "reject") {
     const verdict = input.action === "approve" ? "✅ 已通过" : "❌ 已驳回";
-    await notifyFeishu(
-      env,
-      input.type,
-      `${verdict} ${input.appId}`,
-      `审批人：${input.user.name}${input.comment ? `\n审批意见：${input.comment}` : ""}`,
-      link,
-    );
+    const lines = [
+      ...(input.action === "reject" && reason ? [`驳回原因：${reason}`] : []),
+      `审批人：${input.user.name}`,
+      ...(input.comment ? [`审批意见：${input.comment}`] : []),
+    ];
+    await notifyFeishu(env, input.type, `${verdict} ${input.appId}`, lines.join("\n"), link);
   } else {
     await notifyFeishu(env, input.type, `📌 ${input.appId} 状态更新：${target}`, `操作人：${input.user.name}`, link);
   }
+  // G-01 台账联动：状态写底表成功且通知发出后追加，失败不阻断动作本身
+  await linkInventory(env, input, record, token, base, flow.tableId);
   return { application_id: input.appId, status: target };
+}
+
+/** 留痕日期（UTC+8）：已入库 2026-10-14 */
+function traceDate(): string {
+  return new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+}
+
+/**
+ * G-01 台账联动：hardware 流程 arrive（申请类型=新购 → 入库）/ issue（申请类型=领用 → 出库）。
+ * 幂等：KV approval:inv:<appId>:<action>（TTL 90 天，与 approval:map: 一致），动作本身的 from
+ * 状态校验之外的防御性双保险。留痕写底表「台账联动」字段（已入库/已出库/未配置台账/失败：<原因>）；
+ * 负库存放行并追加 ⚠️ 库存告警群通知；联动失败发 ⚠️ 告警提示用 update_inventory 手工补录。
+ */
+async function linkInventory(
+  env: Env,
+  input: ApprovalActionInput,
+  record: BitableRecord,
+  token: string,
+  base: string,
+  tableId: string,
+): Promise<void> {
+  if (input.type !== "hardware") return;
+  if (input.action !== "arrive" && input.action !== "issue") return;
+  const applyType = fieldText(record.fields["申请类型"]).trim();
+  const invAction =
+    input.action === "arrive" && applyType === "新购" ? "inbound"
+    : input.action === "issue" && applyType === "领用" ? "outbound"
+    : null;
+  if (!invAction) return;
+
+  // 「台账联动」字段需在建表时手工加好（PRD §3.5）；字段不存在时留痕静默失败，不影响联动本身
+  const trace = (text: string) =>
+    updateBitableRecord(token, base, tableId, record.record_id, { 台账联动: text }).catch(() => {});
+
+  const markKey = `approval:inv:${input.appId}:${input.action}`;
+  if (await env.REGISTRY.get(markKey)) return;
+
+  const applicant = fieldText(record.fields["申请人"]).trim() || input.user.name;
+  const qty = fieldNum(record.fields["数量"]);
+  const link = buildRecordLink(base, tableId, record.record_id);
+  try {
+    if (qty === null || qty <= 0) throw new Error("申请数量为空或非正数");
+    const result = await applyInventoryDelta(env, {
+      action: invAction,
+      itemName: fieldText(record.fields["物料名称"]),
+      spec: fieldText(record.fields["规格型号"]),
+      quantity: qty,
+      operator: applicant,
+    });
+    if (!result) {
+      await trace("未配置台账");
+      return;
+    }
+    await env.REGISTRY.put(
+      markKey,
+      JSON.stringify({ record_id: result.recordId, before: result.before, after: result.after, at: Date.now() }),
+      { expirationTtl: 90 * 24 * 3600 },
+    );
+    await trace(`${invAction === "inbound" ? "已入库" : "已出库"} ${traceDate()}`);
+    if (result.negative) {
+      await notifyFeishu(
+        env,
+        input.type,
+        `⚠️ 库存告警 ${input.appId}`,
+        `${result.itemKey} 出库 ${qty} 件后库存 ${result.after}，请尽快补货或核对台账`,
+        link,
+      );
+    }
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    await trace(`失败：${reason}`);
+    await notifyFeishu(env, input.type, `⚠️ 台账联动失败 ${input.appId}`, `${reason}，请用 update_inventory 手工补录`, link);
+  }
 }
 
 // ---------- 待办聚合（MCP list_todos 用） ----------

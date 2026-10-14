@@ -16,7 +16,9 @@
  *   POST /api/hooks/github → GitHub push webhook（HMAC-SHA256 验签 → 记录最近提交 → 飞书群机器人通知）
  *   POST /api/approvals   → 发起审批（4 流程统一入口，flows:config 配置驱动，Plan B 状态机落底表）
  *   POST /api/approvals/<type>/<单号>/<action> → 审批与流程动作（approve/reject/pay/start/archive/arrive/issue/publish）
- *   GET  /api/approvals/mine → 我的申请列表（R-01 报销页数据源，按 open_id 过滤，降序 20 条）
+ *   GET  /api/approvals/mine → 我的申请列表（各流程申请页数据源，按 open_id 过滤，降序 20 条，fields 全量透传）
+ *   POST /api/approvals/upload → 凭证文件上传（R-01 应用页，multipart → R2 receipts/，返回 key）
+ *   /api/erp/reimburse/*  → R-01 报销助手 ERP 接口（D1：费用项目目录/收款账户/单据快照；附件在 R2）
  *   /api/season-goals/*   → 赛季目标管理（收集单提交/采纳 + 按任务自动规划，模块网关）
  *   GET  /api/my-tasks    → 我的任务（绑定飞书任务后 Task v2 同步拉取，KV my-tasks:<open_id> 5 分钟缓存，?refresh=1 强刷）
  *   POST /api/my-tasks/unbind → 解绑飞书任务（清授权 token 与缓存）
@@ -24,6 +26,9 @@
  *   POST /auth/feishu     → 飞书 code 兑换用户信息 + 签发中台会话（MES 免登与本门户登录共用）
  *   POST /auth/logout     → 登出（销毁会话）
  *   GET  /api/repos       → NEC 开源仓库列表（GitHub org + KV 1 小时缓存）
+ *   GET  /api/cla         → 开源社区贡献协议（CLA）元信息 + 公开签署名单（KV cla:signatures，脱敏）
+ *   GET  /api/cla/status  → 当前会话或 ?github= 是否已签署
+ *   POST /api/cla/sign    → 签署 CLA（按 GitHub 用户名幂等去重，登录会话自动绑定 open_id）
  *   GET  /apps/<name>/*   → 队员应用（R2 托管）
  *   GET  /skills/<name>/SKILL.md → Skill 原文（R2）
  *   POST /mcp             → MCP (streamable HTTP, JSON-RPC)
@@ -185,11 +190,21 @@ export default {
         const res = await sg.handleSeasonGoals(request, env, url.pathname);
         if (res) return res;
       }
+      if (url.pathname.startsWith("/api/erp/reimburse")) {
+        const er = await import("./erp/reimburse");
+        const res = await er.handleErpReimburse(request, env, url.pathname, ctx);
+        if (res) return res;
+      }
       if (url.pathname === "/api/reimburse" && request.method === "POST") {
         return await handleReimburse(request, env, ctx);
       }
       if (url.pathname === "/api/repos") {
         return json(await buildRepos(env, ctx));
+      }
+      if (url.pathname.startsWith("/api/cla")) {
+        const cla = await import("./cla");
+        const res = await cla.handleCla(request, env, url.pathname, ctx);
+        if (res) return res;
       }
       if (url.pathname.startsWith("/apps/")) {
         return await serveApp(url, env, ctx);
