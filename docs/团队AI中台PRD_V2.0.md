@@ -45,7 +45,7 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 
 - **架构**：Cloudflare Worker 单体已按域拆分（`src/index.ts` 收敛为 192 行路由表 + `scheduled` 入口），15+ 域模块：`auth/`（登录态/角色）、`hosting/`（R2 托管与 KV 注册表）、`dashboard/`（看板/资料页）、`repos/`、`reimburse/`（报销）、`mcp/`（MCP 端点与工具）、`validation/`（FE-05）、`home/`（FE-06/07）、`todos/`（FE-09）、`season-goals/`（FE-18）、`my-tasks/`（FE-17）、`drawing-review/`（FE-14）、`hardware-review/`（FE-15）、`contract-approval/`（FE-16）、`meeting/`（飞书会议共享服务）、`shared/`（会话/模块网关/表适配器等公共层）
 - 门户九 Tab：我的首页（默认落地）/ 我的任务 / 图纸评审（登录后可见）/ 应用广场 / Skill 中心 / 资料页 / 开源仓库 / 数据看板 / NEC-MCP；评审域配套独立应用页 `public/apps/`：drawing-review（图纸评审全屏版）/ hardware-review（硬件评审）/ season-goals（赛季目标）/ scoring（NEC 评分看板），门户与独立页共用同一套 `/api/*` 与飞书多维表格数据
-- MCP 工具 19 个：`deploy_app` / `register_app` / `sync_vercel` / `import_skills` / `remove_skills` / `publish_skill` / `query_bitable` / `config_dashboard` / `config_drawing_review` / `config_hardware_review` / `config_contract_approval` / `publish_doc` / `update_progress` / `validate_bitable` / `config_validate_rules` / `schedule_meeting` / `set_home_layout` / `send_notice` / `whoami`（MCP server 0.4.0；写操作强制 `MCP_TOKEN`；`whoami` 供 Agent 接入自检）
+- MCP 工具 20 个：`deploy_app` / `register_app` / `sync_vercel` / `import_skills` / `remove_skills` / `publish_skill` / `query_bitable` / `config_dashboard` / `config_drawing_review` / `config_hardware_review` / `config_contract_approval` / `publish_doc` / `update_progress` / `validate_bitable` / `config_validate_rules` / `schedule_meeting` / `set_home_layout` / `send_notice` / `whoami` / `send_mail`（MCP server 0.4.0；写操作强制 `MCP_TOKEN`；`whoami` 供 Agent 接入自检，`send_mail` 为 N-02 飞书邮箱通道）
 - **登录态与角色（FE-01）已落地**：`/auth/feishu` code 兑换 + HttpOnly 会话 Cookie（KV `session:<sid>`，7 天，**同 sid 原地滑动续期——bug 已修复**）、`whoami`、按"队员名单"表实时判定角色（60s 缓存，退队即时失效）、登出入口；财务报销按角色三级脱敏（hidden/summary/full），`query_bitable` finance 表带角色门禁
 - **三条业务流程域**：图纸评审（FE-14）、硬件评审（FE-15）、合同审批（FE-16），同构子路由 + 状态机 + 事件日志，数据全部落飞书多维表格；飞书视频会议预约走 `meeting/` 共享服务（未开通 vc:meeting:write 权限时降级 mock，不破坏状态机）
 - **报销链路（FE-08）**：OCR 识别（Tesseract.js 本地）、凭证 R2 存档、回写财务表；**审批动作 approve/reject/pay（幂等 + 状态前置校验）+ 我的报销列表 + 提交即生单号入「审批中」已上线**（main 分支 A2/A3 移植完成）
@@ -680,6 +680,7 @@ M2 结束、工作台切换 2 周后，按对标文章建议发**飞书问卷**�
 | 飞书免登接入（MES） | `docs/飞书免登接入_MES.md` | 开发负责人 |
 | 主线合并对照清单（main↔fix/vi） | `docs/主线合并对照_main_vs_fixvi.md` | 开发负责人 |
 | 页面与 Tab 状态现状（含框架化路线） | `docs/页面与Tab状态现状.md` | 开发负责人 |
+| 主线整合与执行方案（版本/事故复盘/遗留清单/协作公约） | `docs/主线整合与执行方案_V1.0.md` | 队长/开发负责人 |
 | 图纸评审联想功能文档体系（12 篇） | `docs/文档目录索引.md` | 全队 |
 | lark-cli 能力边界验证报告 | `docs/lark-cli能力边界验证报告.md` | 开发负责人 |
 | 报销模拟测试指南与数据集 | 仓库根目录 `REIMBURSEMENT_GUIDE.md` / `TEST_REIMBURSE_GUIDE.md` 等 | 测试/财务 |
