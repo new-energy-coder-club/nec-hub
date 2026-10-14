@@ -155,6 +155,8 @@
     <button data-tab="skills" class="tab-btn tab-more py-3 shrink-0 hidden">Skill 中心</button>
     <button data-tab="docs" class="tab-btn tab-more py-3 shrink-0 hidden">资料页</button>
     <button data-tab="repos" class="tab-btn tab-more py-3 shrink-0 hidden">开源仓库</button>
+    <button data-tab="hardware-review" id="tab-btn-hardware-review" class="tab-btn tab-more gate-off py-3 shrink-0 hidden">硬件评审</button>
+    <button data-tab="contract-approval" id="tab-btn-contract-approval" class="tab-btn tab-more gate-off py-3 shrink-0 hidden">合同审批</button>
     <button data-tab="dashboard" class="tab-btn py-3 shrink-0">数据看板</button>
     <button data-tab="prd" class="tab-btn py-3 shrink-0">PRD 看板</button>
     <button data-tab="agent" class="tab-btn py-3 shrink-0">NEC-MCP</button>
@@ -280,6 +282,147 @@
     <p class="text-xs text-gray-400 mt-3">
       独立全屏版：<a href="/apps/drawing-review/" target="_blank" class="hover:underline" style="color:var(--nec-cyan)">/apps/drawing-review/ →</a>
     </p>
+  </section>
+
+  <!-- 硬件评审/申购（ST-04，登录后可见，收进「更多」） -->
+  <section id="tab-hardware-review" class="hidden">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+      <h2 class="text-lg font-bold">硬件评审</h2>
+      <div class="flex items-center gap-2 flex-wrap">
+        <button onclick="loadHardwareReviews()" class="text-xs px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600">刷新</button>
+        <button id="hw-submit-toggle" onclick="toggleHwForm()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--nec-cyan)">＋ 提交评审单</button>
+      </div>
+    </div>
+
+    <!-- 提交表单（默认折叠） -->
+    <div id="hw-form-box" class="hidden mb-6 bg-white rounded-xl shadow p-5">
+      <h3 class="font-bold mb-3">提交硬件评审单</h3>
+      <form id="hw-form" class="grid grid-cols-1 sm:grid-cols-2 gap-3" onsubmit="submitHw(event)">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">项目编号</label>
+          <input name="projectId" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="PRJ-2026-001" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">硬件名称 *</label>
+          <input name="hardwareName" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="R1 主控板" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">硬件类型</label>
+          <select name="hardwareType" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white">
+            <option value="controller">控制器</option>
+            <option value="sensor">传感器</option>
+            <option value="actuator">执行器</option>
+            <option value="motor">电机/驱动</option>
+            <option value="power">电源/电池</option>
+            <option value="communication">通信模块</option>
+            <option value="structure">结构件</option>
+            <option value="other" selected>其他</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">硬件版本</label>
+          <input name="hardwareVersion" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="V1.0（留空自动递增）" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">设计负责人</label>
+          <input name="designerName" id="hw-designer-name" disabled class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">规格参数</label>
+          <input name="specification" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="电压/电流/功率/接口/防护等级" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-xs text-gray-500 mb-1">设计说明 *</label>
+          <textarea name="designNotes" rows="3" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="关键设计参数、变更点"></textarea>
+        </div>
+        <div class="sm:col-span-2 flex justify-end gap-2">
+          <button type="button" onclick="toggleHwForm()" class="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-500">取消</button>
+          <button type="submit" id="hw-submit-btn" class="text-sm text-white px-5 py-2 rounded-lg" style="background:var(--nec-navy)">提交评审单</button>
+        </div>
+      </form>
+      <p id="hw-form-result" class="mt-2 text-sm"></p>
+    </div>
+
+    <!-- 状态统计条（兼作状态筛选） -->
+    <div id="hw-stats" class="flex flex-wrap gap-2 mb-4"></div>
+
+    <!-- 评审单列表 -->
+    <div id="hw-list" class="space-y-3">
+      <p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center">加载中…</p>
+    </div>
+  </section>
+
+  <!-- 合同审批（ST-04，登录后可见，收进「更多」；协议签署 OA 见「应用广场 → 协议签署 OA 审批」） -->
+  <section id="tab-contract-approval" class="hidden">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+      <h2 class="text-lg font-bold">合同审批</h2>
+      <div class="flex items-center gap-2 flex-wrap">
+        <button onclick="loadContractApprovals()" class="text-xs px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600">刷新</button>
+        <button id="ca-submit-toggle" onclick="toggleCaForm()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--nec-cyan)">＋ 提交审批单</button>
+      </div>
+    </div>
+
+    <!-- 提交表单（默认折叠） -->
+    <div id="ca-form-box" class="hidden mb-6 bg-white rounded-xl shadow p-5">
+      <h3 class="font-bold mb-3">提交合同审批单</h3>
+      <form id="ca-form" class="grid grid-cols-1 sm:grid-cols-2 gap-3" onsubmit="submitCa(event)">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">合同名称 *</label>
+          <input name="contractName" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="XX 采购合同" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">合同编号</label>
+          <input name="contractNumber" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="HT-2026-001" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">合同类型</label>
+          <select name="contractType" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white">
+            <option value="purchase">采购合同</option>
+            <option value="sales">销售合同</option>
+            <option value="service" selected>服务合同</option>
+            <option value="partnership">合作协议</option>
+            <option value="nda">保密协议</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">合同各方（逗号分隔）</label>
+          <input name="parties" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="常州工NEC, 供应商名称" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">生效日期</label>
+          <input name="effectiveDate" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">到期日期</label>
+          <input name="expirationDate" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-xs text-gray-500 mb-1">合同文件 *（每行一个：名称|token或URL）</label>
+          <textarea name="contractFiles" rows="2" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm mono" placeholder="采购合同V1.pdf|https://... 或飞书文件 token"></textarea>
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-xs text-gray-500 mb-1">会签审批人 *（每行一个：级别 open_id [姓名]，全部通过方生效）</label>
+          <textarea name="approvers" rows="2" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm mono" placeholder="team_lead ou_xxxxx 张三&#10;finance ou_yyyyy 李四"></textarea>
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-xs text-gray-500 mb-1">摘要</label>
+          <textarea name="summary" rows="2" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="合同背景、金额、关键条款"></textarea>
+        </div>
+        <div class="sm:col-span-2 flex justify-end gap-2">
+          <button type="button" onclick="toggleCaForm()" class="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-500">取消</button>
+          <button type="submit" id="ca-submit-btn" class="text-sm text-white px-5 py-2 rounded-lg" style="background:var(--nec-navy)">提交审批单</button>
+        </div>
+      </form>
+      <p id="ca-form-result" class="mt-2 text-sm"></p>
+    </div>
+
+    <!-- 状态统计条（兼作状态筛选） -->
+    <div id="ca-stats" class="flex flex-wrap gap-2 mb-4"></div>
+
+    <!-- 审批单列表 -->
+    <div id="ca-list" class="space-y-3">
+      <p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center">加载中…</p>
+    </div>
   </section>
 
   <!-- 报销（iframe 嵌入独立应用，懒加载） -->

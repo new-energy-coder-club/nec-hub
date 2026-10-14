@@ -39,27 +39,29 @@ document.getElementById("doc-publish-prompt").textContent =
 3. 成功后告诉我已发布到资料页`;
 
 // Tab 切换 + Hash 路由：/#/dashboard 等深链可直达对应面板，刷新/分享不丢位置（旧式 #tab-dashboard 自动升级）
-const TAB_IDS = ["home","my-tasks","drawing-review","reimburse","task-schedule","season-goals","apps","skills","docs","repos","dashboard","prd","agent"];
+const TAB_IDS = ["home","my-tasks","drawing-review","reimburse","task-schedule","season-goals","apps","skills","docs","repos","hardware-review","contract-approval","dashboard","prd","agent"];
 // 目标 Tab 暂不可见（如未登录时的图纸评审）时暂存，登录门控放开后由 applyHashRoute 重放
 // 跨模块可读写：ES Module 不允许给导入绑定赋值，故经 get/set 访问（session.js / drawing-review.js 使用）
 let pendingHashTab = null;
 export function getPendingHashTab() { return pendingHashTab; }
 export function setPendingHashTab(v) { pendingHashTab = v; }
 
-// 3 个重 Tab 拆为独立模块，切换时先加载再激活（home/dashboard 因 bootAuth 的静态引用启动即已在模块表中，import 即时 resolve）
+// 5 个重 Tab 拆为独立模块，切换时先加载再激活（home/dashboard 等因 bootAuth 的静态引用启动即已在模块表中，import 即时 resolve）
 const TAB_LOADERS = {
   home: () => import("./tabs/home.js"),
   dashboard: () => import("./tabs/dashboard.js"),
   "drawing-review": () => import("./tabs/drawing-review.js"),
+  "hardware-review": () => import("./tabs/hardware-review.js"),
+  "contract-approval": () => import("./tabs/contract-approval.js"),
 };
 let switchSeq = 0; // 切换序号：连续快速切 Tab 时后到者胜，等待加载期间被超越的请求落地前丢弃
 async function switchTab(tab, opts = {}) {
   const btn = document.querySelector('.tab-btn[data-tab="' + tab + '"]');
   const panel = document.getElementById("tab-" + tab);
   if (!btn || !panel) return false;
-  // 目标在「更多」分组里时先展开，否则视为当前不可见（如未登录时的图纸评审）
+  // 目标在「更多」分组里时先展开，否则视为当前不可见（未登录门控：gate-off / 图纸评审）
   if (btn.classList.contains("hidden")) {
-    if (btn.classList.contains("tab-more")) setMoreTabs(true);
+    if (btn.classList.contains("tab-more") && !btn.classList.contains("gate-off")) setMoreTabs(true);
     else return false;
   }
   const seq = ++switchSeq;
@@ -121,15 +123,21 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 window.addEventListener("hashchange", applyHashRoute);
 applyHashRoute();
 
-// 低频 Tab（Skill 中心/资料页/开源仓库）默认收进「更多」，保持导航 6 个高频入口
+// 低频 Tab（Skill 中心/资料页/开源仓库/硬件评审/合同审批）默认收进「更多」，保持导航 6 个高频入口
+// gate-off（登录门控，ST-04 新 Tab 用）优先于「更多」折叠：未登录时始终隐藏，登录后随折叠状态显隐
+let moreExpanded = false;
 function setMoreTabs(expanded) {
-  document.querySelectorAll(".tab-more").forEach(b => b.classList.toggle("hidden", !expanded));
+  moreExpanded = expanded;
+  document.querySelectorAll(".tab-more").forEach(b =>
+    b.classList.toggle("hidden", b.classList.contains("gate-off") || !expanded));
   const btn = document.getElementById("nav-more-btn");
   if (btn) btn.textContent = expanded ? "收起 ▴" : "更多 ▾";
 }
+// 登录门控 Tab 的 gate 函数在登录态变化后调用，按当前折叠状态重算可见性
+export function refreshMoreTabs() { setMoreTabs(moreExpanded); }
 function toggleMoreTabs() {
-  const anyHidden = !!document.querySelector(".tab-more.hidden");
-  setMoreTabs(anyHidden);
+  // 不能再用「是否存在 .tab-more.hidden」判断折叠态：gate-off（未登录门控）的 Tab 展开后仍隐藏
+  setMoreTabs(!moreExpanded);
 }
 
 function showPublishPrompt() {

@@ -5,6 +5,8 @@ import { parseHashTab, applyHashRoute, getPendingHashTab, setPendingHashTab, loa
 import { loadHome, loadHomeActivity } from "../tabs/home.js";
 import { loadDashboard, loadValidateHealth } from "../tabs/dashboard.js";
 import { updateDrawingReviewGate } from "../tabs/drawing-review.js";
+import { updateHardwareReviewGate } from "../tabs/hardware-review.js";
+import { updateContractApprovalGate } from "../tabs/contract-approval.js";
 
 // Hero 版式：全尺寸只给未登录访客的首次访问；登录用户与已见过的回访一律压缩成品牌细条
 function applyHeroMode() {
@@ -91,6 +93,8 @@ function renderUserBox() {
     box.innerHTML = "";
   }
   updateDrawingReviewGate();
+  updateHardwareReviewGate();
+  updateContractApprovalGate();
 }
 
 // Cookie 名转义正则为常量：避免每次 readCookie 调用重建
