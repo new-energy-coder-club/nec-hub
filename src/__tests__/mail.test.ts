@@ -96,12 +96,20 @@ describe("sendMailWithToken（profile → 草稿 → 发送）", () => {
     expect(sendInit.method).toBe("POST");
   });
 
-  it("profile 拿不到发件地址 → 失败且不再调后续接口", async () => {
-    fetchMock.mockResolvedValueOnce(jsonFetch({ code: 99999, msg: "no permission" }));
+  it("profile 拿不到发件地址 → 省略 From 头继续发送（服务端按 me 补主地址）", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonFetch({ code: 99999, msg: "no permission" }))
+      .mockResolvedValueOnce(jsonFetch({ code: 0, data: { draft: { id: "draft-f1" } } }))
+      .mockResolvedValueOnce(jsonFetch({ code: 0, data: {} }));
     const r = await sendMailWithToken("utok", { to: ["a@x.com"], subject: "s", text: "t" });
-    expect(r.ok).toBe(false);
-    expect(r.detail).toContain("无法获取发件人邮箱地址");
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(r.ok).toBe(true);
+    expect(r.detail).toContain("draft-f1");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const [, draftInit] = fetchMock.mock.calls[1] as [string, { body: string }];
+    const payload = JSON.parse(draftInit.body) as { raw: string };
+    const eml = decodeBase64UrlToUtf8(payload.raw);
+    expect(eml).not.toContain("From:");
+    expect(eml).toContain("To: <a@x.com>");
   });
 
   it("草稿创建失败 → 返回错误且不带 draftId", async () => {

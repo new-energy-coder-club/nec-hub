@@ -5,7 +5,8 @@
  * （KV feishu:user_token:<open_id>）→ getUserAccessToken 自动续期 → 建草稿 + 发送。
  * 草稿 API：POST /mail/v1/user_mailboxes/me/drafts（body.raw = base64url 编码的 RFC 5822 EML，≤37.5MB）
  * 发送 API：POST /mail/v1/user_mailboxes/me/drafts/{draft_id}/send（高险写操作；发送失败草稿会保留在发件人邮箱）
- * 发件地址：GET /mail/v1/user_mailboxes/me/profile → primary_email_address。
+ * 发件地址：优先 GET /mail/v1/user_mailboxes/me/profile → primary_email_address 写入 From；
+ *   取不到（邮箱读取 scope 未授）时省略 From，服务端按 user_mailbox_id=me 补主邮箱地址。
  */
 
 import { getUserAccessToken } from "./user-token";
@@ -41,7 +42,7 @@ function addrLine(addrs: string[]): string {
 }
 
 export interface BuildEmlOptions {
-  from: { address: string; name?: string };
+  from?: { address: string; name?: string };
   to: string[];
   cc?: string[];
   bcc?: string[];
@@ -50,15 +51,15 @@ export interface BuildEmlOptions {
   html?: string;
 }
 
-/** 构造 RFC 5822 EML（纯文本 / HTML 二选一，html 优先） */
+/** 构造 RFC 5822 EML（纯文本 / HTML 二选一，html 优先）。from 缺省时不写 From 头——服务端按 user_mailbox_id=me 补主邮箱地址（lark-cli 同款行为） */
 export function buildPlainEml(opts: BuildEmlOptions): string {
   const isHtml = Boolean(opts.html);
   const body = isHtml ? (opts.html ?? "") : (opts.text ?? "");
-  const from = opts.from.name
-    ? `${encodeHeaderWord(opts.from.name)} <${opts.from.address}>`
-    : `<${opts.from.address}>`;
+  const fromLine = opts.from
+    ? `From: ${opts.from.name ? `${encodeHeaderWord(opts.from.name)} <${opts.from.address}>` : `<${opts.from.address}>`}`
+    : "";
   return [
-    `From: ${from}`,
+    ...(fromLine ? [fromLine] : []),
     `To: ${addrLine(opts.to)}`,
     ...(opts.cc?.length ? [`Cc: ${addrLine(opts.cc)}`] : []),
     ...(opts.bcc?.length ? [`Bcc: ${addrLine(opts.bcc)}`] : []),
@@ -99,13 +100,18 @@ export interface SendMailResult {
   detail: string;
 }
 
-/** 用已解析的 user_access_token 发信：profile → 建草稿 → 发送草稿 */
+/** 用已解析的 user_access_token 发信：profile（可选）→ 建草稿 → 发送草稿 */
 export async function sendMailWithToken(userToken: string, opts: SendMailOptions): Promise<SendMailResult> {
   const address = await getUserMailboxAddress(userToken);
-  if (!address) {
-    return { ok: false, detail: "无法获取发件人邮箱地址（user profile）——请确认该账号已授权邮箱权限并重新登录中台" };
-  }
-  const eml = buildPlainEml({ from: { address }, to: opts.to, cc: opts.cc, bcc: opts.bcc, subject: opts.subject, text: opts.text, html: opts.html });
+  const eml = buildPlainEml({
+    ...(address ? { from: { address } } : {}), // profile 拿不到地址（邮箱读取 scope 未授）时省略 From，服务端按 me 补主地址
+    to: opts.to,
+    cc: opts.cc,
+    bcc: opts.bcc,
+    subject: opts.subject,
+    text: opts.text,
+    html: opts.html,
+  });
 
   // 1. 建草稿（用户身份 user_mailbox_id = me）
   const draftResp = await fetch(`${FEISHU_API}/mail/v1/user_mailboxes/me/drafts`, {
