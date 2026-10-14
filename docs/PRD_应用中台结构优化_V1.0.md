@@ -111,7 +111,7 @@ public/
 - 方案 B：把独立页的 JS 拆成模块，门户 Tab 直接复用同一份模块。
 二选一在方案评审时定，**验收标准相同**：`statusMap` 等常量全库只剩 1 处定义；改状态文案只需改 1 个文件。
 
-### ST-04 补齐硬件评审 / 合同审批前端入口 【P1】
+### ST-04 补齐硬件评审 / 合同审批前端入口 【P1】 ✅ 已完成（2026-10-15）
 
 **问题**：`src/hardware-review/`、`src/contract-approval/` 后端就绪（走 module-gateway），无前端。
 
@@ -121,6 +121,8 @@ public/
 - 沿用各自 `*-config` 未配置时 503 的网关行为，前端展示「未配置多维表格」引导态而非报错。
 
 **验收**：两条流程可从门户发起申请、查看状态、处理审批待办；「更多」下拉变为 5 项。
+
+> 落地记录（2026-10-15，commit ada1caf）：`portal/tabs/hardware-review.js`（280 行，状态机操作全链路）+ `portal/tabs/contract-approval.js`（313 行，会签/评论/审批操作）；`shared/api.js` 新增 `apiMod()`，503 →「未配置多维表格」引导态、401 → 登录过期提示；登录门控与「更多」折叠双标记（gate-off）；深链 `#/hardware-review`、`#/contract-approval` 生产实测通过（登录态直达、列表渲染正常）。
 
 ### ST-05 KV 命名空间治理 【P1】
 
