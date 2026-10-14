@@ -167,8 +167,7 @@ public/
 
 | 里程碑 | 内容 | 出口标准 |
 |---|---|---|
-| **M1 止血**（1 周） | ST-08a 测试门禁、ST-02 hash 路由、ST-01 拆分（可先拆 3 个最重 Tab：home / dashboard / drawing-review） | CI 拦红生效；`index.html` ≤ 2000 行；深链可用 |
-| **M2 收敛**（1 周） | ST-01 拆完、ST-03 双实现收敛、ST-05 KV 清单 + CI lint | `index.html` < 800 行；statusMap 唯一；KV 清单入库 |
+| **M1 止血**（1 周） | ST-08a 测试门禁、ST-02 hash 路由、ST-01 拆分（可先拆 3 个最重 Tab：home / dashboard / drawing-review） | CI 拦红生效；`index.html` ≤ 2000 行；深链可用。**✅ 已达成（2026-10-15）**：CI test job 上线（deploy 需双绿；「故意挂测试的 PR 被拦」实测未做）；`index.html` 676 行；`#/<tab>` 深链 + 旧 `#tab-` 兼容升级生产实测通过 || **M2 收敛**（1 周） | ST-01 拆完、ST-03 双实现收敛、ST-05 KV 清单 + CI lint | `index.html` < 800 行；statusMap 唯一；KV 清单入库 |
 | **M3 补齐**（1 周） | ST-04 两个流程前端、ST-06 路由层、ST-07 key 统一、ST-08b staging、ST-09/10 | §2.1 指标全绿 |
 
 ## 5. 风险与对策
