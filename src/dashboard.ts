@@ -119,6 +119,7 @@ export interface DocEntry {
   description: string;
   /** 分类：brand=品牌规范 template=文档模板 sop=制度SOP training=培训材料 */
   category: "brand" | "template" | "sop" | "training";
+  /** 为空字符串表示占位条目，前端展示「即将上线」且不可点击 */
   url: string;
   visibility: string;
   maintainer: string;
@@ -164,9 +165,9 @@ const SEED_DOCS: DocEntry[] = [
   {
     id: "tech-report-template",
     title: "技术方案报告模板",
-    description: "项目立项/技术评审/成果总结通用报告结构（待接入飞书文档）",
+    description: "项目立项/技术评审/成果总结通用报告结构（即将上线）",
     category: "template",
-    url: "https://example.feishu.cn/docx/tech-report",
+    url: "",
     visibility: "all",
     maintainer: "待认领",
     updatedAt: new Date().toISOString(),
@@ -175,9 +176,9 @@ const SEED_DOCS: DocEntry[] = [
   {
     id: "meeting-minutes-template",
     title: "会议纪要模板",
-    description: "例会/评审会标准纪要结构，含行动项追踪（待接入飞书文档）",
+    description: "例会/评审会标准纪要结构，含行动项追踪（即将上线）",
     category: "template",
-    url: "https://example.feishu.cn/docx/meeting-minutes",
+    url: "",
     visibility: "all",
     maintainer: "待认领",
     updatedAt: new Date().toISOString(),
@@ -208,9 +209,9 @@ const SEED_DOCS: DocEntry[] = [
   {
     id: "handover-checklist",
     title: "换届交接清单",
-    description: "中台资产/账号/文档/权限交接 checklist（待接入飞书文档）",
+    description: "中台资产/账号/文档/权限交接 checklist（即将上线）",
     category: "sop",
-    url: "https://example.feishu.cn/docx/handover",
+    url: "",
     visibility: "all",
     maintainer: "待认领",
     updatedAt: new Date().toISOString(),
@@ -219,9 +220,9 @@ const SEED_DOCS: DocEntry[] = [
   {
     id: "mech-onboarding",
     title: "机械组入门教程",
-    description: "机械组常用工具链、设计规范、常用元件手册（待接入飞书文档）",
+    description: "机械组常用工具链、设计规范、常用元件手册（即将上线）",
     category: "training",
-    url: "https://example.feishu.cn/wiki/mech-onboarding",
+    url: "",
     visibility: "all",
     maintainer: "待认领",
     updatedAt: new Date().toISOString(),
@@ -230,9 +231,9 @@ const SEED_DOCS: DocEntry[] = [
   {
     id: "elec-onboarding",
     title: "电控组入门教程",
-    description: "电路设计、嵌入式开发、调试工具使用指南（待接入飞书文档）",
+    description: "电路设计、嵌入式开发、调试工具使用指南（即将上线）",
     category: "training",
-    url: "https://example.feishu.cn/wiki/elec-onboarding",
+    url: "",
     visibility: "all",
     maintainer: "待认领",
     updatedAt: new Date().toISOString(),
@@ -241,9 +242,9 @@ const SEED_DOCS: DocEntry[] = [
   {
     id: "vision-onboarding",
     title: "视觉组入门教程",
-    description: "OpenCV/深度学习/相机标定/部署流程（待接入飞书文档）",
+    description: "OpenCV/深度学习/相机标定/部署流程（即将上线）",
     category: "training",
-    url: "https://example.feishu.cn/wiki/vision-onboarding",
+    url: "",
     visibility: "all",
     maintainer: "待认领",
     updatedAt: new Date().toISOString(),
@@ -256,6 +257,13 @@ export async function buildDocs(env: Env, request: Request, ctx?: ExecutionConte
   if (docs.length === 0) {
     docs = SEED_DOCS;
     await env.REGISTRY.put(DOCS_REGISTRY_KEY, JSON.stringify(docs));
+  } else {
+    // 历史种子里的 example.feishu.cn 占位链接 → 置空 url，前端展示「即将上线」
+    const cleaned = docs.map((d) => (d.url.includes("example.feishu.cn") ? { ...d, url: "" } : d));
+    if (cleaned.some((d, i) => d.url !== docs[i].url)) {
+      docs = cleaned;
+      await env.REGISTRY.put(DOCS_REGISTRY_KEY, JSON.stringify(docs));
+    }
   }
   const session = await resolveSession(env, request, ctx);
   if (!session) {

@@ -134,7 +134,7 @@ Cron（`wrangler.jsonc` triggers，3 条）：`*/4 * * * *` 预热看板缓存 �
 | `GET /apps/<name>/` | 队员应用（R2，Cache API 边缘缓存） |
 | `GET /skills/<name>/SKILL.md` | Skill 原文 |
 
-## MCP 工具（24 个）
+## MCP 工具（25 个）
 
 | 工具 | 说明 |
 |---|---|
@@ -162,6 +162,7 @@ Cron（`wrangler.jsonc` triggers，3 条）：`*/4 * * * *` 预热看板缓存 �
 | `list_todos` | 按 open_id 拉取待办聚合（各流程底表中待其审批的单 + 逾期任务，按流程分组；仅管理端） |
 | `send_notice` | 向指定流程的飞书群发送机器人通知（多群分流 + 加签；失败重试 2 次并留痕 `notify:failed`；仅管理端） |
 | `config_flows` | 查看/修改审批流程配置 flows:config（底表/单号前缀/审批角色/必填规则/金额会签阈值；set 深合并校验；仅管理端） |
+| `schedule_meeting` | 一键创建飞书日历日程 + 视频会议（`src/meeting/`，评审模块拉会共用） |
 
 ## Skill 同步脚本
 
@@ -176,8 +177,8 @@ python scripts/sync-gitee-skills.py --repo owner/name --branch SKill --dir skill
 ## 已配置的生产资源
 
 - 自定义域名：`hub.newenergycoder.club`（custom domain，自动签发证书）
-- Secrets：`FEISHU_APP_ID` / `FEISHU_APP_SECRET`（OAuth 登录 + MES 免登）· `MCP_TOKEN`（MCP 写保护，已启用）· `VERCEL_TOKEN`（sync_vercel）
-- 可选：`GITHUB_TOKEN` / `GITEE_TOKEN`（`/api/repos` 提额）· `GITHUB_WEBHOOK_SECRET`（`/api/hooks/github` 验签）· `FEISHU_BOT_WEBHOOK` 系列（审批/PRD 群通知，可按流程分流）· `FEISHU_WEBHOOK_URL` / `FEISHU_WEBHOOK_SECRET`（校验周报与图纸评审告警，支持加签）
+- Secrets：`FEISHU_APP_ID` / `FEISHU_APP_SECRET`（OAuth 登录 + MES 免登）· `MCP_TOKEN`（MCP 写保护，已启用）· `VERCEL_TOKEN`（sync_vercel）· `FEISHU_WEBHOOK_URL`（群机器人：每周校验周报 + 图纸评审通知/阻塞告警；机器人开启签名校验时配套 `FEISHU_WEBHOOK_SECRET`）
+- 可选：`GITHUB_TOKEN` / `GITEE_TOKEN`（`/api/repos` 提额）· `GITHUB_WEBHOOK_SECRET`（`/api/hooks/github` 验签）· `FEISHU_BOT_WEBHOOK` 系列（审批/PRD 群通知，可按流程分流）
 
 ## 待办（第二/三阶段）
 

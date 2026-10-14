@@ -5,34 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>NEC 团队 AI 中台</title>
 <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+<link rel="stylesheet" href="/brand/nec-tokens.css" />
 <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin />
 <link rel="dns-prefetch" href="https://cdn.tailwindcss.com" />
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  :root {
-      /* ---- 品牌色 Brand Colors ---- */
-      --nec-royal: #1A2FA0;        /* NEC 蓝：标志主色 */
-      --nec-navy: #141B5E;         /* NEC 藏青：深色底、标题、强调底 */
-      --nec-ink: #0B1033;          /* 墨青：浅色底上的正文/标题 */
-      --nec-cyan: #1FA9E8;         /* 破晓青：强调、交互、亮点 */
-      --nec-sky: #4FC3F7;          /* 破晓浅青：辅助强调、渐变伴侣 */
-      
-      /* ---- 中性色 Neutrals ---- */
-      --nec-paper: #FFFFFF;        /* 纸白 */
-      --nec-fog: #F4F6FB;          /* 雾灰蓝 · 浅色底 */
-      --nec-gray: #5A6472;         /* 次级文字 */
-      --nec-line: #D9DFF0;         /* 描边/分割线 */
-      
-      /* ---- 字体族 Typography ---- */
-      --nec-font-cn: "Source Han Sans SC", "思源黑体 CN", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-      --nec-font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
-      
-      /* ---- 应用工具类 Utilities ---- */
-      --nec-radius: 12px;
-      --nec-shadow: 0 2px 10px rgba(11, 16, 51, .08);
-      --nec-maxw: 72rem;
-    }
-    
     body { font-family: var(--nec-font-cn); }
     .mono { font-family: var(--nec-font-mono); }
     .tab-active { border-bottom: 3px solid var(--nec-cyan); color: var(--nec-navy); }
@@ -75,6 +52,20 @@
     animation: nec-glow 5s ease-in-out infinite;
   }
   pre.prompt { border-left: 3px solid var(--nec-cyan); }
+
+  /* ---- 移动端适配 Mobile ---- */
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  /* iOS Safari：输入框 font-size < 16px 会触发自动放大，统一 16px */
+  input, textarea, select { font-size: 16px; }
+  @media (min-width: 640px) { input, textarea, select { font-size: inherit; } }
+  /* 触控目标：小屏下主要操作按钮不小于 44px 高 */
+  @media (max-width: 639px) {
+    .tab-btn { min-height: 44px; }
+    button, a[class*="rounded"], [role="button"] { touch-action: manipulation; }
+  }
+  /* 表格横向滚动视觉提示 */
+  .overflow-x-auto { -webkit-overflow-scrolling: touch; }
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
@@ -270,27 +261,27 @@
     <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-4">
       <h3 class="text-sm font-bold text-slate-700 mb-3">核心流程</h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <a href="/apps/drawing-review/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-blue-200 transition">
+        <a href="/apps/drawing-review/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-[#1FA9E8] transition">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-lg">📐</div>
+            <div class="w-10 h-10 rounded-lg bg-[#E8ECFB] flex items-center justify-center text-lg">📐</div>
             <div>
               <p class="font-bold text-slate-800">新增机图纸评审</p>
               <p class="text-xs text-gray-500">提交 · 评审 · BOM · 排期 · 采购</p>
             </div>
           </div>
         </a>
-        <a href="/apps/hardware-review/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-blue-200 transition">
+        <a href="/apps/hardware-review/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-[#1FA9E8] transition">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-lg">🔧</div>
+            <div class="w-10 h-10 rounded-lg bg-[#E8ECFB] flex items-center justify-center text-lg">🔧</div>
             <div>
               <p class="font-bold text-slate-800">硬件评审流程</p>
               <p class="text-xs text-gray-500">选型 · 评审 · 立项 · 归档</p>
             </div>
           </div>
         </a>
-        <a href="/apps/scoring/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-blue-200 transition">
+        <a href="/apps/scoring/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-[#1FA9E8] transition">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-lg">🏆</div>
+            <div class="w-10 h-10 rounded-lg bg-[#E8ECFB] flex items-center justify-center text-lg">🏆</div>
             <div>
               <p class="font-bold text-slate-800">NEC 评分看板</p>
               <p class="text-xs text-gray-500">赛事成绩 · 评分记录 · 排名</p>
@@ -991,7 +982,9 @@ const HOME_RENDERERS = {
     if (!docs.length) { slot.innerHTML = `<p class="text-sm text-gray-400">资料页暂无条目。</p>`; return; }
     slot.innerHTML = `<ul class="divide-y divide-gray-100">` + docs.slice(0, 6).map(d => `
       <li class="py-1.5">
-        <a href="${esc(d.url)}" target="_blank" class="hover:underline font-medium" style="color:var(--nec-navy)">${esc(d.title)}</a>
+        ${d.url
+          ? `<a href="${esc(d.url)}" target="_blank" class="hover:underline font-medium" style="color:var(--nec-navy)">${esc(d.title)}</a>`
+          : `<span class="font-medium text-gray-400">${esc(d.title)}</span> <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-600">即将上线</span>`}
         <p class="text-xs text-gray-400 truncate">${esc(d.description || "")}</p>
       </li>`).join("") + `</ul>`;
   },
@@ -1111,7 +1104,7 @@ function skillCard(s) {
           <h3 class="font-bold">${esc(s.name)}</h3>
           <span class="text-[10px] px-1.5 py-0.5 rounded" style="background:var(--nec-paper);color:var(--nec-gray);border:1px solid var(--nec-line)">${SKILL_CAT_LABEL[cat]}</span>
           ${s.source === "gitee" ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-500">Gitee</span>' : ""}
-          ${s.source === "hub" ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-500">中台自托管</span>' : ""}
+          ${s.source === "hub" ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-[#E8ECFB] text-[#1A2FA0]">中台自托管</span>' : ""}
         </div>
         <p class="text-sm text-gray-500 mt-1">${esc(s.description || "")}</p>
         ${tags ? `<div class="flex gap-1 mt-1.5 flex-wrap">${tags}</div>` : ""}
@@ -1194,15 +1187,21 @@ function renderDocs() {
     <div>
       <h3 class="text-sm font-bold text-slate-700 mb-3">${DOC_CAT_LABEL[g.cat]}</h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        ${g.items.map(d => `
-          <a href="${d.url}" target="_blank" class="block bg-white rounded-xl shadow hover:shadow-md transition p-5">
+        ${g.items.map(d => {
+          const inner = `
             <div class="flex items-center justify-between">
               <h4 class="font-bold">${esc(d.title)}</h4>
-              <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">${d.category}</span>
+              <span class="shrink-0">
+                ${d.url ? "" : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 mr-1">即将上线</span>`}
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">${d.category}</span>
+              </span>
             </div>
             <p class="text-sm text-gray-500 mt-1 line-clamp-2">${esc(d.description || "")}</p>
-            <p class="text-xs text-gray-400 mt-3">维护：${esc(d.maintainer || "—")} · ${new Date(d.updatedAt).toLocaleString("zh-CN")}</p>
-          </a>`).join("")}
+            <p class="text-xs text-gray-400 mt-3">维护：${esc(d.maintainer || "—")} · ${new Date(d.updatedAt).toLocaleString("zh-CN")}</p>`;
+          return d.url
+            ? `<a href="${d.url}" target="_blank" class="block bg-white rounded-xl shadow hover:shadow-md transition p-5">${inner}</a>`
+            : `<div class="block bg-white rounded-xl shadow p-5 opacity-75 cursor-default">${inner}</div>`;
+        }).join("")}
       </div>
     </div>`).join("");
 }
