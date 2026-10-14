@@ -122,6 +122,18 @@ describe("sendMailWithToken（profile → 草稿 → 发送）", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("fromAddress 显式指定 → 跳过 profile，直接用指定地址发 From", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonFetch({ code: 0, data: { draft: { id: "draft-af" } } }))
+      .mockResolvedValueOnce(jsonFetch({ code: 0, data: {} }));
+    const r = await sendMailWithToken("utok", { to: ["a@x.com"], subject: "s", text: "t", fromAddress: "alias@nec.club" });
+    expect(r.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const [, draftInit] = fetchMock.mock.calls[0] as [string, { body: string }];
+    const payload = JSON.parse(draftInit.body) as { raw: string };
+    expect(decodeBase64UrlToUtf8(payload.raw)).toContain("From: <alias@nec.club>");
+  });
+
   it("发送失败 → 提示草稿保留可手动补发", async () => {
     fetchMock
       .mockResolvedValueOnce(jsonFetch({ code: 0, data: { primary_email_address: "me@nec.club" } }))

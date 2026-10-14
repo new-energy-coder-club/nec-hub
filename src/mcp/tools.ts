@@ -395,6 +395,7 @@ export const TOOLS = [
       type: "object",
       properties: {
         from: { type: "string", description: "管理端（MCP_TOKEN）专用：发件人，队员姓名或 ou_ 开头的 open_id（姓名须在队员名单表）" },
+        from_address: { type: "string", description: "可选（管理端）：显式指定发件邮箱地址（如 send_as 别名）；缺省自动取发件人主邮箱（需要邮箱读取权限）" },
         to: { type: "array", items: { type: "string" }, description: "收件人邮箱列表，至少一个" },
         cc: { type: "array", items: { type: "string" }, description: "可选：抄送邮箱列表" },
         bcc: { type: "array", items: { type: "string" }, description: "可选：密送邮箱列表" },

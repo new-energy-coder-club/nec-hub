@@ -639,6 +639,13 @@ export async function toolSendMail(args: Record<string, unknown>, env: Env, hasM
   const html = String(args.html ?? "").trim();
   if (!text && !html) throw new Error("text 与 html 至少提供一个");
 
+  // 发件地址覆盖（send_as 别名等；仅管理端可指定，本人发信以 user_token 主邮箱为准）
+  const fromAddress = String(args.from_address ?? "").trim();
+  if (fromAddress && !hasMcpToken) {
+    throw new Error("from_address 仅管理端可指定（本人发信请勿传该字段）");
+  }
+  if (fromAddress && !EMAIL_RE.test(fromAddress)) throw new Error(`邮箱格式无效：${fromAddress}`);
+
   // 3. 发信（建草稿 + 发送；失败不抛错，草稿可由发件人手动补发）
   const result = await sendFeishuMail(env, fromOpenId, {
     to,
@@ -647,6 +654,7 @@ export async function toolSendMail(args: Record<string, unknown>, env: Env, hasM
     subject,
     text: text || undefined,
     html: html || undefined,
+    ...(fromAddress ? { fromAddress } : {}),
   });
   if (!result.ok) {
     return { content: [{ type: "text", text: `⚠️ 邮件未送达：${result.detail}` }] };

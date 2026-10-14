@@ -93,6 +93,8 @@ export interface SendMailOptions {
   subject: string;
   text?: string;
   html?: string;
+  /** 管理端显式指定发件地址（send_as 别名等）；缺省自动取 user profile 主邮箱 */
+  fromAddress?: string;
 }
 
 export interface SendMailResult {
@@ -102,7 +104,7 @@ export interface SendMailResult {
 
 /** 用已解析的 user_access_token 发信：profile（可选）→ 建草稿 → 发送草稿 */
 export async function sendMailWithToken(userToken: string, opts: SendMailOptions): Promise<SendMailResult> {
-  const address = await getUserMailboxAddress(userToken);
+  const address = opts.fromAddress ?? (await getUserMailboxAddress(userToken));
   const eml = buildPlainEml({
     ...(address ? { from: { address } } : {}), // profile 拿不到地址（邮箱读取 scope 未授）时省略 From，服务端按 me 补主地址
     to: opts.to,
