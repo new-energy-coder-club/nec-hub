@@ -30,7 +30,7 @@
 | F-03 合规审批 | ⬜ | 合同审批域已上线（contract-approval）；PRD §5 的对外发布/合作/授权合规流程未建（驳回原因标准化选项未做） |
 | M-01 MCP 工具 | 🔄 | **send_notice / whoami 已移植**（管理端 MCP_TOKEN）；**send_mail 已新增并部署**（N-02 邮箱发信，本人 user_token 或管理端 from 代发）；submit_approval/list_todos/config_flows 由各域 config 工具替代（弃用，见架构备注）；update_inventory 未做 |
 | 应用广场角色过滤 | ✅ | visibleApps 已移植（未登录/external 仅 all，在册队员可见 all/本组/本角色/本人 authored），单测 4 例全绿；已随生产部署 b0f2bc85 生效 |
-| 部署状态 | ✅ | 已部署生产 `hub.newenergycoder.club`（版本 `9b74c833`，MCP 20 工具 / vitest 200 用例全绿）并推送 gitee `fix/vi-v1.1-convergence`；main 分支已打 tag `archive/pre-domain-split` 归档；N-02 邮件通道（send_mail，第 20 个工具）已随本次部署上线，剩发件账号重新授权后实测 |
+| 部署状态 | ✅ | 已部署生产 `hub.newenergycoder.club`（版本 `9b74c833`，MCP 20 工具 / vitest 20 文件 200 用例全绿）并推送 gitee `fix/vi-v1.1-convergence`；main 分支已打 tag `archive/pre-domain-split` 归档；N-02 邮件通道（send_mail，第 20 个工具）已随本次部署上线，剩发件账号重新授权后实测 |
 
 ---
 
