@@ -583,6 +583,17 @@
 
   render();
 })();
+
+// embedded 模式：被 hub 主界面 iframe 嵌入时隐藏自身顶栏、收窄边距
+(function () {
+  const params = new URLSearchParams(location.search);
+  if (params.get("embedded") === "1" || window.parent !== window) {
+    const header = document.querySelector("header");
+    if (header) header.style.display = "none";
+    const wrap = document.querySelector("body > div.max-w-4xl");
+    if (wrap) wrap.classList.remove("px-5", "py-6");
+  }
+})();
 </script>
 </body>
 </html>

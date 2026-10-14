@@ -853,25 +853,17 @@ async function uploadFiles() {
   return data.files || [];
 }
 
-function buildFields() {
-  const filled = LINES.filter(l => l.cat && l.item.trim() && validAmount(l.amount));
-  const total = filled.reduce((s, l) => s + Number(l.amount), 0);
-  const invnos = [...new Set(filled.map(l => l.invno.trim()).filter(Boolean))];
-  const detail = filled.map(l =>
-    l.item.trim() + "（" + l.cat + " ¥" + Number(l.amount).toFixed(2)
-    + (l.date ? " · 开票 " + l.date : "")
-    + (l.invno.trim() ? " · 发票 " + l.invno.trim() : "")
-    + (l.note.trim() ? " · " + l.note.trim() : "") + "）"
-  ).join("\n");
-  const note = $("doc-note").value.trim();
+function currentPayee() {
   return {
-    事项: detail + (note ? "\n备注：" + note : ""),
-    报销金额: Math.round(total * 100) / 100,
-    发票号: invnos.join("、"),
-    无票说明: $("doc-noinv").value.trim(),
-    来源: "报销助手",
+    method: $("p-method").value,
+    account_name: $("p-name").value.trim() || (ME.user ? ME.user.name : ""),
+    account_no: $("p-account").value.trim(),
+    bank: $("p-bank").value.trim(),
   };
 }
+
+/** 最近一次提交/查看的单据附件 R2 keys（「查看附件」弹窗数据源） */
+let LAST_ATTACHMENTS = [];
 
 async function submitReimburse(andNew) {
   const st = $("submit-status");
@@ -882,18 +874,34 @@ async function submitReimburse(andNew) {
   try {
     st.textContent = "上传凭证中…";
     const uploaded = await uploadFiles();
-    const fields = buildFields();
     const keys = uploaded.map(f => f.key);
-    if (keys.length) fields["发票照片"] = keys.join("\n");
+    const filled = LINES.filter(l => l.cat && l.item.trim() && validAmount(l.amount));
 
     st.textContent = "发起审批中…";
-    const resp = await fetch("/api/approvals", {
+    const resp = await fetch("/api/erp/reimburse/submit", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ type: "reimburse", fields }),
+      body: JSON.stringify({
+        lines: filled,
+        note: $("doc-note").value.trim(),
+        noinv: $("doc-noinv").value.trim(),
+        payee: currentPayee(),
+        attachments: keys,
+      }),
     });
     const data = await resp.json();
-    if (!resp.ok || data.error) throw new Error(data.error || ("HTTP " + resp.status));
+    if (!resp.ok || data.error) {
+      const detail = Array.isArray(data.detail) && data.detail.length ? "：" + data.detail.join("；") : "";
+      throw new Error((data.error || ("HTTP " + resp.status)) + detail);
+    }
+
+    LAST_ATTACHMENTS = keys;
+    // 存为默认收款账户（D1，下次自动带出）
+    if ($("p-save-default").checked) {
+      fetch("/api/erp/reimburse/payee", {
+        method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(currentPayee()),
+      }).catch(() => {});
+    }
 
     DOC_STATUS = "审批中";
     setDocStatus("审批中");
@@ -942,6 +950,7 @@ function resetAll() {
   $("f-payment-status").textContent = "";
   $("success-card").classList.add("hidden");
   $("doc-date").value = new Date().toLocaleDateString("sv-SE");
+  LAST_ATTACHMENTS = [];
   renderLines();
   validateSop();
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -959,6 +968,33 @@ function statusBadge(s) {
 async function loadMine() {
   const box = $("mine-list");
   box.innerHTML = "加载中…";
+  // 优先 D1 单据快照（含明细摘要与查看/复制）；无快照时回退审批底表列表
+  try {
+    const r1 = await fetch("/api/erp/reimburse/docs/mine");
+    if (r1.status === 401) { box.innerHTML = '<p class="text-nec-gray">登录后可见。</p>'; return; }
+    if (r1.ok) {
+      const d1 = await r1.json();
+      if ((d1.docs || []).length) { renderMineErp(box, d1.docs); return; }
+    }
+  } catch { /* 回退审批底表 */ }
+  loadMineFromBitable(box);
+}
+function renderMineErp(box, docs) {
+  box.innerHTML = '<div class="overflow-x-auto"><table class="line-table" style="min-width:680px">' +
+    '<thead><tr><th>单号</th><th>首项 / 明细</th><th>合计</th><th>状态</th><th>提交时间</th><th>操作</th></tr></thead><tbody>' +
+    docs.map(d =>
+      "<tr style='cursor:default'><td class='mono text-xs whitespace-nowrap'>" + esc(d.application_id) + "</td>" +
+      "<td>" + esc(d.firstItem || "—") + (d.lines > 1 ? " <span class='text-xs text-nec-gray'>等 " + d.lines + " 项</span>" : "") + "</td>" +
+      "<td class='mono whitespace-nowrap'>" + fmtMoney(d.total) + "</td>" +
+      "<td class='whitespace-nowrap'>" + statusBadge(d.status) + "</td>" +
+      "<td class='text-nec-gray text-xs whitespace-nowrap'>" + (d.created_at ? new Date(d.created_at).toLocaleString("zh-CN") : "—") + "</td>" +
+      "<td class='whitespace-nowrap'><button class='link-btn doc-open' data-id='" + esc(d.application_id) + "'>查看</button>" +
+      " <button class='link-btn doc-copy-btn' data-id='" + esc(d.application_id) + "'>复制</button></td></tr>"
+    ).join("") + "</tbody></table></div>";
+  box.querySelectorAll(".doc-open").forEach(b => b.addEventListener("click", () => openDoc(b.dataset.id, false)));
+  box.querySelectorAll(".doc-copy-btn").forEach(b => b.addEventListener("click", () => openDoc(b.dataset.id, true)));
+}
+async function loadMineFromBitable(box) {
   try {
     const resp = await fetch("/api/approvals/mine?type=reimburse");
     if (resp.status === 401) { box.innerHTML = '<p class="text-nec-gray">登录后可见。</p>'; return; }
@@ -983,6 +1019,81 @@ async function loadMine() {
   } catch (e) {
     box.innerHTML = '<p class="text-red-500">加载失败，请稍后重试。</p>';
   }
+}
+
+/* ========== 单据详情 / 复制为新增 / 附件清单 ========== */
+
+let CURRENT_DOC = null;
+
+async function openDoc(id, copy) {
+  let d;
+  try {
+    const resp = await fetch("/api/erp/reimburse/docs/" + encodeURIComponent(id));
+    d = await resp.json();
+    if (!resp.ok || d.error) throw new Error(d.error || ("HTTP " + resp.status));
+  } catch (e) {
+    alert("单据加载失败：" + (e.message || e));
+    return;
+  }
+  if (copy) { copyDocToForm(d); return; }
+  CURRENT_DOC = d;
+  LAST_ATTACHMENTS = (d.payload && d.payload.attachments) || [];
+  const p = d.payload || {};
+  const payee = p.payee || {};
+  const lines = p.lines || [];
+  const total = lines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+  $("doc-modal-title").textContent = "单据详情 " + d.application_id;
+  $("doc-modal-body").innerHTML =
+    '<div class="flex items-center gap-3 mb-3">' + statusBadge(d.status) +
+      '<span class="text-nec-gray text-xs">申请人 ' + esc(d.applicant) + " · " + new Date(d.created_at).toLocaleString("zh-CN") + "</span></div>" +
+    '<table class="line-table" style="min-width:560px"><thead><tr><th>#</th><th>费用项目</th><th>事项</th><th>开票日期</th><th>发票号</th><th>金额</th></tr></thead><tbody>' +
+    lines.map((l, i) => "<tr style='cursor:default'><td class='mono text-nec-gray'>" + (i + 1) + "</td><td>" + esc(l.cat) + "</td><td>" + esc(l.item) + (l.note ? " <span class='text-xs text-nec-gray'>(" + esc(l.note) + ")</span>" : "") + "</td><td class='mono text-xs'>" + esc(l.date || "—") + "</td><td class='mono text-xs'>" + esc(l.invno || "—") + "</td><td class='mono'>" + fmtMoney(l.amount) + "</td></tr>").join("") +
+    "</tbody></table>" +
+    '<p class="mt-2 text-right font-black text-nec-navy">合计 ' + fmtMoney(total) + "</p>" +
+    '<div class="mt-3 grid grid-cols-2 gap-x-8 gap-y-1 text-xs text-nec-gray">' +
+      "<span>支付方式：" + esc(payee.method || "—") + "</span><span>收款人：" + esc(payee.account_name || "—") + "</span>" +
+      "<span>收款账号：" + esc(payee.account_no || "—") + "</span><span>开户银行：" + esc(payee.bank || "—") + "</span>" +
+      (p.noinv ? "<span class='col-span-2'>无票说明：" + esc(p.noinv) + "</span>" : "") +
+      (p.note ? "<span class='col-span-2'>备注：" + esc(p.note) + "</span>" : "") +
+      "<span class='col-span-2'>附件：" + (LAST_ATTACHMENTS.length ? LAST_ATTACHMENTS.map(esc).join("；") : "无") + "</span>" +
+    "</div>";
+  $("doc-modal").classList.remove("hidden");
+}
+
+function copyDocToForm(d) {
+  const p = d.payload || {};
+  resetAll();
+  LINES = (p.lines && p.lines.length ? p.lines : [newLine()]).map(l => Object.assign(newLine(), l));
+  SELECTED = 0;
+  $("doc-noinv").value = p.noinv || "";
+  $("doc-note").value = p.note || "";
+  if (p.payee) {
+    $("p-method").value = p.payee.method || "";
+    $("p-name").value = p.payee.account_name || "";
+    $("p-account").value = p.payee.account_no || "";
+    $("p-bank").value = p.payee.bank || "";
+  }
+  renderLines();
+  validateSop();
+  $("doc-modal").classList.add("hidden");
+  $("submit-status").textContent = "📋 已复制 " + d.application_id + " 的明细与收款信息（附件需重新上传）";
+}
+
+function fmtSize(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB"; }
+
+function openAttachModal() {
+  const rows = [];
+  const r = $("f-receipt").files && $("f-receipt").files[0];
+  const p = $("f-payment").files && $("f-payment").files[0];
+  if (r) rows.push(["发票 / 单据", esc(r.name), fmtSize(r.size), "待提交时上传"]);
+  if (p) rows.push(["付款凭证", esc(p.name), fmtSize(p.size), "待提交时上传"]);
+  LAST_ATTACHMENTS.forEach(k => rows.push(["已存档（R2）", '<span class="mono text-xs">' + esc(k) + "</span>", "—", "已上传"]));
+  $("attach-list").innerHTML = rows.length
+    ? '<table class="line-table" style="min-width:0"><thead><tr><th>类型</th><th>文件 / R2 Key</th><th>大小</th><th>状态</th></tr></thead><tbody>' +
+      rows.map(x => "<tr style='cursor:default'><td class='whitespace-nowrap'>" + x[0] + "</td><td class='break-all'>" + x[1] + "</td><td class='whitespace-nowrap'>" + x[2] + "</td><td class='whitespace-nowrap text-nec-gray'>" + x[3] + "</td></tr>").join("") +
+      "</tbody></table>"
+    : '<p class="text-nec-gray">暂无附件。在「附件」区上传发票/付款凭证，或直接 Ctrl+V 粘贴截图。</p>';
+  $("attach-modal").classList.remove("hidden");
 }
 
 /* ========== 登录态（与门户同一套飞书 OAuth + /auth/feishu 兑换） ========== */
@@ -1031,8 +1142,34 @@ function renderAuth() {
     $("doc-group").textContent = ME.user.group || "—";
     $("creator-name").textContent = ME.user.name;
     $("creator-time").textContent = new Date().toLocaleString("zh-CN");
+    loadErpMeta();
     loadMine();
   }
+}
+
+/** D1 费用项目目录 + 我的默认收款账户（失败时目录保留内置兜底） */
+async function loadErpMeta() {
+  try {
+    const resp = await fetch("/api/erp/reimburse/meta");
+    if (!resp.ok) return;
+    const d = await resp.json();
+    if (Array.isArray(d.items) && d.items.length) {
+      const groups = [];
+      for (const it of d.items) {
+        let g = groups.find(x => x.group === it.grp);
+        if (!g) { g = { group: it.grp, items: [] }; groups.push(g); }
+        g.items.push({ code: it.code, name: it.name });
+      }
+      CATALOG = groups;
+      if (!CATALOG.some(g => g.group === CAT_GROUP)) CAT_GROUP = CATALOG[0].group;
+    }
+    if (d.payee) {
+      if (d.payee.method) $("p-method").value = d.payee.method;
+      if (d.payee.account_name) $("p-name").value = d.payee.account_name;
+      if (d.payee.account_no) $("p-account").value = d.payee.account_no;
+      if (d.payee.bank) $("p-bank").value = d.payee.bank;
+    }
+  } catch { /* 目录兜底，收款留空 */ }
 }
 
 /* ========== 事件绑定与启动 ========== */
@@ -1084,6 +1221,27 @@ $("cat-list").addEventListener("dblclick", ev => {
   if (t) { pickCat(t.dataset.v); confirmCat(); }
 });
 $("cat-search").addEventListener("input", renderCatList);
+$("btn-attach").addEventListener("click", openAttachModal);
+$("attach-close").addEventListener("click", () => $("attach-modal").classList.add("hidden"));
+$("attach-modal").addEventListener("click", ev => { if (ev.target === $("attach-modal")) $("attach-modal").classList.add("hidden"); });
+$("doc-close").addEventListener("click", () => $("doc-modal").classList.add("hidden"));
+$("doc-close-2").addEventListener("click", () => $("doc-modal").classList.add("hidden"));
+$("doc-modal").addEventListener("click", ev => { if (ev.target === $("doc-modal")) $("doc-modal").classList.add("hidden"); });
+$("doc-copy").addEventListener("click", () => { if (CURRENT_DOC) copyDocToForm(CURRENT_DOC); });
+
+// Ctrl+V 粘贴截图 → 优先填入空的发票槽（与 ERP「支持 ctrl+v 粘贴截图」一致）
+document.addEventListener("paste", ev => {
+  if ($("app-body").classList.contains("hidden")) return;
+  const files = [...((ev.clipboardData && ev.clipboardData.files) || [])].filter(f => f.type.startsWith("image/") || f.type === "application/pdf");
+  if (!files.length) return;
+  const target = !($("f-receipt").files && $("f-receipt").files[0]) ? $("f-receipt") : $("f-payment");
+  try {
+    const dt = new DataTransfer();
+    dt.items.add(files[0]);
+    target.files = dt.files;
+    target.dispatchEvent(new Event("change"));
+  } catch { /* 旧浏览器不支持 DataTransfer 构造时忽略 */ }
+});
 bindLineEvents();
 
 (async function boot() {

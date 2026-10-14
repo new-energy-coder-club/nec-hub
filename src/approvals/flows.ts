@@ -26,11 +26,18 @@ export interface FlowConfig {
   };
   /** ≥coSign 金额时额外通知（Plan B 用通知实现会签，两级审批为 Plan A 能力） */
   thresholds?: { notifyRoles?: string; amountField?: string; coSign?: number };
+  /** G-05 邮件通道：该流程审批结果的邮件收件人；未配置时 fallback env MAIL_TO，全空则不发邮件 */
+  mailTo?: string[];
+  /** G-03 时效治理：升级提醒/自动取消时长，0 = 关闭；不配则走 DEFAULT_FLOWS 默认值 */
+  sla?: { escalateHours?: number; autoCancelDays?: number; escalateTo?: string };
   required: string[];           // 必填字段名（与底表字段名一致）
   conditional?: Array<{ when: { field: string; equals: string }; require: string[] }>;
 }
 
 export type FlowsConfig = Record<ApprovalType, FlowConfig>;
+
+/** G-03 默认时效：48h 升级提醒（知会队长）+ 14 天自动取消 */
+const DEFAULT_SLA: NonNullable<FlowConfig["sla"]> = { escalateHours: 48, autoCancelDays: 14, escalateTo: "队长" };
 
 /** 默认流程配置（tableId/base 留空待 config_flows 配置；字段与 PRD §6.1 对齐） */
 export const DEFAULT_FLOWS: FlowsConfig = {
@@ -41,6 +48,7 @@ export const DEFAULT_FLOWS: FlowsConfig = {
     prefix: "BX",
     group: null,
     approvers: { roles: "队长|财务" },
+    sla: { ...DEFAULT_SLA },
     required: ["事项", "报销金额", "发票号"],
     conditional: [{ when: { field: "发票照片", equals: "" }, require: ["无票说明"] }],
   },
@@ -52,6 +60,7 @@ export const DEFAULT_FLOWS: FlowsConfig = {
     group: "机械组",
     approvers: { roles: "队长", groupLeaders: ["机械组"] },
     thresholds: { notifyRoles: "队长", amountField: "预估加工费", coSign: 500 },
+    sla: { ...DEFAULT_SLA },
     required: ["图纸名称", "图号", "版本", "所属机构", "材料与工艺", "加工方式", "图纸文件"],
     conditional: [{ when: { field: "加工方式", equals: "外协加工" }, require: ["预估加工费"] }],
   },
@@ -63,6 +72,7 @@ export const DEFAULT_FLOWS: FlowsConfig = {
     group: null,
     approvers: { roles: "队长|指导老师" },
     thresholds: { notifyRoles: "队长|指导老师", amountField: "预估总价", coSign: 200 },
+    sla: { ...DEFAULT_SLA },
     required: ["申请类型", "物料名称", "规格型号", "数量", "预估总价", "用途说明"],
     conditional: [{ when: { field: "申请类型", equals: "新购" }, require: ["购买链接"] }],
   },
@@ -73,6 +83,7 @@ export const DEFAULT_FLOWS: FlowsConfig = {
     prefix: "CP",
     group: null,
     approvers: { roles: "队长|指导老师", groupLeaders: ["运营组", "宣传组"] },
+    sla: { ...DEFAULT_SLA },
     required: ["合规类型", "标题", "内容说明", "计划发布时间"],
     conditional: [{ when: { field: "赞助商相关", equals: "是" }, require: ["赞助商要求"] }],
   },
@@ -86,7 +97,9 @@ export async function getFlowsConfig(env: Env): Promise<FlowsConfig> {
       const parsed = JSON.parse(raw) as Partial<FlowsConfig>;
       const out = {} as FlowsConfig;
       for (const t of APPROVAL_TYPES) {
-        out[t] = { ...DEFAULT_FLOWS[t], ...(parsed[t] ?? {}) } as FlowConfig;
+        const patch: Partial<FlowConfig> = parsed[t] ?? {};
+        // sla 单独深合并：旧配置无 sla 段时落默认值，部分字段补丁不丢其余默认
+        out[t] = { ...DEFAULT_FLOWS[t], ...patch, sla: { ...DEFAULT_FLOWS[t].sla, ...(patch.sla ?? {}) } } as FlowConfig;
       }
       return out;
     } catch {

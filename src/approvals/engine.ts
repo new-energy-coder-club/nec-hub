@@ -18,6 +18,7 @@ import {
   type BitableRecord,
 } from "../feishu/bitable";
 import { notifyFeishu } from "../feishu/bot";
+import { notifyApprovalResult } from "../notify";
 import type { HubUser } from "../shared/session";
 import type { UserRole } from "../auth/role";
 import { buildRecordLink } from "../validation/service";
@@ -237,7 +238,12 @@ export async function runApprovalAction(env: Env, input: ApprovalActionInput): P
       `审批人：${input.user.name}`,
       ...(input.comment ? [`审批意见：${input.comment}`] : []),
     ];
-    await notifyFeishu(env, input.type, `${verdict} ${input.appId}`, lines.join("\n"), link);
+    // G-05：审批结果走双通道（群机器人 + 飞书邮箱，邮件收件人按 flow.mailTo / env MAIL_TO）
+    const applicantKey = findFieldKey(records, [/^申请人$/, /申请人/, /报销人/]);
+    await notifyApprovalResult(env, input.type, `${verdict} ${input.appId}`, lines.join("\n"), link, {
+      applicant: applicantKey ? fieldText(record.fields[applicantKey]) : undefined,
+      typeLabel: APPROVAL_LABELS[input.type],
+    });
   } else {
     await notifyFeishu(env, input.type, `📌 ${input.appId} 状态更新：${target}`, `操作人：${input.user.name}`, link);
   }
@@ -255,6 +261,7 @@ function traceDate(): string {
  * G-01 台账联动：hardware 流程 arrive（申请类型=新购 → 入库）/ issue（申请类型=领用 → 出库）。
  * 幂等：KV approval:inv:<appId>:<action>（TTL 90 天，与 approval:map: 一致），动作本身的 from
  * 状态校验之外的防御性双保险。留痕写底表「台账联动」字段（已入库/已出库/未配置台账/失败：<原因>）；
+ * 申请类型缺失或不匹配动作×类型矩阵时不联动、不告警，留痕「未联动：…」（PRD §3.2 兜底）；
  * 负库存放行并追加 ⚠️ 库存告警群通知；联动失败发 ⚠️ 告警提示用 update_inventory 手工补录。
  */
 async function linkInventory(
@@ -267,16 +274,23 @@ async function linkInventory(
 ): Promise<void> {
   if (input.type !== "hardware") return;
   if (input.action !== "arrive" && input.action !== "issue") return;
+
+  // 「台账联动」字段需在建表时手工加好（PRD §3.5）；字段不存在时留痕静默失败，不影响联动本身
+  const trace = (text: string) =>
+    updateBitableRecord(token, base, tableId, record.record_id, { 台账联动: text }).catch(() => {});
+
   const applyType = fieldText(record.fields["申请类型"]).trim();
   const invAction =
     input.action === "arrive" && applyType === "新购" ? "inbound"
     : input.action === "issue" && applyType === "领用" ? "outbound"
     : null;
-  if (!invAction) return;
-
-  // 「台账联动」字段需在建表时手工加好（PRD §3.5）；字段不存在时留痕静默失败，不影响联动本身
-  const trace = (text: string) =>
-    updateBitableRecord(token, base, tableId, record.record_id, { 台账联动: text }).catch(() => {});
+  if (!invAction) {
+    // 兜底：申请类型为空/非新购领用，或动作×类型组合不在矩阵（如 arrive+领用）。
+    // 不联动、不写幂等标记、不发告警，仅留痕；修正底表后用 update_inventory 手工补录。
+    const expectedType = input.action === "arrive" ? "新购" : "领用";
+    await trace(`未联动：申请类型「${applyType || "空"}」≠ ${expectedType}`);
+    return;
+  }
 
   const markKey = `approval:inv:${input.appId}:${input.action}`;
   if (await env.REGISTRY.get(markKey)) return;
@@ -319,12 +333,51 @@ async function linkInventory(
   }
 }
 
-// ---------- 待办聚合（MCP list_todos 用） ----------
+// ---------- 待办聚合（MCP list_todos / G-04 门户待办条共用） ----------
 
 const TODO_CACHE_TTL_SEC = 300;
 
 /** 任务完成态判定（与 dashboard.ts / todos.ts 保持一致） */
 const TASK_DONE_RE = /完成|已完|完结|done|取消|cancel|关闭|close|drop/i;
+
+/**
+ * 读单条流程底表（带 todo:tbl:<type> 5 分钟缓存）。aggregateTodos 与 G-04 门户待办条
+ * （src/todos.ts approvals_local）共用：缓存存全量列表（不带用户过滤，过滤在内存做）。
+ * 返回 null = 流程未配置 tableId / 无 base 可用。
+ */
+export async function fetchFlowRecordsCached(
+  env: Env,
+  type: ApprovalType,
+): Promise<{ records: BitableRecord[]; base: string; tableId: string; cachedAt: string } | null> {
+  const cfg = await getFlowsConfig(env);
+  const flow = cfg[type];
+  if (!flow.tableId) return null;
+  const base = flow.base || (await getDashboardConfig(env))?.base || "";
+  if (!base) return null;
+  const cacheKey = `todo:tbl:${type}`;
+  const cached = (await env.REGISTRY.get(cacheKey, "json")) as
+    | { data: BitableRecord[]; cachedAt: number }
+    | null;
+  if (cached && cached.cachedAt > Date.now() - TODO_CACHE_TTL_SEC * 1000) {
+    return { records: cached.data, base, tableId: flow.tableId, cachedAt: new Date(cached.cachedAt).toISOString() };
+  }
+  const token = await getTenantAccessToken(env).catch(() => "");
+  if (token) {
+    try {
+      const records = await listBitableRecords(token, base, flow.tableId);
+      await env.REGISTRY.put(cacheKey, JSON.stringify({ data: records, cachedAt: Date.now() }), { expirationTtl: TODO_CACHE_TTL_SEC });
+      return { records, base, tableId: flow.tableId, cachedAt: new Date().toISOString() };
+    } catch {
+      /* 拉表失败降级到过期缓存 */
+    }
+  }
+  return {
+    records: cached?.data ?? [],
+    base,
+    tableId: flow.tableId,
+    cachedAt: cached ? new Date(cached.cachedAt).toISOString() : "",
+  };
+}
 
 /**
  * 待办聚合：4 张流程底表中 状态="审批中" 且当前角色可审的行（按 type 分组）+ 逾期任务前 8 条。
@@ -339,33 +392,10 @@ export async function aggregateTodos(env: Env, role: UserRole): Promise<unknown>
 
   for (const type of APPROVAL_TYPES) {
     const flow = cfg[type];
-    if (!flow.tableId) continue;
-    const base = flow.base || dashCfg?.base || "";
-    if (!base) continue;
-    const cacheKey = `todo:tbl:${type}`;
-    const cached = await env.REGISTRY.get(cacheKey, "json") as
-      | { data: BitableRecord[]; cachedAt: number }
-      | null;
-    const fresh = cached && cached.cachedAt > Date.now() - TODO_CACHE_TTL_SEC * 1000;
-    let records: BitableRecord[];
-    let at: string;
-    if (fresh) {
-      records = cached!.data;
-      at = new Date(cached!.cachedAt).toISOString();
-    } else if (token) {
-      try {
-        records = await listBitableRecords(token, base, flow.tableId);
-        at = new Date().toISOString();
-        await env.REGISTRY.put(cacheKey, JSON.stringify({ data: records, cachedAt: Date.now() }), { expirationTtl: TODO_CACHE_TTL_SEC });
-      } catch {
-        records = cached?.data ?? [];
-        at = cached ? new Date(cached.cachedAt).toISOString() : "";
-      }
-    } else {
-      records = cached?.data ?? [];
-      at = cached ? new Date(cached.cachedAt).toISOString() : "";
-    }
-    if (!cachedAt && at) cachedAt = at;
+    const res = await fetchFlowRecordsCached(env, type);
+    if (!res) continue;
+    const { records, base } = res;
+    if (!cachedAt && res.cachedAt) cachedAt = res.cachedAt;
     if (!isApprover(role, flow.approvers)) continue;
     const statusKey = findFieldKey(records, [/^状态$/, /状态/, /进度/]) ?? "状态";
     const idKey = findFieldKey(records, [/^申请单号$/, /申请单号/, /单号/]);

@@ -19,15 +19,15 @@
 |---|---|---|
 | M1.5 前置补丁 | ✅ | 队员名单 53 人已录 ✅；3 张流程底表已建（drawings/hardware/compliance，含引擎全字段）且 flows:config 已配置 base+tableId ✅；**refresh_token 持久化已补齐**（`src/feishu/user-token.ts`：KV 存储 + 临期自动刷新回写 + 刷新失败自动解绑引导重新授权） |
 | N-01 通知服务 | ✅ | notifyFeishu（多群分流/加签/重试/失败留痕）已上线，**2026-10-13 端到端验证通过**：主群「NEC 中台通知」（oc_4297905d12fc564a2e1e084bb735cbe3）收到提交/通过/打款三类通知；期间修复两个 bug——加签算法（string_to_sign 作 HMAC 密钥）与消息体字段（msg_type/content 结构）；分流程群待需要时再建 |
-| N-02 邮件通道 | ⬜ | 未开发（可选增强）；**选型结论已沉淀**（V1.2 §7：推荐 Resend，飞书邮箱 OpenAPI 备选；满足触发条件才启动，本期不开发） |
-| A-01 待办条 | 🔄 | 基础版已上线（按流程分组计数 + 逾期任务）；**本地审批底表未并入门户待办**、合规 T-1 标红未做、待登录实测——均已立项（→ V1.2 G-04） |
-| A-02 审批引擎 | ✅ | 表引擎已上线并**端到端实测通过**（BX-2026-0003：提交→校验→写表→单号→群通知→审批→状态回写→群通知，测试数据已清理）；金额阈值 v1 实现为"额外通知抄送"，真两级待飞书引擎；48h 代理人升级与 14 天自动取消（Cron）已立项（→ V1.2 G-03：sla 配置化 + 每小时 cron）；事件回调+轮询双通道 N/A（Plan B 单通道写表） |
-| R-01 报销助手 | 🔄 | **应用页已上线**（`/apps/reimburse/`，ERP 费用报销单形态：工具栏（保存/提交/提交并新增/流程图）+ 基本信息 + 明细表（增删行/费用项目树选择器）+ 附件本地 OCR 回填选中行 + 制单信息 + 我的报销；新增 `/api/approvals/upload` 凭证端点，已上架应用广场）；OCR 已支持 PDF 与发票号识别；待端到端实测一单 |
+| N-02 邮件通道 | 🔄 | **代码已交付（2026-10-14，V1.2 G-05）**：选型改为**飞书邮箱 OpenAPI 优先**（user 身份发信，复用 OAuth user_token 体系），`src/feishu/mail.ts` + `src/notify.ts` 通道调度，审批 approve/reject 结果双通道推送，`send_notice` 支持 channel=mail/both；待飞书后台开通 mail scope + 配置 MAIL_SENDER_OPEN_ID 后实测（V1.2 §7.3），Resend 降级为对外送达备选 |
+| A-01 待办条 | 🔄 | 基础版已上线（按流程分组计数 + 逾期任务）；**本地审批底表已并入门户待办 + 合规 T-1 标红（G-04，2026-10-14 代码已交付）**：审批人见全部审批中单、队员仅见自己提交，compliance 计划发布 ≤24h 红色高亮 + 「T-1」徽标置顶；待登录实测（V1.2 §6.3 五条用例）后升 ✅ |
+| A-02 审批引擎 | ✅ | 表引擎已上线并**端到端实测通过**（BX-2026-0003：提交→校验→写表→单号→群通知→审批→状态回写→群通知，测试数据已清理）；金额阈值 v1 实现为"额外通知抄送"，真两级待飞书引擎；48h 代理人升级与 14 天自动取消（Cron）代码已交付待实测（→ V1.2 G-03：sla 配置化 + 每小时 cron `7 * * * *`，2026-10-14）；事件回调+轮询双通道 N/A（Plan B 单通道写表） |
+| R-01 报销助手 | 🔄 | **应用页已上线**（`/apps/reimburse/` ERP 费用报销单：工具栏 + 明细表 + 费用项目树选择器 + 收款信息 + Ctrl+V 粘贴 + 单据查看/复制）；**存储分层落地**：D1 `nec-hub-erp`（expense_items 目录 / payees 收款账户 / reimburse_docs 单据快照，`/api/erp/reimburse/*`）+ R2 receipts/ 附件（`/api/approvals/upload`）；OCR 已支持 PDF 与发票号识别；待端到端实测一单 |
 | F-01 机械图纸 | ✅ | **2026-10-14 五组端到端实测通过**：自加工单全流程（提交→队长审批→加工→归档，含幂等/非法流转拦截）、外协 600 元单（会签提醒已触发）、驳回带意见→V1.1 重提（旧行保留、前置版本留痕）、匿名 401/越组 403/越权审批 403、字段校验 400；通知 8/8 送达（notify:failed 无新增）。期间修复 flows:config 组别配置（机械组→机械，与名单表一致）并补底表「加急原因」字段；测试数据已清理。**另已超出本 PRD 范围上线**：图纸联想、看板/列表双视图、询价比价全链路与 BOM 生成、阻塞告警 cron |
 | F-02 硬件采购/领用 | ✅ | 引擎与底表就绪（flows:config hardware 已配：前缀 HW，预估总价 ≥200 元触发会签提醒，新购必填购买链接）；硬件评审模块（含评审会议预约）已上线；**`update_inventory` 工具与台账联动已交付**（2026-10-14 工作区：arrive 入库 / issue 出库自动触账 + KV 幂等 +「台账联动」留痕 + 手工调账工具，见 V1.2 §3.0），待部署后实测一单 |
-| F-03 合规审批 | 🔄 | 引擎配置就绪（前缀 CP，运营/宣传组长可审，赞助商相关=是 时必填赞助商要求）；**申请页与驳回原因标准化代码已交付**（2026-10-14 工作区：`public/apps/compliance/`、reject 支持 reason、mine 接口泛化、新增待我审批接口，见 V1.2 §4.0）；待底表加「驳回原因」单选字段 + 端到端实测 |
+| F-03 合规审批 | 🔄 | 引擎配置就绪（前缀 CP，运营/宣传组长可审，赞助商相关=是 时必填赞助商要求）；**申请页与驳回原因标准化代码已交付**（2026-10-14 工作区：`public/apps/compliance/`、reject 支持 reason、mine 接口泛化、新增待我审批接口，见 V1.2 §4.0）；底表「驳回原因」单选字段已配置（2026-10-14，text 原地转单选 fldzJd0bU1，5 个选项按 V1.2 §4.2）；待端到端实测后升 ✅ |
 | M-01 MCP 工具 | ✅ | 工具总数 26：审批四件套（submit_approval / list_todos / send_notice / config_flows）+ 域拆分移植 8 个 + **update_inventory 已上线**（2026-10-14 工作区，inbound/outbound/adjust 三 action，仅管理端） |
-| 部署状态 | — | 生产已部署**单体按域拆分架构**（2026-10-14，`src/index.ts` 仅保留路由表 + fetch/scheduled 入口）；**工作区有大量未提交改动**：G-01/G-02 交付物 + CLA 协议签署 / ERP 报销等并行开发（见 `git status`），待整理提交 |
+| 部署状态 | — | 生产已部署**单体按域拆分架构**（2026-10-14，`src/index.ts` 仅保留路由表 + fetch/scheduled 入口）；**工作区有大量未提交改动**：V1.2 缺口 G-01～G-05 全部代码交付（台账联动/合规页/时效治理 cron `7 * * * *`/待办 T-1/飞书邮箱通道）+ CLA 协议签署 / ERP 报销等并行开发（见 `git status`），待整理提交与部署后实测 |
 
 ---
 
@@ -107,7 +107,7 @@
 │  · flows 配置            KV `flows:config`：type → 底表/审批定义/  │
 │                          字段校验规则/审批路由阈值                  │
 │  · notify 模块           通知服务（飞书机器人 webhook 主通道）      │
-│  · mailer 模块           邮件通道（Resend HTTP API，降级通道）      │
+│  · mailer 模块           邮件通道（飞书邮箱 OpenAPI，降级通道）     │
 │  · MCP 新增工具：submit_approval / list_todos / send_notice      │
 ├──────────────────────────────────────────────────────────────┤
 │ 飞书侧                                                        │
@@ -125,7 +125,7 @@
 Plan B（降级）：状态机落在各底表"状态"字段，通知走群机器人 webhook，待办条改为查表。语义与接口契约不变，仅引擎实现替换。
 
 **D2 通知主通道 = 飞书群机器人 webhook，邮件 = 降级/可选增强。**
-对标文章的"生成邮件草稿抄送 COO"在我们环境落不了地（无 Gmail/企业邮箱 API，Worker 不能 SMTP）。替换为：审批动作实时推飞书群（含审批卡片链接），邮件仅在配置了 `RESEND_API_KEY` 时启用。学生团队场景飞书打开率远高于邮箱，这是对标杆的合理本地化。
+对标文章的"生成邮件草稿抄送 COO"在我们环境落不了地（无 Gmail/企业邮箱 API，Worker 不能 SMTP）。替换为：审批动作实时推飞书群（含审批卡片链接），邮件走飞书邮箱 OpenAPI、仅在配置了 `MAIL_SENDER_OPEN_ID` 时启用（2026-10-14 起实施，原 Resend 方案降级为对外送达备选）。学生团队场景飞书打开率远高于邮箱，这是对标杆的合理本地化。
 
 **D3 数据不下沉**：审批单明细存飞书（审批实例 + 底表），中台只存映射与短期缓存（KV），退队即失效。
 
@@ -150,13 +150,16 @@ Plan B（降级）：状态机落在各底表"状态"字段，通知走群机器
 1. 4 个流程各触发 1 条测试事件，对应群 10 秒内收到格式正确的消息。
 2. 故意填错 webhook，重试 2 次后 `notify:failed` 出现记录，接口返回降级提示。
 
-### N-02 邮件通道（Resend）【P2】
+### N-02 邮件通道（飞书邮箱 OpenAPI）【P2】
+
+> 2026-10-14 更新：原方案为 Resend；V1.2 G-05 队长决定提前开发并改用**飞书邮箱 OpenAPI 优先**（复用 OAuth user_token，零新增第三方依赖），Resend 降级为对外送达备选。以下按已实现方案更新。
 
 **详细需求**：
-- 仅当配置 `RESEND_API_KEY` 与 `MAIL_FROM` 时启用；未配置时所有邮件调用返回"通道未启用"，业务不受影响。
-- 经 Resend HTTP API 发送（Worker 内 fetch，无 SMTP）。
+- 仅当配置 `MAIL_SENDER_OPEN_ID`（发信人 open_id，须已完成门户 OAuth 授权）且有收件人时启用；未配置时所有邮件调用返回"通道未启用"（disabled），业务不受影响。
+- 经飞书邮箱 OpenAPI 发送（Worker 内 fetch）：构建 EML → base64url → 创建草稿 → 发送草稿（`/mail/v1/user_mailboxes/{mailbox}/drafts` 两段式），user_access_token 身份，复用 `user-token.ts` 临期自动刷新。
 - 模板：纯 HTML 内联样式一封（审批结果通知），字段：申请人/类型/金额或图纸号/审批链接。
-- 免费额度约 100 封/天（以官网为准），只发"审批结果"与"周报摘要"两类低频邮件，其余全走飞书。
+- 收件人按流程配置（`flows:config` 的 `mailTo`），缺省 fallback env `MAIL_TO`；只发"审批结果"与"周报摘要"两类低频邮件，其余全走飞书。
+- 发送失败写 `notify:failed` 留痕（复用 N-01 机制），不阻断群通知主通道。
 
 **验收**：配置后触发审批通过事件，收件箱收到渲染正确的邮件；未配置时接口明确返回 disabled 而非报错。
 
@@ -282,7 +285,7 @@ Plan B（降级）：状态机落在各底表"状态"字段，通知走群机器
 |---|---|---|
 | `submit_approval` | `(type, fields: object)` | 代发起任意流程审批（Agent 帮队员代提交）；type 限 4 枚举；字段按 flows:config 校验 | 
 | `list_todos` | `(open_id)` | 拉某用户待办（聚合飞书审批 + 逾期任务，按 type 分组） |
-| `send_notice` | `(flow, title, content, channel: "bot" \| "mail")` | 发通知；channel=mail 且未配置 RESEND 时返回降级说明 |
+| `send_notice` | `(flow, title, content, channel: "bot" \| "mail" \| "both", to?)` | 发通知；channel=mail 且未配置 MAIL_SENDER_OPEN_ID 时返回降级说明 |
 | `update_inventory` | `(action: "in" \| "out", item, qty, ref_id)` | 台账增减（F-02 联动用；按 ref_id 幂等） |
 | `config_flows` | `(action: "get" \| "set", flows?)` | 查看/修改 flows:config（审批定义映射、阈值、校验规则），仅队长 |
 
@@ -428,7 +431,7 @@ fields 按 §6.1 对应表的必填/条件必填校验（引擎读 flows:config 
 | 类别 | 要求 |
 |---|---|
 | 安全 | webhook/event 回调验签；R2 上传对象（发票/图纸）用随机 UUID 路径 + 7 天过期 + 不公开列目录；图纸文件仅审批链可见（visibility 字段组内）；财务明细接口全走角色校验；密钥只存 wrangler secrets |
-| 成本 | 飞书审批 + 群机器人 + Resend 免费档全零费用；邮件日发送量 ≥50 时报警 |
+| 成本 | 飞书审批 + 群机器人 + 飞书邮箱全零费用（对外邮件若叠加 Resend 用免费档）；邮件日发送量 ≥50 时报警（**暂缓实现**：飞书邮箱方案本期无发送计数，日发送量极低；需要时以 KV 日计数 + 周报阈值告警补齐，见 V1.2 §7.2） |
 | 性能 | 待办接口 P95 < 800ms（缓存命中）；审批发起 P95 < 5s |
 | 可观测 | 每次通知/回写/台账联动写结构化日志，可检索 "approval" 关键字 |
 | 幂等 | 台账联动、pay/arrive/issue 动作全部幂等（ref_id / 当前状态校验） |
@@ -453,7 +456,7 @@ fields 按 §6.1 对应表的必填/条件必填校验（引擎读 flows:config 
 2. 飞书审批后台：自建应用开通审批权限；创建 4 个审批定义（字段对齐 §6.1 各表），记录 approval_code 填入 flows:config。
 3. 开放平台：审批事件订阅 → 回调 `https://hub.newenergycoder.club/api/approvals/events`，记录 encrypt key / verification token。
 4. 多维表格：按 §6.1 建表（重点：单选选项值与状态机 §6.2 完全一致，校验 Agent 依赖）。
-5. （可选）resend.com 注册 → `RESEND_API_KEY` + `MAIL_FROM`。
+5. （可选，G-05 邮件通道）飞书开发者后台为本应用开通邮箱 scope（mail 域），发信人账号在门户重新登录刷新授权 → `wrangler secret put MAIL_SENDER_OPEN_ID`（+ 可选 `MAIL_FROM` / `MAIL_TO`）；流程级收件人走 `config_flows` 的 `mailTo`。对外送达需要时再叠加 Resend（`RESEND_API_KEY` + `MAIL_FROM`）。
 6. 测试账号准备：队长/组长/队员/指导 各 1 个测试身份，用于两级/会签路由验收。
 
 ## 11. 风险与边界

@@ -461,14 +461,16 @@ export const TOOLS = [
   {
     name: "send_notice",
     description:
-      "向指定流程的飞书群发送机器人通知（需管理端 MCP_TOKEN）。webhook 未配置时返回降级说明；发送失败自动重试 2 次并记录到 notify:failed。",
+      "向指定流程发送通知（需管理端 MCP_TOKEN）。channel=bot 走飞书群机器人（webhook 未配置返回降级说明，失败重试 2 次并记录 notify:failed）；channel=mail 走飞书邮箱（G-05，需配置 MAIL_SENDER_OPEN_ID 且发信人已授权，收件人用 to 或 env MAIL_TO）；channel=both 双通道。",
     inputSchema: {
       type: "object",
       properties: {
-        flow: { type: "string", description: "reimburse | drawing | hardware | compliance（决定用哪个群 webhook，未配置 fallback 主群）" },
+        flow: { type: "string", description: "reimburse | drawing | hardware | compliance（bot 通道决定用哪个群 webhook，未配置 fallback 主群）" },
         title: { type: "string", description: "标题" },
         content: { type: "string", description: "正文" },
         link: { type: "string", description: "可选：去处理链接" },
+        channel: { type: "string", enum: ["bot", "mail", "both"], description: "通知通道，默认 bot" },
+        to: { type: "string", description: "channel 含 mail 时的收件人，逗号分隔多个；缺省用 env MAIL_TO" },
       },
       required: ["flow", "title", "content"],
     },

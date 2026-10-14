@@ -161,7 +161,7 @@ Cron（`wrangler.jsonc` triggers，3 条）：`*/4 * * * *` 预热看板缓存 �
 | `submit_approval` | 代发起审批申请（4 流程 type 参数化，按 flows:config 声明式规则校验；仅管理端） |
 | `list_todos` | 按 open_id 拉取待办聚合（各流程底表中待其审批的单 + 逾期任务，按流程分组；仅管理端） |
 | `send_notice` | 向指定流程的飞书群发送机器人通知（多群分流 + 加签；失败重试 2 次并留痕 `notify:failed`；仅管理端） |
-| `config_flows` | 查看/修改审批流程配置 flows:config（底表/单号前缀/审批角色/必填规则/金额会签阈值；set 深合并校验；仅管理端） |
+| `config_flows` | 查看/修改审批流程配置 flows:config（底表/单号前缀/审批角色/必填规则/金额会签阈值/sla 时效；set 深合并校验；仅管理端） |
 | `schedule_meeting` | 一键创建飞书日历日程 + 视频会议（`src/meeting/`，评审模块拉会共用） |
 
 ## Skill 同步脚本

@@ -10,6 +10,7 @@
 import { resolveUserRole } from "../auth/role";
 import { fieldNum, fieldText, findFieldKey, firstFieldText, getTenantAccessToken, listBitableRecords } from "../feishu/bitable";
 import { notifyFeishu } from "../feishu/bot";
+import { approvalResultMailHtml, defaultMailRecipients, sendFeishuMail } from "../feishu/mail";
 import { json } from "../shared/http";
 import { applyRenewedSession, resolveSession } from "../shared/session";
 import { buildRecordLink } from "../validation/service";
@@ -244,7 +245,7 @@ export async function toolListTodos(args: Record<string, unknown>, env: Env, has
   };
 }
 
-/** send_notice：向流程群发机器人通知（需 MCP_TOKEN） */
+/** send_notice：向流程群发通知（需 MCP_TOKEN）；channel=bot|mail|both，mail 走飞书邮箱 */
 export async function toolSendNotice(args: Record<string, unknown>, env: Env, hasMcpToken: boolean) {
   if (!hasMcpToken) throw new Error("send_notice 仅管理端可用（需 MCP_TOKEN）");
   const flow = String(args.flow ?? "").trim();
@@ -253,11 +254,57 @@ export async function toolSendNotice(args: Record<string, unknown>, env: Env, ha
   if (!title) throw new Error("title 不能为空");
   if (!content) throw new Error("content 不能为空");
   const link = String(args.link ?? "").trim();
+  const channel = String(args.channel ?? "bot").trim();
+
+  if (channel === "mail") {
+    const to = parseRecipients(args.to) ?? defaultMailRecipients(env);
+    if (!to.length) throw new Error("channel=mail 需传 to（逗号分隔）或配置 env MAIL_TO");
+    const result = await sendFeishuMail(env, {
+      to,
+      subject: title,
+      html: approvalResultMailHtml({ title, summary: content, link: link || undefined }),
+    });
+    if (!result.ok) {
+      const prefix = result.disabled ? "⚠️ 邮件通道未启用" : "⚠️ 邮件未送达";
+      return { content: [{ type: "text", text: `${prefix}：${result.detail}（已按降级处理，业务不受影响）` }] };
+    }
+    return { content: [{ type: "text", text: `✅ 邮件已发送（${to.length} 个收件人）` }] };
+  }
+
+  if (channel === "both") {
+    const to = parseRecipients(args.to) ?? defaultMailRecipients(env);
+    const bot = await notifyFeishu(env, flow, title, content, link || undefined);
+    const mail = to.length
+      ? await sendFeishuMail(env, {
+          to,
+          subject: title,
+          html: approvalResultMailHtml({ title, summary: content, link: link || undefined }),
+        })
+      : { ok: false, disabled: true, detail: "无收件人（未传 to 且未配置 MAIL_TO）" };
+    const lines = [
+      bot.ok ? "✅ 群机器人已送达" : `⚠️ 群机器人未送达：${bot.detail}`,
+      mail.ok ? `✅ 邮件已发送（${to.length} 个收件人）` : `⚠️ 邮件${mail.disabled ? "通道未启用" : "未送达"}：${mail.detail}`,
+    ];
+    return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+
+  if (channel !== "bot") throw new Error("channel 必须是 bot | mail | both");
   const result = await notifyFeishu(env, flow, title, content, link || undefined);
   if (!result.ok) {
     return { content: [{ type: "text", text: `⚠️ 通知未送达：${result.detail}（已按降级处理，业务不受影响）` }] };
   }
   return { content: [{ type: "text", text: `✅ 已发送（flow=${flow || "default"}）` }] };
+}
+
+/** 解析 send_notice 的 to 参数：字符串（逗号/分号分隔）或字符串数组 */
+function parseRecipients(v: unknown): string[] | null {
+  if (v == null) return null;
+  const list = Array.isArray(v) ? v : [v];
+  const out = list
+    .flatMap((s) => String(s).split(/[,;]/))
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return out.length ? out : null;
 }
 
 /** config_flows：查看/修改 flows:config（需 MCP_TOKEN）；set 时深合并 + 校验 */
@@ -287,6 +334,21 @@ export async function toolConfigFlows(args: Record<string, unknown>, env: Env, h
     }
     if (patch.thresholds !== undefined && (typeof patch.thresholds !== "object" || Array.isArray(patch.thresholds))) {
       throw new Error(`thresholds 不合法（${t}）：应为 { notifyRoles?, amountField?, coSign? }`);
+    }
+    if (patch.sla !== undefined) {
+      const sla = patch.sla as Record<string, unknown> | null;
+      if (typeof sla !== "object" || sla === null || Array.isArray(sla)) {
+        throw new Error(`sla 不合法（${t}）：应为 { escalateHours?, autoCancelDays?, escalateTo? }`);
+      }
+      for (const k of ["escalateHours", "autoCancelDays"] as const) {
+        const v = sla[k];
+        if (v !== undefined && (typeof v !== "number" || !Number.isFinite(v) || v < 0)) {
+          throw new Error(`sla.${k} 不合法（${t}）：应为 ≥0 的数字（0 = 关闭）`);
+        }
+      }
+      if (sla.escalateTo !== undefined && typeof sla.escalateTo !== "string") {
+        throw new Error(`sla.escalateTo 不合法（${t}）：应为角色正则串`);
+      }
     }
     if (patch.required !== undefined && !Array.isArray(patch.required)) {
       throw new Error(`required 不合法（${t}）：应为字段名数组`);

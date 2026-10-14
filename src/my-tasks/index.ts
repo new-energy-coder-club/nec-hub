@@ -14,8 +14,8 @@ import { applyRenewedSession, resolveSession } from "../shared/session";
 /** 任务列表缓存 TTL（秒）：与待办聚合一致 5 分钟 */
 const MY_TASKS_CACHE_TTL_SEC = 300;
 
-/** 申请的最小 scope（Task v2 文档）：task:task:read 读任务；task:tasklist:read 读清单 */
-const FEISHU_TASK_SCOPES = "task:task:read task:tasklist:read";
+/** 申请的最小 scope：task:task:read 读任务；task:tasklist:read 读清单；mail:user_mailbox.message:send 邮件通道发信（G-05，与门户登录 scope 保持一致，避免重绑任务时丢掉 mail 授权） */
+const FEISHU_TASK_SCOPES = "task:task:read task:tasklist:read mail:user_mailbox.message:send";
 
 /** 复用登录跳转的 authorize URL，追加任务 scope；scope 变化后重新授权一次即完成绑定 */
 function buildAuthorizeUrl(request: Request, env: Env): string | null {

@@ -291,7 +291,17 @@ export async function buildDashboard(env: Env, request: Request, ctx?: Execution
     finance: { records: [], cachedAt: "" },
     goals: { records: [], cachedAt: "" },
   };
-  await Promise.all(DASH_TABLES.map(async (k) => { fetched[k] = await fetchTableCached(env, cfg, k, ctx); }));
+  // ?fresh=1 手动刷新：绕过 5 分钟缓存强制拉飞书，失败时降级回 fetchTableCached（返回过期快照而非报错）
+  const fresh = new URL(request.url).searchParams.get("fresh") === "1";
+  await Promise.all(DASH_TABLES.map(async (k) => {
+    if (fresh) {
+      try {
+        fetched[k] = await refreshTableCache(env, cfg, k, ctx);
+        return;
+      } catch { /* 降级走缓存路径 */ }
+    }
+    fetched[k] = await fetchTableCached(env, cfg, k, ctx);
+  }));
 
   // 队员名单：总数 + 组别分布
   const m = fetched.members;
@@ -318,15 +328,23 @@ export async function buildDashboard(env: Env, request: Request, ctx?: Execution
     return s ? !TASK_DONE_RE.test(s) : false;
   });
   const upcomingSrc = pending.length > 0 ? pending : t.records;
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
   const upcoming = upcomingSrc
     .map((r) => ({
       title: (tTitleKey ? fieldText(r.fields[tTitleKey]) : "") || firstFieldText(r),
       owner: tOwnerKey ? fieldText(r.fields[tOwnerKey]) : "",
       status: tStatusKey ? fieldText(r.fields[tStatusKey]) : "",
       deadline: tDeadlineKey ? fieldNum(r.fields[tDeadlineKey]) : null,
+      link: buildRecordLink(cfg.base, cfg.tables.tasks as string, r.record_id),
     }))
     .sort((a, b) => (a.deadline ?? Infinity) - (b.deadline ?? Infinity))
     .slice(0, 8);
+  // 逾期未完成任务数（全量统计，不限于 upcoming 前 8 条）
+  const tasksOverdueCount = pending.filter((r) => {
+    const dl = tDeadlineKey ? fieldNum(r.fields[tDeadlineKey]) : null;
+    return dl !== null && dl < dayStart.getTime();
+  }).length;
 
   // 物资台账：种类数 + 数量合计 + 明细
   const inv = fetched.inventory;
@@ -363,6 +381,20 @@ export async function buildDashboard(env: Env, request: Request, ctx?: Execution
     (sum, r) => sum + (fAmountKey ? (fieldNum(r.fields[fAmountKey]) ?? 0) : 0),
     0,
   );
+  // 本月/上月金额与笔数：统计卡环比对比（本月 vs 上月）
+  const nowDate = new Date();
+  const monthStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1).getTime();
+  const prevMonthStart = new Date(nowDate.getFullYear(), nowDate.getMonth() - 1, 1).getTime();
+  let monthAmount = 0;
+  let monthCount = 0;
+  let prevMonthAmount = 0;
+  for (const r of fin.records) {
+    const amt = fAmountKey ? (fieldNum(r.fields[fAmountKey]) ?? 0) : 0;
+    const ts = fDateKey ? fieldTs(r.fields[fDateKey]) : null;
+    if (ts === null) continue;
+    if (ts >= monthStart) { monthAmount += amt; monthCount++; }
+    else if (ts >= prevMonthStart) prevMonthAmount += amt;
+  }
 
   const wrap = (r: TableFetchResult, agg: Record<string, unknown>) => ({
     ...agg,
@@ -440,6 +472,7 @@ export async function buildDashboard(env: Env, request: Request, ctx?: Execution
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count),
       upcoming,
+      overdueCount: tasksOverdueCount,
     }),
     inventory: wrap(fetched.inventory, {
       kinds: inv.records.length,
@@ -452,8 +485,11 @@ export async function buildDashboard(env: Env, request: Request, ctx?: Execution
         ? {}
         : {
             records: fin.records.length,
-            totalAmount: financeTotal,
-            ...(financeLevel === "full" ? { recent: financeRecent } : {}),
+            monthCount,
+            // summary（队员）只给笔数，不给金额合计——团队报销总额对普通队员不公开
+            ...(financeLevel === "full"
+              ? { totalAmount: financeTotal, monthAmount, prevMonthAmount, recent: financeRecent }
+              : {}),
           }),
     }),
     goals: goalsAgg,

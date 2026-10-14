@@ -196,4 +196,37 @@ describe("POST /api/hooks/github", () => {
     expect(((await res.json()) as { ignored?: string }).ignored).toBe("no commit");
     expect(ctx.kv.has("prd:last_commit")).toBe(false);
   });
+
+  it("连续 push 累积 prd:recent_commits（最新在前，最多 10 条），buildPrdBoard 透传", async () => {
+    const ctx = createCtx({ GITHUB_WEBHOOK_SECRET: "ghs" });
+    for (let i = 1; i <= 3; i++) {
+      const p = JSON.stringify({
+        ref: "refs/heads/main",
+        repository: { full_name: "new-energy-coder-club/nec-hub" },
+        head_commit: { message: `commit ${i}`, author: { name: "张三" }, url: `https://github.com/x/commit/${i}` },
+      });
+      const res = await handleGithubPush(
+        new Request("https://hub.test/api/hooks/github", {
+          method: "POST",
+          headers: { "x-hub-signature-256": "sha256=" + (await hmacHex("ghs", p)), "x-github-event": "push" },
+          body: p,
+        }),
+        ctx.env,
+      );
+      expect(res.status).toBe(200);
+    }
+    const list = JSON.parse(ctx.kv.get("prd:recent_commits")!) as Array<{ message: string }>;
+    expect(list.map(c => c.message)).toEqual(["commit 3", "commit 2", "commit 1"]);
+
+    const board = (await buildPrdBoard(ctx.env)) as { recentCommits: Array<{ message: string }>; lastCommit: { message: string } };
+    expect(board.recentCommits.map(c => c.message)).toEqual(["commit 3", "commit 2", "commit 1"]);
+    expect(board.lastCommit.message).toBe("commit 3");
+  });
+
+  it("只有存量 prd:last_commit（无列表）时 recentCommits 回落为单条", async () => {
+    const ctx = createCtx();
+    ctx.kv.set("prd:last_commit", JSON.stringify({ repo: "nec-hub", branch: "main", message: "feat: 存量", author: "a", url: "https://x", at: "2026-10-14T00:00:00.000Z" }));
+    const board = (await buildPrdBoard(ctx.env)) as { recentCommits: Array<{ message: string }> };
+    expect(board.recentCommits.map(c => c.message)).toEqual(["feat: 存量"]);
+  });
 });

@@ -161,6 +161,25 @@ describe("arrive 新购 → 入库联动", () => {
     expect(ctx.tables[TBL_INV][0].fields["数量"]).toBe(15);
     expect(ctx.tables[TBL_INV]).toHaveLength(1);
   });
+
+  it("匹配键归一化：全/半角括号、空格、大小写差异仍可命中既有行", async () => {
+    // 台账侧手工登记为半角括号
+    const ctx = createCtx();
+    ctx.seed(TBL_INV, { 物料: "电机(AK10)", 数量: 3, 位置: "A 柜" });
+    seedHw(ctx, {});
+    await act(ctx, "arrive");
+    expect(ctx.tables[TBL_INV][0].fields["数量"]).toBe(5);
+    expect(ctx.tables[TBL_INV]).toHaveLength(1);
+  });
+
+  it("匹配键归一化：全角字符 + 内部空格 + 小写 仍命中规范行", async () => {
+    const ctx = createCtx();
+    ctx.seed(TBL_INV, { 物料: "电机（AK10）", 数量: 3, 位置: "A 柜" });
+    seedHw(ctx, { 规格型号: " ａｋ 1０ " });
+    await act(ctx, "arrive");
+    expect(ctx.tables[TBL_INV][0].fields["数量"]).toBe(5);
+    expect(ctx.tables[TBL_INV]).toHaveLength(1);
+  });
 });
 
 describe("issue 领用 → 出库联动", () => {
@@ -209,14 +228,27 @@ describe("降级与不联动", () => {
     expect(ctx.tables[TBL_INV]).toBeUndefined();
   });
 
-  it("非 hardware 流程 / 非 arrive-issue 组合不联动", async () => {
-    const ctx = createCtx();
-    // 申请类型=领用 但动作=arrive → 不在联动矩阵内
+  it("动作×申请类型组合不匹配（arrive+领用）：不联动但留痕「未联动」，不发告警", async () => {
+    const ctx = createCtx({ withWebhook: true });
     const rec = seedHw(ctx, { 申请类型: "领用" });
     const res = await act(ctx, "arrive");
     expect(res.status).toBe("已到货");
-    expect(rec.fields["台账联动"]).toBeUndefined();
+    expect(String(rec.fields["台账联动"])).toBe("未联动：申请类型「领用」≠ 新购");
     expect(ctx.tables[TBL_INV]).toBeUndefined();
+    expect(notifyTexts(ctx).some((t) => t.includes("库存告警") || t.includes("台账联动失败"))).toBe(false);
+  });
+
+  it("申请类型缺失或非新购/领用：不联动，留痕「未联动：申请类型「空」…」", async () => {
+    const ctx = createCtx();
+    const rec = seedHw(ctx, { 申请类型: "" });
+    const res = await act(ctx, "arrive");
+    expect(res.status).toBe("已到货");
+    expect(String(rec.fields["台账联动"])).toBe("未联动：申请类型「空」≠ 新购");
+    expect(ctx.tables[TBL_INV]).toBeUndefined();
+
+    const rec2 = seedHw(ctx, { 申请单号: "HW-2026-0002", 申请类型: "借用" });
+    await act(ctx, "arrive", "HW-2026-0002");
+    expect(String(rec2.fields["台账联动"])).toBe("未联动：申请类型「借用」≠ 新购");
   });
 
   it("台账读取失败不阻断动作：状态照常更新 + 留痕失败原因 + ⚠️ 群告警", async () => {

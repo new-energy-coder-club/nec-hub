@@ -3,7 +3,9 @@
  * 与 MCP update_inventory 工具共用 applyInventoryDelta。
  *
  * 台账为标准四表之一（物料/数量/位置/领用人），table_id 走 dashboard:config.tables.inventory。
- * 匹配规则：「物料」字段精确匹配物料名称；规格型号非空时匹配键为 物料名称（规格型号）。
+ * 匹配规则：「物料」字段匹配物料名称；规格型号非空时匹配键为 物料名称（规格型号）。
+ * 比较前两侧经 normalizeMatchKey 归一化（NFKC + 去空白 + 小写），全/半角括号、空格、
+ * 大小写差异不影响匹配；新建行落库仍用规范形态（全角括号）。
  * 负库存不阻断（审批已过、货已领走是事实），negative 标记交由调用方告警，
  * validation 的 inventory-qty-negative 规则二次兜底。
  */
@@ -50,6 +52,14 @@ const LOC_KEY_PATTERNS = [/位置/, /存放/];
 const BORROWER_KEY_PATTERNS = [/^领用人$/, /领用人/, /领用/, /借用人/];
 
 /**
+ * 匹配键归一化（PRD §3.2）：NFKC 兼容分解（全/半角括号、全角字母数字、全角空格归一）
+ * + 去除全部空白 + 小写化。仅用于两侧比较；台账落库仍为规范形态 物料名称（规格型号）。
+ */
+export function normalizeMatchKey(s: string): string {
+  return s.normalize("NFKC").replace(/\s+/g, "").toLowerCase();
+}
+
+/**
  * 台账增减。返回 null = 未配置台账（降级，调用方留痕「未配置台账」）；执行失败抛错。
  * 无匹配行时自动建行（位置默认「未登记」），与 PRD §3.2 新建行默认值一致。
  */
@@ -79,7 +89,7 @@ export async function applyInventoryDelta(env: Env, input: InventoryDeltaInput):
   const borrowerKey = findFieldKey(records, BORROWER_KEY_PATTERNS) ?? (fallback ? "领用人" : null);
 
   const key = spec ? `${itemName}（${spec}）` : itemName;
-  const found = records.find((r) => fieldText(r.fields[itemKey]) === key);
+  const found = records.find((r) => normalizeMatchKey(fieldText(r.fields[itemKey])) === normalizeMatchKey(key));
   const before = found ? fieldNum(found.fields[qtyKey]) ?? 0 : 0;
   const after =
     input.action === "inbound" ? before + input.quantity

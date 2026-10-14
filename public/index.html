@@ -18,16 +18,21 @@
     /* OCR 自动回填高亮：用户手动编辑时移除（见 oninput） */
     .ocr-filled { border-color: var(--nec-cyan) !important; background: #EAF7FD; transition: background 1.2s ease, border-color 1.2s ease; }
 
-  /* KV V2 — 蓝图网格 Hero */
+  /* KV V2 — 蓝图网格 Hero（网格线用低透明度青色，仅作底纹不抢内容） */
   .hero {
     position: relative; overflow: hidden; background: var(--nec-paper);
     background-image:
-      linear-gradient(var(--nec-cyan) 1px, transparent 1px),
-      linear-gradient(90deg, var(--nec-cyan) 1px, transparent 1px),
-      linear-gradient(var(--nec-cyan) 1px, transparent 1px),
-      linear-gradient(90deg, var(--nec-cyan) 1px, transparent 1px);
+      linear-gradient(rgba(31,169,232,.10) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31,169,232,.10) 1px, transparent 1px),
+      linear-gradient(rgba(31,169,232,.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31,169,232,.045) 1px, transparent 1px);
     background-size: 92px 92px, 92px 92px, 23px 23px, 23px 23px;
   }
+  /* 压缩模式：已登录用户与已见过全尺寸 Hero 的回访访客，只保留一条品牌细条 */
+  #hero-mini { display: none; }
+  .hero.compact .hero-inner { padding-top: .65rem; padding-bottom: .65rem; }
+  .hero.compact #hero-mini { display: inline; }
+  .hero.compact #hero-full, .hero.compact .hero-sun, .hero.compact .horizon { display: none; }
   .hero-title { font-weight: 900; line-height: .95; letter-spacing: -.015em; color: var(--nec-ink); }
   .hero-title .to { color: var(--nec-cyan); }
   .horizon { position: absolute; left: 0; right: 0; height: 3px; background: var(--nec-cyan); }
@@ -92,17 +97,23 @@
 
 <!-- KV V2 Hero：BUILT TO DAWN -->
 <header class="hero">
-  <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8 sm:pb-10 relative">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8 sm:pb-10 relative hero-inner">
     <div class="flex items-center gap-3 relative z-10">
       <img src="/brand/nec-logo.svg" alt="NEC" class="h-8 sm:h-9 w-auto" />
       <div class="leading-tight">
         <div class="font-black text-lg" style="color:var(--nec-navy)">常州工NEC <span class="text-sm font-extrabold" style="color:var(--nec-cyan)">in CIT</span></div>
         <div class="mono text-[11px] text-gray-500 tracking-wider">newenergycoder.club</div>
       </div>
-      <span id="health" class="ml-auto text-xs px-2 py-1 rounded bg-gray-100 text-gray-500">连接中…</span>
+      <span id="hero-mini" class="mono text-xs font-bold tracking-[.18em] ml-1" style="color:var(--nec-navy)">BUILT <span style="color:var(--nec-cyan)">TO</span> DAWN</span>
+      <div class="ml-auto relative">
+        <button id="health" onclick="toggleHealthPanel()" title="点击查看全站健康详情" class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-500 cursor-pointer">连接中…</button>
+        <div id="health-panel" class="hidden absolute right-0 top-full mt-1 w-72 sm:w-80 bg-white rounded-xl shadow-lg border border-gray-100 p-4 z-30 text-left"></div>
+      </div>
       <div id="user-box" class="text-xs flex items-center gap-2"></div>
     </div>
 
+    <!-- 全尺寸品牌区：仅未登录访客的首次访问展示；登录用户/回访访客走压缩细条（见 applyHeroMode） -->
+    <div id="hero-full">
     <div class="mt-10 relative z-10">
       <p class="mono text-xs tracking-[.18em] sm:tracking-[.22em] mb-3 sm:mb-4" style="color:var(--nec-navy)"><b>NEC HUB</b> · 团队 AI 中台 · KEEP BUILDING</p>
       <h1 class="hero-title text-4xl sm:text-7xl">BUILT <span class="to">TO</span> DAWN</h1>
@@ -118,7 +129,7 @@
     </div>
 
     <!-- 破晓太阳 -->
-    <svg class="absolute -right-10 sm:right-10 top-24 w-36 sm:w-64 opacity-40 sm:opacity-90 z-0 pointer-events-none" viewBox="0 0 800 800" fill="none" aria-hidden="true">
+    <svg class="hero-sun absolute -right-10 sm:right-10 top-24 w-36 sm:w-64 opacity-40 sm:opacity-90 z-0 pointer-events-none" viewBox="0 0 800 800" fill="none" aria-hidden="true">
       <defs><linearGradient id="sunG" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#4FC3F7"/><stop offset="1" stop-color="#1FA9E8"/></linearGradient></defs>
       <circle cx="400" cy="400" r="330" stroke="url(#sunG)" stroke-width="10"/>
@@ -126,6 +137,7 @@
       <g stroke="#141B5E" stroke-width="2"><line x1="400" y1="368" x2="400" y2="432"/><line x1="368" y1="400" x2="432" y2="400"/></g>
       <circle cx="400" cy="400" r="7" fill="#141B5E"/>
     </svg>
+    </div><!-- /#hero-full -->
   </div>
   <div class="horizon" style="bottom:34px"></div>
   <div class="base-line"></div>
@@ -135,14 +147,18 @@
   <div class="max-w-5xl mx-auto px-4 sm:px-6 flex gap-4 sm:gap-6 text-sm font-medium text-gray-500 overflow-x-auto whitespace-nowrap scrollbar-hide">
     <button data-tab="home" class="tab-btn py-3 shrink-0 tab-active">我的首页</button>
     <button data-tab="my-tasks" class="tab-btn py-3 shrink-0">我的任务</button>
-    <button data-tab="drawing-review" id="tab-btn-drawing-review" class="tab-btn py-3 shrink-0 hidden">📐 图纸评审</button>
+    <button data-tab="drawing-review" id="tab-btn-drawing-review" class="tab-btn py-3 shrink-0 hidden">图纸评审</button>
+    <button data-tab="reimburse" class="tab-btn py-3 shrink-0">报销</button>
+    <button data-tab="task-schedule" class="tab-btn py-3 shrink-0">任务排期</button>
+    <button data-tab="season-goals" class="tab-btn py-3 shrink-0">赛季目标</button>
     <button data-tab="apps" class="tab-btn py-3 shrink-0">应用广场</button>
-    <button data-tab="skills" class="tab-btn py-3 shrink-0">Skill 中心</button>
-    <button data-tab="docs" class="tab-btn py-3 shrink-0">资料页</button>
-    <button data-tab="repos" class="tab-btn py-3 shrink-0">开源仓库</button>
+    <button data-tab="skills" class="tab-btn tab-more py-3 shrink-0 hidden">Skill 中心</button>
+    <button data-tab="docs" class="tab-btn tab-more py-3 shrink-0 hidden">资料页</button>
+    <button data-tab="repos" class="tab-btn tab-more py-3 shrink-0 hidden">开源仓库</button>
     <button data-tab="dashboard" class="tab-btn py-3 shrink-0">数据看板</button>
     <button data-tab="prd" class="tab-btn py-3 shrink-0">PRD 看板</button>
     <button data-tab="agent" class="tab-btn py-3 shrink-0">NEC-MCP</button>
+    <button id="nav-more-btn" onclick="toggleMoreTabs()" class="py-3 shrink-0 text-gray-400 hover:text-gray-600">更多 ▾</button>
   </div>
 </nav>
 
@@ -151,11 +167,11 @@
   <div class="max-w-5xl mx-auto px-4 sm:px-6 py-2.5 flex items-center gap-3 text-sm text-white" style="background:var(--nec-navy)">
     <span class="shrink-0">📌</span>
     <div id="goal-banner-text" class="flex-1 leading-snug"></div>
-    <button onclick="document.getElementById('goal-banner').classList.add('hidden')" class="text-white/60 hover:text-white shrink-0">✕</button>
+    <button onclick="dismissGoalBanner()" class="text-white/60 hover:text-white shrink-0">✕</button>
   </div>
 </div>
 
-<!-- FE-09：待办条（登录后有待办时显示；逾期任务/待确认报销/飞书审批聚合，可展开清单） -->
+<!-- FE-09：待办条（登录后有待办时显示；逾期任务/待确认报销/飞书审批/本地审批单聚合，可展开清单；合规 T-1 单标红置顶） -->
 <div id="todo-bar" class="hidden">
   <div class="max-w-5xl mx-auto px-4 sm:px-6 py-2.5 text-sm text-white" style="background:#B45309">
     <div class="flex items-center gap-3">
@@ -184,6 +200,7 @@
       <button onclick="copyText('home-prompt')" class="mt-3 text-sm text-white px-3 py-1.5 rounded" style="background:var(--nec-navy)">复制</button>
       <p class="text-xs text-gray-400 mt-3">布局为白名单组件制（禁止自由 HTML），组件顺序即渲染顺序，配置绑定飞书账号、换设备/重新登录都保持。组长/队长把 Prompt 里的 scope 改成 group 可配置本组默认首页。</p>
     </div>
+    <div id="home-activity" class="mb-4"></div>
     <div id="home-widgets" class="space-y-4"></div>
   </section>
 
@@ -265,6 +282,33 @@
     </p>
   </section>
 
+  <!-- 报销（iframe 嵌入独立应用，懒加载） -->
+  <section id="tab-reimburse" class="hidden">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">报销</h2>
+      <a href="/apps/reimburse/" target="_blank" class="text-xs hover:underline" style="color:var(--nec-cyan)">独立全屏版 /apps/reimburse/ →</a>
+    </div>
+    <iframe data-src="/apps/reimburse/?embedded=1" title="报销助手" class="w-full rounded-xl border border-gray-200 bg-white" style="height:78vh" loading="lazy"></iframe>
+  </section>
+
+  <!-- 任务排期（iframe 嵌入独立应用，懒加载） -->
+  <section id="tab-task-schedule" class="hidden">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">任务排期</h2>
+      <a href="/apps/task-schedule/" target="_blank" class="text-xs hover:underline" style="color:var(--nec-cyan)">独立全屏版 /apps/task-schedule/ →</a>
+    </div>
+    <iframe data-src="/apps/task-schedule/?embedded=1" title="任务排期" class="w-full rounded-xl border border-gray-200" style="height:78vh" loading="lazy"></iframe>
+  </section>
+
+  <!-- 赛季目标（iframe 嵌入独立应用，懒加载） -->
+  <section id="tab-season-goals" class="hidden">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">赛季目标</h2>
+      <a href="/apps/season-goals/" target="_blank" class="text-xs hover:underline" style="color:var(--nec-cyan)">独立全屏版 /apps/season-goals/ →</a>
+    </div>
+    <iframe data-src="/apps/season-goals/?embedded=1" title="赛季目标管理" class="w-full rounded-xl border border-gray-200 bg-white" style="height:78vh" loading="lazy"></iframe>
+  </section>
+
   <!-- 应用广场 -->
   <section id="tab-apps" class="hidden">
     <div class="flex items-center justify-between mb-4">
@@ -314,6 +358,85 @@
             <div>
               <p class="font-bold text-slate-800">NEC 评分看板</p>
               <p class="text-xs text-gray-500">赛事成绩 · 评分记录 · 排名</p>
+            </div>
+          </div>
+        </a>
+        <a href="/apps/contract-signing/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-[#1FA9E8] transition">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-[#E8ECFB] flex items-center justify-center text-lg">📝</div>
+            <div>
+              <p class="font-bold text-slate-800">协议签署 OA 审批</p>
+              <p class="text-xs text-gray-500">合同提交 · 会签审批 · 归档</p>
+            </div>
+          </div>
+        </a>
+        <a href="/apps/domains/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-[#1FA9E8] transition">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-[#E8ECFB] flex items-center justify-center text-lg">🌐</div>
+            <div>
+              <p class="font-bold text-slate-800">域名分发系统</p>
+              <p class="text-xs text-gray-500">子域名申请 · 分发管理</p>
+            </div>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <!-- 独立应用（仓库托管的完整功能页，全部保留入口） -->
+    <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <h3 class="text-sm font-bold text-slate-700 mb-3">独立应用</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <a href="/apps/reimburse/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-[#1FA9E8] transition">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-[#E8ECFB] flex items-center justify-center text-lg">💰</div>
+            <div>
+              <p class="font-bold text-slate-800">报销助手</p>
+              <p class="text-xs text-gray-500">费用报销单 · 发票附件 · 提交审批</p>
+            </div>
+          </div>
+        </a>
+        <a href="/apps/compliance/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-[#1FA9E8] transition">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-[#E8ECFB] flex items-center justify-center text-lg">🛡️</div>
+            <div>
+              <p class="font-bold text-slate-800">合规申请</p>
+              <p class="text-xs text-gray-500">合规事项提交 · 审批 · 归档</p>
+            </div>
+          </div>
+        </a>
+        <a href="/apps/cla-sign/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-[#1FA9E8] transition">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-[#E8ECFB] flex items-center justify-center text-lg">✍️</div>
+            <div>
+              <p class="font-bold text-slate-800">CLA 协议签署</p>
+              <p class="text-xs text-gray-500">开源贡献协议 · 签署 · PDF 证书</p>
+            </div>
+          </div>
+        </a>
+        <a href="/apps/drawing/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-[#1FA9E8] transition">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-[#E8ECFB] flex items-center justify-center text-lg">📏</div>
+            <div>
+              <p class="font-bold text-slate-800">机械图纸审批</p>
+              <p class="text-xs text-gray-500">图纸提交 · 审批流转</p>
+            </div>
+          </div>
+        </a>
+        <a href="/apps/season-goals/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-[#1FA9E8] transition">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-[#E8ECFB] flex items-center justify-center text-lg">🎯</div>
+            <div>
+              <p class="font-bold text-slate-800">赛季目标管理</p>
+              <p class="text-xs text-gray-500">目标 · 关键结果 · 完成度跟踪</p>
+            </div>
+          </div>
+        </a>
+        <a href="/apps/task-schedule/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-[#1FA9E8] transition">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-[#E8ECFB] flex items-center justify-center text-lg">🗓️</div>
+            <div>
+              <p class="font-bold text-slate-800">任务排期</p>
+              <p class="text-xs text-gray-500">任务计划 · 排期甘特 · 进度</p>
             </div>
           </div>
         </a>
@@ -367,10 +490,19 @@
   <section id="tab-dashboard" class="hidden">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-bold">数据看板</h2>
-      <span id="dash-status" class="text-xs text-gray-400"></span>
+      <div class="flex items-center gap-3">
+        <span id="dash-status" class="text-xs text-gray-400"></span>
+        <button id="dash-refresh" onclick="loadDashboard(true)" title="绕过 5 分钟缓存，立即从飞书拉取最新数据" class="text-xs px-2.5 py-1 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50">⟳ 刷新</button>
+      </div>
     </div>
     <div id="dash-body" class="space-y-4">
-      <div class="bg-white rounded-xl shadow p-6 text-sm text-gray-400">加载中…</div>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl shadow p-5 animate-pulse"><div class="h-3 w-16 bg-gray-100 rounded"></div><div class="h-8 w-20 bg-gray-100 rounded mt-2"></div></div>
+        <div class="bg-white rounded-xl shadow p-5 animate-pulse"><div class="h-3 w-16 bg-gray-100 rounded"></div><div class="h-8 w-20 bg-gray-100 rounded mt-2"></div></div>
+        <div class="bg-white rounded-xl shadow p-5 animate-pulse"><div class="h-3 w-16 bg-gray-100 rounded"></div><div class="h-8 w-20 bg-gray-100 rounded mt-2"></div></div>
+        <div class="bg-white rounded-xl shadow p-5 animate-pulse"><div class="h-3 w-16 bg-gray-100 rounded"></div><div class="h-8 w-20 bg-gray-100 rounded mt-2"></div></div>
+      </div>
+      <div class="bg-white rounded-xl shadow p-6 animate-pulse"><div class="h-4 w-32 bg-gray-100 rounded"></div><div class="h-3 bg-gray-100 rounded mt-4"></div><div class="h-3 bg-gray-100 rounded mt-2"></div><div class="h-3 w-2/3 bg-gray-100 rounded mt-2"></div></div>
     </div>
 
     <!-- FE-05 数据健康：按类型分组的异常清单（renderValidateHealth 填充） -->
@@ -578,14 +710,30 @@ document.getElementById("doc-publish-prompt").textContent =
 3. 成功后告诉我已发布到资料页`;
 
 // Tab 切换 + Hash 路由：/#tab-dashboard 等深链可直达对应面板，刷新/分享不丢位置
-const TAB_IDS = ["home","my-tasks","drawing-review","apps","skills","docs","repos","dashboard","prd","agent"];
+const TAB_IDS = ["home","my-tasks","drawing-review","reimburse","task-schedule","season-goals","apps","skills","docs","repos","dashboard","prd","agent"];
 function switchTab(tab, opts = {}) {
   const btn = document.querySelector('.tab-btn[data-tab="' + tab + '"]');
   const panel = document.getElementById("tab-" + tab);
-  if (!btn || !panel || btn.classList.contains("hidden")) return false;
+  if (!btn || !panel) return false;
+  // 目标在「更多」分组里时先展开，否则视为当前不可见（如未登录时的图纸评审）
+  if (btn.classList.contains("hidden")) {
+    if (btn.classList.contains("tab-more")) setMoreTabs(true);
+    else return false;
+  }
   document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("tab-active"));
   btn.classList.add("tab-active");
+  const moreBtn = document.getElementById("nav-more-btn");
+  if (moreBtn) moreBtn.classList.toggle("tab-active", btn.classList.contains("tab-more"));
   TAB_IDS.forEach(t => document.getElementById("tab-"+t).classList.toggle("hidden", t !== tab));
+  // iframe 嵌入的独立应用：首次切换到该 Tab 才加载
+  const lazyFrame = panel.querySelector("iframe[data-src]");
+  if (lazyFrame && !lazyFrame.src) lazyFrame.src = lazyFrame.dataset.src;
+  // 看板是表格密集型面板，单独放宽版心；其余 Tab 维持阅读宽度
+  const main = document.querySelector("main");
+  if (main) {
+    main.classList.toggle("max-w-5xl", tab !== "dashboard");
+    main.classList.toggle("max-w-7xl", tab === "dashboard");
+  }
   if (!opts.silent && location.hash !== "#tab-" + tab) location.hash = "tab-" + tab;
   if (tab === "my-tasks") loadMyTasks();
   return true;
@@ -603,6 +751,17 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 });
 window.addEventListener("hashchange", applyHashRoute);
 applyHashRoute();
+
+// 低频 Tab（Skill 中心/资料页/开源仓库）默认收进「更多」，保持导航 6 个高频入口
+function setMoreTabs(expanded) {
+  document.querySelectorAll(".tab-more").forEach(b => b.classList.toggle("hidden", !expanded));
+  const btn = document.getElementById("nav-more-btn");
+  if (btn) btn.textContent = expanded ? "收起 ▴" : "更多 ▾";
+}
+function toggleMoreTabs() {
+  const anyHidden = !!document.querySelector(".tab-more.hidden");
+  setMoreTabs(anyHidden);
+}
 
 function showPublishPrompt() {
   document.getElementById("publish-box").classList.toggle("hidden");
@@ -639,16 +798,75 @@ async function testConnection() {
   if (btn) setTimeout(() => { btn.innerHTML = orig; }, 3000);
 }
 
-// 健康检查
+// 健康检查：结果存 HEALTH_DATA，徽标点击展开全站健康面板（API / MCP 延迟 / FE-05 数据健康）
+let HEALTH_DATA = null;
 fetch("/api/health").then(r => r.json()).then(d => {
+  HEALTH_DATA = d;
   const el = document.getElementById("health");
   el.textContent = "● 服务正常";
-  el.className = "ml-auto text-xs px-2 py-1 rounded bg-green-100 text-green-700";
+  el.className = "text-xs px-2 py-1 rounded bg-green-100 text-green-700 cursor-pointer";
 }).catch(() => {
   const el = document.getElementById("health");
   el.textContent = "● 连接失败";
-  el.className = "ml-auto text-xs px-2 py-1 rounded bg-red-100 text-red-600";
+  el.className = "text-xs px-2 py-1 rounded bg-red-100 text-red-600 cursor-pointer";
 });
+
+async function toggleHealthPanel() {
+  const panel = document.getElementById("health-panel");
+  if (!panel) return;
+  if (!panel.classList.contains("hidden")) { panel.classList.add("hidden"); return; }
+  panel.classList.remove("hidden");
+  panel.innerHTML = `<p class="text-xs text-gray-400">检测中…</p>`;
+  // MCP 端点延迟：401 也算端点存活（仅说明需要鉴权）
+  const t0 = performance.now();
+  let mcpLine;
+  try {
+    const resp = await fetch(ORIGIN + "/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
+    });
+    const ms = Math.round(performance.now() - t0);
+    mcpLine = resp.ok
+      ? `<span class="text-green-600">● 正常</span> · ${ms}ms`
+      : resp.status === 401
+        ? `<span class="text-green-600">● 正常</span>（需鉴权）· ${ms}ms`
+        : `<span class="text-amber-600">● HTTP ${resp.status}</span>`;
+  } catch {
+    mcpLine = `<span class="text-red-500">● 不可达</span>`;
+  }
+  let validateLine = `<span class="text-gray-400">登录后可见</span>`;
+  if (ME.authenticated) {
+    try {
+      const r = await fetch("/api/validate/report");
+      if (r.ok) {
+        const rep = await r.json();
+        validateLine = rep && !rep.empty
+          ? `${rep.total ? `<span class="text-red-600">● ${rep.total} 条异常</span>` : `<span class="text-green-600">● 无异常</span>`} · 上次校验 ${rep.generatedAt ? new Date(rep.generatedAt).toLocaleString("zh-CN") : "—"}`
+          : `<span class="text-gray-400">暂无校验报告</span>`;
+      }
+    } catch { /* 保持默认提示 */ }
+  }
+  panel.innerHTML = `
+    <p class="text-xs font-bold mb-2" style="color:var(--nec-navy)">全站健康</p>
+    <ul class="text-xs text-gray-600 space-y-1.5">
+      <li class="flex justify-between gap-2"><span>API 服务</span><span>${HEALTH_DATA ? `<span class="text-green-600">● 正常</span> · ${esc(HEALTH_DATA.service || "nec-hub")}` : `<span class="text-red-500">● 异常</span>`}</span></li>
+      <li class="flex justify-between gap-2"><span>最近心跳</span><span class="text-gray-400">${HEALTH_DATA && HEALTH_DATA.time ? new Date(HEALTH_DATA.time).toLocaleString("zh-CN") : "—"}</span></li>
+      <li class="flex justify-between gap-2"><span>NEC-MCP 端点</span><span>${mcpLine}</span></li>
+      <li class="flex justify-between gap-2"><span>数据健康（FE-05）</span><span>${validateLine}</span></li>
+    </ul>
+    <button onclick="document.getElementById('health-panel').classList.add('hidden');switchTab('dashboard')" class="mt-3 text-xs hover:underline" style="color:var(--nec-cyan)">数据健康详情 →</button>`;
+}
+
+// Hero 版式：全尺寸只给未登录访客的首次访问；登录用户与已见过的回访一律压缩成品牌细条
+function applyHeroMode() {
+  const hero = document.querySelector(".hero");
+  if (!hero) return;
+  const seen = localStorage.getItem("nec_hero_seen") === "1";
+  const compact = ME.authenticated || seen;
+  hero.classList.toggle("compact", compact);
+  if (!compact) localStorage.setItem("nec_hero_seen", "1");
+}
 
 // ===== 飞书登录态（FE-01）：OAuth 跳转登录 + 会话 Cookie + 角色徽章 =====
 let HUB_CONFIG = { loginEnabled: false, feishuAppId: null };
@@ -680,11 +898,13 @@ async function bootAuth() {
     sessionStorage.removeItem("nec_oauth_state");
   }
   await refreshMe();
+  applyHeroMode();
   renderUserBox();
   loadDashboard(); // 财务区可见性随登录角色变化
   loadValidateHealth();
   loadTodos(); // FE-09 待办条（未登录/无待办自动隐藏）
   loadHome(); // FE-06/07 我的首页（未登录渲染默认布局）
+  loadHomeActivity(); // 团队动态窄条（最近 git 提交）
 }
 
 async function refreshMe() {
@@ -696,10 +916,13 @@ function renderUserBox() {
   const box = document.getElementById("user-box");
   if (ME.authenticated && ME.user) {
     const u = ME.user;
+    // 角色徽标补充权限说明（external 等非常规角色用户常不知道边界）
+    const ROLE_TIPS = { external: "外部协作者：可查看公开数据，审批/报销等功能需队长开通" };
+    const roleTip = ROLE_TIPS[u.role] || "";
     box.innerHTML = `
       ${u.avatar_url ? `<img src="${esc(u.avatar_url)}" class="w-6 h-6 rounded-full" alt=""/>` : ""}
       <span class="font-medium" style="color:var(--nec-navy)">${esc(u.name)}</span>
-      <span class="px-1.5 py-0.5 rounded text-[10px] text-white" style="background:var(--nec-cyan)">${esc(u.role || "队员")}</span>
+      <span class="px-1.5 py-0.5 rounded text-[10px] text-white"${roleTip ? ` title="${esc(roleTip)}" style="background:var(--nec-cyan);cursor:help"` : ` style="background:var(--nec-cyan)"`}>${esc(u.role || "队员")}</span>
       ${u.group ? `<span class="text-gray-400 hidden sm:inline">${esc(u.group)}</span>` : ""}
       <button onclick="logout()" class="text-gray-400 hover:text-gray-600 ml-1">登出</button>`;
   } else if (HUB_CONFIG.loginEnabled) {
@@ -735,18 +958,19 @@ function startLogin() {
   const state = crypto.randomUUID();
   sessionStorage.setItem("nec_oauth_state", state);
   const redirect = location.origin + location.pathname;
-  // scope 取 Task v2 最小集：task:task:read 读任务 + task:tasklist:read 读清单；
-  // scope 变化后老用户需重新授权一次，"我的任务"才能绑定
+  // scope：task:task:read 读任务 + task:tasklist:read 读清单 + mail:user_mailbox.message:send 邮件通道发信（G-05）；
+  // scope 变化后老用户需重新授权一次，"我的任务"/邮件发信才能绑定
   location.href = "https://open.feishu.cn/open-apis/authen/v1/authorize?app_id="
     + encodeURIComponent(HUB_CONFIG.feishuAppId)
     + "&redirect_uri=" + encodeURIComponent(redirect)
     + "&state=" + state
-    + "&scope=" + encodeURIComponent("task:task:read task:tasklist:read");
+    + "&scope=" + encodeURIComponent("task:task:read task:tasklist:read mail:user_mailbox.message:send");
 }
 
 async function logout() {
   await fetch("/auth/logout", { method: "POST" }).catch(() => {});
   ME = { authenticated: false, user: null };
+  applyHeroMode();
   renderUserBox();
   loadDashboard();
   loadValidateHealth();
@@ -832,7 +1056,9 @@ async function unbindMyTasks() {
   loadMyTasks();
 }
 
-// ===== FE-09 待办条：聚合逾期任务 / 待确认报销 / 飞书审批（GET /api/todos，5 分钟缓存） =====
+// ===== FE-09 待办条：聚合逾期任务 / 待确认报销 / 飞书审批 / 本地审批单（GET /api/todos，5 分钟缓存） =====
+// G-04：本地审批单（approvals_local）中 urgent=true 的合规单红色高亮 + 「T-1」徽标置顶；有 deadline 的非 urgent 条目显示倒计时
+const TODO_TYPE_LABELS = { reimburse: "报销", drawing: "图纸", hardware: "硬件", compliance: "合规" };
 let TODO_DATA = null;
 async function loadTodos() {
   const bar = document.getElementById("todo-bar");
@@ -847,10 +1073,12 @@ async function loadTodos() {
   const t = TODO_DATA.tasks?.length ?? 0;
   const f = TODO_DATA.finance?.count ?? 0;
   const a = TODO_DATA.approvals?.count ?? 0;
+  const al = TODO_DATA.approvals_local?.count ?? 0;
   const parts = [];
   if (t) parts.push(`逾期任务 ${t}`);
   if (f) parts.push(`待确认报销 ${f}`);
   if (a) parts.push(`飞书审批 ${a}`);
+  if (al) parts.push(`审批中 ${al}`);
   document.getElementById("todo-bar-text").textContent =
     `你有 ${TODO_DATA.total} 项待办（${parts.join(" · ")}），点击展开处理`;
   const taskRows = (TODO_DATA.tasks ?? []).map(x => `
@@ -870,9 +1098,29 @@ async function loadTodos() {
       <span class="text-xs px-1.5 py-0.5 rounded bg-white/15 shrink-0">审批</span>
       <a href="${esc(x.link)}" target="_blank" class="hover:underline font-medium">${esc(x.title)}</a>
     </li>`).join("");
+  const alRows = (TODO_DATA.approvals_local?.items ?? []).map(x => {
+    const typeLabel = TODO_TYPE_LABELS[x.type] ?? "审批";
+    const badge = x.urgent
+      ? `<span class="text-xs px-1.5 py-0.5 rounded bg-red-500 text-white font-bold shrink-0">T-1</span>`
+      : "";
+    let meta = "";
+    if (x.urgent && x.deadline) {
+      meta = `<span class="text-xs text-red-200 font-medium">距计划发布不足 24h</span>`;
+    } else if (x.deadline) {
+      const days = Math.ceil((x.deadline - Date.now()) / 86400000);
+      meta = `<span class="text-xs text-white/70">${days > 0 ? `距计划发布还有 ${days} 天` : "已过计划发布时间"}</span>`;
+    }
+    return `
+    <li class="py-1.5 flex items-baseline gap-2 flex-wrap${x.urgent ? " -mx-2 px-2 rounded bg-red-500/25" : ""}">
+      <span class="text-xs px-1.5 py-0.5 rounded ${x.urgent ? "bg-red-500/60" : "bg-white/15"} shrink-0">${typeLabel}</span>
+      ${badge}
+      <a href="${esc(x.url)}" target="_blank" class="hover:underline font-medium">${esc(x.title)}</a>
+      ${meta}
+    </li>`;
+  }).join("");
   const warnRows = (TODO_DATA.warnings ?? []).map(w => `<p class="text-xs text-white/60 mt-1">⚠ ${esc(w)}</p>`).join("");
   document.getElementById("todo-list").innerHTML =
-    `<ul class="divide-y divide-white/10">${taskRows}${finRows}${apRows}</ul>${warnRows}`;
+    `<ul class="divide-y divide-white/10">${alRows}${taskRows}${finRows}${apRows}</ul>${warnRows}`;
   bar.classList.remove("hidden");
 }
 function toggleTodoList() {
@@ -891,6 +1139,15 @@ const HOME_WIDGET_DEFS = {
 /** 与后端 DEFAULT_HOME_LAYOUT 保持一致（未登录访客与 /api/home 失败时的兜底） */
 const HOME_DEFAULT_WIDGETS = ["my-tasks", "goals", "my-apps", "docs"];
 const HOME_SOURCE_LABEL = { personal: "个人定制", group: "组默认", default: "全员默认" };
+/** 当前生效布局（悬停「移除」按钮写个人布局时用） */
+let HOME_CURRENT = [];
+
+/** 赛季目标未配置时的空态引导 Prompt（与数据看板未配置引导同一模式） */
+const GOALS_CONFIG_PROMPT = `请帮我配置 NEC 中台的赛季目标表（飞书多维表格）：
+1. 打开飞书多维表格，从浏览器地址栏复制 app_token 与赛季目标表的 table_id：
+   URL 形如 https://xxx.feishu.cn/base/<app_token>?table=<table_id>&view=...
+2. 调用 NEC-MCP 的 config_dashboard（action=set），传入 base 与 tables.goals = 赛季目标表的 table_id
+3. 配置完成后刷新门户「我的首页」确认赛季目标渲染`;
 
 document.getElementById("home-prompt").textContent =
 `请按我的要求调整 NEC 中台「我的首页」布局：
@@ -925,8 +1182,12 @@ async function loadHome() {
     } catch { /* 布局读取失败按默认渲染 */ }
   }
   const srcEl = document.getElementById("home-source");
-  if (srcEl) srcEl.textContent = `（${HOME_SOURCE_LABEL[source] || source}${source === "group" && group ? " · " + group : ""}）`;
+  if (srcEl) {
+    delete srcEl.dataset.fresh;
+    srcEl.textContent = `（${HOME_SOURCE_LABEL[source] || source}${source === "group" && group ? " · " + group : ""}）`;
+  }
   document.getElementById("home-reset-btn").classList.toggle("hidden", !ME.authenticated);
+  HOME_CURRENT = widgets;
   renderHomeWidgets(box, widgets);
 }
 
@@ -953,7 +1214,8 @@ function renderHomeWidgets(box, widgets) {
   box.innerHTML = widgets.map((w, i) => {
     const def = HOME_WIDGET_DEFS[w.id];
     return def ? `
-      <div class="bg-white rounded-xl shadow p-5">
+      <div class="bg-white rounded-xl shadow p-5 group relative">
+        ${ME.authenticated ? `<button onclick="removeHomeWidget(${i})" title="从我的首页移除该组件（写入个人布局）" class="absolute top-3 right-3 hidden group-hover:block text-xs text-gray-300 hover:text-red-500">✕ 移除</button>` : ""}
         <h3 class="font-bold mb-3">${esc(w.title || def.title)}</h3>
         <div id="home-w-${i}" class="text-sm text-gray-400">加载中…</div>
       </div>` : "";
@@ -963,6 +1225,73 @@ function renderHomeWidgets(box, widgets) {
     const fn = HOME_RENDERERS[w.id];
     if (slot && fn) fn(slot, shared).catch(() => { slot.innerHTML = `<p class="text-sm text-gray-400">加载失败，请刷新重试。</p>`; });
   });
+}
+
+/** 悬停「移除」：从当前布局去掉该组件并写入个人布局（POST /api/home） */
+async function removeHomeWidget(i) {
+  const w = HOME_CURRENT[i];
+  if (!w) return;
+  const rest = HOME_CURRENT.filter((_, j) => j !== i);
+  if (!rest.length) { alert("至少保留一个组件。"); return; }
+  try {
+    const resp = await fetch("/api/home", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ widgets: rest.map(x => ({ id: x.id })) }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.error) throw new Error(data.error || ("HTTP " + resp.status));
+    await loadHome();
+  } catch (e) {
+    alert("移除失败：" + (e.message || e));
+  }
+}
+
+/** 副标题补充数据新鲜度：「全员默认 · 任务同步于 x 分钟前」（dashboard 各表带 cachedAt） */
+function noteHomeFreshness(d) {
+  const srcEl = document.getElementById("home-source");
+  const at = d?.tasks?.cachedAt;
+  if (!srcEl || !at || srcEl.dataset.fresh) return;
+  const t = new Date(at).getTime();
+  if (!isFinite(t)) return;
+  const mins = Math.max(0, Math.round((Date.now() - t) / 60000));
+  srcEl.dataset.fresh = "1";
+  srcEl.textContent = srcEl.textContent.replace(/）$/, ` · 任务同步于 ${mins < 1 ? "刚刚" : mins + " 分钟前"}）`);
+}
+
+/** 团队动态窄条：最近 git 提交（来自 GitHub webhook 落 KV，GET /api/prd 的 recentCommits） */
+async function loadHomeActivity() {
+  const box = document.getElementById("home-activity");
+  if (!box) return;
+  try {
+    const resp = await fetch("/api/prd");
+    if (!resp.ok) return;
+    const board = await resp.json();
+    const commits = (Array.isArray(board.recentCommits) && board.recentCommits.length
+      ? board.recentCommits
+      : board.lastCommit ? [board.lastCommit] : []).slice(0, 3);
+    if (!commits.length) { box.innerHTML = ""; return; }
+    const fmtAt = (v) => {
+      const t = new Date(v);
+      return isNaN(t.getTime()) ? "" : t.toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+    };
+    box.innerHTML = `
+      <div class="bg-white rounded-xl shadow px-4 py-3">
+        <div class="flex items-center gap-2 text-xs mb-1">
+          <span class="font-bold" style="color:var(--nec-navy)">团队动态</span>
+          <span class="text-gray-400">· 最近 git 提交</span>
+          <button onclick="switchTab('prd')" class="ml-auto hover:underline" style="color:var(--nec-cyan)">PRD 看板 →</button>
+        </div>
+        <ul class="divide-y divide-gray-50">${commits.map(c => `
+          <li class="py-1.5 flex items-baseline gap-2 text-sm">
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 mono shrink-0">${esc(c.branch || "main")}</span>
+            ${c.url
+              ? `<a href="${esc(c.url)}" target="_blank" class="flex-1 min-w-0 truncate hover:underline" style="color:var(--nec-ink)">${esc(c.message || "")}</a>`
+              : `<span class="flex-1 min-w-0 truncate">${esc(c.message || "")}</span>`}
+            <span class="text-xs text-gray-400 shrink-0">${esc(c.author || "")}${c.at ? " · " + fmtAt(c.at) : ""}</span>
+          </li>`).join("")}</ul>
+      </div>`;
+  } catch { /* 动态条加载失败不阻塞首页 */ }
 }
 
 /** 名字字段按多人分隔符拆分后精确比对（与后端 splitNames 同口径） */
@@ -975,19 +1304,41 @@ const HOME_RENDERERS = {
   "my-apps": async (slot, shared) => {
     const apps = (await shared.load("apps")) || [];
     if (!apps.length) { slot.innerHTML = `<p class="text-sm text-gray-400">还没有应用上架，去「应用广场」发布第一个。</p>`; return; }
-    slot.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">` + apps.slice(0, 6).map(a => `
-      <a href="${esc(a.url)}" target="_blank" class="block border border-gray-100 rounded-lg p-3 hover:shadow-md transition">
-        <p class="font-bold text-slate-800 text-sm truncate">${esc(a.title)}</p>
+    // 类型角标：本中台托管=应用 / external+Vercel=网站 / 其他外链=外链；按类型分组排序
+    const APP_KIND_STYLE = {
+      app:  { label: "应用", style: "background:#EAF7FD;color:#1FA9E8" },
+      site: { label: "网站", style: "background:#FFFBEB;color:#D97706" },
+      ext:  { label: "外链", style: "background:#F3F4F6;color:#6B7280" },
+    };
+    const kindOf = (a) => {
+      if (!a.external) return "app";
+      try { if (new URL(a.url).hostname.endsWith("vercel.app")) return "site"; } catch { /* url 异常按外链 */ }
+      return "ext";
+    };
+    const KIND_ORDER = { app: 0, site: 1, ext: 2 };
+    const sorted = apps.slice().sort((x, y) => KIND_ORDER[kindOf(x)] - KIND_ORDER[kindOf(y)]).slice(0, 6);
+    slot.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">` + sorted.map(a => {
+      const k = APP_KIND_STYLE[kindOf(a)];
+      // 命名规范：标题里的「中文名 // 英文名」拆成主标题 + 副标题两行
+      const parts = String(a.title || "").split(/\s*\/\/\s*/);
+      return `
+      <a href="${esc(a.url)}" target="_blank" class="relative block border border-gray-100 rounded-lg p-3 hover:shadow-md transition">
+        <span class="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded" style="${k.style}">${k.label}</span>
+        <p class="font-bold text-slate-800 text-sm truncate pr-8">${esc(parts[0])}</p>
+        ${parts[1] ? `<p class="text-[10px] mono text-gray-400 truncate">${esc(parts.slice(1).join(" // "))}</p>` : ""}
         <p class="text-xs text-gray-400 mt-0.5">${esc(a.name)} · ${esc(a.author)}</p>
-      </a>`).join("") + `</div>`;
+      </a>`;
+    }).join("") + `</div>`;
   },
   "my-tasks": async (slot, shared) => {
     const d = await shared.load("dashboard");
+    noteHomeFreshness(d);
     const all = d?.tasks?.upcoming ?? [];
     const myName = ME.authenticated ? ME.user?.name : "";
     const list = myName ? all.filter(t => nameHits(t.owner, myName)) : all;
     if (!list.length) {
-      slot.innerHTML = `<p class="text-sm text-gray-400">${myName ? "暂无与你相关的未完成任务 🎉" : "登录后只看你的任务"}</p>`;
+      slot.innerHTML = `<p class="text-sm text-gray-400">${myName ? "暂无与你相关的未完成任务 🎉" : "登录后只看你的任务"}</p>`
+        + (myName ? `<p class="text-xs text-gray-400 mt-1.5">去「我的任务」Tab 查看全部；在飞书任务中把自己加为负责人，任务就会出现在这里。</p>` : "");
       return;
     }
     slot.innerHTML = `<ul class="divide-y divide-gray-100">` + list.slice(0, 8).map(t => `
@@ -1032,10 +1383,18 @@ const HOME_RENDERERS = {
   },
   "goals": async (slot, shared) => {
     const d = await shared.load("dashboard");
+    noteHomeFreshness(d);
     const g = d?.goals;
-    if (!g || !g.configured) { slot.innerHTML = `<p class="text-sm text-gray-400">赛季目标表未配置。</p>`; return; }
+    if (!g || !g.configured) {
+      // 配置缺口不是用户的问题：给出可复制的接入 Prompt（与数据看板未配置引导同一模式）
+      slot.innerHTML = `
+        <p class="text-sm text-gray-500 mb-2">赛季目标未配置：把下面的 Prompt 发给已接入 NEC-MCP 的 Agent 完成接入。</p>
+        <pre class="prompt text-xs bg-gray-900 text-green-300 rounded-lg p-3" id="home-goals-prompt">${esc(GOALS_CONFIG_PROMPT)}</pre>
+        <button onclick="copyText('home-goals-prompt')" class="mt-2 text-xs text-white px-3 py-1.5 rounded" style="background:var(--nec-navy)">复制 Prompt</button>`;
+      return;
+    }
     const items = (g.items ?? []).slice(0, 5);
-    if (!items.length) { slot.innerHTML = `<p class="text-sm text-gray-400">赛季目标表暂无数据。</p>`; return; }
+    if (!items.length) { slot.innerHTML = `<p class="text-sm text-gray-400">赛季目标表已配置但暂无数据：在飞书赛季目标表中添加第一条目标（含截止日期）后即可显示在这里。</p>`; return; }
     slot.innerHTML = items.map(it => `
       <a href="${esc(it.link)}" target="_blank" class="block py-1.5 border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
         <div class="flex items-center gap-2">
@@ -2048,6 +2407,36 @@ function fmtDashDate(v) {
   return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
 }
 
+/** 金额统一格式：千分位、最多两位小数；非数字原样转义输出 */
+function fmtMoney(n) {
+  if (typeof n === "number" && isFinite(n)) return n.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+  const p = Number(n);
+  return isFinite(p) && n !== "" && n !== null ? p.toLocaleString("zh-CN", { maximumFractionDigits: 2 }) : "—";
+}
+
+// 物资台账：前端搜索（名称/库位）+ 缺货标红；数据随 renderDashboard 刷新，搜索只重渲染 tbody
+let DASH_INV_ITEMS = [];
+function invRowHtml(it) {
+  const out = it.qty === 0;
+  return `
+    <tr class="border-t border-gray-100 ${out ? "bg-red-50" : ""}">
+      <td class="py-2 pr-3">${esc(it.name)}</td>
+      <td class="py-2 pr-3 mono text-xs whitespace-nowrap ${out ? "text-red-600 font-bold" : ""}">${it.qty ?? "—"}${out ? ' <span class="px-1 py-0.5 rounded text-[10px] text-white" style="background:#DC2626">缺货</span>' : ""}</td>
+      <td class="py-2 text-gray-400 text-xs">${esc(it.location || "—")}</td>
+    </tr>`;
+}
+function renderInvRows(q) {
+  const tb = document.getElementById("inv-tbody");
+  if (!tb) return;
+  const kw = (q || "").trim().toLowerCase();
+  const list = kw
+    ? DASH_INV_ITEMS.filter(it => it.name.toLowerCase().includes(kw) || (it.location || "").toLowerCase().includes(kw))
+    : DASH_INV_ITEMS;
+  tb.innerHTML = list.length
+    ? list.map(invRowHtml).join("")
+    : `<tr><td colspan="3" class="py-3 text-sm text-gray-400">无匹配「${esc(kw)}」的物资</td></tr>`;
+}
+
 // ===== FE-04 赛季目标面板：里程碑时间线 + 各组完成度条形图 + 逾期红色告警 + T-7 顶部提醒条 =====
 function goalBarColor(it) {
   if (it.overdue) return "#DC2626";
@@ -2113,12 +2502,27 @@ function goalsSection(g) {
     </div>`;
 }
 
-/** T-7 关键节点顶部提醒条：未达标且 0 ≤ 剩余天数 ≤ 7 的目标；逾期目标一并红色置顶 */
+/** T-7 关键节点顶部提醒条：未达标且 0 ≤ 剩余天数 ≤ 7 的目标；逾期目标一并红色置顶。
+ *  ✕ 关闭后记住当前内容签名，内容不变时不再弹出；但有目标进入 T-3 以内时强制重弹，避免关键节点被误关丢失 */
+const GOAL_BANNER_DISMISS_KEY = "nec_goal_banner_dismiss";
+let GOAL_BANNER_ITEMS = [];
+function goalBannerSig(items) {
+  return items.map(it => `${it.title}@${it.daysLeft}`).join("|");
+}
+function dismissGoalBanner() {
+  try { localStorage.setItem(GOAL_BANNER_DISMISS_KEY, goalBannerSig(GOAL_BANNER_ITEMS)); } catch {}
+  document.getElementById("goal-banner")?.classList.add("hidden");
+}
 function renderGoalBanner(g) {
   const banner = document.getElementById("goal-banner");
   if (!banner) return;
   const items = (g && g.configured ? g.items ?? [] : []).filter(it => !it.done && it.daysLeft !== null && it.daysLeft <= 7);
   if (!items.length) { banner.classList.add("hidden"); return; }
+  GOAL_BANNER_ITEMS = items;
+  let dismissed = "";
+  try { dismissed = localStorage.getItem(GOAL_BANNER_DISMISS_KEY) || ""; } catch {}
+  const hasCritical = items.some(it => it.daysLeft <= 3);
+  if (!hasCritical && dismissed && dismissed === goalBannerSig(items)) return; // 已关闭且内容未变，保持隐藏
   const text = document.getElementById("goal-banner-text");
   text.innerHTML = items.map(it => {
     const label = it.overdue
@@ -2155,13 +2559,28 @@ function renderDashboard(d) {
   const errNote = (e) => e ? `<div class="text-xs text-amber-600 mt-2">⚠ ${esc(e)}</div>` : "";
 
   const finVis = d.finance?.visibility ?? "full"; // 旧版后端无该字段时按 full 处理
+  // 任务完成率：按状态名归类（取消/关闭也算已终结），逾期数来自后端全量统计
+  const doneStates = (d.tasks?.byStatus ?? []).filter(s => DASH_STATUS_RE.done.test(s.name) || DASH_STATUS_RE.cancel.test(s.name));
+  const doneCount = doneStates.reduce((a, s) => a + s.count, 0);
+  const taskTotal = d.tasks?.total ?? 0;
+  const taskExtra = [
+    taskTotal ? `完成率 ${Math.round(doneCount / taskTotal * 100)}%` : "",
+    d.tasks?.overdueCount ? `<span class="text-red-500 font-bold">逾期 ${d.tasks.overdueCount} 项</span>` : "",
+  ].filter(Boolean).join(" · ");
+  // 报销卡：full 显示合计 + 本月环比；summary（队员）只显示笔数，不公开金额
+  const fin = d.finance ?? {};
+  const mom = fin.prevMonthAmount > 0
+    ? ` · 环比 ${fin.monthAmount >= fin.prevMonthAmount ? "+" : ""}${Math.round((fin.monthAmount - fin.prevMonthAmount) / fin.prevMonthAmount * 100)}%`
+    : "";
   const cards = [
     stat("在队队员", d.members?.total, d.members?.byGroup?.slice(0, 3).map(g => `${esc(g.name)} ${g.count}`).join(" · ")),
-    stat("任务总数", d.tasks?.total, d.tasks?.byStatus?.map(s => `${esc(s.name)} ${s.count}`).join(" · ")),
+    stat("任务总数", d.tasks?.total, taskExtra || d.tasks?.byStatus?.map(s => `${esc(s.name)} ${s.count}`).join(" · ")),
     stat("物资种类", d.inventory?.kinds, d.inventory?.totalQty != null ? `共 ${esc(String(d.inventory.totalQty))} 件` : ""),
     finVis === "hidden"
-      ? stat("报销合计", "登录可见", "队员可见汇总 · 明细仅队长/财务")
-      : stat("报销合计（元）", d.finance?.totalAmount, `${d.finance?.records ?? 0} 笔`),
+      ? stat("报销合计", "登录可见", "队员可见笔数 · 金额仅队长/财务")
+      : finVis === "summary"
+        ? stat("本月报销", `${fin.monthCount ?? fin.records ?? 0} 笔`, "金额合计仅队长/财务可见")
+        : stat("报销合计（元）", fmtMoney(fin.totalAmount), `${fin.records ?? 0} 笔 · 本月 ¥${fmtMoney(fin.monthAmount ?? 0)}${mom}`),
   ].join("");
 
   const total = d.tasks?.total ?? 0;
@@ -2171,49 +2590,57 @@ function renderDashboard(d) {
       ${st.map(s => `<div style="width:${(s.count / total * 100).toFixed(1)}%;background:${dashStatusColor(s.name)}" title="${esc(s.name)} ${s.count}"></div>`).join("")}
     </div>
     <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
-      ${st.map(s => `<span><i class="not-italic inline-block w-2 h-2 rounded-sm mr-1" style="background:${dashStatusColor(s.name)}"></i>${esc(s.name)} ${s.count}</span>`).join("")}
+      ${st.map(s => `<span class="inline-flex items-center"><i class="not-italic inline-block w-2.5 h-2.5 rounded-sm mr-1" style="background:${dashStatusColor(s.name)}"></i>${esc(s.name)} ${s.count}</span>`).join("")}
     </div>` : `<p class="text-sm text-gray-400">暂无任务数据</p>`;
 
-  const upcomingRows = (d.tasks?.upcoming ?? []).map(t => `
-    <tr class="border-t border-gray-100">
-      <td class="py-2 pr-3">${esc(t.title || "—")}</td>
+  // 逾期判定在前端做：用本地时区的今日零点，避免服务器时区漂移
+  const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+  const dayStartTs = dayStart.getTime();
+  const upcomingRows = (d.tasks?.upcoming ?? []).map(t => {
+    const overdue = typeof t.deadline === "number" && t.deadline < dayStartTs;
+    const title = t.link
+      ? `<a href="${esc(t.link)}" target="_blank" class="hover:underline" style="color:var(--nec-cyan)">${esc(t.title || "—")}</a>`
+      : esc(t.title || "—");
+    return `
+    <tr class="border-t border-gray-100 ${overdue ? "bg-red-50" : ""}">
+      <td class="py-2 pr-3">${title}${overdue ? ' <span class="px-1.5 py-0.5 rounded text-[10px] text-white font-bold" style="background:#DC2626">已逾期</span>' : ""}</td>
       <td class="py-2 pr-3 text-gray-500 whitespace-nowrap">${esc(t.owner || "—")}</td>
       <td class="py-2 pr-3 whitespace-nowrap"><span class="px-2 py-0.5 rounded text-xs text-white" style="background:${dashStatusColor(t.status)}">${esc(t.status || "未标注")}</span></td>
-      <td class="py-2 text-gray-400 mono text-xs whitespace-nowrap">${fmtDashDate(t.deadline)}</td>
-    </tr>`).join("");
+      <td class="py-2 mono text-xs whitespace-nowrap ${overdue ? "text-red-600 font-bold" : "text-gray-400"}">${fmtDashDate(t.deadline)}</td>
+    </tr>`;
+  }).join("");
   const upcomingTable = upcomingRows ? `
-    <table class="w-full text-sm mt-3">
+    <p class="text-xs text-gray-400 mt-3">即将到期（点击任务名跳转飞书原始记录）</p>
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm mt-1">
       <thead><tr class="text-left text-xs text-gray-400">
         <th class="pb-1 font-medium">任务</th><th class="pb-1 font-medium">负责人</th><th class="pb-1 font-medium">状态</th><th class="pb-1 font-medium">截止</th>
       </tr></thead>
       <tbody>${upcomingRows}</tbody>
-    </table>` : "";
+    </table></div>` : "";
 
-  const invRows = (d.inventory?.items ?? []).map(it => `
-    <tr class="border-t border-gray-100">
-      <td class="py-2 pr-3">${esc(it.name)}</td>
-      <td class="py-2 pr-3 mono text-xs whitespace-nowrap">${it.qty ?? "—"}</td>
-      <td class="py-2 text-gray-400 text-xs">${esc(it.location || "—")}</td>
-    </tr>`).join("");
-  const invTable = invRows ? `
-    <table class="w-full text-sm mt-3">
+  DASH_INV_ITEMS = d.inventory?.items ?? [];
+  const invTable = DASH_INV_ITEMS.length ? `
+    <input id="inv-search" oninput="renderInvRows(this.value)" placeholder="搜索物料 / 库位…" class="w-full border rounded px-2 py-1.5 text-sm mb-2" />
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm">
       <thead><tr class="text-left text-xs text-gray-400">
         <th class="pb-1 font-medium">物料</th><th class="pb-1 font-medium">数量</th><th class="pb-1 font-medium">位置</th>
       </tr></thead>
-      <tbody>${invRows}</tbody>
-    </table>` : `<p class="text-sm text-gray-400">暂无物资数据</p>`;
+      <tbody id="inv-tbody">${DASH_INV_ITEMS.map(invRowHtml).join("")}</tbody>
+    </table></div>` : `<p class="text-sm text-gray-400">暂无物资数据</p>`;
 
   const finList = (d.finance?.recent ?? []).map(f => `
     <li class="flex items-baseline gap-2 py-1.5 border-t border-gray-100 text-sm">
       <span class="text-gray-400 mono text-xs whitespace-nowrap">${fmtDashDate(f.date)}</span>
       <span class="flex-1 truncate">${esc(f.name)}${f.applicant ? `<i class="not-italic text-xs text-gray-400 ml-1">${esc(f.applicant)}</i>` : ""}</span>
-      <span class="mono text-xs whitespace-nowrap">${f.amount ?? "—"}</span>
+      <span class="mono text-xs whitespace-nowrap text-right">${f.amount != null ? "¥" + fmtMoney(f.amount) : "—"}</span>
     </li>`).join("");
   const finBody = finVis === "full"
     ? (finList ? `<ul>${finList}</ul>` : `<p class="text-sm text-gray-400">暂无报销数据</p>`)
     : finVis === "summary"
-      ? `<p class="text-sm text-gray-400">报销明细仅队长/财务角色可见。</p>`
-      : `<p class="text-sm text-gray-400">报销数据登录后可见：队员可见汇总，明细仅队长/财务。</p>`;
+      ? `<p class="text-sm text-gray-400">本月已报销 <b style="color:var(--nec-navy)">${d.finance?.monthCount ?? d.finance?.records ?? 0}</b> 笔 · 金额明细仅队长/财务角色可见。</p>`
+      : `<p class="text-sm text-gray-400">报销数据登录后可见：队员可见笔数，金额明细仅队长/财务。</p>`;
 
   status.textContent = `更新于 ${new Date(d.generatedAt).toLocaleTimeString("zh-CN")}${d.stale ? "（缓存快照）" : ""} · 缓存 5 分钟`;
 
@@ -2255,7 +2682,15 @@ function renderDashboard(d) {
 // 避免用户填到一半被重渲染清空（dataset.authed 记录登录态，登录/登出时才重建节点）
 let REIMBURSE_NODE = null;
 function reimburseCard() {
-  return '<div id="reimburse-slot"></div>';
+  // 低频写操作折叠为可展开卡，默认收起；展开状态存 localStorage，刷新后保持
+  const open = (() => { try { return localStorage.getItem("nec_reimburse_open") === "1"; } catch { return false; } })();
+  return `<details class="bg-white rounded-xl shadow" ${open ? "open" : ""}>
+    <summary class="cursor-pointer select-none p-5 font-bold flex items-center justify-between" style="list-style:none" onclick="try{localStorage.setItem('nec_reimburse_open',this.parentElement.open?'0':'1')}catch(e){}">
+      <span>🧾 提交报销</span>
+      <span class="text-xs text-gray-400 font-normal">点击展开 · 发票/凭证 OCR 自动识别回填</span>
+    </summary>
+    <div id="reimburse-slot" class="px-5 pb-5"></div>
+  </details>`;
 }
 function mountReimburse() {
   const slot = document.getElementById('reimburse-slot');
@@ -2267,7 +2702,7 @@ function mountReimburse() {
   }
   const wrap = document.createElement('div');
   wrap.innerHTML = authed ? reimburseFormHtml() :
-    '<div class="bg-white rounded-xl shadow p-5 text-sm text-gray-500">🔐 登录后可在线提交报销：上传发票图片/PDF 自动识别金额、日期与发票号，识别均在本地完成。</div>';
+    '<div class="text-sm text-gray-500">🔐 登录后可在线提交报销：上传发票图片/PDF 自动识别金额、日期与发票号，识别均在本地完成。</div>';
   REIMBURSE_NODE = wrap.firstElementChild;
   REIMBURSE_NODE.dataset.authed = String(authed);
   slot.appendChild(REIMBURSE_NODE);
@@ -2317,8 +2752,7 @@ function clearReimburseDraft() {
 function reimburseFormHtml() {
   const today = new Date().toLocaleDateString('sv-SE'); // 本地时区 YYYY-MM-DD
   const rows = [
-  '<div class="bg-white rounded-xl shadow p-5">',
-    '<h3 class="font-bold mb-3">提交报销</h3>',
+  '<div>',
     '<form id="reimburse-form" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm" onsubmit="return submitReimburse(event)">',
     F('事项', '<input id="r-item" required class="mt-1 w-full border rounded px-2 py-1.5" placeholder="如：元器件采购" />'),
     F('金额（元）', '<input id="r-amount" required inputmode="decimal" class="mt-1 w-full border rounded px-2 py-1.5" placeholder="上传凭证后自动识别，可修改" oninput="this.dataset.ocr=\'\';this.classList.remove(\'ocr-filled\')" />'),
@@ -2530,10 +2964,14 @@ async function submitReimburse(ev) {
   return false;
 }
 
-function loadDashboard() {
-  fetch("/api/dashboard").then(r => r.json()).then(renderDashboard).catch(() => {
+function loadDashboard(fresh) {
+  const btn = document.getElementById("dash-refresh");
+  if (fresh && btn) { btn.disabled = true; btn.textContent = "刷新中…"; }
+  const done = () => { if (btn) { btn.disabled = false; btn.textContent = "⟳ 刷新"; } };
+  fetch("/api/dashboard" + (fresh ? "?fresh=1" : "")).then(r => r.json()).then(d => { renderDashboard(d); done(); }).catch(() => {
     document.getElementById("dash-body").innerHTML =
       `<div class="bg-white rounded-xl shadow p-6 text-sm text-red-500">看板加载失败，请稍后重试。</div>`;
+    done();
   });
 }
 
@@ -2573,6 +3011,7 @@ function renderMyReimburseList() {
     const rows = d.records ?? [];
     if (!rows.length) { box.innerHTML = '<p class="text-gray-400">暂无记录</p>'; return; }
     box.innerHTML = `
+      <div class="overflow-x-auto">
       <table class="w-full">
         <thead><tr class="text-left text-xs text-gray-400">
           <th class="pb-2 font-medium">单号</th><th class="pb-2 font-medium">事项</th>
@@ -2585,12 +3024,12 @@ function renderMyReimburseList() {
           return `<tr class="border-t border-gray-100">
             <td class="py-2 pr-3 mono text-xs whitespace-nowrap">${esc(f.申请单号 || r.application_id || "—")}</td>
             <td class="py-2 pr-3">${esc(f.事项 || "—")}</td>
-            <td class="py-2 pr-3 mono whitespace-nowrap">${f.金额 != null ? "¥" + esc(String(f.金额)) : "—"}</td>
+            <td class="py-2 pr-3 mono whitespace-nowrap text-right">${f.金额 != null ? "¥" + fmtMoney(f.金额) : "—"}</td>
             <td class="py-2 pr-3 whitespace-nowrap">${badge}${note}</td>
             <td class="py-2 text-gray-400 text-xs whitespace-nowrap">${f.提交时间 ? new Date(f.提交时间).toLocaleDateString("zh-CN") : "—"}</td>
           </tr>`;
         }).join("")}</tbody>
-      </table>`;
+      </table></div>`;
   }).catch(() => { box.innerHTML = '<p class="text-red-500">加载失败，请稍后重试。</p>'; });
 }
 
@@ -2655,7 +3094,8 @@ fetch("/api/prd").then(r => r.json()).then(renderPrd).catch(() => {
 const PRD_DOCS = [
   { slug: "team-ai-platform-v2.0",       title: "团队 AI 中台 PRD",              version: "V2.0", date: "2026-10-14", desc: "中台总纲：M1 地基 / M2 资产与智能 / M3 个性化与自动化，FE-01 ~ FE-14 需求全景（上方看板的数据来源）" },
   { slug: "approval-notification-v1.1",  title: "审批与通知中心 PRD",            version: "V1.1", date: "2026-10-12", desc: "报销 / 机械图纸 / 硬件采购领用 / 合规四条流程，流程即配置的 Plan B 审批引擎" },
-  { slug: "approval-notification-v1.2",  title: "审批与通知中心 PRD（缺口补齐）", version: "V1.2", date: "2026-10-14", desc: "台账联动、合规申请页、审批时效治理、待办 T-1 标红、邮件通道选型" },
+  { slug: "approval-notification-v1.2",  title: "审批与通知中心 PRD（缺口补齐）", version: "V1.2", date: "2026-10-14", desc: "台账联动、合规申请页、审批时效治理、待办 T-1 标红、邮件通道（飞书邮箱）" },
+  { slug: "contract-signing-oa-v1.0",    title: "协议签署 OA 审批 PRD",          version: "V1.0", date: "2026-10-14", desc: "合作协议 / 保密协议（NDA）走飞书原生 OA 审批：法务 → 运营 → 合规三级串行审核，全部通过方可签署用章" },
   { slug: "drawing-review-process-v1.0", title: "新增机图纸评审流程 PRD",         version: "v1.0", date: "2026-10-14", desc: "图纸评审数字化工作流：在线提交、会议自动预约、BOM/电控/布线评估、询价与发货清单" },
 ];
 function renderPrdDocs() {
@@ -2770,7 +3210,7 @@ function renderValidateHealth(report) {
         <h3 class="font-bold">数据健康</h3>
         <div class="flex gap-2">${btns}</div>
       </div>
-      <p class="text-xs text-gray-400 mb-1">上次全量校验：${report.generatedAt ? new Date(report.generatedAt).toLocaleString("zh-CN") : "—"} · 共 <b class="${report.total ? "text-red-600" : ""}" style="${report.total ? "" : "color:var(--nec-cyan)"}">${report.total}</b> 条异常 · 每周一 08:00 自动巡检</p>
+      <p class="text-xs text-gray-400 mb-1">${report.scopeNote ? esc(report.scopeNote) : `上次全量校验：${report.generatedAt ? new Date(report.generatedAt).toLocaleString("zh-CN") : "—"} · 每周一 08:00 自动巡检`} · 共 <b class="${report.total ? "text-red-600" : ""}" style="${report.total ? "" : "color:var(--nec-cyan)"}">${report.total}</b> 条异常</p>
       ${groups || '<p class="text-sm text-gray-400 mt-2">🎉 未发现异常，4 张底表数据全绿。</p>'}
       ${report.errors ? `<p class="text-xs text-amber-600 mt-2">⚠ ${Object.entries(report.errors).map(([t, e]) => `${esc(t)}：${esc(e)}`).join("；")}</p>` : ""}
     </div>`;
@@ -2790,10 +3230,20 @@ async function runValidate(scope) {
     if (scope === "all") {
       renderValidateHealth(data);
     } else {
-      alert(data.total ? `发现与你相关的 ${data.total} 条异常：\n` + data.violations.slice(0, 10).map(v => `· [${v.type}] ${v.table} 表「${v.field}」→ ${v.suggestion}`).join("\n") + (data.total > 10 ? `\n… 另有 ${data.total - 10} 条` : "") : "🎉 你的数据没有异常");
+      // mine：页内渲染结果（复用全量报告的条目样式，异常可直接点「打开记录」去改），不再用 alert
+      const byType = {};
+      (data.violations ?? []).forEach(v => { byType[v.type] = (byType[v.type] ?? 0) + 1; });
+      renderValidateHealth({
+        generatedAt: new Date().toISOString(),
+        total: data.total ?? 0,
+        violations: data.violations ?? [],
+        byType: Object.entries(byType).map(([type, count]) => ({ type, count })),
+        scopeNote: `本次校验范围：与你相关的数据（${new Date().toLocaleTimeString("zh-CN")}）`,
+      });
     }
   } catch (e) {
-    alert("校验失败：" + (e.message || e));
+    const box = document.getElementById("dash-health");
+    if (box) box.innerHTML = `<div class="bg-white rounded-xl shadow p-5 text-sm text-red-500">校验失败：${esc(e.message || e)}</div>`;
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = scope === "all" ? "全量校验" : "校验我的数据"; }
   }

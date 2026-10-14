@@ -20,6 +20,7 @@
  *   POST /api/approvals/upload → 凭证文件上传（R-01 应用页，multipart → R2 receipts/，返回 key）
  *   /api/erp/reimburse/*  → R-01 报销助手 ERP 接口（D1：费用项目目录/收款账户/单据快照；附件在 R2）
  *   /api/season-goals/*   → 赛季目标管理（收集单提交/采纳 + 按任务自动规划，模块网关）
+ *   /api/domains/*        → 域名分发系统（成员自助申请 <name>.newenergycoder.club 三级域名，Cloudflare API 落 DNS）
  *   GET  /api/my-tasks    → 我的任务（绑定飞书任务后 Task v2 同步拉取，KV my-tasks:<open_id> 5 分钟缓存，?refresh=1 强刷）
  *   POST /api/my-tasks/unbind → 解绑飞书任务（清授权 token 与缓存）
  *   GET  /api/validate    → 数据校验触发（FE-05，?scope=mine|all，登录门禁）
@@ -37,7 +38,7 @@
  *   auth/（飞书免登、角色、登录态处理器）· hosting（R2 托管与 KV 注册表）· dashboard（看板/资料页）
  *   repos（开源仓库聚合）· reimburse（报销提交）· mcp/（MCP 端点与工具）· validation/（FE-05 校验）
  *   home/（FE-06/07 首页布局）· todos.ts（FE-09 审批/待办聚合）· season-goals/（赛季目标）· my-tasks/（飞书任务绑定与同步）
- *   prd.ts（PRD 看板 + GitHub webhook）· approvals/（Plan B 审批引擎：状态机 + 群机器人通知）
+ *   prd.ts（PRD 看板 + GitHub webhook）· approvals/（Plan B 审批引擎：状态机 + 群机器人通知 + G-03 时效巡检 cron）
  *
  * 类型：运行 `npx wrangler types` 生成 worker-configuration.d.ts 后，下面的声明合并会把
  * secrets 补到 Cloudflare.Env 上。wrangler.jsonc 变更后请重新生成类型。
@@ -77,6 +78,12 @@ declare global {
     FEISHU_BOT_WEBHOOK_HARDWARE_SECRET?: string;
     FEISHU_BOT_WEBHOOK_COMPLIANCE?: string;
     FEISHU_BOT_WEBHOOK_COMPLIANCE_SECRET?: string;
+    /** 域名分发系统：Cloudflare API Token（需 Zone.DNS 编辑权限）与 Zone ID（newenergycoder.club），用 wrangler secret put 配置 */
+    CF_API_TOKEN?: string;
+    CF_ZONE_ID?: string;
+    /** 域名分发系统：根域（默认 newenergycoder.club）与每成员域名上限（默认 3），可在 wrangler.jsonc vars 覆盖 */
+    DOMAIN_ZONE?: string;
+    DOMAIN_MAX_PER_USER?: string;
   }
 }
 
@@ -190,6 +197,11 @@ export default {
         const res = await sg.handleSeasonGoals(request, env, url.pathname);
         if (res) return res;
       }
+      if (url.pathname.startsWith("/api/domains")) {
+        const dm = await import("./domains");
+        const res = await dm.handleDomains(request, env, url.pathname, ctx);
+        if (res) return res;
+      }
       if (url.pathname.startsWith("/api/erp/reimburse")) {
         const er = await import("./erp/reimburse");
         const res = await er.handleErpReimburse(request, env, url.pathname, ctx);
@@ -219,11 +231,12 @@ export default {
     }
   },
 
-  /** Cron：每 4 分钟刷看板缓存，每小时刷仓库缓存并推送图纸评审阻塞告警；每周一 08:00（UTC+8）跑数据校验周报（见 wrangler.jsonc triggers） */
+  /** Cron：每 4 分钟刷看板缓存；每小时第 7 分跑审批时效巡检（G-03）+ 刷仓库缓存并推送图纸评审阻塞告警（两条每小时任务复用同一触发器，规避 Free 档账户级 5 条 cron 上限）；每周一 08:00（UTC+8）跑数据校验周报（见 wrangler.jsonc triggers） */
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     if (controller.cron === "0 0 * * 1") ctx.waitUntil(runWeeklyValidation(env));
     else if (controller.cron === "*/4 * * * *") ctx.waitUntil(prewarmDashboard(env));
-    else {
+    else if (controller.cron === "7 * * * *") {
+      ctx.waitUntil(import("./approvals/sla").then((m) => m.runApprovalSla(env)));
       ctx.waitUntil(prewarmRepos(env));
       ctx.waitUntil(
         import("./drawing-review/alert.service").then((m) => m.pushBlockerAlerts(env)),

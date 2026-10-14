@@ -3,7 +3,7 @@
  *
  * GET /api/prd：M1/M2/M3 需求状态 + 总进度 + 最近 git 提交。
  *   初始状态为 PRD V2.0 §5 盘点基线（DEFAULT_PRD_ITEMS），之后由 Agent 调 MCP update_prd 维护（覆盖存 KV prd:status）。
- * POST /api/hooks/github：GitHub push webhook（HMAC-SHA256 验签 → 记录最近提交到 KV prd:last_commit → 推飞书群）。
+ * POST /api/hooks/github：GitHub push webhook（HMAC-SHA256 验签 → 最近提交写 KV prd:last_commit + 列表 prd:recent_commits（最多 10 条）→ 推飞书群）。
  */
 
 import { notifyFeishu } from "./feishu/bot";
@@ -59,6 +59,15 @@ export async function buildPrdBoard(env: Env): Promise<unknown> {
     lastCommit = lastCommitRaw ? JSON.parse(lastCommitRaw) : null;
   } catch { lastCommit = null; }
 
+  let recentCommits: unknown[] = [];
+  try {
+    const rawList = await env.REGISTRY.get("prd:recent_commits");
+    const parsed = rawList ? JSON.parse(rawList) : [];
+    if (Array.isArray(parsed)) recentCommits = parsed;
+  } catch { recentCommits = []; }
+  // 列表为空但存在单条记录（列表功能上线前的存量数据）时回落
+  if (!recentCommits.length && lastCommit) recentCommits = [lastCommit];
+
   const milestones = PRD_MILESTONES.map((m) => ({
     ...m,
     done: m.items.filter((id) => items[id]?.status === "done").length,
@@ -72,6 +81,7 @@ export async function buildPrdBoard(env: Env): Promise<unknown> {
     progress: { done: all.filter((i) => i.status === "done").length, total: all.length },
     milestones,
     lastCommit,
+    recentCommits,
   };
 }
 
@@ -147,6 +157,15 @@ export async function handleGithubPush(request: Request, env: Env): Promise<Resp
     at: new Date().toISOString(),
   };
   await env.REGISTRY.put("prd:last_commit", JSON.stringify(entry), { expirationTtl: 30 * 24 * 3600 });
+  // 最近提交列表（首页「团队动态」窄条消费，最多保留 10 条；prd:last_commit 保留兼容 PRD 看板）
+  let recent: unknown[] = [];
+  try {
+    const rawList = await env.REGISTRY.get("prd:recent_commits");
+    const parsed = rawList ? JSON.parse(rawList) : [];
+    if (Array.isArray(parsed)) recent = parsed;
+  } catch { /* 损坏则重建 */ }
+  recent.unshift(entry);
+  await env.REGISTRY.put("prd:recent_commits", JSON.stringify(recent.slice(0, 10)), { expirationTtl: 30 * 24 * 3600 });
   const pushResult = await notifyFeishu(env, "prd", `🔀 ${repo} 新提交（${branch}）`, `${shortMsg} — ${author}`, entry.url);
   return json({ ok: true, commit: entry, notified: pushResult.ok, notifyDetail: pushResult.detail });
 }
