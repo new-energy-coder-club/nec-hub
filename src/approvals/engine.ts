@@ -13,7 +13,9 @@ import {
   findFieldKey,
   firstFieldText,
   getTenantAccessToken,
+  listBitableFields,
   listBitableRecords,
+  matchField,
   updateBitableRecord,
   type BitableRecord,
 } from "../feishu/bitable";
@@ -221,10 +223,16 @@ export async function runApprovalAction(env: Env, input: ApprovalActionInput): P
     patch["审批意见"] = input.comment ?? "";
     patch["审批完成时间"] = Date.now();
   }
-  // G-02：驳回原因标准化。底表有「驳回原因」字段才写（findFieldKey 定位），没有则跳过，对其他流程零影响
+  // G-02：驳回原因标准化。底表有「驳回原因」字段才写，没有则跳过，对其他流程零影响。
+  // 空列不会出现在记录 JSON 里，记录扫描不到时回退字段元数据定位（否则全空的「驳回原因」列永远写不进）
   const reason = (input.reason ?? "").trim();
   if (input.action === "reject" && reason) {
-    const reasonKey = findFieldKey(records, [/^驳回原因$/, /驳回原因/]);
+    const patterns = [/^驳回原因$/, /驳回原因/];
+    let reasonKey = findFieldKey(records, patterns);
+    if (!reasonKey) {
+      const fields = await listBitableFields(token, base, flow.tableId).catch(() => []);
+      reasonKey = matchField(fields, patterns)?.field_name ?? null;
+    }
     if (reasonKey) patch[reasonKey] = reason;
   }
   if (input.action === "publish") patch["发布后链接"] = (input.link ?? "").trim();

@@ -31,6 +31,8 @@
  *   GET  /api/cla/status  → 当前会话或 ?github= 是否已签署
  *   POST /api/cla/sign    → 签署 CLA（按 GitHub 用户名幂等去重，登录会话自动绑定 open_id）
  *   GET  /apps/<name>/*   → 队员应用（R2 托管）
+ *   *.<zone>/*            → 泛域名应用直达：<app>.<zone> 直接服务 R2 apps/<app>/（domains/wildcard.ts；
+ *                           登记过外部目标的域名与保留名透传回源）
  *   GET  /skills/<name>/SKILL.md → Skill 原文（R2）
  *   POST /mcp             → MCP (streamable HTTP, JSON-RPC)
  *
@@ -78,6 +80,9 @@ declare global {
     FEISHU_BOT_WEBHOOK_HARDWARE_SECRET?: string;
     FEISHU_BOT_WEBHOOK_COMPLIANCE?: string;
     FEISHU_BOT_WEBHOOK_COMPLIANCE_SECRET?: string;
+    /** 域名分发系统申请/释放公示（可选；未配置回退 FEISHU_BOT_WEBHOOK） */
+    FEISHU_BOT_WEBHOOK_DOMAINS?: string;
+    FEISHU_BOT_WEBHOOK_DOMAINS_SECRET?: string;
     /** 域名分发系统：Cloudflare API Token（需 Zone.DNS 编辑权限）与 Zone ID（newenergycoder.club），用 wrangler secret put 配置 */
     CF_API_TOKEN?: string;
     CF_ZONE_ID?: string;
@@ -105,6 +110,9 @@ export default {
     const url = new URL(request.url);
     console.log(`[nec-hub] ${request.method} ${url.pathname}`);
     try {
+      // 泛域名应用直达：<app>.<zone> → R2 apps/<app>/（deploy_app 零配置获得独立三级域名；详见 domains/wildcard.ts）
+      const subRes = await import("./domains/wildcard").then((m) => m.handleAppSubdomain(request, env, ctx));
+      if (subRes) return subRes;
       if (url.pathname === "/mcp" && request.method === "POST") {
         return await handleMcp(request, env);
       }
@@ -233,6 +241,10 @@ export default {
 
   /** Cron：每 4 分钟刷看板缓存；每小时第 7 分跑审批时效巡检（G-03）+ 刷仓库缓存并推送图纸评审阻塞告警（两条每小时任务复用同一触发器，规避 Free 档账户级 5 条 cron 上限）；每周一 08:00（UTC+8）跑数据校验周报（见 wrangler.jsonc triggers） */
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    // 触发探针：每个 cron 事件落 KV（30 天），用于确认触发器真实到达（02:07 事件静默丢失后的排障手段）
+    ctx.waitUntil(
+      env.REGISTRY.put("cron:last:" + controller.cron, JSON.stringify({ at: Date.now() }), { expirationTtl: 30 * 86400 }).catch(() => {}),
+    );
     if (controller.cron === "0 0 * * 1") ctx.waitUntil(runWeeklyValidation(env));
     else if (controller.cron === "*/4 * * * *") ctx.waitUntil(prewarmDashboard(env));
     else if (controller.cron === "7 * * * *") {

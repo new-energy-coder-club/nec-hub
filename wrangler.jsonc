@@ -37,6 +37,12 @@
     {
       "pattern": "hub.newenergycoder.club",
       "custom_domain": true
+    },
+    {
+      // 泛域名应用直达：<app>.<zone> → R2 apps/<app>/（domains/wildcard.ts）
+      // 另需在 Cloudflare DNS 加一条 * 的代理记录（AAAA → 100::，橙云），Universal SSL 覆盖三级泛域名
+      "pattern": "*.newenergycoder.club/*",
+      "zone_name": "newenergycoder.club"
     }
   ],
   "triggers": {

@@ -43,6 +43,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # 门户前端构建：产物落到 public/（index.html + portal-assets/），不触碰 apps/brand/docs
+      - run: npm --prefix web ci && npm --prefix web run build
       - name: Deploy to Cloudflare Workers
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

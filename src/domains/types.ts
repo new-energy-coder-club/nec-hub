@@ -2,7 +2,7 @@
  * 域名分发系统 — 类型定义
  */
 
-/** 三级域名记录（KV key: domains:index 列表元素） */
+/** 三级域名记录（KV key: domains:rec:<subdomain>，整条 JSON 同写 value 与 metadata） */
 export interface DomainEntry {
   /** 子域名前缀，如 "demo" */
   subdomain: string;

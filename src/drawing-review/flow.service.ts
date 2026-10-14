@@ -256,12 +256,12 @@ export class ReviewFlowService {
     return saved;
   }
 
-  async startMeeting(reviewId: string, actorId: string): Promise<DrawingReview & { recordId: string }> {
+  async startMeeting(reviewId: string, actorId: string, payload?: Record<string, unknown>): Promise<DrawingReview & { recordId: string }> {
     const review = await this.requireReview(reviewId);
     const next = nextStatus(review.status, "start_meeting");
     if (!next) throw new Error(`当前状态 ${review.status} 不允许开始会议`);
     const updated = await this.adapter.updateReview(review.recordId, { status: next, updatedAt: new Date().toISOString() });
-    await this.logEvent(reviewId, actorId, "start_meeting", review.status, next);
+    await this.logEvent(reviewId, actorId, "start_meeting", review.status, next, payload);
     return updated;
   }
 

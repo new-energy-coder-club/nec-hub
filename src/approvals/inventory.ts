@@ -17,7 +17,9 @@ import {
   fieldText,
   findFieldKey,
   getTenantAccessToken,
+  listBitableFields,
   listBitableRecords,
+  matchField,
   updateBitableRecord,
 } from "../feishu/bitable";
 
@@ -79,14 +81,20 @@ export async function applyInventoryDelta(env: Env, input: InventoryDeltaInput):
   }
 
   const token = await getTenantAccessToken(env);
-  const records = await listBitableRecords(token, base, tableId);
-  // 空表无从推断表头，回退标准 schema 字段名（setup_bitable 建表结构）
-  const fallback = records.length === 0;
-  const itemKey = findFieldKey(records, ITEM_KEY_PATTERNS) ?? (fallback ? "物料" : null);
-  const qtyKey = findFieldKey(records, QTY_KEY_PATTERNS) ?? (fallback ? "数量" : null);
+  const [records, fields] = await Promise.all([
+    listBitableRecords(token, base, tableId),
+    // 表头以字段元数据为准：空列不会出现在记录 JSON 里，仅靠记录扫描会丢列（如全空的「领用人」）
+    listBitableFields(token, base, tableId).catch(() => []),
+  ]);
+  const fromRecords = (patterns: RegExp[], std: string) =>
+    matchField(fields, patterns)?.field_name ??
+    findFieldKey(records, patterns) ??
+    (records.length === 0 ? std : null); // 空表无从推断表头，回退标准 schema 字段名（setup_bitable 建表结构）
+  const itemKey = fromRecords(ITEM_KEY_PATTERNS, "物料");
+  const qtyKey = fromRecords(QTY_KEY_PATTERNS, "数量");
   if (!itemKey || !qtyKey) throw new Error("物资台账表头缺少「物料」或「数量」字段");
-  const locKey = findFieldKey(records, LOC_KEY_PATTERNS) ?? (fallback ? "位置" : null);
-  const borrowerKey = findFieldKey(records, BORROWER_KEY_PATTERNS) ?? (fallback ? "领用人" : null);
+  const locKey = fromRecords(LOC_KEY_PATTERNS, "位置");
+  const borrowerKey = fromRecords(BORROWER_KEY_PATTERNS, "领用人");
 
   const key = spec ? `${itemName}（${spec}）` : itemName;
   const found = records.find((r) => normalizeMatchKey(fieldText(r.fields[itemKey])) === normalizeMatchKey(key));

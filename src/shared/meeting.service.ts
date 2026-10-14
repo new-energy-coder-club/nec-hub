@@ -15,6 +15,10 @@ export interface MeetingInfo {
   meetingLink: string;
   startTime: string;
   durationMinutes: number;
+  /** true 表示会议 API 未打通（权限/网络），返回的是占位信息，需人工补录真实会议 */
+  mock: boolean;
+  /** mock 时的失败原因（API 报错信息或网络异常），用于事件日志留痕 */
+  mockReason?: string;
 }
 
 export interface CreateMeetingInput {
@@ -73,6 +77,7 @@ export class MeetingService {
         meetingLink: meeting.join_url ?? meeting.url ?? "",
         startTime: input.startTime,
         durationMinutes: duration,
+        mock: false,
       };
     } catch (err) {
       console.warn("[meeting] network error, fallback to mock:", err);
@@ -81,13 +86,15 @@ export class MeetingService {
   }
 
   private mockMeeting(input: CreateMeetingInput, reason?: string): MeetingInfo {
-    // 生成一个 9 位会议号作为 mock
-    const mockId = `mock-${Math.floor(100000000 + Math.random() * 900000000)}`;
+    // 生成 MOCK- 前缀占位会议号；不伪造可点击的假会议链接，人工补录后覆盖
+    const mockId = `MOCK-${Math.floor(100000000 + Math.random() * 900000000)}`;
     return {
       meetingId: mockId,
-      meetingLink: `https://meeting.tencent.com/dm/${mockId}`,
+      meetingLink: "",
       startTime: input.startTime,
       durationMinutes: input.durationMinutes ?? 60,
+      mock: true,
+      mockReason: reason,
     };
   }
 }
@@ -121,7 +128,7 @@ function defaultNextWorkdaySlot(): string {
 export interface ScheduleMeetingDeps<R extends { recordId: string; designerId: string; meetingStartTime?: string }> {
   flow: {
     getReview(reviewId: string): Promise<R | null>;
-    startMeeting(reviewId: string, actorId: string): Promise<unknown>;
+    startMeeting(reviewId: string, actorId: string, payload?: Record<string, unknown>): Promise<unknown>;
   };
   adapter: {
     updateReview(
@@ -160,8 +167,12 @@ export async function handleScheduleMeeting<R extends { recordId: string; design
     updatedAt: new Date().toISOString(),
   });
 
-  // 会议预约后，状态从 pending_review → in_review
-  const updated = await deps.flow.startMeeting(reviewId, actorId);
+  // 会议预约后，状态从 pending_review → in_review；mock 降级时把失败原因写进事件日志（PRD §13.2-4）
+  const updated = await deps.flow.startMeeting(
+    reviewId,
+    actorId,
+    info.mock ? { mock: true, reason: info.mockReason ?? "unknown" } : undefined,
+  );
 
   return json({ meeting: info, review: updated });
 }

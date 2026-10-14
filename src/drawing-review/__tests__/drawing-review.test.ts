@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ReviewFlowService, SubmitReviewInput } from '../flow.service';
+import { InventoryService, MANUAL_IMPORT_SOURCE } from '../inventory.service';
 import { DrawingReviewAdapter } from '../adapter';
 import { DrawingReviewConfig } from '../types';
 
@@ -212,5 +213,124 @@ describe('Drawing Review - Easy Filling Functionality', () => {
         '项目编号、机型名称和图纸文件为必填项'
       );
     });
+  });
+});
+
+describe('库存手动导入兜底（PRD §13.7）', () => {
+  let inventoryService: InventoryService;
+  const mockInventoryAdapter = {
+    listInventoryByReview: vi.fn(),
+    createInventoryRow: vi.fn(),
+    updateInventoryRow: vi.fn(),
+    createRecord: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    inventoryService = new InventoryService(mockInventoryAdapter as any);
+    mockInventoryAdapter.listInventoryByReview.mockResolvedValue([]);
+    mockInventoryAdapter.createInventoryRow.mockImplementation(async (row: any) => ({
+      recordId: `rec-${row.materialCode}`,
+      ...row,
+    }));
+    mockInventoryAdapter.updateInventoryRow.mockImplementation(async (recordId: string, row: any) => ({
+      recordId,
+      ...row,
+    }));
+    mockInventoryAdapter.createRecord.mockResolvedValue({ record_id: 'rec-event' });
+  });
+
+  it('导入成功：逐行写入 inventory 表，来源固定「手动导入」，并写事件日志', async () => {
+    const rows = [
+      { materialCode: 'M-001', materialName: '铝型材 4040', spec: '4040-L500', quantity: 10, unit: '根', warehouse: '主仓', location: 'A-01' },
+      { materialCode: 'M-002', materialName: 'M6 螺栓', quantity: 200, unit: '颗' },
+    ];
+
+    const result = await inventoryService.importRows('DR-001', rows, 'user-123');
+
+    expect(result).toEqual({ ok: true, imported: 2, skipped: 0, errors: [] });
+    expect(mockInventoryAdapter.createInventoryRow).toHaveBeenCalledTimes(2);
+    const firstRow = mockInventoryAdapter.createInventoryRow.mock.calls[0][0];
+    expect(firstRow.source).toBe(MANUAL_IMPORT_SOURCE);
+    expect(firstRow.reviewId).toBe('DR-001');
+    expect(firstRow.importedBy).toBe('user-123');
+    expect(firstRow.specification).toBe('4040-L500');
+    // 事件日志：inventory_import
+    expect(mockInventoryAdapter.createRecord).toHaveBeenCalledWith(
+      'events',
+      expect.objectContaining({ 关联评审单: 'DR-001', 动作: 'inventory_import', 操作人: 'user-123' }),
+    );
+  });
+
+  it('必填校验：缺物料名称 / quantity<=0 的行被跳过并记入 errors，不阻断整批', async () => {
+    const rows = [
+      { materialCode: 'M-001', materialName: '铝型材', quantity: 5 },
+      { materialCode: 'M-002', materialName: '', quantity: 3 },
+      { materialCode: 'M-003', materialName: '螺栓', quantity: 0 },
+      { materialName: '无编码', quantity: 1 },
+    ];
+
+    const result = await inventoryService.importRows('DR-001', rows, 'user-123');
+
+    expect(result.ok).toBe(true);
+    expect(result.imported).toBe(1);
+    expect(result.skipped).toBe(3);
+    expect(result.errors).toHaveLength(3);
+    expect(result.errors.map((e) => e.index)).toEqual([1, 2, 3]);
+    expect(mockInventoryAdapter.createInventoryRow).toHaveBeenCalledTimes(1);
+  });
+
+  it('幂等：同评审单 + 同物料编码重复导入时更新数量而非重复建行', async () => {
+    mockInventoryAdapter.listInventoryByReview.mockResolvedValue([
+      {
+        recordId: 'rec-existing',
+        materialCode: 'M-001',
+        materialName: '铝型材 4040',
+        quantity: 10,
+        source: MANUAL_IMPORT_SOURCE,
+        reviewId: 'DR-001',
+      },
+    ]);
+
+    const rows = [{ materialCode: 'M-001', materialName: '铝型材 4040', quantity: 25 }];
+
+    const result = await inventoryService.importRows('DR-001', rows, 'user-123');
+
+    expect(result).toEqual({ ok: true, imported: 1, skipped: 0, errors: [] });
+    expect(mockInventoryAdapter.createInventoryRow).not.toHaveBeenCalled();
+    expect(mockInventoryAdapter.updateInventoryRow).toHaveBeenCalledWith(
+      'rec-existing',
+      expect.objectContaining({ materialCode: 'M-001', quantity: 25, source: MANUAL_IMPORT_SOURCE }),
+    );
+  });
+
+  it('单行写入失败不阻断整批，失败行进入 errors', async () => {
+    mockInventoryAdapter.createInventoryRow
+      .mockRejectedValueOnce(new Error('bitable 写入超时'))
+      .mockImplementationOnce(async (row: any) => ({ recordId: 'rec-ok', ...row }));
+
+    const rows = [
+      { materialCode: 'M-001', materialName: '铝型材', quantity: 5 },
+      { materialCode: 'M-002', materialName: '螺栓', quantity: 100 },
+    ];
+
+    const result = await inventoryService.importRows('DR-001', rows, 'user-123');
+
+    expect(result.ok).toBe(true);
+    expect(result.imported).toBe(1);
+    expect(result.skipped).toBe(1);
+    expect(result.errors).toEqual([
+      { index: 0, materialCode: 'M-001', message: 'bitable 写入超时' },
+    ]);
+  });
+
+  it('事件日志写入失败不影响导入结果', async () => {
+    mockInventoryAdapter.createRecord.mockRejectedValue(new Error('events 表不可用'));
+
+    const rows = [{ materialCode: 'M-001', materialName: '铝型材', quantity: 5 }];
+
+    const result = await inventoryService.importRows('DR-001', rows, 'user-123');
+
+    expect(result).toEqual({ ok: true, imported: 1, skipped: 0, errors: [] });
   });
 });

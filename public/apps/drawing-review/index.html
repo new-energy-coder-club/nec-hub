@@ -217,6 +217,7 @@
             <button onclick="loadReviews()" class="text-sm font-medium px-2 link">刷新</button>
           </div>
         </div>
+        <div id="filter-chips" class="flex flex-wrap gap-2 mb-4"></div>
         <div id="dashboard" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <p class="text-sm text-nec-gray md:col-span-3 lg:col-span-4">加载中…</p>
         </div>
@@ -272,6 +273,8 @@
     }
 
     let displayMode = "board";
+    let drFilter = "";
+    function filterDr(status) { drFilter = status; loadReviews(); }
     function setDisplayMode(mode) {
       displayMode = mode;
       document.getElementById("dashboard").classList.toggle("hidden", mode !== "board");
@@ -305,13 +308,28 @@
       const boardEl = document.getElementById("dashboard");
       try {
         const data = await api("/api/drawing-review");
-        renderList(data);
+        renderFilterChips(data);
+        const shown = drFilter ? data.filter(r => r.status === drFilter) : data;
+        renderList(shown);
         renderBoard(data);
       } catch (err) {
         const msg = `<p class="text-sm" style="color:#C22E2E">加载失败：${err.message}</p>`;
         listEl.innerHTML = msg;
         boardEl.innerHTML = `<p class="text-sm md:col-span-3 lg:col-span-4" style="color:#C22E2E">加载失败：${err.message}</p>`;
       }
+    }
+
+    function renderFilterChips(data) {
+      const el = document.getElementById("filter-chips");
+      const counts = {};
+      data.forEach(r => { counts[r.status] = (counts[r.status] || 0) + 1; });
+      const chip = (key, label, count, on) =>
+        `<button onclick="filterDr('${key}')" class="mono text-xs px-3 py-1.5 rounded-full border ${on ? "text-white border-transparent" : "border-nec-line text-nec-gray"}" ${on ? 'style="background:var(--nec-navy)"' : ""}>${label} · ${count}</button>`;
+      const chips = Object.entries(statusMap)
+        .filter(([k]) => counts[k])
+        .map(([k, v]) => chip(k, v.label, counts[k], drFilter === k));
+      chips.push(chip("", "全部", data.length, !drFilter));
+      el.innerHTML = chips.join("");
     }
 
     function renderList(data) {
@@ -345,11 +363,13 @@
         groups[r.status] = groups[r.status] || [];
         groups[r.status].push(r);
       }
-      const columns = Object.keys(statusMap).map(status => ({
-        status,
-        ...statusMap[status],
-        items: groups[status] || []
-      }));
+      const columns = Object.keys(statusMap)
+        .filter(status => !drFilter || status === drFilter)
+        .map(status => ({
+          status,
+          ...statusMap[status],
+          items: groups[status] || []
+        }));
       el.innerHTML = columns.map(col => `
           <div class="rounded-lg p-3" style="background:var(--nec-fog);border:1px solid var(--nec-line)">
             <div class="flex items-center justify-between mb-3">
@@ -440,7 +460,25 @@
             </form>
             <p id="bom-result" class="mt-2 text-sm"></p>
           </div>
+
+          <!-- 询价（外购/标准件） -->
+          <div class="nec-card p-5">
+            <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+              <div>
+                <h3 class="text-sm font-bold text-nec-navy">询价（外购 / 标准件）</h3>
+                <p class="mono text-[11px] text-nec-gray tracking-wider mt-0.5">INQUIRY & COMPARISON</p>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="drGenerateInquiries('${r.reviewId}')" class="btn-accent text-xs px-3 py-1.5 rounded-lg">生成询价单</button>
+                <button onclick="drCompare('${r.reviewId}')" class="btn-primary text-xs px-3 py-1.5 rounded-lg">比价建议</button>
+              </div>
+            </div>
+            <div id="dr-inq-compare-${r.reviewId}" class="mb-2"></div>
+            <div id="dr-inq-${r.reviewId}" class="space-y-2"></div>
+            <p id="dr-act-${r.reviewId}" class="mt-2 text-xs"></p>
+          </div>
         `;
+        loadDrInquiries(r.reviewId);
       } catch (err) {
         el.innerHTML = `<p class="text-sm" style="color:#C22E2E">加载失败：${err.message}</p>`;
       }
@@ -464,7 +502,11 @@
           headers: { "content-type": "application/json" },
           body: JSON.stringify({}),
         });
-        alert(`会议已创建：${data.meeting?.meetingLink || "mock"}`);
+        if (data.meeting?.mock) {
+          alert(`会议 API 未打通（${data.meeting.mockReason || "权限/网络"}），已生成占位会议号 ${data.meeting.meetingId}\n请人工建会后把真实会议链接补录进评审单，流程不受影响`);
+        } else {
+          alert(`会议已创建：${data.meeting?.meetingLink}`);
+        }
         loadDetail(reviewId);
       } catch (err) {
         alert("预约失败：" + err.message);
@@ -532,6 +574,161 @@
       } catch (err) {
         document.getElementById("bom-result").className = "mt-2 text-sm text-red-600";
         document.getElementById("bom-result").textContent = "失败：" + err.message;
+      }
+    }
+
+    // ---------- 询价流转与比价（与门户版行为一致） ----------
+    function esc(s) {
+      return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    const DR_INQ_STATUS = {
+      sent: { label: "已发出", color: "background:#E8ECFB;color:#1A2FA0" },
+      quoted: { label: "已报价", color: "background:#FFF4DB;color:#92610B" },
+      selected: { label: "已选定", color: "background:#E3F6EC;color:#177A4C" },
+      rejected: { label: "未中选", color: "background:#EEF1F8;color:#5A6472" },
+    };
+
+    async function drGenerateInquiries(reviewId) {
+      const tip = document.getElementById(`dr-act-${reviewId}`);
+      const requiredDate = prompt("需求日期（YYYY-MM-DD，可留空）：", "");
+      if (requiredDate === null) return;
+      try {
+        const data = await api(`/api/drawing-review/${reviewId}/inquiries/generate`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ requiredDate: requiredDate.trim() || undefined }),
+        });
+        tip.className = "mt-2 text-xs text-green-600";
+        tip.textContent = `已生成 ${data.created.length} 张询价单` + (data.skipped.length ? `，跳过已存在 ${data.skipped.length} 项` : "");
+        loadDrInquiries(reviewId);
+      } catch (err) {
+        tip.className = "mt-2 text-xs text-red-600";
+        tip.textContent = /尚无 BOM/.test(err.message)
+          ? "生成失败：" + err.message + "（请先在上方「生成 BOM」）"
+          : "生成失败：" + err.message;
+      }
+    }
+
+    async function loadDrInquiries(reviewId) {
+      const box = document.getElementById(`dr-inq-${reviewId}`);
+      if (!box) return;
+      try {
+        const list = await api(`/api/drawing-review/${reviewId}/inquiries`);
+        box.innerHTML = renderDrInquiries(reviewId, list);
+      } catch (err) {
+        box.innerHTML = `<p class="text-xs text-red-600">询价单加载失败：${esc(err.message)}</p>`;
+      }
+    }
+
+    function renderDrInquiries(reviewId, list) {
+      if (!list.length) return `<p class="text-xs text-nec-gray">暂无询价单，点击「生成询价单」从 BOM 外购/标准件物料生成</p>`;
+      return list.map(q => {
+        const st = DR_INQ_STATUS[q.status] || DR_INQ_STATUS.sent;
+        const quoteForm = q.status === "sent" ? `
+          <div class="flex flex-wrap items-center gap-1.5 mt-2">
+            <input id="dr-q-s-${q.inquiryId}" placeholder="供应商" value="${esc(q.supplierName === "待定" ? "" : q.supplierName)}" class="mono text-xs border border-nec-line rounded px-2 py-1 w-28">
+            <input id="dr-q-p-${q.inquiryId}" placeholder="报价(元)" type="number" min="0" step="0.01" class="mono text-xs border border-nec-line rounded px-2 py-1 w-24">
+            <input id="dr-q-d-${q.inquiryId}" placeholder="交期" type="date" class="mono text-xs border border-nec-line rounded px-2 py-1">
+            <button onclick="drQuoteSubmit('${reviewId}','${q.inquiryId}')" class="btn-accent text-xs px-2.5 py-1 rounded">回填报价</button>
+          </div>` : "";
+        const selectBtn = q.status === "quoted" ? `
+          <button onclick="drSelectSupplier('${reviewId}','${esc(q.materialCode || q.bomItemId)}','${q.inquiryId}')" class="mt-2 text-xs px-2.5 py-1 rounded text-white" style="background:#177A4C">选定</button>` : "";
+        return `
+          <div class="rounded-lg p-3" style="border:1px solid var(--nec-line);background:var(--nec-fog)">
+            <div class="flex items-start justify-between gap-2 flex-wrap">
+              <p class="text-xs">
+                <span class="mono font-bold text-nec-royal">${esc(q.inquiryId)}</span>
+                <span class="text-nec-gray"> ${esc(q.materialName || q.bomItemId)}${q.materialCode ? `（${esc(q.materialCode)}）` : ""}${q.specification ? " · " + esc(q.specification) : ""}</span>
+              </p>
+              <span class="status-badge" style="${st.color}">${st.label}</span>
+            </div>
+            <p class="text-xs text-nec-gray mt-1">
+              供应商 ${esc(q.supplierName)} · 数量 ${q.quantity}${q.requiredDate ? " · 需求 " + esc(q.requiredDate) : ""}
+              ${q.price != null ? ` · <span class="mono font-bold text-nec-ink">¥${q.price}</span>` : ""}${q.deliveryDate ? " · 交期 " + esc(q.deliveryDate) : ""}
+            </p>
+            ${quoteForm}${selectBtn}
+          </div>`;
+      }).join("");
+    }
+
+    async function drQuoteSubmit(reviewId, inquiryId) {
+      const tip = document.getElementById(`dr-act-${reviewId}`);
+      const supplier = document.getElementById(`dr-q-s-${inquiryId}`).value.trim();
+      const price = parseFloat(document.getElementById(`dr-q-p-${inquiryId}`).value);
+      const deliveryDate = document.getElementById(`dr-q-d-${inquiryId}`).value || undefined;
+      if (!supplier || !(price > 0)) {
+        tip.className = "mt-2 text-xs text-red-600";
+        tip.textContent = "请填写供应商与大于 0 的报价";
+        return;
+      }
+      try {
+        await api(`/api/drawing-review/inquiries/${inquiryId}/quote`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ supplier, price, deliveryDate }),
+        });
+        tip.className = "mt-2 text-xs text-green-600";
+        tip.textContent = `询价单 ${inquiryId} 报价已回填`;
+        loadDrInquiries(reviewId);
+      } catch (err) {
+        tip.className = "mt-2 text-xs text-red-600";
+        tip.textContent = "报价失败：" + err.message;
+      }
+    }
+
+    async function drCompare(reviewId) {
+      const box = document.getElementById(`dr-inq-compare-${reviewId}`);
+      const tip = document.getElementById(`dr-act-${reviewId}`);
+      try {
+        const data = await api(`/api/drawing-review/${reviewId}/inquiries/compare`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: "{}",
+        });
+        if (box) box.innerHTML = renderDrCompare(data);
+      } catch (err) {
+        tip.className = "mt-2 text-xs text-red-600";
+        tip.textContent = "比价失败：" + err.message;
+      }
+    }
+
+    function renderDrCompare(data) {
+      if (!data.materials || !data.materials.length) return `<p class="text-xs text-nec-gray">暂无询价数据可比价</p>`;
+      return `
+        <div class="rounded-lg p-3 space-y-2" style="border:1px solid var(--nec-line);background:var(--nec-royal-100, #E8ECFB)">
+          <p class="text-xs font-bold text-nec-navy">比价建议书（价格优先，交期超需求日期按 1.2 倍折算）</p>
+          ${data.materials.map(m => `
+            <div class="text-xs pt-1.5" style="border-top:1px solid var(--nec-line)">
+              <p class="font-bold text-nec-ink">${esc(m.materialName || m.bomItemId)}${m.materialCode ? `（${esc(m.materialCode)}）` : ""}</p>
+              ${m.quotes.map(q => `
+                <p class="text-nec-gray pl-2">
+                  ${esc(q.supplierName)}：${q.price != null ? "¥" + q.price : "未报价"}${q.deliveryDate ? " · 交期 " + esc(q.deliveryDate) : ""}${q.late ? ' <span class="text-red-600">超期</span>' : ""}
+                  ${q.inquiryId === m.recommendedInquiryId ? ' <span class="font-bold" style="color:#177A4C">★ 推荐</span>' : ""}
+                  ${q.inquiryId === m.lowestPriceInquiryId && q.inquiryId !== m.recommendedInquiryId ? ' <span style="color:#1A2FA0">最低价</span>' : ""}
+                  ${q.inquiryId === m.shortestDeliveryInquiryId ? ' <span style="color:#0F7A72">最短交期</span>' : ""}
+                </p>`).join("")}
+              ${m.reason ? `<p class="pl-2 mt-0.5" style="color:#1A2FA0">建议：${esc(m.reason)}</p>` : ""}
+            </div>`).join("")}
+        </div>`;
+    }
+
+    async function drSelectSupplier(reviewId, materialKey, inquiryId) {
+      const tip = document.getElementById(`dr-act-${reviewId}`);
+      if (!confirm(`确认选定询价单 ${inquiryId} 的供应商？同物料其他报价将置为未中选`)) return;
+      try {
+        await api(`/api/drawing-review/${reviewId}/inquiries/compare`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ selections: { [materialKey]: inquiryId } }),
+        });
+        tip.className = "mt-2 text-xs text-green-600";
+        tip.textContent = `已选定 ${inquiryId}`;
+        loadDrInquiries(reviewId);
+        drCompare(reviewId);
+      } catch (err) {
+        tip.className = "mt-2 text-xs text-red-600";
+        tip.textContent = "选定失败：" + err.message;
       }
     }
 

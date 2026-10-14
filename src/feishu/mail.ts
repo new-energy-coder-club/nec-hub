@@ -70,6 +70,7 @@ function base64url(text: string): string {
 /** 构建最小 EML：HTML 正文 base64 传输，避免 7bit 中文问题 */
 export function buildEml(env: Env, input: MailSendInput): string {
   const headers = [
+    `Date: ${new Date().toUTCString()}`,
     `To: ${input.to.join(", ")}`,
     `Subject: ${encodeHeader(input.subject)}`,
     "MIME-Version: 1.0",
@@ -139,8 +140,13 @@ export async function sendFeishuMail(env: Env, input: MailSendInput): Promise<Ma
       headers: authHeaders,
       body: JSON.stringify({ raw: base64url(buildEml(env, input)) }),
     });
-    const draftData = (await draftResp.json()) as { code?: number; msg?: string; data?: { draft_id?: string } };
-    const draftId = draftData.data?.draft_id;
+    const draftData = (await draftResp.json()) as {
+      code?: number;
+      msg?: string;
+      data?: { draft_id?: string; draft?: { id?: string } };
+    };
+    // 飞书草稿接口实际返回 data.draft.id（早期按文档猜的 data.draft_id 是错的，验收实测纠正）
+    const draftId = draftData.data?.draft_id ?? draftData.data?.draft?.id;
     if (draftData.code !== 0 || !draftId) {
       throw new Error(`创建草稿失败：${draftData.msg ?? `code ${draftData.code}`}`);
     }

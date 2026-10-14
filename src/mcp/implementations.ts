@@ -29,6 +29,8 @@ import {
 import { readIndex, upsertIndex, inferSkillCategory, normalizeSkillCategory, normalizeSkillTags, type AppEntry, type SkillEntry } from "../hosting";
 import { applyInventoryDelta, type InventoryAction } from "../approvals/inventory";
 import { notifyFeishu } from "../feishu/bot";
+import { applyDomain, domainZone, releaseDomain } from "../domains/service";
+import type { CreateDomainBody } from "../domains/types";
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
 
@@ -63,12 +65,15 @@ export async function toolDeployApp(args: Record<string, unknown>, env: Env, req
   }
   await Promise.all(bodies.map((f) => env.APPS_BUCKET.put(`apps/${appName}/${f.path}`, f.body)));
   const origin = new URL(request.url).origin;
-  // 让边缘缓存里的旧版本立即失效（含目录入口与每个文件）
+  // 让边缘缓存里的旧版本立即失效（含 /apps/<name>/ 路径与 <name>.<zone> 直达域名）
+  const appHost = `https://${appName}.${domainZone(env)}`;
   await Promise.all([
     caches.default.delete(new Request(`${origin}/apps/${appName}/`, { method: "GET" })),
-    ...files.map((f) =>
+    caches.default.delete(new Request(`${appHost}/`, { method: "GET" })),
+    ...files.flatMap((f) => [
       caches.default.delete(new Request(`${origin}/apps/${appName}/${String(f.path)}`, { method: "GET" })),
-    ),
+      caches.default.delete(new Request(`${appHost}/${String(f.path)}`, { method: "GET" })),
+    ]),
   ]);
   const entry: AppEntry = {
     name: appName,
@@ -84,9 +89,43 @@ export async function toolDeployApp(args: Record<string, unknown>, env: Env, req
     content: [
       {
         type: "text",
-        text: `✅ 应用已上架：${entry.title}\n访问链接：${entry.url}\n共上传 ${files.length} 个文件，应用广场现有 ${list.length} 个应用。`,
+        text: `✅ 应用已上架：${entry.title}\n访问链接：${entry.url}\n独立域名：https://${appName}.${domainZone(env)}/（泛解析直达，无需申请）\n共上传 ${files.length} 个文件，应用广场现有 ${list.length} 个应用。`,
       },
     ],
+  };
+}
+
+/** 域名分发系统：代申请三级域名（仅管理端；申请成功推飞书群公示） */
+export async function toolApplyDomain(args: Record<string, unknown>, env: Env, hasMcpToken: boolean) {
+  if (!hasMcpToken) throw new Error("apply_domain 仅管理端可用（需 MCP_TOKEN）");
+  const name = String(args.applicant_name ?? "mcp-admin");
+  const { entry, hint } = await applyDomain(env, args as CreateDomainBody, { name, open_id: `mcp:${name}` }, { isAdmin: true });
+  const statusText = entry.status === "active" ? "DNS 已生效" : entry.status === "pending" ? "待同步 DNS" : "DNS 同步失败";
+  const notifyResult = await notifyFeishu(
+    env,
+    "domains",
+    "🌐 域名申请",
+    `${name} 申请了 ${entry.fqdn} → ${entry.type} ${entry.target}（${statusText}）`,
+    `https://${entry.fqdn}`,
+  );
+  return {
+    content: [
+      {
+        type: "text",
+        text: `${entry.status === "failed" ? "⚠️" : "✅"} 域名申请：${entry.fqdn} → ${entry.type} ${entry.target}\n状态：${entry.status}（${hint}）\n群公示：${notifyResult.detail}`,
+      },
+    ],
+  };
+}
+
+/** 域名分发系统：释放三级域名（仅管理端；先删 CF 记录再删登记，推飞书群公示） */
+export async function toolReleaseDomain(args: Record<string, unknown>, env: Env, hasMcpToken: boolean) {
+  if (!hasMcpToken) throw new Error("release_domain 仅管理端可用（需 MCP_TOKEN）");
+  const name = String(args.applicant_name ?? "mcp-admin");
+  const entry = await releaseDomain(env, args.subdomain, { name, open_id: `mcp:${name}` }, { isAdmin: true });
+  const notifyResult = await notifyFeishu(env, "domains", "🌐 域名释放", `${name} 释放了 ${entry.fqdn}（原指向 ${entry.type} ${entry.target}）`);
+  return {
+    content: [{ type: "text", text: `✅ 已释放域名：${entry.fqdn}\n群公示：${notifyResult.detail}` }],
   };
 }
 

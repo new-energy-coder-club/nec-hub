@@ -62,7 +62,8 @@ function createCtx(opts: { withSender?: boolean; mailTo?: string; draftFailTimes
         ctx.draftFailTimes--;
         return jsonResp({ code: 1234001, msg: "no permission" });
       }
-      return jsonResp({ code: 0, data: { draft_id: "draft-1" } });
+      // 飞书真实响应形状：data.draft.id（验收实测纠正，见 mail.ts 取值处的兼容注释）
+      return jsonResp({ code: 0, data: { draft: { id: "draft-1" } } });
     }
     return jsonResp({ code: 404, msg: `not mocked: ${url}` });
   }));

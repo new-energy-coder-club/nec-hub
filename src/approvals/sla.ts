@@ -144,6 +144,8 @@ export async function runApprovalSla(env: Env): Promise<SlaRunSummary> {
   if (summary.escalated + summary.cancelled > 0) {
     await notifyFeishu(env, "default", "🕐 时效巡检", `升级提醒 ${summary.escalated} 条，自动取消 ${summary.cancelled} 条`);
   }
+  // 巡检摘要落 KV（7 天）：cron 无日志可观测性弱，这是排障与验收的证据点
+  await env.REGISTRY.put("sla:lastRun", JSON.stringify({ at: now, ...summary }), { expirationTtl: 7 * 86400 }).catch(() => {});
   console.log(
     `[sla] 时效巡检完成：升级提醒 ${summary.escalated}，自动取消 ${summary.cancelled}，脏数据跳过 ${summary.skipped}，失败 ${summary.errors.length}`,
   );
