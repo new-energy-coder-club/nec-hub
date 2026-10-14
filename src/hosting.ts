@@ -1,0 +1,175 @@
+/**
+ * 应用 / Skill 托管与注册表（KV）
+ *
+ * /apps/<name>/* 与 /skills/<name>/SKILL.md 从 R2 回源，边缘缓存按 URL 缓存；
+ * deploy_app / publish_skill 覆盖写入时按 URL 逐文件失效。
+ */
+
+import { json } from "./shared/http";
+
+/** 应用广场条目（KV key: apps:index） */
+export interface AppEntry {
+  name: string;
+  title: string;
+  author: string;
+  visibility: string;
+  version: string;
+  updatedAt: string;
+  url: string;
+  /** true = 外部已部署应用的链接登记，文件不在本中台 R2 */
+  external?: boolean;
+}
+
+/** Skill 中心条目（KV key: skills:index） */
+export interface SkillEntry {
+  name: string;
+  description: string;
+  updatedAt: string;
+  /** 外部 SKILL.md 链接（如 Gitee 页面）；为空则用本中台 /skills/<name>/SKILL.md */
+  url?: string;
+  /** 来源标识，如 gitee / hub */
+  source?: string;
+  /** 分类（见 SKILL_CATEGORY_LABELS）；缺省时由前端/导入逻辑按名称与描述推断 */
+  category?: string;
+  /** 自由标签，最多 8 个 */
+  tags?: string[];
+}
+
+/** Skill 分类标签（value 存 KV，label 用于展示；前端 public/index.html 有一份对应副本） */
+export const SKILL_CATEGORY_LABELS: Record<string, string> = {
+  dev: "开发工具",
+  docs: "文档办公",
+  design: "设计创意",
+  media: "音视频",
+  data: "数据分析",
+  lark: "飞书协同",
+  agent: "Agent 基建",
+  life: "生活效率",
+  other: "其他",
+};
+
+export const SKILL_CATEGORY_ORDER = ["dev", "docs", "design", "media", "data", "lark", "agent", "life", "other"] as const;
+
+// 推断规则按优先级从上到下命中即止；关键词同时匹配 name 与 description
+const SKILL_CATEGORY_RULES: Array<[string, RegExp]> = [
+  ["lark", /^lark-|飞书|多维表格|妙记/i],
+  ["media", /video|audio|music|剪辑|视频|音频|音乐|字幕|ffmpeg|whisper|gif|混剪/i],
+  ["design", /design|canvas|poster|brand|海报|视觉|排版|theme|插画/i],
+  ["data", /data|analy|chart|sql|financial|数据|可视化|财报|股票|评分/i],
+  ["docs", /docx|xlsx|excel|word|pdf|markdown|ppt|slide|文档|论文|thesis|paper|写作|手册/i],
+  ["dev", /code|debug|git|review|test|deploy|refactor|代码|调试|commit|cli/i],
+  ["agent", /mcp|skill|agent|persona|memory|claude|kimi|gemini|browser|prompt/i],
+  ["life", /weather|travel|news|mail|todo|日程|天气|新闻|旅行|提醒|邮件/i],
+];
+
+/** 未登记分类时按名称与描述推断分类（与前端 inferSkillCategoryJS 保持同一套规则） */
+export function inferSkillCategory(name: string, description: string): string {
+  const text = `${name} ${description}`;
+  for (const [cat, re] of SKILL_CATEGORY_RULES) {
+    if (re.test(text)) return cat;
+  }
+  return "other";
+}
+
+/** 只接受受支持的分类值，其余视为未提供 */
+export function normalizeSkillCategory(value: unknown): string | undefined {
+  const v = String(value ?? "").trim().toLowerCase();
+  return v && v in SKILL_CATEGORY_LABELS ? v : undefined;
+}
+
+export function normalizeSkillTags(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const tags = value.map((t) => String(t).trim()).filter(Boolean).slice(0, 8);
+  return tags.length ? tags : undefined;
+}
+
+const MIME: Record<string, string> = {
+  html: "text/html; charset=utf-8",
+  htm: "text/html; charset=utf-8",
+  css: "text/css; charset=utf-8",
+  js: "text/javascript; charset=utf-8",
+  mjs: "text/javascript; charset=utf-8",
+  json: "application/json; charset=utf-8",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  svg: "image/svg+xml",
+  ico: "image/x-icon",
+  md: "text/markdown; charset=utf-8",
+  txt: "text/plain; charset=utf-8",
+  woff: "font/woff",
+  woff2: "font/woff2",
+  pdf: "application/pdf",
+};
+
+export async function serveApp(url: URL, env: Env, ctx: ExecutionContext): Promise<Response> {
+  // /apps/<name>/<rest...>（url.pathname 是 percent-encoded，需逐段解码才能命中 deploy_app 写入的 R2 键）
+  let parts: string[];
+  try {
+    parts = url.pathname.replace(/^\/apps\//, "").split("/").filter(Boolean).map(decodeURIComponent);
+  } catch {
+    return json({ error: "invalid path encoding" }, 400);
+  }
+  if (parts.length === 0) return json({ error: "missing app name" }, 400);
+  const name = parts[0];
+  let rest = parts.slice(1).join("/") || "index.html";
+  if (rest.endsWith("/")) rest += "index.html";
+
+  // 边缘缓存：命中则不回源 R2；deploy_app 覆盖部署时按 URL 逐文件失效
+  const cacheKey = new Request(url.toString(), { method: "GET" });
+  const hit = await caches.default.match(cacheKey);
+  if (hit) return hit;
+
+  const obj = await env.APPS_BUCKET.get(`apps/${name}/${rest}`);
+  if (!obj) return json({ error: `app file not found: ${name}/${rest}` }, 404);
+  const ext = rest.split(".").pop()?.toLowerCase() ?? "";
+  const res = new Response(obj.body, {
+    headers: {
+      "content-type": MIME[ext] ?? "application/octet-stream",
+      "cache-control": ext === "html" || ext === "htm" ? "public, max-age=60" : "public, max-age=3600",
+    },
+  });
+  ctx.waitUntil(caches.default.put(cacheKey, res.clone()));
+  return res;
+}
+
+export async function serveSkill(url: URL, env: Env, ctx: ExecutionContext): Promise<Response> {
+  // /skills/<name>/SKILL.md
+  const m = url.pathname.match(/^\/skills\/([a-z0-9-]+)\/SKILL\.md$/i);
+  if (!m) return json({ error: "invalid skill path" }, 400);
+
+  const cacheKey = new Request(url.toString(), { method: "GET" });
+  const hit = await caches.default.match(cacheKey);
+  if (hit) return hit;
+
+  const obj = await env.APPS_BUCKET.get(`skills/${m[1]}/SKILL.md`);
+  if (!obj) return json({ error: "skill not found" }, 404);
+  const res = new Response(obj.body, {
+    headers: { "content-type": MIME.md, "cache-control": "public, max-age=300" },
+  });
+  ctx.waitUntil(caches.default.put(cacheKey, res.clone()));
+  return res;
+}
+
+// ---------- 注册表（KV） ----------
+
+export async function readIndex<T>(env: Env, key: string): Promise<T[]> {
+  const raw = await env.REGISTRY.get(key);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw) as T[];
+  } catch {
+    return [];
+  }
+}
+
+export async function upsertIndex<T extends { name: string }>(env: Env, key: string, entry: T): Promise<T[]> {
+  const list = await readIndex<T>(env, key);
+  const i = list.findIndex((e) => e.name === entry.name);
+  if (i >= 0) list[i] = entry;
+  else list.push(entry);
+  await env.REGISTRY.put(key, JSON.stringify(list));
+  return list;
+}

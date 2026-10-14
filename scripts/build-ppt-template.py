@@ -21,7 +21,7 @@ LINE  = RGBColor(0xD9, 0xDF, 0xF0)
 GRID  = RGBColor(0x1E, 0x27, 0x78)   # navy 上的暗网格线
 GRIDW = RGBColor(0xE3, 0xEC, 0xFA)   # 白底上的淡网格线
 
-CN   = "微软雅黑"
+CN   = "Source Han Sans SC"   # 思源黑体（VI 规范中文字体；未安装时请装思源黑体 CN/SC）
 EN   = "Arial Black"
 MONO = "Consolas"
 
@@ -66,10 +66,14 @@ def text(s, x, y, w, h, runs, size=18, color=INK, font=CN, bold=False,
         r = p.add_run(); r.text = t
         f = r.font
         f.size = Pt(size); f.bold = bold; f.color.rgb = color; f.name = font
-        ea = r._r.rPr.makeelement(qn('a:ea'), {'typeface': font}); r._r.rPr.append(ea)
+        set_ea(r, font)
         if spacing is not None:
             r._r.rPr.set('spc', str(int(spacing * 100)))
     return tb
+
+def set_ea(r, font):
+    """设置东亚字体（中文按 a:ea 渲染，否则 PowerPoint 会回退到默认中文字体）"""
+    ea = r._r.rPr.makeelement(qn('a:ea'), {'typeface': font}); r._r.rPr.append(ea)
 
 def freepoly(s, pts, x0, y0, scale, fill, gradient=False):
     fb = s.shapes.build_freeform(pts[0][0], pts[0][1], scale=scale)
@@ -230,7 +234,7 @@ for c, htxt in enumerate(head):
     cell = tbl.cell(0, c)
     cell.fill.solid(); cell.fill.fore_color.rgb = NAVY
     p = cell.text_frame.paragraphs[0]; r = p.add_run(); r.text = htxt
-    r.font.bold = True; r.font.size = Pt(14); r.font.color.rgb = PAPER; r.font.name = CN
+    r.font.bold = True; r.font.size = Pt(14); r.font.color.rgb = PAPER; r.font.name = CN; set_ea(r, CN)
 for ri, row in enumerate(data, start=1):
     for ci, val in enumerate(row):
         cell = tbl.cell(ri, ci)
@@ -239,7 +243,7 @@ for ri, row in enumerate(data, start=1):
         if ri == rows - 1: cell.fill.fore_color.rgb = RGBColor(0xE8, 0xEC, 0xFB)
         p = cell.text_frame.paragraphs[0]
         r = p.add_run(); r.text = val
-        r.font.size = Pt(13); r.font.name = CN
+        r.font.size = Pt(13); r.font.name = CN; set_ea(r, CN)
         r.font.color.rgb = INK if ri < rows - 1 else NAVY
         r.font.bold = (ci == 0 or ri == rows - 1)
         if val.endswith("%") and ri < rows - 1:

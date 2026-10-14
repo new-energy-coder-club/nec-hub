@@ -5,43 +5,87 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>NEC 团队 AI 中台</title>
 <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin />
+<link rel="dns-prefetch" href="https://cdn.tailwindcss.com" />
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  :root { --navy:#141B5E; --ink:#0B1033; --cyan:#1FA9E8; --cyan-lt:#4FC3F7; }
-  body { font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
-  .mono { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; }
-  .tab-active { border-bottom: 3px solid var(--cyan); color: var(--navy); }
-  pre.prompt { white-space: pre-wrap; word-break: break-all; }
+  :root {
+      /* ---- 品牌色 Brand Colors ---- */
+      --nec-royal: #1A2FA0;        /* NEC 蓝：标志主色 */
+      --nec-navy: #141B5E;         /* NEC 藏青：深色底、标题、强调底 */
+      --nec-ink: #0B1033;          /* 墨青：浅色底上的正文/标题 */
+      --nec-cyan: #1FA9E8;         /* 破晓青：强调、交互、亮点 */
+      --nec-sky: #4FC3F7;          /* 破晓浅青：辅助强调、渐变伴侣 */
+      
+      /* ---- 中性色 Neutrals ---- */
+      --nec-paper: #FFFFFF;        /* 纸白 */
+      --nec-fog: #F4F6FB;          /* 雾灰蓝 · 浅色底 */
+      --nec-gray: #5A6472;         /* 次级文字 */
+      --nec-line: #D9DFF0;         /* 描边/分割线 */
+      
+      /* ---- 字体族 Typography ---- */
+      --nec-font-cn: "Source Han Sans SC", "思源黑体 CN", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --nec-font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+      
+      /* ---- 应用工具类 Utilities ---- */
+      --nec-radius: 12px;
+      --nec-shadow: 0 2px 10px rgba(11, 16, 51, .08);
+      --nec-maxw: 72rem;
+    }
+    
+    body { font-family: var(--nec-font-cn); }
+    .mono { font-family: var(--nec-font-mono); }
+    .tab-active { border-bottom: 3px solid var(--nec-cyan); color: var(--nec-navy); }
+    pre.prompt { white-space: pre-wrap; word-break: break-all; }
+
+    /* OCR 自动回填高亮：用户手动编辑时移除（见 oninput） */
+    .ocr-filled { border-color: var(--nec-cyan) !important; background: #EAF7FD; transition: background 1.2s ease, border-color 1.2s ease; }
 
   /* KV V2 — 蓝图网格 Hero */
   .hero {
-    position: relative; overflow: hidden; background: #fff;
+    position: relative; overflow: hidden; background: var(--nec-paper);
     background-image:
-      linear-gradient(rgba(31,169,232,.13) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(31,169,232,.13) 1px, transparent 1px),
-      linear-gradient(rgba(31,169,232,.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(31,169,232,.05) 1px, transparent 1px);
+      linear-gradient(var(--nec-cyan) 1px, transparent 1px),
+      linear-gradient(90deg, var(--nec-cyan) 1px, transparent 1px),
+      linear-gradient(var(--nec-cyan) 1px, transparent 1px),
+      linear-gradient(90deg, var(--nec-cyan) 1px, transparent 1px);
     background-size: 92px 92px, 92px 92px, 23px 23px, 23px 23px;
   }
-  .hero-title { font-weight: 900; line-height: .95; letter-spacing: -.015em; color: var(--ink); }
-  .hero-title .to { color: var(--cyan); }
-  .horizon { position: absolute; left: 0; right: 0; height: 3px; background: var(--cyan); }
-  .base-line { height: 5px; background: linear-gradient(90deg, var(--cyan), var(--cyan-lt) 55%, rgba(79,195,247,0)); }
-  .chip { border: 1.5px solid var(--navy); color: var(--navy); }
-  .chip i { color: var(--cyan); }
-  .host-btn { border: 1.5px solid #d1d5db; color: #6b7280; background: #fff; }
-  .host-btn.on { border-color: var(--navy); color: #fff; background: var(--navy); }
+  .hero-title { font-weight: 900; line-height: .95; letter-spacing: -.015em; color: var(--nec-ink); }
+  .hero-title .to { color: var(--nec-cyan); }
+  .horizon { position: absolute; left: 0; right: 0; height: 3px; background: var(--nec-cyan); }
+  .base-line { height: 5px; background: linear-gradient(90deg, var(--nec-cyan), var(--nec-sky) 55%, transparent); }
+  .chip { border: 1.5px solid var(--nec-navy); color: var(--nec-navy); }
+  .chip i { color: var(--nec-cyan); }
+  .host-btn { border: 1.5px solid var(--nec-line); color: var(--nec-gray); background: var(--nec-paper); }
+  .host-btn.on { border-color: var(--nec-navy); color: #fff; background: var(--nec-navy); }
+  .doc-cat-btn { border: 1.5px solid var(--nec-line); color: var(--nec-gray); background: var(--nec-paper); }
+  .doc-cat-btn.on { border-color: var(--nec-navy); color: #fff; background: var(--nec-navy); }
+  .skill-cat-btn { border: 1.5px solid var(--nec-line); color: var(--nec-gray); background: var(--nec-paper); }
+  .skill-cat-btn.on { border-color: var(--nec-navy); color: #fff; background: var(--nec-navy); }
+
+  /* NEC-MCP 特效：渐变流光标题 + 呼吸光晕 */
+  @keyframes nec-flow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+  @keyframes nec-glow { 0%,100% { box-shadow: 0 0 0 0 rgba(31,169,232,.35); } 50% { box-shadow: 0 0 24px 4px rgba(31,169,232,.18); } }
+  #tab-agent h2 .bg-gradient-to-r {
+    background-size: 200% auto;
+    animation: nec-flow 4s linear infinite;
+  }
+  #tab-agent .bg-gradient-to-br.from-\[\#1A2FA0\] {
+    animation: nec-glow 5s ease-in-out infinite;
+  }
+  pre.prompt { border-left: 3px solid var(--nec-cyan); }
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
 
 <!-- KV V2 Hero：BUILT TO DAWN -->
 <header class="hero">
-  <div class="max-w-5xl mx-auto px-6 pt-8 pb-10 relative">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8 sm:pb-10 relative">
     <div class="flex items-center gap-3 relative z-10">
-      <img src="/brand/nec-logo.svg" alt="NEC" class="h-9 w-auto" />
+      <img src="/brand/nec-logo.svg" alt="NEC" class="h-8 sm:h-9 w-auto" />
       <div class="leading-tight">
-        <div class="font-black text-lg" style="color:var(--navy)">常州工NEC <span class="text-sm font-extrabold" style="color:var(--cyan)">in CIT</span></div>
+        <div class="font-black text-lg" style="color:var(--nec-navy)">常州工NEC <span class="text-sm font-extrabold" style="color:var(--nec-cyan)">in CIT</span></div>
         <div class="mono text-[11px] text-gray-500 tracking-wider">newenergycoder.club</div>
       </div>
       <span id="health" class="ml-auto text-xs px-2 py-1 rounded bg-gray-100 text-gray-500">连接中…</span>
@@ -49,21 +93,21 @@
     </div>
 
     <div class="mt-10 relative z-10">
-      <p class="mono text-xs tracking-[.22em] mb-4" style="color:var(--navy)"><b>NEC HUB</b> · 团队 AI 中台 · KEEP BUILDING</p>
-      <h1 class="hero-title text-5xl sm:text-7xl">BUILT <span class="to">TO</span> DAWN</h1>
-      <p class="mt-4 font-black tracking-[.4em] text-sm sm:text-base" style="color:var(--navy)">为黎明而造</p>
-      <p class="mono mt-3 text-xs text-gray-500 tracking-widest">应用广场 · SKILL 中心 · 开源仓库 · 数据看板 · 我的 AGENT</p>
-      <div class="mt-6 flex flex-wrap gap-3 text-sm">
-        <span class="chip mono px-3 py-1.5 rounded-sm bg-white"><i class="not-italic mr-1">01</i>找物品</span>
-        <span class="chip mono px-3 py-1.5 rounded-sm bg-white"><i class="not-italic mr-1">02</i>扫标签</span>
-        <span class="chip mono px-3 py-1.5 rounded-sm bg-white"><i class="not-italic mr-1">03</i>办工单</span>
+      <p class="mono text-xs tracking-[.18em] sm:tracking-[.22em] mb-3 sm:mb-4" style="color:var(--nec-navy)"><b>NEC HUB</b> · 团队 AI 中台 · KEEP BUILDING</p>
+      <h1 class="hero-title text-4xl sm:text-7xl">BUILT <span class="to">TO</span> DAWN</h1>
+      <p class="mt-3 sm:mt-4 font-black tracking-[.22em] sm:tracking-[.4em] text-sm sm:text-base" style="color:var(--nec-navy)">为黎明而造</p>
+      <p class="mono mt-3 text-xs text-gray-500 tracking-wider sm:tracking-widest leading-relaxed">应用广场 · SKILL 中心 · 开源仓库 · 数据看板 · NEC-MCP</p>
+      <div class="mt-5 sm:mt-6 flex flex-wrap gap-2 sm:gap-3 text-sm">
+        <span class="chip mono px-3 py-2 rounded-sm bg-white"><i class="not-italic mr-1">01</i>找物品</span>
+        <span class="chip mono px-3 py-2 rounded-sm bg-white"><i class="not-italic mr-1">02</i>扫标签</span>
+        <span class="chip mono px-3 py-2 rounded-sm bg-white"><i class="not-italic mr-1">03</i>办工单</span>
         <a href="https://mes.newenergycoder.club/home.html#label" target="_blank"
-           class="mono px-3 py-1.5 rounded-sm text-white" style="background:var(--cyan)">→ NEC 仓库作业台</a>
+           class="mono px-4 py-2 rounded-sm text-white inline-block" style="background:var(--nec-cyan)">→ NEC 仓库作业台</a>
       </div>
     </div>
 
     <!-- 破晓太阳 -->
-    <svg class="absolute right-2 sm:right-10 top-24 w-40 sm:w-64 opacity-90 z-0" viewBox="0 0 800 800" fill="none">
+    <svg class="absolute -right-10 sm:right-10 top-24 w-36 sm:w-64 opacity-40 sm:opacity-90 z-0 pointer-events-none" viewBox="0 0 800 800" fill="none" aria-hidden="true">
       <defs><linearGradient id="sunG" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#4FC3F7"/><stop offset="1" stop-color="#1FA9E8"/></linearGradient></defs>
       <circle cx="400" cy="400" r="330" stroke="url(#sunG)" stroke-width="10"/>
@@ -76,64 +120,204 @@
   <div class="base-line"></div>
 </header>
 
-<!-- 待办条（A-01）：登录后显示待我审批 + 逾期任务，点击展开明细 -->
-<div id="todo-bar" class="hidden bg-white border-b border-gray-200 shadow-sm">
-  <div class="max-w-5xl mx-auto px-6 py-2 flex items-center gap-2 flex-wrap cursor-pointer text-sm" onclick="toggleTodos()">
-    <span style="color:var(--navy)">⏰ <b id="todo-summary">待审批</b></span>
-    <span id="todo-more" class="text-xs text-gray-400">（点击展开）</span>
-  </div>
-  <div id="todo-detail" class="hidden max-w-5xl mx-auto px-6 pb-3 text-sm"></div>
-</div>
-
 <nav class="bg-white shadow-sm">
-  <div class="max-w-5xl mx-auto px-6 flex gap-6 text-sm font-medium text-gray-500">
-    <button data-tab="apps" class="tab-btn py-3 tab-active">应用广场</button>
-    <button data-tab="skills" class="tab-btn py-3">Skill 中心</button>
-    <button data-tab="docs" class="tab-btn py-3">资料页</button>
-    <button data-tab="repos" class="tab-btn py-3">开源仓库</button>
-    <button data-tab="dashboard" class="tab-btn py-3">数据看板</button>
-    <button data-tab="reimburse" class="tab-btn py-3">报销</button>
-    <button data-tab="agent" class="tab-btn py-3">我的 Agent</button>
-    <button data-tab="prd" class="tab-btn py-3">PRD 看板</button>
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 flex gap-4 sm:gap-6 text-sm font-medium text-gray-500 overflow-x-auto whitespace-nowrap scrollbar-hide">
+    <button data-tab="home" class="tab-btn py-3 shrink-0 tab-active">我的首页</button>
+    <button data-tab="my-tasks" class="tab-btn py-3 shrink-0">我的任务</button>
+    <button data-tab="drawing-review" id="tab-btn-drawing-review" class="tab-btn py-3 shrink-0 hidden">📐 图纸评审</button>
+    <button data-tab="apps" class="tab-btn py-3 shrink-0">应用广场</button>
+    <button data-tab="skills" class="tab-btn py-3 shrink-0">Skill 中心</button>
+    <button data-tab="docs" class="tab-btn py-3 shrink-0">资料页</button>
+    <button data-tab="repos" class="tab-btn py-3 shrink-0">开源仓库</button>
+    <button data-tab="dashboard" class="tab-btn py-3 shrink-0">数据看板</button>
+    <button data-tab="agent" class="tab-btn py-3 shrink-0">NEC-MCP</button>
   </div>
 </nav>
 
-<main class="max-w-5xl mx-auto px-6 py-8">
+<!-- FE-04：赛季目标关键节点 T-7 提醒条（renderDashboard 按 goals 数据填充，无临近节点时隐藏） -->
+<div id="goal-banner" class="hidden">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-2.5 flex items-center gap-3 text-sm text-white" style="background:var(--nec-navy)">
+    <span class="shrink-0">📌</span>
+    <div id="goal-banner-text" class="flex-1 leading-snug"></div>
+    <button onclick="document.getElementById('goal-banner').classList.add('hidden')" class="text-white/60 hover:text-white shrink-0">✕</button>
+  </div>
+</div>
+
+<!-- FE-09：待办条（登录后有待办时显示；逾期任务/待确认报销/飞书审批聚合，可展开清单） -->
+<div id="todo-bar" class="hidden">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-2.5 text-sm text-white" style="background:#B45309">
+    <div class="flex items-center gap-3">
+      <span class="shrink-0">✅</span>
+      <button onclick="toggleTodoList()" class="flex-1 text-left leading-snug hover:underline" id="todo-bar-text"></button>
+      <button onclick="document.getElementById('todo-bar').classList.add('hidden')" class="text-white/60 hover:text-white shrink-0">✕</button>
+    </div>
+    <div id="todo-list" class="hidden mt-2 pt-2 border-t border-white/20"></div>
+  </div>
+</div>
+
+<main class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+  <!-- FE-06/07 我的首页：白名单组件按布局配置渲染（个人 > 组 > 全员默认） -->
+  <section id="tab-home">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+      <h2 class="text-lg font-bold">我的首页<span id="home-source" class="text-xs font-normal text-gray-400 ml-2"></span></h2>
+      <div class="flex items-center gap-2">
+        <button onclick="resetHome()" id="home-reset-btn" class="hidden text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600">恢复默认</button>
+        <button onclick="toggleHomePrompt()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--nec-cyan)">✨ 改我的首页</button>
+      </div>
+    </div>
+    <div id="home-prompt-box" class="hidden mb-6 bg-white rounded-xl shadow p-5">
+      <h3 class="font-bold mb-2">一句话改首页（复制 Prompt 发给你的 Agent）</h3>
+      <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="home-prompt"></pre>
+      <button onclick="copyText('home-prompt')" class="mt-3 text-sm text-white px-3 py-1.5 rounded" style="background:var(--nec-navy)">复制</button>
+      <p class="text-xs text-gray-400 mt-3">布局为白名单组件制（禁止自由 HTML），组件顺序即渲染顺序，配置绑定飞书账号、换设备/重新登录都保持。组长/队长把 Prompt 里的 scope 改成 group 可配置本组默认首页。</p>
+    </div>
+    <div id="home-widgets" class="space-y-4"></div>
+  </section>
+
+  <!-- 我的任务：绑定飞书任务（Task v2）后同步展示，未绑定引导重新授权 -->
+  <section id="tab-my-tasks" class="hidden">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">我的任务<span id="my-tasks-meta" class="text-xs font-normal text-gray-400 ml-2"></span></h2>
+      <div class="flex items-center gap-2" id="my-tasks-actions"></div>
+    </div>
+    <div id="my-tasks-body" class="space-y-3"></div>
+  </section>
+
+  <!-- 图纸评审（原生集成，登录后可见） -->
+  <section id="tab-drawing-review" class="hidden">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+      <h2 class="text-lg font-bold">图纸评审</h2>
+      <div class="flex items-center gap-2 flex-wrap">
+        <div class="flex rounded-lg border border-gray-200 overflow-hidden text-xs bg-white">
+          <button id="dr-mode-board" onclick="setDrMode('board')" class="px-3 py-2">看板</button>
+          <button id="dr-mode-list" onclick="setDrMode('list')" class="px-3 py-2 border-l border-gray-200">列表</button>
+        </div>
+        <button onclick="loadDrawingReviews()" class="text-xs px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600">刷新</button>
+        <button onclick="toggleDrForm()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--nec-cyan)">＋ 提交评审单</button>
+      </div>
+    </div>
+
+    <!-- 提交表单（默认折叠） -->
+    <div id="dr-form-box" class="hidden mb-6 bg-white rounded-xl shadow p-5">
+      <h3 class="font-bold mb-3">提交图纸报告书</h3>
+      <form id="dr-form" class="grid grid-cols-1 sm:grid-cols-2 gap-3" onsubmit="submitDr(event)">
+        <div class="relative">
+          <label class="block text-xs text-gray-500 mb-1">项目编号 *</label>
+          <input name="projectId" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" 
+                 placeholder="PRJ-2026-001" 
+                 oninput="handleProjectInput(this)"
+                 onfocus="showProjectSuggestions(this)" />
+          <div id="project-suggestions" class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg hidden max-h-40 overflow-y-auto"></div>
+        </div>
+        <div class="relative">
+          <label class="block text-xs text-gray-500 mb-1">机型名称 *</label>
+          <input name="machineName" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" 
+                 placeholder="R1 底盘" 
+                 oninput="handleMachineInput(this)"
+                 onfocus="showMachineSuggestions(this)" />
+          <div id="machine-suggestions" class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg hidden max-h-40 overflow-y-auto"></div>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">图纸版本 *</label>
+          <input name="drawingVersion" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="V1.0" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">设计负责人</label>
+          <input name="designerName" id="dr-designer-name" disabled class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-xs text-gray-500 mb-1">设计说明 *</label>
+          <textarea name="designNotes" rows="3" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="关键设计参数、变更点"></textarea>
+        </div>
+        <div class="sm:col-span-2 flex justify-end gap-2">
+          <button type="button" onclick="toggleDrForm()" class="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-500">取消</button>
+          <button type="submit" id="dr-submit-btn" class="text-sm text-white px-5 py-2 rounded-lg" style="background:var(--nec-navy)">提交评审单</button>
+        </div>
+      </form>
+      <p id="dr-form-result" class="mt-2 text-sm"></p>
+    </div>
+
+    <!-- 状态统计条（兼作状态筛选，看板/列表共用） -->
+    <div id="dr-stats" class="flex flex-wrap gap-2 mb-4"></div>
+
+    <!-- 看板视图（默认） -->
+    <div id="dr-board" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+
+    <!-- 评审单列表 -->
+    <div id="dr-list" class="space-y-3 hidden">
+      <p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center">加载中…</p>
+    </div>
+    <p class="text-xs text-gray-400 mt-3">
+      独立全屏版：<a href="/apps/drawing-review/" target="_blank" class="hover:underline" style="color:var(--nec-cyan)">/apps/drawing-review/ →</a>
+    </p>
+  </section>
 
   <!-- 应用广场 -->
-  <section id="tab-apps">
+  <section id="tab-apps" class="hidden">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-bold">应用广场</h2>
-      <button onclick="showPublishPrompt()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--cyan)">＋ 发布我的应用</button>
+      <button onclick="showPublishPrompt()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--nec-cyan)">＋ 发布我的应用</button>
     </div>
     <div id="publish-box" class="hidden mb-6 bg-white rounded-xl shadow p-5">
       <h3 class="font-bold mb-2">上架 Prompt（复制后发给你的 Agent）</h3>
       <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="publish-prompt"></pre>
-      <button onclick="copyText('publish-prompt')" class="mt-3 text-sm text-white px-3 py-1.5 rounded" style="background:var(--navy)">复制</button>
+      <button onclick="copyText('publish-prompt')" class="mt-3 text-sm text-white px-3 py-1.5 rounded" style="background:var(--nec-navy)">复制</button>
     </div>
+
+    <!-- 核心流程入口 -->
+    <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <h3 class="text-sm font-bold text-slate-700 mb-3">核心流程</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <a href="/apps/drawing-review/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-blue-200 transition">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-lg">📐</div>
+            <div>
+              <p class="font-bold text-slate-800">新增机图纸评审</p>
+              <p class="text-xs text-gray-500">提交 · 评审 · BOM · 排期 · 采购</p>
+            </div>
+          </div>
+        </a>
+        <a href="/apps/hardware-review/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-blue-200 transition">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-lg">🔧</div>
+            <div>
+              <p class="font-bold text-slate-800">硬件评审流程</p>
+              <p class="text-xs text-gray-500">选型 · 评审 · 立项 · 归档</p>
+            </div>
+          </div>
+        </a>
+        <a href="/apps/scoring/" class="block border border-gray-100 rounded-lg p-4 hover:shadow-md hover:border-blue-200 transition">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-lg">🏆</div>
+            <div>
+              <p class="font-bold text-slate-800">NEC 评分看板</p>
+              <p class="text-xs text-gray-500">赛事成绩 · 评分记录 · 排名</p>
+            </div>
+          </div>
+        </a>
+      </div>
+    </div>
+
     <div id="apps-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
   </section>
 
   <!-- Skill 中心 -->
   <section id="tab-skills" class="hidden">
-    <h2 class="text-lg font-bold mb-4">Skill 中心</h2>
-    <div id="skills-list" class="space-y-3"></div>
-  </section>
-
-  <!-- 资料页（FE-03） -->
-  <section id="tab-docs" class="hidden">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-bold">资料页</h2>
-      <button onclick="showDocPrompt()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--cyan)">＋ 提交资料</button>
+      <h2 class="text-lg font-bold">Skill 中心</h2>
+      <span id="skills-count" class="text-xs text-gray-400"></span>
     </div>
-    <div id="doc-box" class="hidden mb-6 bg-white rounded-xl shadow p-5">
-      <h3 class="font-bold mb-2">上架 Prompt（复制后发给你已接入中台 MCP 的 Agent）</h3>
-      <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="doc-prompt"></pre>
-      <button onclick="copyText('doc-prompt')" class="mt-3 text-sm text-white px-3 py-1.5 rounded" style="background:var(--navy)">复制</button>
+    <input id="skill-q" type="search" placeholder="🔍 搜索名称 / 描述 / 标签…"
+           class="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm mb-3">
+    <div class="flex items-center gap-2 mb-4 text-xs flex-wrap">
+      <span id="skill-cat-btns" class="contents"></span>
+      <select id="skill-sort" class="ml-auto border border-gray-200 rounded-full px-2 py-1 bg-white text-gray-500">
+        <option value="updated">按更新时间</option>
+        <option value="name">按名称</option>
+      </select>
     </div>
-    <div id="docs-list" class="space-y-6">
-      <div class="bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">加载中…</div>
-    </div>
+    <div id="skills-list" class="space-y-3"></div>
   </section>
 
   <!-- NEC 开源仓库 -->
@@ -141,9 +325,9 @@
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-bold">NEC 开源仓库</h2>
       <div class="text-sm">
-        <a href="https://github.com/new-energy-coder-club" target="_blank" class="hover:underline" style="color:var(--cyan)">GitHub org →</a>
+        <a href="https://github.com/new-energy-coder-club" target="_blank" class="hover:underline" style="color:var(--nec-cyan)">GitHub org →</a>
         <span class="text-gray-300 mx-1">·</span>
-        <a href="https://gitee.com/darrenpig" target="_blank" class="hover:underline" style="color:var(--cyan)">Gitee →</a>
+        <a href="https://gitee.com/darrenpig" target="_blank" class="hover:underline" style="color:var(--nec-cyan)">Gitee →</a>
       </div>
     </div>
     <div class="flex items-center gap-2 mb-3 text-xs">
@@ -167,132 +351,244 @@
     <div id="dash-body" class="space-y-4">
       <div class="bg-white rounded-xl shadow p-6 text-sm text-gray-400">加载中…</div>
     </div>
-    <div id="validate-body" class="mt-4"></div>
+
+    <!-- FE-05 数据健康：按类型分组的异常清单（renderValidateHealth 填充） -->
+    <div id="dash-health" class="mt-4"></div>
   </section>
 
-  <!-- 报销（R-01 v1）：提交报销申请 + 我的报销 -->
-  <section id="tab-reimburse" class="hidden">
+  <!-- 资料页 -->
+  <section id="tab-docs" class="hidden">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-bold">报销</h2>
-      <span class="text-xs text-gray-400">审批中：财务/队长审批，结果在群里通知</span>
+      <h2 class="text-lg font-bold">资料页</h2>
+      <button onclick="showDocPublishPrompt()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--nec-cyan)">＋ 发布/更新资料</button>
     </div>
-    <div id="reimburse-login-tip" class="hidden bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">
-      请先点击右上角「飞书登录」后提交报销。
+    <div id="doc-publish-box" class="hidden mb-6 bg-white rounded-xl shadow p-5">
+      <h3 class="font-bold mb-2">资料页更新 Prompt（复制后发给你的 Agent）</h3>
+      <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="doc-publish-prompt"></pre>
+      <button onclick="copyText('doc-publish-prompt')" class="mt-3 text-sm text-white px-3 py-1.5 rounded" style="background:var(--nec-navy)">复制</button>
     </div>
-    <div id="reimburse-body" class="hidden space-y-4">
-      <div class="bg-white rounded-xl shadow p-5">
-        <h3 class="font-bold mb-3">提交报销申请</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          <label class="block">
-            <span class="text-gray-500">事项 *</span>
-            <input id="rb-item" type="text" class="mt-1 w-full border rounded px-3 py-2" placeholder="如：铝型材打样运费">
-          </label>
-          <label class="block">
-            <span class="text-gray-500">金额（元）*</span>
-            <input id="rb-amount" type="number" min="0.01" step="0.01" class="mt-1 w-full border rounded px-3 py-2" placeholder="0.00">
-          </label>
-          <label class="block">
-            <span class="text-gray-500">发票号 *</span>
-            <input id="rb-invoice" type="text" class="mt-1 w-full border rounded px-3 py-2" placeholder="8 位或 20 位">
-          </label>
-          <label class="block">
-            <span class="text-gray-500">发票照片（选填）</span>
-            <input id="rb-invoice-img" type="text" class="mt-1 w-full border rounded px-3 py-2" placeholder="图片链接（选填，填了就不用填无票说明）">
-          </label>
-          <label class="block sm:col-span-2">
-            <span class="text-gray-500">无票说明（发票照片为空时必填）</span>
-            <input id="rb-no-invoice" type="text" class="mt-1 w-full border rounded px-3 py-2" placeholder="如：电子发票待开具 / 小额无票">
-          </label>
-        </div>
-        <div class="mt-4 flex items-center gap-3">
-          <button onclick="submitReimburse()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--cyan)">提交申请</button>
-          <span id="rb-msg" class="text-sm"></span>
-        </div>
-      </div>
-      <div class="bg-white rounded-xl shadow p-5">
-        <h3 class="font-bold mb-3">我的报销</h3>
-        <div id="rb-list" class="text-sm text-gray-400">加载中…</div>
-      </div>
+
+    <div class="flex items-center gap-2 mb-4 text-xs flex-wrap">
+      <button data-doc-cat="all" class="doc-cat-btn on px-3 py-1 rounded-full">全部</button>
+      <button data-doc-cat="brand" class="doc-cat-btn px-3 py-1 rounded-full">品牌规范</button>
+      <button data-doc-cat="template" class="doc-cat-btn px-3 py-1 rounded-full">文档模板</button>
+      <button data-doc-cat="sop" class="doc-cat-btn px-3 py-1 rounded-full">制度 SOP</button>
+      <button data-doc-cat="training" class="doc-cat-btn px-3 py-1 rounded-full">培训材料</button>
+    </div>
+
+    <div id="docs-list" class="space-y-6">
+      <p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center">加载中…</p>
     </div>
   </section>
 
   <!-- 我的 Agent -->
   <section id="tab-agent" class="hidden">
-    <h2 class="text-lg font-bold mb-4">接入我的 Agent</h2>
-    <div class="bg-white rounded-xl shadow p-5">
-      <h3 class="font-bold mb-2">接入 Prompt（复制后发给 Claude Code / Kimi CLI / Codex）</h3>
-      <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="join-prompt"></pre>
-      <button onclick="copyText('join-prompt')" class="mt-3 text-sm text-white px-3 py-1.5 rounded" style="background:var(--navy)">复制</button>
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="text-2xl font-black flex items-center gap-3" style="color:var(--nec-navy)">
+          <span class="bg-gradient-to-r from-[#1A2FA0] to-[#1FA9E8] bg-clip-text text-transparent">NEC-MCP</span>
+          <span class="text-sm font-normal text-gray-500">AI Agent</span>
+        </h2>
+        <p class="text-sm text-gray-500 mt-1">智能协作中枢 · 飞书生态深度集成</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
+        <span class="text-xs text-gray-500">在线</span>
+      </div>
     </div>
-  </section>
-
-  <!-- PRD 看板（动态：状态经 MCP update_prd 维护；git 提交经 webhook 推送） -->
-  <section id="tab-prd" class="hidden">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-bold">PRD 看板</h2>
-      <span id="prd-status" class="text-xs text-gray-400"></span>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-gradient-to-br from-[#F4F6FB] to-[#E6ECF5] border border-[#D9DFF0] rounded-2xl p-6 shadow-sm">
+        <h3 class="font-bold text-lg mb-3 flex items-center gap-2" style="color:var(--nec-navy)">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm1 3a7 7 0 11-14 0 7 7 0 0114 0zm-.707-4.707a1 1 0 00-1.414-1.414L9 10.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+          快速接入
+        </h3>
+        <p class="text-sm text-gray-600 mb-4">一键连接 NEC 团队 AI 中台，开启智能协作新体验</p>
+        <div class="bg-white rounded-xl shadow-sm p-4">
+          <h4 class="font-medium mb-2 text-gray-700">接入步骤：</h4>
+          <ol class="list-decimal list-inside space-y-2 text-sm text-gray-600">
+            <li>安装 MCP 客户端（Claude Code / Kimi CLI / Codex）</li>
+            <li>添加 NEC-MCP 服务器：<code id="mcp-endpoint" class="bg-gray-100 px-2 py-1 rounded text-xs"></code></li>
+            <li>验证连接并开始使用</li>
+          </ol>
+        </div>
+      </div>
+      
+      <div class="bg-gradient-to-br from-[#1A2FA0] to-[#141B5E] rounded-2xl p-6 text-white shadow-lg">
+        <h3 class="font-bold text-lg mb-3 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 111.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
+          接入 Prompt
+        </h3>
+        <p class="text-sm text-blue-100 mb-4">复制以下指令到你的 AI Agent 客户端</p>
+        <div class="bg-black/20 rounded-xl p-4">
+          <pre class="prompt text-sm text-green-200 font-mono leading-relaxed" id="join-prompt"></pre>
+        </div>
+        <div class="mt-4 flex gap-3">
+          <button onclick="copyText('join-prompt')" class="flex items-center gap-2 text-sm bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all duration-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+              <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+            </svg>
+            复制指令
+          </button>
+          <button onclick="testConnection()" class="flex items-center gap-2 text-sm bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all duration-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            测试连接
+          </button>
+        </div>
+      </div>
     </div>
-    <div id="prd-progress" class="mb-4"></div>
-    <div id="prd-last-commit" class="mb-4"></div>
-    <div id="prd-board" class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div class="bg-white rounded-xl shadow p-6 text-sm text-gray-400">加载中…</div>
+    
+    <div class="mt-8 bg-white/50 backdrop-blur-sm rounded-2xl p-6 border border-[#D9DFF0] shadow-sm">
+      <h3 class="font-bold text-lg mb-4 flex items-center gap-2" style="color:var(--nec-navy)">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm1 3a7 7 0 11-14 0 7 7 0 0114 0zm-.707-4.707a1 1 0 00-1.414-1.414L9 10.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+        </svg>
+        智能交互优化
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-xl p-4 border border-gray-100">
+          <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <h4 class="font-medium text-gray-800 mb-1">精准指令识别</h4>
+          <p class="text-sm text-gray-600">支持自然语言指令，自动解析意图与参数</p>
+        </div>
+        <div class="bg-white rounded-xl p-4 border border-gray-100">
+          <div class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-600" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <h4 class="font-medium text-gray-800 mb-1">实时状态反馈</h4>
+          <p class="text-sm text-gray-600">每步操作都有可视化反馈与进度指示</p>
+        </div>
+        <div class="bg-white rounded-xl p-4 border border-gray-100">
+          <div class="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <h4 class="font-medium text-gray-800 mb-1">智能错误处理</h4>
+          <p class="text-sm text-gray-600">自动诊断问题并提供修复建议</p>
+        </div>
+      </div>
     </div>
-    <p class="text-xs text-gray-400 mt-3">状态由 Agent 经 nec-hub MCP 的 update_prd 维护（done / partial / pending / todo）；每次 git 提交会推送飞书群并在上方显示最近提交。</p>
   </section>
 
 </main>
 
-<footer class="max-w-5xl mx-auto px-6 py-8 text-xs text-gray-400">
+<footer class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 text-xs text-gray-400 leading-relaxed">
   NEC 团队 AI 中台 MVP · Cloudflare Workers + KV + R2 · 数据基建在飞书 · BUILT TO DAWN — KEEP BUILDING<br/>
-  <a href="/brand/" class="hover:underline" style="color:var(--cyan)">→ NEC 品牌主视觉（Logo / PPT 模板 / VI 规范）</a>
+  <a href="/brand/" class="hover:underline" style="color:var(--nec-cyan)">→ NEC 品牌主视觉（Logo / PPT 模板 / VI 规范）</a>
 </footer>
 
 <script>
 const ORIGIN = location.origin;
+document.getElementById("mcp-endpoint").textContent = ORIGIN + "/mcp";
 
 document.getElementById("join-prompt").textContent =
-`请帮我接入 NEC 团队中台 MCP：
-1. 安装 MCP server，地址：${ORIGIN}/mcp （streamable HTTP 传输）
-   - Claude Code: claude mcp add --transport http nec-hub ${ORIGIN}/mcp
+`🚀 接入 NEC-MCP 智能协作中枢（v0.4.0）：
+
+1. 安装 MCP 客户端（Claude Code / Kimi CLI / Codex）
+2. 添加 NEC-MCP 服务器：
+   • 地址：${ORIGIN}/mcp （streamable HTTP 协议）
+   • 名称：NEC-MCP
+   - Claude Code: claude mcp add --transport http NEC-MCP ${ORIGIN}/mcp
    - Kimi CLI / Codex: 在 MCP 配置中加入同一地址
-2. 完成后调用 nec-hub 的 whoami 工具验证连接（返回管理端身份即成功），并告诉我结果`;
+3. 完成后调用 NEC-MCP 的 ping 工具验证连接，并告诉我结果
+
+💡 提示：NEC-MCP 支持自然语言指令，可直接说"帮我部署一个应用"或"查询我的任务进度"`;
 
 document.getElementById("publish-prompt").textContent =
 `请把当前项目发布到 NEC 团队应用广场：
 1. 收集本项目的静态文件（入口必须是 index.html，含引用的 CSS/JS/图片）
-2. 调用 nec-hub MCP 的 deploy_app 工具：
+2. 调用 NEC-MCP 的 deploy_app 工具：
    - name 用小写连字符命名（如 inventory-check）
    - title 用中文展示名，author 填我的名字
 3. 成功后把访问链接发给我`;
 
-// Tab 切换
+document.getElementById("doc-publish-prompt").textContent =
+`请把这条资料发布/更新到 NEC 团队资料页：
+1. 调用 NEC-MCP 的 publish_doc 工具
+2. 参数：
+   - id：小写连字符唯一标识，如 nec-vi、reimburse-sop
+   - title：展示标题
+   - description：一句话说明
+   - category：brand（品牌规范）/ template（文档模板）/ sop（制度 SOP）/ training（培训材料）
+   - url：链接（飞书文档、站内页面或本地下载）
+   - visibility：all 或组名，默认 all
+   - maintainer：维护人
+3. 成功后告诉我已发布到资料页`;
+
+// Tab 切换 + Hash 路由：/#tab-dashboard 等深链可直达对应面板，刷新/分享不丢位置
+const TAB_IDS = ["home","my-tasks","drawing-review","apps","skills","docs","repos","dashboard","agent"];
+function switchTab(tab, opts = {}) {
+  const btn = document.querySelector('.tab-btn[data-tab="' + tab + '"]');
+  const panel = document.getElementById("tab-" + tab);
+  if (!btn || !panel || btn.classList.contains("hidden")) return false;
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("tab-active"));
+  btn.classList.add("tab-active");
+  TAB_IDS.forEach(t => document.getElementById("tab-"+t).classList.toggle("hidden", t !== tab));
+  if (!opts.silent && location.hash !== "#tab-" + tab) location.hash = "tab-" + tab;
+  if (tab === "my-tasks") loadMyTasks();
+  return true;
+}
+function applyHashRoute() {
+  const m = location.hash.match(/^#tab-([a-z-]+)$/);
+  if (!m) return;
+  if (!switchTab(m[1], { silent: true })) {
+    // 目标 Tab 当前不可见（如未登录时的图纸评审）：保持现有激活 Tab，只清掉无效 hash
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+}
 document.querySelectorAll(".tab-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("tab-active"));
-    btn.classList.add("tab-active");
-    ["apps","skills","docs","repos","dashboard","reimburse","agent","prd"].forEach(t =>
-      document.getElementById("tab-"+t).classList.toggle("hidden", t !== btn.dataset.tab));
-  });
+  btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
+window.addEventListener("hashchange", applyHashRoute);
+applyHashRoute();
 
 function showPublishPrompt() {
   document.getElementById("publish-box").classList.toggle("hidden");
 }
 
-function showDocPrompt() {
-  const box = document.getElementById("doc-box");
-  if (box.classList.contains("hidden")) {
-    document.getElementById("doc-prompt").textContent =
-`请帮我把一份资料上架到 NEC 中台资料页：
-1. 确认资料信息：标题、分类（品牌规范/文档模板/制度SOP/培训材料）、链接（飞书文档/云盘均可）、维护人
-2. 调用 nec-hub MCP 的 publish_doc 工具提交（name 用小写连字符，如 vi-logo-rules）
-3. 成功后告诉我资料页里的展示位置`;
-  }
-  box.classList.toggle("hidden");
-}
-
 function copyText(id) {
   navigator.clipboard.writeText(document.getElementById(id).textContent);
+}
+
+// NEC-MCP 连通性测试：直接对 /mcp 发 JSON-RPC ping
+async function testConnection() {
+  const btns = document.querySelectorAll('#tab-agent button');
+  const btn = [...btns].find(b => b.textContent.includes('测试连接'));
+  const orig = btn ? btn.innerHTML : '';
+  if (btn) btn.innerHTML = '⏳ 连接中…';
+  try {
+    const resp = await fetch(ORIGIN + '/mcp', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
+    });
+    const data = await resp.json();
+    if (resp.ok && data.jsonrpc === '2.0' && !data.error) {
+      if (btn) btn.innerHTML = '✅ 连接正常';
+    } else if (resp.status === 401) {
+      if (btn) btn.innerHTML = '🔑 需配置 MCP_TOKEN';
+    } else {
+      throw new Error(data.error?.message || ('HTTP ' + resp.status));
+    }
+  } catch (e) {
+    if (btn) btn.innerHTML = '❌ 连接失败';
+    alert('NEC-MCP 连接测试失败：' + (e.message || e));
+  }
+  if (btn) setTimeout(() => { btn.innerHTML = orig; }, 3000);
 }
 
 // 健康检查
@@ -337,10 +633,10 @@ async function bootAuth() {
   }
   await refreshMe();
   renderUserBox();
-  loadApps();
   loadDashboard(); // 财务区可见性随登录角色变化
-  loadTodos();     // 待办条：待我审批 + 逾期任务
-  loadReimburse(); // 报销页：登录态表单 + 我的报销列表
+  loadValidateHealth();
+  loadTodos(); // FE-09 待办条（未登录/无待办自动隐藏）
+  loadHome(); // FE-06/07 我的首页（未登录渲染默认布局）
 }
 
 async function refreshMe() {
@@ -354,14 +650,36 @@ function renderUserBox() {
     const u = ME.user;
     box.innerHTML = `
       ${u.avatar_url ? `<img src="${esc(u.avatar_url)}" class="w-6 h-6 rounded-full" alt=""/>` : ""}
-      <span class="font-medium" style="color:var(--navy)">${esc(u.name)}</span>
-      <span class="px-1.5 py-0.5 rounded text-[10px] text-white" style="background:var(--cyan)">${esc(u.role || "队员")}</span>
+      <span class="font-medium" style="color:var(--nec-navy)">${esc(u.name)}</span>
+      <span class="px-1.5 py-0.5 rounded text-[10px] text-white" style="background:var(--nec-cyan)">${esc(u.role || "队员")}</span>
       ${u.group ? `<span class="text-gray-400 hidden sm:inline">${esc(u.group)}</span>` : ""}
       <button onclick="logout()" class="text-gray-400 hover:text-gray-600 ml-1">登出</button>`;
   } else if (HUB_CONFIG.loginEnabled) {
-    box.innerHTML = `<button onclick="startLogin()" class="px-3 py-1 rounded text-white" style="background:var(--navy)">飞书登录</button>`;
+    // “记住上次登录”：登录成功后后端写入非 HttpOnly 的 nec_last_login Cookie（30 天，仅展示信息）
+    const last = getLastLogin();
+    const hint = last && last.name ? `
+      ${last.avatar_url ? `<img src="${esc(last.avatar_url)}" class="w-6 h-6 rounded-full opacity-70" alt=""/>` : ""}
+      <span class="text-xs text-gray-400" title="${esc(last.at ? new Date(last.at).toLocaleString("zh-CN") : "")}">上次登录：${esc(last.name)}</span>` : "";
+    box.innerHTML = `${hint}<button onclick="startLogin()" class="px-3 py-1 rounded text-white" style="background:var(--nec-navy)">${last && last.name ? "以 " + esc(last.name) + " 继续登录" : "飞书登录"}</button>`;
   } else {
     box.innerHTML = "";
+  }
+  updateDrawingReviewGate();
+}
+
+// Cookie 名转义正则为常量：避免每次 readCookie 调用重建
+const COOKIE_NAME_ESC_RE = /[.*+?^${}()|[\]\\]/g;
+function readCookie(name) {
+  const m = document.cookie.match(new RegExp("(?:^|; )" + name.replace(COOKIE_NAME_ESC_RE, "\\$&") + "=([^;]*)"));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+function getLastLogin() {
+  try {
+    const raw = readCookie("nec_last_login");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
   }
 }
 
@@ -369,10 +687,13 @@ function startLogin() {
   const state = crypto.randomUUID();
   sessionStorage.setItem("nec_oauth_state", state);
   const redirect = location.origin + location.pathname;
+  // scope 取 Task v2 最小集：task:task:read 读任务 + task:tasklist:read 读清单；
+  // scope 变化后老用户需重新授权一次，"我的任务"才能绑定
   location.href = "https://open.feishu.cn/open-apis/authen/v1/authorize?app_id="
     + encodeURIComponent(HUB_CONFIG.feishuAppId)
     + "&redirect_uri=" + encodeURIComponent(redirect)
-    + "&state=" + state;
+    + "&state=" + state
+    + "&scope=" + encodeURIComponent("task:task:read task:tasklist:read");
 }
 
 async function logout() {
@@ -380,14 +701,336 @@ async function logout() {
   ME = { authenticated: false, user: null };
   renderUserBox();
   loadDashboard();
-  loadApps();
-  hideTodos();
-  loadReimburse();
+  loadValidateHealth();
+  loadTodos();
+  loadHome();
+  loadMyTasks();
 }
 
-// 应用广场（在 bootAuth / logout 中调用，保证带登录态语义后再加载）
-function loadApps() {
-  fetch("/api/apps").then(r => r.json()).then(apps => {
+// ===== 我的任务：绑定飞书任务并同步（GET /api/my-tasks，KV 5 分钟缓存） =====
+let MY_TASKS_AUTH_URL = null;
+function bindMyTasks() {
+  if (MY_TASKS_AUTH_URL) location.href = MY_TASKS_AUTH_URL;
+}
+
+async function loadMyTasks(force) {
+  const body = document.getElementById("my-tasks-body");
+  const actions = document.getElementById("my-tasks-actions");
+  const meta = document.getElementById("my-tasks-meta");
+  if (!body) return;
+  if (!ME.authenticated) {
+    actions.innerHTML = ""; meta.textContent = "";
+    body.innerHTML = `<div class="bg-white rounded-xl shadow p-8 text-center text-sm text-gray-400">请先点击右上角「飞书登录」，登录后可绑定并同步你的飞书任务</div>`;
+    return;
+  }
+  let data;
+  try {
+    const resp = await fetch("/api/my-tasks" + (force ? "?refresh=1" : ""));
+    if (resp.status === 401) {
+      body.innerHTML = `<div class="bg-white rounded-xl shadow p-8 text-center text-sm text-gray-400">登录已过期，请重新登录</div>`;
+      return;
+    }
+    data = await resp.json();
+  } catch (e) {
+    body.innerHTML = `<div class="bg-white rounded-xl shadow p-8 text-center text-sm text-red-500">任务加载失败：${esc(e.message || String(e))}</div>`;
+    return;
+  }
+  if (!data.bound) {
+    meta.textContent = ""; actions.innerHTML = "";
+    MY_TASKS_AUTH_URL = data.authorizeUrl || null;
+    body.innerHTML = `
+      <div class="bg-white rounded-xl shadow p-8 text-center">
+        <p class="text-sm text-gray-500 mb-1">尚未绑定飞书任务${data.rebind ? "（原授权已失效）" : ""}</p>
+        <p class="text-xs text-gray-400 mb-4">授权后中台将代你同步拉取飞书任务（Task v2，只读）</p>
+        ${MY_TASKS_AUTH_URL
+          ? `<button onclick="bindMyTasks()" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--nec-cyan)">🔗 绑定飞书任务</button>`
+          : `<p class="text-xs text-red-500">飞书应用未配置，无法发起授权</p>`}
+      </div>`;
+    return;
+  }
+  meta.textContent = "同步于 " + new Date(data.syncedAt).toLocaleString("zh-CN") + (data.cached ? "（缓存）" : "");
+  actions.innerHTML = `
+    <button onclick="loadMyTasks(true)" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600">同步</button>
+    <button onclick="unbindMyTasks()" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600">解绑</button>`;
+  if (!data.tasks || !data.tasks.length) {
+    body.innerHTML = `<div class="bg-white rounded-xl shadow p-8 text-center text-sm text-gray-400">🎉 没有未完成的飞书任务</div>`;
+    return;
+  }
+  const now = Date.now();
+  body.innerHTML = data.tasks.map(t => {
+    const done = !!t.completedAt;
+    const overdue = !done && t.dueTimestamp && t.dueTimestamp < now;
+    const due = t.dueTimestamp
+      ? new Date(t.dueTimestamp).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+      : "无截止时间";
+    return `
+    <div class="bg-white rounded-xl shadow p-4 flex items-center gap-3 ${done ? "opacity-50" : ""}">
+      <div class="flex-1 min-w-0">
+        ${t.url
+          ? `<a href="${esc(t.url)}" target="_blank" class="font-medium hover:underline ${done ? "line-through text-gray-400" : ""}" style="color:var(--nec-navy)">${esc(t.summary)}</a>`
+          : `<span class="font-medium ${done ? "line-through text-gray-400" : ""}" style="color:var(--nec-navy)">${esc(t.summary)}</span>`}
+        <p class="text-xs mt-1 ${overdue ? "text-red-600 font-medium" : "text-gray-400"}">${overdue ? "已逾期 · " : ""}截止：${due}</p>
+      </div>
+      ${done
+        ? `<span class="text-xs text-gray-400 shrink-0">已完成</span>`
+        : overdue ? `<span class="text-xs text-white px-2 py-0.5 rounded bg-red-500 shrink-0">逾期</span>` : ""}
+    </div>`;
+  }).join("");
+}
+
+async function unbindMyTasks() {
+  if (!confirm("解绑后将停止同步你的飞书任务，确定解绑？")) return;
+  await fetch("/api/my-tasks/unbind", { method: "POST" }).catch(() => {});
+  loadMyTasks();
+}
+
+// ===== FE-09 待办条：聚合逾期任务 / 待确认报销 / 飞书审批（GET /api/todos，5 分钟缓存） =====
+let TODO_DATA = null;
+async function loadTodos() {
+  const bar = document.getElementById("todo-bar");
+  if (!bar) return;
+  if (!ME.authenticated) { bar.classList.add("hidden"); return; }
+  try {
+    const resp = await fetch("/api/todos");
+    if (!resp.ok) { bar.classList.add("hidden"); return; }
+    TODO_DATA = await resp.json();
+  } catch { bar.classList.add("hidden"); return; }
+  if (!TODO_DATA || !TODO_DATA.total) { bar.classList.add("hidden"); return; }
+  const t = TODO_DATA.tasks?.length ?? 0;
+  const f = TODO_DATA.finance?.count ?? 0;
+  const a = TODO_DATA.approvals?.count ?? 0;
+  const parts = [];
+  if (t) parts.push(`逾期任务 ${t}`);
+  if (f) parts.push(`待确认报销 ${f}`);
+  if (a) parts.push(`飞书审批 ${a}`);
+  document.getElementById("todo-bar-text").textContent =
+    `你有 ${TODO_DATA.total} 项待办（${parts.join(" · ")}），点击展开处理`;
+  const taskRows = (TODO_DATA.tasks ?? []).map(x => `
+    <li class="py-1.5 flex items-baseline gap-2 flex-wrap">
+      <span class="text-xs px-1.5 py-0.5 rounded bg-white/15 shrink-0">任务</span>
+      <a href="${esc(x.link)}" target="_blank" class="hover:underline font-medium">${esc(x.title)}</a>
+      <span class="text-xs text-white/70">逾期 ${x.daysOverdue ?? "?"} 天 · ${esc(x.status)}</span>
+    </li>`).join("");
+  const finRows = (TODO_DATA.finance?.items ?? []).map(x => `
+    <li class="py-1.5 flex items-baseline gap-2 flex-wrap">
+      <span class="text-xs px-1.5 py-0.5 rounded bg-white/15 shrink-0">报销</span>
+      <a href="${esc(x.link)}" target="_blank" class="hover:underline font-medium">${esc(x.name)}</a>
+      <span class="text-xs text-white/70">${x.amount ?? "—"} 元 · ${esc(x.applicant || "—")} · ${esc(x.status)}</span>
+    </li>`).join("");
+  const apRows = (TODO_DATA.approvals?.items ?? []).map(x => `
+    <li class="py-1.5 flex items-baseline gap-2 flex-wrap">
+      <span class="text-xs px-1.5 py-0.5 rounded bg-white/15 shrink-0">审批</span>
+      <a href="${esc(x.link)}" target="_blank" class="hover:underline font-medium">${esc(x.title)}</a>
+    </li>`).join("");
+  const warnRows = (TODO_DATA.warnings ?? []).map(w => `<p class="text-xs text-white/60 mt-1">⚠ ${esc(w)}</p>`).join("");
+  document.getElementById("todo-list").innerHTML =
+    `<ul class="divide-y divide-white/10">${taskRows}${finRows}${apRows}</ul>${warnRows}`;
+  bar.classList.remove("hidden");
+}
+function toggleTodoList() {
+  document.getElementById("todo-list")?.classList.toggle("hidden");
+}
+
+// ===== FE-06/07 我的首页：白名单组件渲染引擎（布局来自 GET /api/home；未登录用内置默认布局） =====
+const HOME_WIDGET_DEFS = {
+  "my-apps": { title: "我的应用快捷区" },
+  "my-tasks": { title: "我的任务" },
+  "my-reimburse": { title: "我的报销状态" },
+  "docs": { title: "常用资料" },
+  "goals": { title: "赛季目标" },
+  "inventory": { title: "物资查询" },
+};
+/** 与后端 DEFAULT_HOME_LAYOUT 保持一致（未登录访客与 /api/home 失败时的兜底） */
+const HOME_DEFAULT_WIDGETS = ["my-tasks", "goals", "my-apps", "docs"];
+const HOME_SOURCE_LABEL = { personal: "个人定制", group: "组默认", default: "全员默认" };
+
+document.getElementById("home-prompt").textContent =
+`请按我的要求调整 NEC 中台「我的首页」布局：
+1. 用 lark-cli 拿我的飞书 user_access_token（user 身份）
+2. 调用 NEC-MCP 的 set_home_layout 工具：
+   - action=set，scope=user（绑定我本人；user_token 必填）
+   - widgets 为白名单组件 id 数组，顺序即首页渲染顺序
+   - 白名单组件：my-apps 我的应用快捷区 / my-tasks 我的任务 / my-reimburse 我的报销状态 / docs 常用资料 / goals 赛季目标 / inventory 物资查询
+   - 例如我说「把物资查询放到最上面，加我的未完成任务」→ widgets: ["inventory", "my-tasks", ...其余保留项]
+3. 可先 action=get 查看我当前布局再增量调整；我说「恢复默认」时用 action=reset
+4. 完成后告诉我刷新门户「我的首页」Tab 查看效果`;
+
+function toggleHomePrompt() {
+  document.getElementById("home-prompt-box").classList.toggle("hidden");
+}
+
+async function loadHome() {
+  const box = document.getElementById("home-widgets");
+  if (!box) return;
+  let widgets = HOME_DEFAULT_WIDGETS.map(id => ({ id }));
+  let source = "default", group = "";
+  if (ME.authenticated) {
+    try {
+      const resp = await fetch("/api/home");
+      if (resp.ok) {
+        const d = await resp.json();
+        const list = (d.layout?.widgets ?? []).filter(w => HOME_WIDGET_DEFS[w.id]);
+        if (list.length) widgets = list;
+        source = d.source || "default";
+        group = d.group || "";
+      }
+    } catch { /* 布局读取失败按默认渲染 */ }
+  }
+  const srcEl = document.getElementById("home-source");
+  if (srcEl) srcEl.textContent = `（${HOME_SOURCE_LABEL[source] || source}${source === "group" && group ? " · " + group : ""}）`;
+  document.getElementById("home-reset-btn").classList.toggle("hidden", !ME.authenticated);
+  renderHomeWidgets(box, widgets);
+}
+
+async function resetHome() {
+  if (!confirm("恢复默认首页？你的个人布局将被删除（回落到组默认/全员默认）。")) return;
+  try {
+    const resp = await fetch("/api/home/reset", { method: "POST" });
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    await loadHome();
+  } catch (e) {
+    alert("恢复默认失败：" + (e.message || e));
+  }
+}
+
+function renderHomeWidgets(box, widgets) {
+  // 同一次渲染内共享数据请求，避免多组件重复拉同一接口
+  const shared = {
+    _p: {},
+    load(name) {
+      if (!this._p[name]) this._p[name] = fetch("/api/" + name).then(r => r.ok ? r.json() : null).catch(() => null);
+      return this._p[name];
+    },
+  };
+  box.innerHTML = widgets.map((w, i) => {
+    const def = HOME_WIDGET_DEFS[w.id];
+    return def ? `
+      <div class="bg-white rounded-xl shadow p-5">
+        <h3 class="font-bold mb-3">${esc(w.title || def.title)}</h3>
+        <div id="home-w-${i}" class="text-sm text-gray-400">加载中…</div>
+      </div>` : "";
+  }).join("");
+  widgets.forEach((w, i) => {
+    const slot = document.getElementById(`home-w-${i}`);
+    const fn = HOME_RENDERERS[w.id];
+    if (slot && fn) fn(slot, shared).catch(() => { slot.innerHTML = `<p class="text-sm text-gray-400">加载失败，请刷新重试。</p>`; });
+  });
+}
+
+/** 名字字段按多人分隔符拆分后精确比对（与后端 splitNames 同口径） */
+function nameHits(raw, name) {
+  if (!raw || !name) return false;
+  return String(raw).split(/[、,，;；\/\s]+/).map(s => s.trim()).includes(name);
+}
+
+const HOME_RENDERERS = {
+  "my-apps": async (slot, shared) => {
+    const apps = (await shared.load("apps")) || [];
+    if (!apps.length) { slot.innerHTML = `<p class="text-sm text-gray-400">还没有应用上架，去「应用广场」发布第一个。</p>`; return; }
+    slot.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">` + apps.slice(0, 6).map(a => `
+      <a href="${esc(a.url)}" target="_blank" class="block border border-gray-100 rounded-lg p-3 hover:shadow-md transition">
+        <p class="font-bold text-slate-800 text-sm truncate">${esc(a.title)}</p>
+        <p class="text-xs text-gray-400 mt-0.5">${esc(a.name)} · ${esc(a.author)}</p>
+      </a>`).join("") + `</div>`;
+  },
+  "my-tasks": async (slot, shared) => {
+    const d = await shared.load("dashboard");
+    const all = d?.tasks?.upcoming ?? [];
+    const myName = ME.authenticated ? ME.user?.name : "";
+    const list = myName ? all.filter(t => nameHits(t.owner, myName)) : all;
+    if (!list.length) {
+      slot.innerHTML = `<p class="text-sm text-gray-400">${myName ? "暂无与你相关的未完成任务 🎉" : "登录后只看你的任务"}</p>`;
+      return;
+    }
+    slot.innerHTML = `<ul class="divide-y divide-gray-100">` + list.slice(0, 8).map(t => `
+      <li class="py-1.5 flex items-baseline gap-2 flex-wrap">
+        <span class="flex-1 min-w-0 truncate">${esc(t.title || "—")}</span>
+        <span class="text-xs px-1.5 py-0.5 rounded text-white shrink-0" style="background:${dashStatusColor(t.status)}">${esc(t.status || "未标注")}</span>
+        <span class="text-xs text-gray-400 mono shrink-0">${fmtDashDate(t.deadline)}</span>
+      </li>`).join("") + `</ul>`
+      + (myName ? "" : `<p class="text-xs text-gray-400 mt-2">当前为全队视角，登录后只看你的任务</p>`);
+  },
+  "my-reimburse": async (slot, shared) => {
+    const d = await shared.load("dashboard");
+    const fin = d?.finance;
+    if (!fin || fin.visibility === "hidden") {
+      slot.innerHTML = `<p class="text-sm text-gray-400">登录后可见报销汇总；明细仅队长/财务角色可见。</p>`;
+      return;
+    }
+    const mine = (fin.recent ?? []).filter(f => ME.user?.name && f.applicant === ME.user.name);
+    slot.innerHTML = `
+      <p class="text-sm text-gray-600">全队报销 ${fin.records ?? 0} 笔 · 合计 <b style="color:var(--nec-navy)">¥${fin.totalAmount ?? "—"}</b></p>
+      ${fin.recent
+        ? (mine.length
+          ? `<ul class="divide-y divide-gray-100 mt-2">` + mine.slice(0, 6).map(f => `
+              <li class="py-1.5 flex items-baseline gap-2">
+                <span class="text-xs text-gray-400 mono shrink-0">${fmtDashDate(f.date)}</span>
+                <span class="flex-1 min-w-0 truncate">${esc(f.name)}</span>
+                <span class="text-xs mono shrink-0">¥${f.amount ?? "—"}</span>
+              </li>`).join("") + `</ul>`
+          : `<p class="text-xs text-gray-400 mt-2">最近报销里没有你的记录</p>`)
+        : `<p class="text-xs text-gray-400 mt-2">报销明细仅队长/财务角色可见</p>`}`;
+  },
+  "docs": async (slot, shared) => {
+    const docs = (await shared.load("docs")) || [];
+    if (!docs.length) { slot.innerHTML = `<p class="text-sm text-gray-400">资料页暂无条目。</p>`; return; }
+    slot.innerHTML = `<ul class="divide-y divide-gray-100">` + docs.slice(0, 6).map(d => `
+      <li class="py-1.5">
+        <a href="${esc(d.url)}" target="_blank" class="hover:underline font-medium" style="color:var(--nec-navy)">${esc(d.title)}</a>
+        <p class="text-xs text-gray-400 truncate">${esc(d.description || "")}</p>
+      </li>`).join("") + `</ul>`;
+  },
+  "goals": async (slot, shared) => {
+    const d = await shared.load("dashboard");
+    const g = d?.goals;
+    if (!g || !g.configured) { slot.innerHTML = `<p class="text-sm text-gray-400">赛季目标表未配置。</p>`; return; }
+    const items = (g.items ?? []).slice(0, 5);
+    if (!items.length) { slot.innerHTML = `<p class="text-sm text-gray-400">赛季目标表暂无数据。</p>`; return; }
+    slot.innerHTML = items.map(it => `
+      <a href="${esc(it.link)}" target="_blank" class="block py-1.5 border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-gray-400 mono shrink-0">${fmtDashDate(it.deadline)}</span>
+          <span class="flex-1 min-w-0 truncate">${esc(it.title)}</span>
+          ${it.overdue ? `<span class="text-xs text-red-600 font-bold shrink-0">已逾期</span>` : ""}
+          <span class="text-xs text-gray-500 mono shrink-0">${it.progress === null ? "—" : Math.round(it.progress) + "%"}</span>
+        </div>
+        <div class="h-1.5 rounded bg-gray-100 overflow-hidden mt-1">
+          <div style="width:${(it.progress ?? 0).toFixed(0)}%;height:100%;background:${goalBarColor(it)}"></div>
+        </div>
+      </a>`).join("");
+  },
+  "inventory": async (slot, shared) => {
+    const d = await shared.load("dashboard");
+    const items = d?.inventory?.items ?? [];
+    if (!items.length) { slot.innerHTML = `<p class="text-sm text-gray-400">暂无物资数据。</p>`; return; }
+    const uid = "home-inv-q";
+    slot.innerHTML = `
+      <input id="${uid}" placeholder="🔍 输入关键字筛选物资…" class="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm mb-2"
+             oninput="filterHomeInventory(this.value)">
+      <div id="home-inv-list" class="max-h-64 overflow-y-auto"></div>`;
+    window._homeInvItems = items;
+    filterHomeInventory("");
+  },
+};
+
+function filterHomeInventory(q) {
+  const kw = (q || "").trim().toLowerCase(); // 关键字规范化一次，不在每项上重复 trim/toLowerCase
+  const items = (window._homeInvItems || []).filter(it => !kw || it.name.toLowerCase().includes(kw));
+  const box = document.getElementById("home-inv-list");
+  if (!box) return;
+  box.innerHTML = items.length
+    ? items.slice(0, 30).map(it => `
+      <div class="py-1.5 border-b border-gray-100 last:border-0 flex items-baseline gap-2 text-sm">
+        <span class="flex-1 min-w-0 truncate">${esc(it.name)}</span>
+        <span class="text-xs mono text-gray-500 shrink-0">× ${it.qty ?? "—"}</span>
+        <span class="text-xs text-gray-400 shrink-0">${esc(it.location || "—")}</span>
+      </div>`).join("")
+    : `<p class="text-sm text-gray-400 py-2">没有匹配的物资。</p>`;
+}
+
+
+// 应用广场
+fetch("/api/apps").then(r => r.json()).then(apps => {
   const box = document.getElementById("apps-list");
   if (!apps.length) {
     box.innerHTML = `<div class="col-span-full bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">
@@ -404,252 +1047,160 @@ function loadApps() {
       <p class="text-xs text-gray-400 mt-2">更新于 ${new Date(a.updatedAt).toLocaleString("zh-CN")}</p>
     </a>`).join("");
 });
+
+// Skill 中心：分类 + 检索
+let skillsData = [];
+let skillCat = "all";
+let skillKw = "";
+let skillSort = "updated";
+// 与后端 src/hosting.ts 的 SKILL_CATEGORY_LABELS / 推断规则保持一致（静态页无法 import worker 代码）
+const SKILL_CAT_LABEL = { dev: "开发工具", docs: "文档办公", design: "设计创意", media: "音视频", data: "数据分析", lark: "飞书协同", agent: "Agent 基建", life: "生活效率", other: "其他" };
+const SKILL_CAT_ORDER = ["dev", "docs", "design", "media", "data", "lark", "agent", "life", "other"];
+const SKILL_CAT_RULES = [
+  ["lark", /^lark-|飞书|多维表格|妙记/i],
+  ["media", /video|audio|music|剪辑|视频|音频|音乐|字幕|ffmpeg|whisper|gif|混剪/i],
+  ["design", /design|canvas|poster|brand|海报|视觉|排版|theme|插画/i],
+  ["data", /data|analy|chart|sql|financial|数据|可视化|财报|股票|评分/i],
+  ["docs", /docx|xlsx|excel|word|pdf|markdown|ppt|slide|文档|论文|thesis|paper|写作|手册/i],
+  ["dev", /code|debug|git|review|test|deploy|refactor|代码|调试|commit|cli/i],
+  ["agent", /mcp|skill|agent|persona|memory|claude|kimi|gemini|browser|prompt/i],
+  ["life", /weather|travel|news|mail|todo|日程|天气|新闻|旅行|提醒|邮件/i],
+];
+
+function skillCategoryOf(s) {
+  const c = (s.category || "").toLowerCase();
+  if (SKILL_CAT_LABEL[c]) return c;
+  const text = `${s.name} ${s.description || ""}`;
+  for (const [cat, re] of SKILL_CAT_RULES) if (re.test(text)) return cat;
+  return "other";
 }
 
-// 待办条（A-01）：登录后聚合「待我审批 + 逾期任务」，未登录/空待办隐藏
-function loadTodos() {
-  const bar = document.getElementById("todo-bar");
-  fetch("/api/todos").then(r => {
-    if (r.status === 401) return null;
-    return r.json();
-  }).then(d => {
-    if (!d) { bar.classList.add("hidden"); return; }
-    const LABELS = { reimburse: "报销", drawing: "图纸", hardware: "硬件", compliance: "合规" };
-    const counts = Object.entries(d.by_type ?? {}).map(([t, items]) => ({ t, n: (items ?? []).length }));
-    const total = counts.reduce((s, c) => s + c.n, 0);
-    const overdue = (d.overdue_tasks ?? []).length;
-    if (!total && !overdue) { bar.classList.add("hidden"); return; }
-    document.getElementById("todo-summary").textContent =
-      (total ? "待审批：" + counts.filter(c => c.n).map(c => `${LABELS[c.t] || c.t} ${c.n}`).join(" · ") : "暂无待审批") +
-      (overdue ? ` ｜ 逾期任务 ${overdue}` : "");
-    const rows = [];
-    for (const [t, items] of Object.entries(d.by_type ?? {})) {
-      for (const it of (items ?? [])) {
-        rows.push(`<a href="${esc(it.url)}" target="_blank" class="block py-1 hover:underline" style="color:var(--navy)">
-          <span class="text-[10px] px-1.5 py-0.5 rounded text-white mr-2" style="background:var(--cyan)">${LABELS[t] || esc(t)}</span>${esc(it.title)}</a>`);
-      }
-    }
-    for (const t of (d.overdue_tasks ?? [])) {
-      rows.push(`<div class="py-1 text-gray-500">⏰ 逾期：${esc(t.title)}（负责人：${esc(t.owner || "—")}）</div>`);
-    }
-    document.getElementById("todo-detail").innerHTML = rows.join("");
-    document.getElementById("todo-detail").classList.add("hidden");
-    document.getElementById("todo-more").textContent = "（点击展开）";
-    bar.classList.remove("hidden");
-  }).catch(() => bar.classList.add("hidden"));
+function renderSkillCatBar() {
+  const counts = {};
+  skillsData.forEach(s => { const c = skillCategoryOf(s); counts[c] = (counts[c] || 0) + 1; });
+  document.getElementById("skill-cat-btns").innerHTML =
+    [`<button data-skill-cat="all" class="skill-cat-btn ${skillCat === "all" ? "on" : ""} px-3 py-1 rounded-full">全部 ${skillsData.length}</button>`]
+      .concat(SKILL_CAT_ORDER.filter(c => counts[c]).map(c =>
+        `<button data-skill-cat="${c}" class="skill-cat-btn ${skillCat === c ? "on" : ""} px-3 py-1 rounded-full">${SKILL_CAT_LABEL[c]} ${counts[c]}</button>`))
+      .join("");
 }
 
-function toggleTodos() {
-  const d = document.getElementById("todo-detail");
-  d.classList.toggle("hidden");
-  document.getElementById("todo-more").textContent = d.classList.contains("hidden") ? "（点击展开）" : "（点击收起）";
-}
-
-function hideTodos() {
-  document.getElementById("todo-bar").classList.add("hidden");
-}
-
-// 报销（R-01 v1）：登录态表单 + 我的报销列表
-function loadReimburse() {
-  const tip = document.getElementById("reimburse-login-tip");
-  const body = document.getElementById("reimburse-body");
-  if (!ME.authenticated || !ME.user) {
-    tip.classList.remove("hidden");
-    body.classList.add("hidden");
-    return;
-  }
-  tip.classList.add("hidden");
-  body.classList.remove("hidden");
-  renderMyReimburseList();
-}
-
-function renderMyReimburseList() {
-  const box = document.getElementById("rb-list");
-  box.innerHTML = "加载中…";
-  fetch("/api/approvals/mine?type=reimburse").then(r => {
-    if (r.status === 401) return { __unauthorized: true };
-    return r.json();
-  }).then(d => {
-    if (d.__unauthorized) { box.innerHTML = `<p class="text-gray-400">登录后可见。</p>`; return; }
-    if (d.hint && !(d.records ?? []).length) { box.innerHTML = `<p class="text-gray-400">${esc(d.hint)}</p>`; return; }
-    const rows = d.records ?? [];
-    if (!rows.length) { box.innerHTML = `<p class="text-gray-400">暂无记录</p>`; return; }
-    box.innerHTML = `
-      <table class="w-full">
-        <thead><tr class="text-left text-xs text-gray-400">
-          <th class="pb-2 font-medium">单号</th><th class="pb-2 font-medium">事项</th>
-          <th class="pb-2 font-medium">金额</th><th class="pb-2 font-medium">状态</th><th class="pb-2 font-medium">提交时间</th>
-        </tr></thead>
-        <tbody>${rows.map(r => {
-          const f = r.fields ?? {};
-          const badge = `<span class="px-2 py-0.5 rounded text-xs text-white" style="background:${dashStatusColor(r.status)}">${esc(r.status || "—")}</span>`;
-          const note = r.status === "审批中" ? `<span class="text-xs text-gray-400 ml-1">通过后可在群里收到通知</span>` : "";
-          return `<tr class="border-t border-gray-100">
-            <td class="py-2 pr-3 mono text-xs whitespace-nowrap">${esc(f.申请单号 || r.application_id || "—")}</td>
-            <td class="py-2 pr-3">${esc(f.事项 || "—")}</td>
-            <td class="py-2 pr-3 mono whitespace-nowrap">${f.金额 != null ? "¥" + esc(String(f.金额)) : "—"}</td>
-            <td class="py-2 pr-3 whitespace-nowrap">${badge}${note}</td>
-            <td class="py-2 text-gray-400 text-xs whitespace-nowrap">${f.提交时间 ? new Date(f.提交时间).toLocaleDateString("zh-CN") : "—"}</td>
-          </tr>`;
-        }).join("")}</tbody>
-      </table>`;
-  }).catch(() => { box.innerHTML = `<p class="text-red-500">加载失败，请稍后重试。</p>`; });
-}
-
-async function submitReimburse() {
-  const msg = document.getElementById("rb-msg");
-  const item = document.getElementById("rb-item").value.trim();
-  const amount = parseFloat(document.getElementById("rb-amount").value);
-  const invoice = document.getElementById("rb-invoice").value.trim();
-  const invoiceImg = document.getElementById("rb-invoice-img").value.trim();
-  const noInvoice = document.getElementById("rb-no-invoice").value.trim();
-  const problems = [];
-  if (!item) problems.push("事项");
-  if (!isFinite(amount) || amount <= 0) problems.push("金额（须大于 0）");
-  if (!/^\d{8}(\d{12})?$/.test(invoice)) problems.push("发票号（8 位或 20 位数字）");
-  if (!invoiceImg && !noInvoice) problems.push("无票说明（发票照片为空时必填）");
-  if (problems.length) {
-    msg.textContent = "缺项：" + problems.join("、");
-    msg.className = "text-sm text-red-500";
-    return;
-  }
-  msg.textContent = "提交中…";
-  msg.className = "text-sm text-gray-400";
-  try {
-    const resp = await fetch("/api/approvals", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        type: "reimburse",
-        fields: {
-          事项: item,
-          金额: amount,
-          发票号: invoice,
-          ...(invoiceImg ? { 发票照片: invoiceImg } : {}),
-          ...(noInvoice ? { 无票说明: noInvoice } : {}),
-        },
-      }),
-    });
-    const data = await resp.json();
-    if (!resp.ok || data.error) throw new Error(data.error || ("HTTP " + resp.status));
-    msg.textContent = `✅ 已提交：${data.application_id}（${data.status}），群里已通知审批人`;
-    msg.className = "text-sm text-green-600";
-    for (const id of ["rb-item", "rb-amount", "rb-invoice", "rb-invoice-img", "rb-no-invoice"]) {
-      document.getElementById(id).value = "";
-    }
-    renderMyReimburseList();
-  } catch (e) {
-    msg.textContent = "提交失败：" + (e.message || e);
-    msg.className = "text-sm text-red-500";
-  }
-}
-
-// Skill 中心
-fetch("/api/skills").then(r => r.json()).then(skills => {
-  const box = document.getElementById("skills-list");
-  if (!skills.length) {
-    box.innerHTML = `<div class="bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">还没有 Skill 上架。</div>`;
-    return;
-  }
-  box.innerHTML = skills.map(s => `
+function skillCard(s) {
+  const cat = skillCategoryOf(s);
+  const tags = (s.tags || []).slice(0, 5).map(t =>
+    `<span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">#${esc(t)}</span>`).join(" ");
+  return `
     <div class="bg-white rounded-xl shadow p-5 flex items-center gap-4">
-      <div class="flex-1">
-        <h3 class="font-bold">${esc(s.name)}</h3>
-        <p class="text-sm text-gray-500">${esc(s.description || "")}</p>
-        <p class="text-xs text-gray-400 mt-1">更新于 ${new Date(s.updatedAt).toLocaleString("zh-CN")}</p>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="font-bold">${esc(s.name)}</h3>
+          <span class="text-[10px] px-1.5 py-0.5 rounded" style="background:var(--nec-paper);color:var(--nec-gray);border:1px solid var(--nec-line)">${SKILL_CAT_LABEL[cat]}</span>
+          ${s.source === "gitee" ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-500">Gitee</span>' : ""}
+          ${s.source === "hub" ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-500">中台自托管</span>' : ""}
+        </div>
+        <p class="text-sm text-gray-500 mt-1">${esc(s.description || "")}</p>
+        ${tags ? `<div class="flex gap-1 mt-1.5 flex-wrap">${tags}</div>` : ""}
+        <p class="text-xs text-gray-400 mt-1.5">更新于 ${new Date(s.updatedAt).toLocaleString("zh-CN")}</p>
       </div>
       <a href="${s.url || (ORIGIN + '/skills/' + encodeURIComponent(s.name) + '/SKILL.md')}" target="_blank"
-         class="text-sm hover:underline whitespace-nowrap" style="color:var(--cyan)">查看 SKILL.md${s.source === 'gitee' ? ' ⤤' : ''}</a>
-    </div>`).join("");
-});
+         class="text-sm hover:underline whitespace-nowrap" style="color:var(--nec-cyan)">查看 SKILL.md${s.source === 'gitee' ? ' ⤤' : ''}</a>
+    </div>`;
+}
 
-// 资料页（FE-03）：按四大分类分组渲染
-const DOC_CATEGORIES = ["品牌规范", "文档模板", "制度SOP", "培训材料"];
-fetch("/api/docs").then(r => r.json()).then(docs => {
-  const box = document.getElementById("docs-list");
-  if (!docs.length) {
-    box.innerHTML = `<div class="bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">
-      资料页还没有内容。<br/>点右上角「提交资料」，把上架 Prompt 发给你已接入中台 MCP 的 Agent。</div>`;
+function renderSkills() {
+  const box = document.getElementById("skills-list");
+  let list = skillsData.filter(s =>
+    (skillCat === "all" || skillCategoryOf(s) === skillCat) &&
+    (!skillKw || s.name.toLowerCase().includes(skillKw) ||
+      (s.description || "").toLowerCase().includes(skillKw) ||
+      (s.tags || []).some(t => t.toLowerCase().includes(skillKw))));
+  list = [...list].sort(skillSort === "name"
+    ? (a, b) => a.name.localeCompare(b.name)
+    : (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  document.getElementById("skills-count").textContent = skillsData.length ? `共 ${list.length} / ${skillsData.length} 个` : "";
+  if (!list.length) {
+    box.innerHTML = `<div class="bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">${skillsData.length ? "没有匹配的 Skill，换个关键字或分类试试。" : "还没有 Skill 上架。"}</div>`;
     return;
   }
-  box.innerHTML = DOC_CATEGORIES.map(cat => {
-    const items = docs.filter(d => d.category === cat);
-    if (!items.length) return "";
-    return `
+  // 全部 + 无搜索词时按分类分组展示；筛选状态下用平铺结果列表
+  if (skillCat === "all" && !skillKw) {
+    const groups = SKILL_CAT_ORDER.map(cat => ({ cat, items: list.filter(s => skillCategoryOf(s) === cat) })).filter(g => g.items.length);
+    box.innerHTML = groups.map(g => `
       <div>
-        <h3 class="font-bold text-sm mb-2" style="color:var(--navy)">${esc(cat)} <span class="text-gray-400 font-normal">(${items.length})</span></h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          ${items.map(d => `
-            <a href="${esc(d.url)}" target="_blank" class="block bg-white rounded-xl shadow hover:shadow-md transition p-4">
-              <div class="flex items-center justify-between gap-2">
-                <h4 class="font-bold text-sm">${esc(d.title)}</h4>
-                <span class="text-[10px] px-1.5 py-0.5 rounded border border-gray-200 text-gray-400 whitespace-nowrap">${esc(d.visibility === "all" ? "全员" : d.visibility)}</span>
-              </div>
-              <p class="text-xs text-gray-400 mt-2">维护：${esc(d.maintainer)} · 更新于 ${new Date(d.updatedAt).toLocaleDateString("zh-CN")}</p>
-            </a>`).join("")}
-        </div>
-      </div>`;
-  }).join("") || `<div class="bg-white rounded-xl shadow p-8 text-center text-gray-400 text-sm">资料页还没有内容。</div>`;
-}).catch(() => {
-  document.getElementById("docs-list").innerHTML =
-    `<div class="bg-white rounded-xl shadow p-8 text-center text-red-500 text-sm">资料页加载失败，请稍后重试。</div>`;
+        <h3 class="text-sm font-bold text-slate-700 mb-3">${SKILL_CAT_LABEL[g.cat]}<span class="text-xs font-normal text-gray-400 ml-2">${g.items.length}</span></h3>
+        <div class="space-y-3">${g.items.map(skillCard).join("")}</div>
+      </div>`).join("");
+    return;
+  }
+  box.innerHTML = list.map(skillCard).join("");
+}
+
+document.getElementById("skill-q").addEventListener("input", e => {
+  skillKw = e.target.value.trim().toLowerCase();
+  renderSkills();
+});
+document.getElementById("skill-sort").addEventListener("change", e => {
+  skillSort = e.target.value;
+  renderSkills();
+});
+document.getElementById("skill-cat-btns").addEventListener("click", e => {
+  const b = e.target.closest(".skill-cat-btn");
+  if (!b) return;
+  skillCat = b.dataset.skillCat;
+  renderSkillCatBar();
+  renderSkills();
 });
 
-// PRD 看板（动态）：里程碑三列卡片 + 总进度 + 最近提交
-const PRD_STATUS_META = {
-  done:     { label: "已完成", color: "#16A34A", bg: "#ECFDF5" },
-  partial:  { label: "进行中", color: "#1FA9E8", bg: "#EFF8FF" },
-  pending:  { label: "待验收", color: "#D97706", bg: "#FFFBEB" },
-  todo:     { label: "未开始", color: "#9CA3AF", bg: "#F9FAFB" },
-};
-function renderPrd(board) {
-  const status = document.getElementById("prd-status");
-  const total = board.progress?.total ?? 0;
-  const done = board.progress?.done ?? 0;
-  const pct = total ? Math.round(done / total * 100) : 0;
-  status.textContent = `更新于 ${new Date(board.updatedAt).toLocaleString("zh-CN")}`;
-  document.getElementById("prd-progress").innerHTML = `
-    <div class="bg-white rounded-xl shadow p-5">
-      <div class="flex items-center justify-between mb-2">
-        <span class="text-sm font-bold">总进度</span>
-        <span class="text-sm font-black" style="color:var(--navy)">${done} / ${total}（${pct}%）</span>
-      </div>
-      <div class="h-3 rounded overflow-hidden bg-gray-100">
-        <div class="h-3 rounded" style="width:${pct}%;background:linear-gradient(90deg,var(--cyan),var(--cyan-lt))"></div>
-      </div>
-    </div>`;
-  document.getElementById("prd-last-commit").innerHTML = board.lastCommit ? `
-    <div class="bg-white rounded-xl shadow p-4 flex items-center gap-3 text-sm">
-      <span class="px-2 py-0.5 rounded text-xs text-white" style="background:var(--navy)">最近提交</span>
-      <a href="${esc(board.lastCommit.url)}" target="_blank" class="hover:underline truncate" style="color:var(--cyan)">${esc(board.lastCommit.message)}</a>
-      <span class="text-xs text-gray-400 whitespace-nowrap">${esc(board.lastCommit.branch)} · ${esc(board.lastCommit.author)} · ${new Date(board.lastCommit.at).toLocaleString("zh-CN")}</span>
-    </div>` : "";
-  document.getElementById("prd-board").innerHTML = (board.milestones ?? []).map((m) => `
-    <div class="bg-white rounded-xl shadow p-5">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="font-bold">${esc(m.id)} · ${esc(m.title)}</h3>
-        <span class="text-xs text-gray-400">${m.done}/${m.total}</span>
-      </div>
-      <div class="h-1.5 rounded bg-gray-100 mb-4"><div class="h-1.5 rounded" style="width:${m.total ? m.done / m.total * 100 : 0}%;background:var(--cyan)"></div></div>
-      <div class="space-y-2">
-        ${m.cards.map((c) => {
-          const meta = PRD_STATUS_META[c.status] ?? PRD_STATUS_META.todo;
-          return `
-          <div class="rounded-lg p-3 border border-gray-100" style="background:${meta.bg}">
-            <div class="flex items-center justify-between gap-2">
-              <span class="font-bold text-sm" style="color:var(--navy)">${esc(c.id)}</span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded text-white" style="background:${meta.color}">${meta.label}</span>
+fetch("/api/skills").then(r => r.json()).then(skills => {
+  skillsData = skills || [];
+  renderSkillCatBar();
+  renderSkills();
+});
+
+// 资料页
+let docsData = [];
+let docsCat = "all";
+const DOC_CAT_LABEL = { brand: "品牌规范", template: "文档模板", sop: "制度 SOP", training: "培训材料" };
+const DOC_CAT_ORDER = ["brand", "template", "sop", "training"];
+
+function showDocPublishPrompt() {
+  document.getElementById("doc-publish-box").classList.toggle("hidden");
+}
+
+function renderDocs() {
+  const box = document.getElementById("docs-list");
+  const list = docsData.filter(d => docsCat === "all" || d.category === docsCat);
+  if (!list.length) {
+    box.innerHTML = `<p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center">当前分类暂无资料。</p>`;
+    return;
+  }
+  const groups = DOC_CAT_ORDER.map(cat => ({ cat, items: list.filter(d => d.category === cat) })).filter(g => g.items.length);
+  box.innerHTML = groups.map(g => `
+    <div>
+      <h3 class="text-sm font-bold text-slate-700 mb-3">${DOC_CAT_LABEL[g.cat]}</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        ${g.items.map(d => `
+          <a href="${d.url}" target="_blank" class="block bg-white rounded-xl shadow hover:shadow-md transition p-5">
+            <div class="flex items-center justify-between">
+              <h4 class="font-bold">${esc(d.title)}</h4>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">${d.category}</span>
             </div>
-            <p class="text-xs mt-1" style="color:var(--ink)">${esc(c.title)}</p>
-            <p class="text-[10px] text-gray-400 mt-0.5">${esc(c.priority)}${c.note ? " · " + esc(c.note) : ""}</p>
-          </div>`;
-        }).join("")}
+            <p class="text-sm text-gray-500 mt-1 line-clamp-2">${esc(d.description || "")}</p>
+            <p class="text-xs text-gray-400 mt-3">维护：${esc(d.maintainer || "—")} · ${new Date(d.updatedAt).toLocaleString("zh-CN")}</p>
+          </a>`).join("")}
       </div>
     </div>`).join("");
 }
-fetch("/api/prd").then(r => r.json()).then(renderPrd).catch(() => {
-  document.getElementById("prd-board").innerHTML =
-    `<div class="bg-white rounded-xl shadow p-6 text-sm text-red-500">PRD 看板加载失败，请稍后重试。</div>`;
+
+document.querySelectorAll(".doc-cat-btn").forEach(b => b.addEventListener("click", () => {
+  docsCat = b.dataset.docCat;
+  document.querySelectorAll(".doc-cat-btn").forEach(x => x.classList.toggle("on", x === b));
+  renderDocs();
+}));
+
+fetch("/api/docs").then(r => r.json()).then(docs => {
+  docsData = docs || [];
+  renderDocs();
 });
 
 // NEC 开源仓库（GitHub org + Gitee 账号合并，点击表头按 Star/Fork/Commit 等排序）
@@ -681,10 +1232,8 @@ fetch("/api/repos").then(r => r.json()).then(d => {
     return;
   }
   const time = d.cachedAt ? new Date(d.cachedAt).toLocaleString("zh-CN") : "";
-  const missing = d.errors ? [d.errors.github ? "GitHub" : "", d.errors.gitee ? "Gitee" : ""].filter(Boolean).join("/") : "";
   document.getElementById("repos-meta").textContent =
-    `共 ${reposData.length} 个开源仓库（GitHub ${d.github || ""} + Gitee ${d.gitee || ""}） · 数据更新于 ${time}` +
-    `${d.stale ? "（上游暂不可用，展示缓存快照）" : ""}${missing ? `（${missing} 源暂时缺数据，每小时自动重试）` : ""}`;
+    `共 ${reposData.length} 个开源仓库（GitHub ${d.github || ""} + Gitee ${d.gitee || ""}） · 数据更新于 ${time}${d.stale ? "（上游暂不可用，展示缓存快照）" : ""}`;
   renderRepos();
 }).catch(() => {
   document.getElementById("repos-box").innerHTML =
@@ -706,10 +1255,11 @@ function renderRepos() {
     return;
   }
   const val = r => key === "name" ? r.name : key === "host" ? r.host : key === "pushedAt" ? (Date.parse(r.pushedAt) || 0) : (r[key] || 0);
-  const rows = [...data].sort((a, b) => {
-    const va = val(a), vb = val(b);
-    return (typeof va === "string" ? va.localeCompare(vb) : va - vb) * dir;
-  });
+  // 先取排序键再排序（装饰-排序-去装饰）：避免比较器里 O(n log n) 次重复取值/Date.parse
+  const rows = data
+    .map(r => ({ v: val(r), r }))
+    .sort((a, b) => (typeof a.v === "string" ? a.v.localeCompare(b.v) : a.v - b.v) * dir)
+    .map(x => x.r);
   const arrow = k => reposSort.key === k ? (reposSort.dir > 0 ? " ↑" : " ↓") : "";
   const hostBadge = h => h === "gitee"
     ? ' <span class="text-[10px] text-red-500 border border-red-200 rounded px-1 ml-1">Gitee</span>'
@@ -726,7 +1276,7 @@ function renderRepos() {
           ${rows.map(r => `
             <tr class="border-b last:border-0 hover:bg-gray-50">
               <td class="px-4 py-3">
-                <a href="${r.url}" target="_blank" class="font-bold hover:underline" style="color:var(--navy)">${esc(r.name)}</a>${hostBadge(r.host)}${r.isFork ? ' <span class="text-[10px] text-gray-400 border border-gray-200 rounded px-1">fork</span>' : ""}
+                <a href="${r.url}" target="_blank" class="font-bold hover:underline" style="color:var(--nec-navy)">${esc(r.name)}</a>${hostBadge(r.host)}${r.isFork ? ' <span class="text-[10px] text-gray-400 border border-gray-200 rounded px-1">fork</span>' : ""}
                 <p class="text-xs text-gray-400 mt-0.5">${esc(r.description || "")}</p>
               </td>
               <td class="px-4 py-3 whitespace-nowrap text-gray-500">${r.host === "gitee" ? "Gitee" : "GitHub"}</td>
@@ -741,22 +1291,698 @@ function renderRepos() {
     </div>`;
 }
 
+// 转义表与正则提升为常量：esc 在每次列表渲染中被逐项调用，避免每次调用重建正则与映射对象
+const ESC_RE = /[&<>"']/g;
+const ESC_MAP = {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
 function esc(s) {
-  return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  return String(s ?? "").replace(ESC_RE, c => ESC_MAP[c]);
+}
+
+// ---------- 图纸评审（原生集成，登录后可见） ----------
+const DR_STATUS = {
+  draft: { label: "待提交", cls: "bg-gray-100 text-gray-600" },
+  pending_review: { label: "待评审", cls: "bg-blue-50 text-blue-700" },
+  in_review: { label: "评审中", cls: "bg-amber-50 text-amber-700" },
+  rectifying: { label: "待整改", cls: "bg-orange-50 text-orange-700" },
+  bom_generating: { label: "BOM生成中", cls: "bg-purple-50 text-purple-700" },
+  assessing: { label: "评估中", cls: "bg-indigo-50 text-indigo-700" },
+  scheduling: { label: "排期中", cls: "bg-pink-50 text-pink-700" },
+  procuring: { label: "采购中", cls: "bg-teal-50 text-teal-700" },
+  archived: { label: "已归档", cls: "bg-green-50 text-green-700" },
+};
+let DR_FILTER = "";
+let DR_DATA = {};
+let DR_MODE = "board";
+
+/** 看板 / 列表 切换（共用同一份数据与状态筛选） */
+function setDrMode(mode) {
+  DR_MODE = mode;
+  document.getElementById("dr-board").classList.toggle("hidden", mode !== "board");
+  document.getElementById("dr-list").classList.toggle("hidden", mode !== "list");
+  for (const m of ["board", "list"]) {
+    const btn = document.getElementById(`dr-mode-${m}`);
+    const on = m === mode;
+    btn.classList.toggle("text-white", on);
+    btn.classList.toggle("text-gray-600", !on);
+    btn.style.background = on ? "var(--nec-navy)" : "";
+  }
+}
+
+/** 看板卡片点击 → 切到列表并展开该评审单详情 */
+function drOpen(reviewId) {
+  setDrMode("list");
+  const box = document.getElementById(`dr-detail-${reviewId}`);
+  if (box && box.classList.contains("hidden")) toggleDrDetail(reviewId);
+  const card = box && box.closest(".bg-white");
+  if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+/** 登录门控：显示/隐藏「图纸评审」Tab 并加载数据 */
+function updateDrawingReviewGate() {
+  const btn = document.getElementById("tab-btn-drawing-review");
+  const section = document.getElementById("tab-drawing-review");
+  const authed = ME.authenticated && ME.user;
+  btn.classList.toggle("hidden", !authed);
+  if (authed) {
+    const dn = document.getElementById("dr-designer-name");
+    if (dn) dn.value = `${ME.user.name}（${ME.user.open_id}）`;
+    setDrMode(DR_MODE);
+    loadDrawingReviews();
+  } else {
+    if (!section.classList.contains("hidden")) {
+      document.querySelector('[data-tab="apps"]').click();
+    }
+    setDrMode("list");
+    document.getElementById("dr-list").innerHTML =
+      `<p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center">登录后可使用图纸评审流程</p>`;
+    document.getElementById("dr-board").innerHTML = "";
+    document.getElementById("dr-stats").innerHTML = "";
+    const fb = document.getElementById("dr-flow-board");
+    if (fb) fb.innerHTML = "";
+    document.getElementById("dr-form-box").classList.add("hidden");
+  }
+}
+
+function toggleDrForm() {
+  document.getElementById("dr-form-box").classList.toggle("hidden");
+}
+
+// 联想功能相关变量
+let suggestionTimeout;
+let currentSuggestions = {
+  project: [],
+  machine: []
+};
+
+// 加载表单默认值
+async function loadFormDefaults() {
+  try {
+    const data = await apiDr("/start");
+    if (data.ok && data.defaults) {
+      const f = document.getElementById("dr-form");
+      if (data.defaults.projectId) f.projectId.value = data.defaults.projectId;
+      if (data.defaults.machineName) f.machineName.value = data.defaults.machineName;
+      if (data.defaults.drawingVersion) f.drawingVersion.value = data.defaults.drawingVersion;
+      if (data.defaults.designNotes) f.designNotes.value = data.defaults.designNotes;
+      
+      // 显示提示
+      const resultEl = document.getElementById("dr-form-result");
+      resultEl.className = "mt-2 text-sm text-blue-600";
+      resultEl.textContent = "✅ 已加载智能默认值";
+      setTimeout(() => { resultEl.textContent = ""; }, 3000);
+    }
+  } catch (err) {
+    console.error("加载默认值失败:", err);
+  }
+}
+
+// 项目编号输入处理
+function handleProjectInput(input) {
+  clearTimeout(suggestionTimeout);
+  const query = input.value.trim();
+  
+  if (query.length < 2) {
+    hideProjectSuggestions();
+    return;
+  }
+  
+  suggestionTimeout = setTimeout(() => {
+    fetchSuggestions(query, 'project', input);
+  }, 300);
+}
+
+// 机型名称输入处理
+function handleMachineInput(input) {
+  clearTimeout(suggestionTimeout);
+  const query = input.value.trim();
+  
+  if (query.length < 2) {
+    hideMachineSuggestions();
+    return;
+  }
+  
+  suggestionTimeout = setTimeout(() => {
+    fetchSuggestions(query, 'machine', input);
+  }, 300);
+}
+
+// 获取联想建议
+async function fetchSuggestions(query, type, input) {
+  try {
+    const projectId = type === 'machine' ? document.getElementById('dr-form').projectId.value : undefined;
+    const url = `/api/drawing-review/suggestions?q=${encodeURIComponent(query)}&type=${type}${projectId ? '&projectId=' + encodeURIComponent(projectId) : ''}`;
+    
+    const data = await apiDr(url);
+    if (data.ok && data.suggestions) {
+      currentSuggestions[type] = data.suggestions;
+      showSuggestions(type, input, data.suggestions);
+    }
+  } catch (err) {
+    console.error("获取联想建议失败:", err);
+  }
+}
+
+// 显示项目建议
+function showProjectSuggestions(input) {
+  const query = input.value.trim();
+  if (query.length >= 2) {
+    fetchSuggestions(query, 'project', input);
+  }
+}
+
+// 显示机型建议
+function showMachineSuggestions(input) {
+  const query = input.value.trim();
+  if (query.length >= 2) {
+    fetchSuggestions(query, 'machine', input);
+  }
+}
+
+// 显示联想建议
+function showSuggestions(type, input, suggestions) {
+  const container = document.getElementById(`${type}-suggestions`);
+  if (!container) return;
+  
+  if (suggestions.length === 0) {
+    container.classList.add('hidden');
+    return;
+  }
+  
+  container.innerHTML = suggestions.map(s => `
+    <div class="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+         onclick="selectSuggestion('${type}', '${s.value}')">
+      <div class="text-sm font-medium text-gray-800">${s.label}</div>
+      ${s.count ? `<div class="text-xs text-gray-500">使用 ${s.count} 次</div>` : ''}
+    </div>
+  `).join('');
+  
+  container.classList.remove('hidden');
+}
+
+// 选择联想建议
+function selectSuggestion(type, value) {
+  const form = document.getElementById('dr-form');
+  if (type === 'project') {
+    form.projectId.value = value;
+    hideProjectSuggestions();
+    // 项目选择后自动触发机型联想
+    setTimeout(() => {
+      const machineInput = form.machineName;
+      if (machineInput.value.length >= 2) {
+        fetchSuggestions(machineInput.value, 'machine', machineInput);
+      }
+    }, 100);
+  } else if (type === 'machine') {
+    form.machineName.value = value;
+    hideMachineSuggestions();
+  }
+}
+
+// 隐藏项目建议
+function hideProjectSuggestions() {
+  const container = document.getElementById('project-suggestions');
+  if (container) container.classList.add('hidden');
+}
+
+// 隐藏机型建议
+function hideMachineSuggestions() {
+  const container = document.getElementById('machine-suggestions');
+  if (container) container.classList.add('hidden');
+}
+
+// 点击外部隐藏联想
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#project-suggestions') && !e.target.closest('input[name="projectId"]')) {
+    hideProjectSuggestions();
+  }
+  if (!e.target.closest('#machine-suggestions') && !e.target.closest('input[name="machineName"]')) {
+    hideMachineSuggestions();
+  }
+});
+
+async function apiDr(path, options = {}) {
+  const res = await fetch("/api/drawing-review" + path, options);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+async function submitDr(e) {
+  e.preventDefault();
+  const f = e.target;
+  const resultEl = document.getElementById("dr-form-result");
+  const btn = document.getElementById("dr-submit-btn");
+  if (btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = "提交中…";
+  try {
+    const data = await apiDr("/submit", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        projectId: f.projectId.value.trim(),
+        machineName: f.machineName.value.trim(),
+        drawingVersion: f.drawingVersion.value.trim(),
+        designerId: ME.user.open_id,
+        drawingFiles: [],
+        designNotes: f.designNotes.value.trim(),
+      }),
+    });
+    resultEl.className = "mt-2 text-sm text-green-600";
+    resultEl.textContent = `提交成功：${data.reviewId}，请在列表中点击「预约会议」`;
+    f.reset();
+    document.getElementById("dr-designer-name").value = `${ME.user.name}（${ME.user.open_id}）`;
+    setTimeout(() => { document.getElementById("dr-form-box").classList.add("hidden"); resultEl.textContent = ""; }, 1500);
+    loadDrawingReviews();
+  } catch (err) {
+    resultEl.className = "mt-2 text-sm text-red-600";
+    resultEl.textContent = "提交失败：" + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "提交评审单";
+  }
+}
+
+async function loadDrawingReviews() {
+  const statsEl = document.getElementById("dr-stats");
+  try {
+    const data = await apiDr("");
+    const counts = {};
+    data.forEach(r => { counts[r.status] = (counts[r.status] || 0) + 1; });
+    const chips = Object.entries(DR_STATUS)
+      .filter(([k]) => counts[k])
+      .map(([k, v]) => {
+        const on = DR_FILTER === k;
+        return `<button onclick="filterDr('${k}')" class="text-xs px-3 py-1.5 rounded-full border ${on ? "text-white border-transparent" : "border-gray-200 text-gray-600"}" ${on ? 'style="background:var(--nec-navy)"' : ""}>${v.label} · ${counts[k]}</button>`;
+      });
+    const allOn = !DR_FILTER;
+    chips.push(`<button onclick="filterDr('')" class="text-xs px-3 py-1.5 rounded-full border ${allOn ? "text-white border-transparent" : "border-gray-200 text-gray-600"}" ${allOn ? 'style="background:var(--nec-navy)"' : ""}>全部 · ${data.length}</button>`);
+    statsEl.innerHTML = chips.join("");
+    DR_DATA = Object.fromEntries(data.map(r => [r.reviewId, r]));
+
+    const shown = DR_FILTER ? data.filter(r => r.status === DR_FILTER) : data;
+    renderDrList(shown);
+    renderDrBoard(data, counts);
+    loadDrFlowBoard();
+  } catch (err) {
+    const msg = `<p class="text-sm text-red-500 bg-white rounded-xl shadow p-8 text-center">加载失败：${esc(err.message)}</p>`;
+    document.getElementById("dr-list").innerHTML = msg;
+    document.getElementById("dr-board").innerHTML = `<p class="text-sm text-red-500 bg-white rounded-xl shadow p-8 text-center sm:col-span-2 lg:col-span-3">加载失败：${esc(err.message)}</p>`;
+  }
+}
+
+/** 看板：按状态分列，列内为评审单卡片（点击切列表展开详情） */
+function renderDrBoard(data, counts) {
+  const boardEl = document.getElementById("dr-board");
+  const cols = Object.entries(DR_STATUS)
+    .filter(([k]) => counts[k] && (!DR_FILTER || DR_FILTER === k));
+  if (!cols.length) {
+    boardEl.innerHTML = `<p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center sm:col-span-2 lg:col-span-3">暂无评审单，点击右上角「＋ 提交评审单」开始</p>`;
+    return;
+  }
+  // 单次遍历分组，替代每列一次 data.filter 的 O(列数×行数) 重复扫描
+  const groups = {};
+  for (const r of data) (groups[r.status] ||= []).push(r);
+  boardEl.innerHTML = cols.map(([k, v]) => {
+    const items = groups[k];
+    return `
+      <div class="bg-gray-100/70 rounded-xl p-3">
+        <div class="flex items-center justify-between mb-2 px-1">
+          <span class="text-xs font-bold text-slate-700">${v.label}</span>
+          <span class="text-xs text-gray-400">${items.length}</span>
+        </div>
+        <div class="space-y-2">
+          ${items.map(r => `
+            <div class="bg-white rounded-lg shadow-sm p-3 cursor-pointer hover:shadow-md transition" onclick="drOpen('${r.reviewId}')">
+              <p class="text-sm font-bold text-slate-800 truncate">${esc(r.machineName)}</p>
+              <p class="text-xs text-gray-400 mt-0.5">${esc(r.reviewId)} · ${esc(r.drawingVersion)}</p>
+              <p class="text-xs text-gray-500 mt-1 line-clamp-2">${esc(r.designNotes)}</p>
+            </div>`).join("")}
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function renderDrList(shown) {
+  const listEl = document.getElementById("dr-list");
+  if (!shown.length) {
+    listEl.innerHTML = `<p class="text-sm text-gray-400 bg-white rounded-xl shadow p-8 text-center">暂无评审单，点击右上角「＋ 提交评审单」开始</p>`;
+    return;
+  }
+  listEl.innerHTML = shown.map(r => `
+      <div class="bg-white rounded-xl shadow p-4">
+        <div class="flex items-start justify-between gap-3 cursor-pointer" onclick="toggleDrDetail('${r.reviewId}')">
+          <div>
+            <p class="font-bold text-slate-800">${esc(r.machineName)} <span class="text-xs font-normal text-gray-400">${esc(r.reviewId)}</span></p>
+            <p class="text-xs text-gray-500 mt-0.5">项目 ${esc(r.projectId)} · 版本 ${esc(r.drawingVersion)} · 设计 ${esc(r.designerId)}</p>
+          </div>
+          <span class="text-xs px-2 py-1 rounded-full whitespace-nowrap ${DR_STATUS[r.status]?.cls || "bg-gray-100 text-gray-600"}">${DR_STATUS[r.status]?.label || r.status}</span>
+        </div>
+        <p class="text-sm text-gray-600 mt-2 line-clamp-2">${esc(r.designNotes)}</p>
+        <div id="dr-detail-${r.reviewId}" class="hidden mt-3 pt-3 border-t border-gray-100 space-y-2 text-sm"></div>
+      </div>
+    `).join("");
+}
+
+function filterDr(status) { DR_FILTER = status; loadDrawingReviews(); }
+
+async function toggleDrDetail(reviewId) {
+  const box = document.getElementById(`dr-detail-${reviewId}`);
+  if (!box.classList.contains("hidden")) { box.classList.add("hidden"); return; }
+  const r = DR_DATA[reviewId];
+  if (!r) return;
+  const actions = [];
+  if (r.status === "pending_review") actions.push(`<button onclick="drMeeting('${reviewId}')" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:var(--nec-cyan)">预约会议</button>`);
+  if (r.status === "in_review") actions.push(`<button onclick="drConclude('${reviewId}')" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:var(--nec-navy)">提交评审结论</button>`);
+  if (r.status === "rectifying") actions.push(`<button onclick="drRectify('${reviewId}')" class="text-xs px-3 py-1.5 rounded-lg text-white bg-orange-500">整改完成</button>`);
+  if (r.status === "bom_generating") actions.push(`<button onclick="drBom('${reviewId}')" class="text-xs px-3 py-1.5 rounded-lg text-white bg-purple-600">生成 BOM</button>`);
+  box.innerHTML = `
+    ${r.meetingId ? `<p>会议：<a href="${esc(r.meetingLink || "#")}" target="_blank" class="underline" style="color:var(--nec-cyan)">${esc(r.meetingId)}</a>${r.meetingStartTime ? " · " + esc(new Date(r.meetingStartTime).toLocaleString()) : ""}</p>` : ""}
+    ${r.conclusion ? `<p>评审结论：${esc(r.conclusion)}${r.conclusionNotes ? " · " + esc(r.conclusionNotes) : ""}</p>` : ""}
+    ${actions.length ? `<div class="flex flex-wrap gap-2 pt-1">${actions.join("")}</div>` : `<p class="text-xs text-gray-400">当前状态暂无可执行操作</p>`}
+    <div class="pt-2 mt-2 border-t border-gray-100">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <p class="text-xs font-bold text-slate-700">询价（外购 / 标准件）</p>
+        <div class="flex gap-2">
+          <button onclick="drGenerateInquiries('${reviewId}')" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:var(--nec-cyan)">生成询价单</button>
+          <button onclick="drCompare('${reviewId}')" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:var(--nec-navy)">比价建议</button>
+        </div>
+      </div>
+      <div id="dr-inq-compare-${reviewId}" class="mt-2"></div>
+      <div id="dr-inq-${reviewId}" class="mt-2 space-y-2"></div>
+    </div>
+    <p id="dr-act-${reviewId}" class="text-xs"></p>
+  `;
+  box.classList.remove("hidden");
+  loadDrInquiries(reviewId);
+}
+
+async function drAct(reviewId, path, body, okMsg) {
+  const tip = document.getElementById(`dr-act-${reviewId}`);
+  try {
+    await apiDr(`/${reviewId}${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+    });
+    if (tip) { tip.className = "text-xs text-green-600"; tip.textContent = okMsg; }
+    setTimeout(loadDrawingReviews, 600);
+  } catch (err) {
+    if (tip) { tip.className = "text-xs text-red-500"; tip.textContent = "失败：" + err.message; }
+  }
+}
+function drMeeting(id) { drAct(id, "/meeting", {}, "会议已预约"); }
+function drRectify(id) { drAct(id, "/rectify", {}, "整改已完成，进入 BOM 生成"); }
+function drConclude(id) {
+  const c = prompt("评审结论：passed（通过）/ conditional（有条件通过）/ rejected（不通过）", "passed");
+  if (c === null) return;
+  if (!["passed", "conditional", "rejected"].includes(c)) { alert("无效结论"); return; }
+  drAct(id, "/conclusion", { conclusion: c }, "评审结论已提交");
+}
+function drBom(id) {
+  const sample = JSON.stringify([
+    { materialName: "伺服电机", materialCode: "M-001", specification: "AK10-9", quantity: 2, unit: "台", source: "purchased" },
+    { materialName: "联轴器", materialCode: "M-002", specification: "LK-20", quantity: 4, unit: "个", source: "standard" },
+    { materialName: "安装支架", quantity: 1, unit: "件", source: "self-made", process: "machining" },
+  ], null, 2);
+  const raw = prompt('粘贴或修改 BOM JSON 数组（source: purchased 外购 / standard 标准件 / self-made 自制）：', sample);
+  if (raw === null) return;
+  let items;
+  try { items = JSON.parse(raw); } catch { alert("JSON 格式错误"); return; }
+  if (!Array.isArray(items) || items.length === 0) { alert("必须是非空数组"); return; }
+  drAct(id, "/bom/generate", { items }, "BOM 已生成，可继续生成询价单");
+}
+
+// ---------- 图纸评审 · 询价流转与比价 ----------
+const DR_INQ_STATUS = {
+  sent: { label: "已发出", cls: "bg-blue-50 text-blue-700" },
+  quoted: { label: "已报价", cls: "bg-amber-50 text-amber-700" },
+  selected: { label: "已选定", cls: "bg-green-50 text-green-700" },
+  rejected: { label: "未中选", cls: "bg-gray-100 text-gray-400" },
+};
+
+async function drGenerateInquiries(reviewId) {
+  const tip = document.getElementById(`dr-act-${reviewId}`);
+  const requiredDate = prompt("需求日期（YYYY-MM-DD，可留空）：", "");
+  if (requiredDate === null) return;
+  try {
+    const data = await apiDr(`/${reviewId}/inquiries/generate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ requiredDate: requiredDate.trim() || undefined }),
+    });
+    if (tip) {
+      tip.className = "text-xs text-green-600";
+      tip.textContent = `已生成 ${data.created.length} 张询价单` + (data.skipped.length ? `，跳过已存在 ${data.skipped.length} 项` : "");
+    }
+    loadDrInquiries(reviewId);
+  } catch (err) {
+    if (tip) {
+      tip.className = "text-xs text-red-500";
+      if (/尚无 BOM/.test(err.message)) {
+        tip.innerHTML = `生成失败：${esc(err.message)} <button onclick="drBom('${reviewId}')" class="ml-1 px-2 py-0.5 rounded text-white bg-purple-600">去生成 BOM</button>`;
+      } else {
+        tip.textContent = "生成失败：" + err.message;
+      }
+    }
+  }
+}
+
+async function loadDrInquiries(reviewId) {
+  const box = document.getElementById(`dr-inq-${reviewId}`);
+  if (!box) return;
+  try {
+    const list = await apiDr(`/${reviewId}/inquiries`);
+    box.innerHTML = renderDrInquiries(reviewId, list);
+  } catch (err) {
+    box.innerHTML = `<p class="text-xs text-red-500">询价单加载失败：${esc(err.message)}</p>`;
+  }
+}
+
+function renderDrInquiries(reviewId, list) {
+  if (!list.length) return `<p class="text-xs text-gray-400">暂无询价单，点击「生成询价单」从 BOM 外购/标准件物料生成</p>`;
+  return list.map(q => {
+    const st = DR_INQ_STATUS[q.status] || DR_INQ_STATUS.sent;
+    const quoteForm = q.status === "sent" ? `
+      <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+        <input id="dr-q-s-${q.inquiryId}" placeholder="供应商" value="${esc(q.supplierName === "待定" ? "" : q.supplierName)}" class="text-xs border border-gray-200 rounded px-2 py-1 w-24">
+        <input id="dr-q-p-${q.inquiryId}" placeholder="报价(元)" type="number" min="0" step="0.01" class="text-xs border border-gray-200 rounded px-2 py-1 w-20">
+        <input id="dr-q-d-${q.inquiryId}" placeholder="交期" type="date" class="text-xs border border-gray-200 rounded px-2 py-1">
+        <button onclick="drQuoteSubmit('${reviewId}','${q.inquiryId}')" class="text-xs px-2 py-1 rounded text-white" style="background:var(--nec-cyan)">回填报价</button>
+      </div>` : "";
+    const selectBtn = q.status === "quoted" ? `
+      <button onclick="drSelectSupplier('${reviewId}','${esc(q.materialCode || q.bomItemId)}','${q.inquiryId}')" class="text-xs px-2 py-1 rounded text-white bg-green-600">选定</button>` : "";
+    return `
+      <div class="border border-gray-100 rounded-lg p-2.5 bg-gray-50/50">
+        <div class="flex items-start justify-between gap-2 flex-wrap">
+          <p class="text-xs">
+            <span class="font-bold text-slate-700">${esc(q.inquiryId)}</span>
+            <span class="text-gray-500"> ${esc(q.materialName || q.bomItemId)}${q.materialCode ? `（${esc(q.materialCode)}）` : ""}${q.specification ? " · " + esc(q.specification) : ""}</span>
+          </p>
+          <span class="text-[10px] px-2 py-0.5 rounded-full ${st.cls}">${st.label}</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">
+          供应商 ${esc(q.supplierName)} · 数量 ${q.quantity}${q.requiredDate ? " · 需求 " + esc(q.requiredDate) : ""}
+          ${q.price != null ? ` · <span class="font-bold text-slate-700">¥${q.price}</span>` : ""}${q.deliveryDate ? " · 交期 " + esc(q.deliveryDate) : ""}
+        </p>
+        ${quoteForm}${selectBtn}
+      </div>`;
+  }).join("");
+}
+
+async function drQuoteSubmit(reviewId, inquiryId) {
+  const tip = document.getElementById(`dr-act-${reviewId}`);
+  const supplier = document.getElementById(`dr-q-s-${inquiryId}`).value.trim();
+  const price = parseFloat(document.getElementById(`dr-q-p-${inquiryId}`).value);
+  const deliveryDate = document.getElementById(`dr-q-d-${inquiryId}`).value || undefined;
+  if (!supplier || !(price > 0)) {
+    if (tip) { tip.className = "text-xs text-red-500"; tip.textContent = "请填写供应商与大于 0 的报价"; }
+    return;
+  }
+  try {
+    await apiDr(`/inquiries/${inquiryId}/quote`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ supplier, price, deliveryDate }),
+    });
+    if (tip) { tip.className = "text-xs text-green-600"; tip.textContent = `询价单 ${inquiryId} 报价已回填`; }
+    loadDrInquiries(reviewId);
+  } catch (err) {
+    if (tip) { tip.className = "text-xs text-red-500"; tip.textContent = "报价失败：" + err.message; }
+  }
+}
+
+async function drCompare(reviewId) {
+  const box = document.getElementById(`dr-inq-compare-${reviewId}`);
+  const tip = document.getElementById(`dr-act-${reviewId}`);
+  try {
+    const data = await apiDr(`/${reviewId}/inquiries/compare`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    if (box) box.innerHTML = renderDrCompare(data);
+  } catch (err) {
+    if (tip) { tip.className = "text-xs text-red-500"; tip.textContent = "比价失败：" + err.message; }
+  }
+}
+
+function renderDrCompare(data) {
+  if (!data.materials || !data.materials.length) return `<p class="text-xs text-gray-400">暂无询价数据可比价</p>`;
+  return `
+    <div class="border border-indigo-100 rounded-lg bg-indigo-50/40 p-3 space-y-2">
+      <p class="text-xs font-bold text-indigo-800">比价建议书（价格优先，交期超需求日期按 1.2 倍折算）</p>
+      ${data.materials.map(m => `
+        <div class="text-xs border-t border-indigo-100 pt-1.5">
+          <p class="font-bold text-slate-700">${esc(m.materialName || m.bomItemId)}${m.materialCode ? `（${esc(m.materialCode)}）` : ""}</p>
+          ${m.quotes.map(q => `
+            <p class="text-gray-600 pl-2">
+              ${esc(q.supplierName)}：${q.price != null ? "¥" + q.price : "未报价"}${q.deliveryDate ? " · 交期 " + esc(q.deliveryDate) : ""}${q.late ? ' <span class="text-red-500">超期</span>' : ""}
+              ${q.inquiryId === m.recommendedInquiryId ? ' <span class="text-green-600 font-bold">★ 推荐</span>' : ""}
+              ${q.inquiryId === m.lowestPriceInquiryId && q.inquiryId !== m.recommendedInquiryId ? ' <span class="text-blue-600">最低价</span>' : ""}
+              ${q.inquiryId === m.shortestDeliveryInquiryId ? ' <span class="text-teal-600">最短交期</span>' : ""}
+            </p>`).join("")}
+          ${m.reason ? `<p class="text-indigo-700 pl-2 mt-0.5">建议：${esc(m.reason)}</p>` : ""}
+        </div>`).join("")}
+    </div>`;
+}
+
+async function drSelectSupplier(reviewId, materialKey, inquiryId) {
+  const tip = document.getElementById(`dr-act-${reviewId}`);
+  if (!confirm(`确认选定询价单 ${inquiryId} 的供应商？同物料其他报价将置为未中选`)) return;
+  try {
+    await apiDr(`/${reviewId}/inquiries/compare`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ selections: { [materialKey]: inquiryId } }),
+    });
+    if (tip) { tip.className = "text-xs text-green-600"; tip.textContent = `已选定 ${inquiryId}`; }
+    loadDrInquiries(reviewId);
+    drCompare(reviewId);
+  } catch (err) {
+    if (tip) { tip.className = "text-xs text-red-500"; tip.textContent = "选定失败：" + err.message; }
+  }
+}
+
+// ---------- 图纸评审 · 流程看板（阻塞预警 + 甘特图） ----------
+const DR_GANTT_MS = { submit: "提交", meeting: "会议", conclusion: "结论", bom: "BOM", archived: "归档" };
+
+async function loadDrFlowBoard() {
+  let el = document.getElementById("dr-flow-board");
+  if (!el) {
+    const stats = document.getElementById("dr-stats");
+    if (!stats) return;
+    stats.insertAdjacentHTML("beforebegin", '<div id="dr-flow-board" class="mb-4 space-y-3"></div>');
+    el = document.getElementById("dr-flow-board");
+  }
+  try {
+    const data = await apiDr("/board");
+    renderDrFlowBoard(el, data);
+  } catch (err) {
+    el.innerHTML = `<div class="bg-white rounded-xl shadow p-4 text-xs text-gray-400">流程看板加载失败：${esc(err.message)}</div>`;
+  }
+}
+
+function renderDrFlowBoard(el, data) {
+  const parts = [];
+
+  // 状态计数条
+  const counts = Object.entries(DR_STATUS)
+    .filter(([k]) => data.statusCounts && data.statusCounts[k])
+    .map(([k, v]) => `<span class="text-[10px] px-2 py-0.5 rounded-full ${v.cls}">${v.label} ${data.statusCounts[k]}</span>`)
+    .join("");
+  parts.push(`
+    <div class="bg-white rounded-xl shadow p-4">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <p class="text-sm font-bold text-slate-800">流程看板</p>
+        <div class="flex flex-wrap gap-1.5">${counts || '<span class="text-xs text-gray-400">暂无数据</span>'}</div>
+      </div>
+      ${(data.warnings || []).map(w => `<p class="text-[10px] text-amber-600">⚠ ${esc(w)}</p>`).join("")}
+      ${renderDrBlockers(data.blockers || [])}
+    </div>`);
+
+  // 甘特图
+  parts.push(renderDrGantt(data.gantt || []));
+
+  el.innerHTML = parts.join("");
+}
+
+function renderDrBlockers(blockers) {
+  if (!blockers.length) return `<p class="text-xs text-gray-400 mt-1">暂无阻塞预警</p>`;
+  return `
+    <div class="mt-2 space-y-1.5">
+      <p class="text-xs font-bold text-red-600">阻塞预警（${blockers.length}）</p>
+      ${blockers.map(b => `
+        <div class="flex items-center justify-between gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 cursor-pointer hover:bg-red-100/60" onclick="drOpen('${esc(b.reviewId)}')">
+          <p class="text-xs text-red-700"><span class="font-bold">${esc(b.machineName || b.reviewId)}</span> · ${esc(b.message)}</p>
+          ${b.hoursBlocked ? `<span class="text-[10px] text-red-400 whitespace-nowrap">${b.hoursBlocked}h</span>` : ""}
+        </div>`).join("")}
+    </div>`;
+}
+
+function renderDrGantt(rows) {
+  const entries = rows
+    .map(r => {
+      const pts = Object.entries(DR_GANTT_MS)
+        .map(([k, label]) => ({ key: k, label, ts: Date.parse(r.milestones[k] || "") }))
+        .filter(p => !Number.isNaN(p.ts));
+      return { ...r, pts };
+    })
+    .filter(r => r.pts.length);
+  if (!entries.length) {
+    return `<div class="bg-white rounded-xl shadow p-4"><p class="text-sm font-bold text-slate-800 mb-2">进度甘特图</p><p class="text-xs text-gray-400">暂无进行中的评审单节点数据</p></div>`;
+  }
+  const minT = Math.min(...entries.flatMap(r => r.pts.map(p => p.ts)));
+  const maxT = Math.max(...entries.flatMap(r => r.pts.map(p => p.ts)));
+  const span = Math.max(maxT - minT, 86400000);
+  const fmt = ts => new Date(ts).toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" });
+  const rowsHtml = entries.map(r => {
+    const start = r.pts[0].ts, end = r.pts[r.pts.length - 1].ts;
+    const left = ((start - minT) / span * 100).toFixed(1);
+    const width = Math.max((end - start) / span * 100, 1.5).toFixed(1);
+    const dots = r.pts.map(p => {
+      const x = ((p.ts - minT) / span * 100).toFixed(1);
+      return `<span title="${p.label} ${esc(new Date(p.ts).toLocaleString("zh-CN"))}" style="position:absolute;left:${x}%;top:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:var(--nec-navy);border:1.5px solid #fff"></span>`;
+    }).join("");
+    return `
+      <div class="flex items-center gap-2">
+        <p class="text-xs text-gray-600 w-28 truncate shrink-0 cursor-pointer hover:underline" onclick="drOpen('${esc(r.reviewId)}')">${esc(r.machineName || r.reviewId)}</p>
+        <div style="position:relative;flex:1;height:18px;background:#f1f5f9;border-radius:6px">
+          <div style="position:absolute;left:${left}%;width:${width}%;top:5px;height:8px;border-radius:4px;background:var(--nec-cyan);opacity:.45"></div>
+          ${dots}
+        </div>
+      </div>`;
+  }).join("");
+  return `
+    <div class="bg-white rounded-xl shadow p-4">
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-sm font-bold text-slate-800">进度甘特图</p>
+        <p class="text-[10px] text-gray-400">${fmt(minT)} → ${fmt(maxT)}</p>
+      </div>
+      <div class="space-y-1.5">${rowsHtml}</div>
+      <p class="text-[10px] text-gray-400 mt-2">节点：${Object.values(DR_GANTT_MS).join(" / ")}（悬停圆点查看时间，点击行名跳详情）</p>
+    </div>`;
 }
 
 // 数据看板
 const DASH_CONFIG_PROMPT = `请帮我配置 NEC 中台的数据看板（飞书多维表格）：
 1. 打开飞书多维表格，从浏览器地址栏复制 app_token 与各表的 table_id：
    URL 形如 https://xxx.feishu.cn/base/<app_token>?table=<table_id>&view=...
-2. 调用 nec-hub MCP 的 config_dashboard（action=set），传入 base 与 tables（tasks / inventory / members / finance → table_id）
+2. 调用 NEC-MCP 的 config_dashboard（action=set），传入 base 与 tables（tasks / inventory / members / finance / goals → table_id；goals 为赛季目标表，可选）
 3. 配置完成后打开门户「数据看板」Tab 确认数据渲染`;
 
+// 状态匹配正则提升为常量：dashStatusColor 在每个任务行/图例渲染时调用，避免每次重建 4 个正则
+const DASH_STATUS_RE = {
+  doing: /进行|doing|progress/i,
+  done: /完成|done|完结/i,
+  todo: /未开始|待|todo|pending/i,
+  cancel: /取消|cancel|关闭|close/i,
+};
 function dashStatusColor(name) {
-  if (/进行|doing|progress/i.test(name)) return "#1FA9E8";
-  if (/完成|done|完结/i.test(name)) return "#141B5E";
-  if (/未开始|待|todo|pending/i.test(name)) return "#9CA3AF";
-  if (/取消|cancel|关闭|close/i.test(name)) return "#D1D5DB";
+  if (DASH_STATUS_RE.doing.test(name)) return "#1FA9E8";
+  if (DASH_STATUS_RE.done.test(name)) return "#141B5E";
+  if (DASH_STATUS_RE.todo.test(name)) return "#9CA3AF";
+  if (DASH_STATUS_RE.cancel.test(name)) return "#D1D5DB";
   return "#4FC3F7";
 }
 
@@ -766,17 +1992,99 @@ function fmtDashDate(v) {
   return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
 }
 
+// ===== FE-04 赛季目标面板：里程碑时间线 + 各组完成度条形图 + 逾期红色告警 + T-7 顶部提醒条 =====
+function goalBarColor(it) {
+  if (it.overdue) return "#DC2626";
+  if (it.done) return "#141B5E";
+  return "#1FA9E8";
+}
+
+function goalStatusBadge(it) {
+  if (it.overdue) return `<span class="px-2 py-0.5 rounded text-xs text-white" style="background:#DC2626">已逾期 ${Math.abs(it.daysLeft)} 天</span>`;
+  if (it.done) return `<span class="px-2 py-0.5 rounded text-xs text-white" style="background:var(--nec-navy)">${esc(it.status || "已完成")}</span>`;
+  if (it.daysLeft !== null && it.daysLeft <= 7) return `<span class="px-2 py-0.5 rounded text-xs text-white" style="background:#D97706">T-${it.daysLeft} 天</span>`;
+  return `<span class="px-2 py-0.5 rounded text-xs text-white" style="background:var(--nec-cyan)">${esc(it.status || "进行中")}</span>`;
+}
+
+function goalsSection(g) {
+  if (!g || !g.configured) return "";
+  const items = g.items ?? [];
+  const timeline = items.length ? items.map(it => `
+    <a href="${esc(it.link)}" target="_blank" class="block border rounded-lg p-3 hover:shadow-md transition ${it.overdue ? "border-red-300 bg-red-50" : "border-gray-100"}">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="mono text-xs ${it.overdue ? "text-red-600 font-bold" : "text-gray-400"} whitespace-nowrap">${fmtDashDate(it.deadline)}</span>
+        <span class="font-medium text-sm flex-1 min-w-0 truncate">${esc(it.title)}</span>
+        ${goalStatusBadge(it)}
+      </div>
+      ${it.kr ? `<p class="text-xs text-gray-500 mt-1 truncate">关键结果：${esc(it.kr)}</p>` : ""}
+      <div class="flex items-center gap-2 mt-2">
+        <span class="text-xs text-gray-400 w-16 shrink-0">${esc(it.group)}</span>
+        <div class="flex-1 h-2 rounded bg-gray-100 overflow-hidden">
+          <div style="width:${(it.progress ?? 0).toFixed(0)}%;height:100%;background:${goalBarColor(it)}"></div>
+        </div>
+        <span class="mono text-xs text-gray-500 w-10 text-right shrink-0">${it.progress === null ? "—" : Math.round(it.progress) + "%"}</span>
+      </div>
+    </a>`).join("") : `<p class="text-sm text-gray-400">赛季目标表暂无数据</p>`;
+
+  const byGroup = (g.byGroup ?? []).map(b => `
+    <div class="flex items-center gap-2">
+      <span class="text-xs text-gray-500 w-16 shrink-0 truncate">${esc(b.name)}</span>
+      <div class="flex-1 h-3 rounded bg-gray-100 overflow-hidden">
+        <div style="width:${b.avg}%;height:100%;background:${b.avg >= 100 ? "var(--nec-navy)" : "var(--nec-cyan)"}"></div>
+      </div>
+      <span class="mono text-xs text-gray-500 w-16 shrink-0">${b.avg}% · ${b.count} 项</span>
+    </div>`).join("");
+
+  return `
+    <div class="bg-white rounded-xl shadow p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold">赛季目标</h3>
+        <div class="text-xs">
+          ${g.overdueCount ? `<span class="px-2 py-0.5 rounded text-white font-bold" style="background:#DC2626">⚠ ${g.overdueCount} 项逾期未达标</span>` : ""}
+          <span class="text-gray-400 ml-2">${g.total ?? 0} 项目标</span>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div>
+          <p class="text-xs text-gray-400 mb-2">里程碑时间线（按截止升序，点击跳转多维表格原始行）</p>
+          <div class="space-y-2 max-h-96 overflow-y-auto pr-1">${timeline}</div>
+        </div>
+        <div>
+          <p class="text-xs text-gray-400 mb-2">各组平均完成度</p>
+          <div class="space-y-2">${byGroup || '<p class="text-sm text-gray-400">暂无分组数据</p>'}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+/** T-7 关键节点顶部提醒条：未达标且 0 ≤ 剩余天数 ≤ 7 的目标；逾期目标一并红色置顶 */
+function renderGoalBanner(g) {
+  const banner = document.getElementById("goal-banner");
+  if (!banner) return;
+  const items = (g && g.configured ? g.items ?? [] : []).filter(it => !it.done && it.daysLeft !== null && it.daysLeft <= 7);
+  if (!items.length) { banner.classList.add("hidden"); return; }
+  const text = document.getElementById("goal-banner-text");
+  text.innerHTML = items.map(it => {
+    const label = it.overdue
+      ? `<b style="color:#FCA5A5">已逾期 ${Math.abs(it.daysLeft)} 天</b>`
+      : `<b>T-${it.daysLeft} 天</b>`;
+    return `<a href="${esc(it.link)}" target="_blank" class="hover:underline">${label} · ${esc(it.title)}（${esc(it.group)} ${it.progress === null ? "" : Math.round(it.progress) + "%"}）</a>`;
+  }).join('<span class="mx-2 text-white/30">｜</span>');
+  banner.classList.remove("hidden");
+}
+
 function renderDashboard(d) {
   const box = document.getElementById("dash-body");
   const status = document.getElementById("dash-status");
   if (!d.configured) {
+    renderGoalBanner(null);
     status.textContent = "数据源未配置";
     box.innerHTML = `
       <div class="bg-white rounded-xl shadow p-6 text-sm text-gray-600 space-y-3">
         <p>📊 数据源为飞书多维表格（队员名单 / 任务进度 / 物资台账 / 财务报销），尚未接入。</p>
         <p>把下面的 Prompt 发给你已接入 nec-hub MCP 的 Agent，即可完成配置：</p>
         <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="dash-prompt"></pre>
-        <button onclick="copyText('dash-prompt')" class="text-sm text-white px-3 py-1.5 rounded" style="background:var(--navy)">复制配置 Prompt</button>
+        <button onclick="copyText('dash-prompt')" class="text-sm text-white px-3 py-1.5 rounded" style="background:var(--nec-navy)">复制配置 Prompt</button>
       </div>`;
     document.getElementById("dash-prompt").textContent = DASH_CONFIG_PROMPT;
     return;
@@ -785,7 +2093,7 @@ function renderDashboard(d) {
   const stat = (label, value, extra) => `
     <div class="bg-white rounded-xl shadow p-5">
       <div class="text-xs text-gray-400">${label}</div>
-      <div class="text-3xl font-black mt-1" style="color:var(--navy)">${esc(value ?? "—")}</div>
+      <div class="text-3xl font-black mt-1" style="color:var(--nec-navy)">${esc(value ?? "—")}</div>
       ${extra ? `<div class="text-xs text-gray-400 mt-1">${extra}</div>` : ""}
     </div>`;
   const errNote = (e) => e ? `<div class="text-xs text-amber-600 mt-2">⚠ ${esc(e)}</div>` : "";
@@ -840,8 +2148,10 @@ function renderDashboard(d) {
     </table>` : `<p class="text-sm text-gray-400">暂无物资数据</p>`;
 
   const finList = (d.finance?.recent ?? []).map(f => `
-    <li class="flex justify-between py-1.5 border-t border-gray-100 text-sm">
-      <span>${esc(f.name)}</span><span class="mono text-xs">${f.amount ?? "—"}</span>
+    <li class="flex items-baseline gap-2 py-1.5 border-t border-gray-100 text-sm">
+      <span class="text-gray-400 mono text-xs whitespace-nowrap">${fmtDashDate(f.date)}</span>
+      <span class="flex-1 truncate">${esc(f.name)}${f.applicant ? `<i class="not-italic text-xs text-gray-400 ml-1">${esc(f.applicant)}</i>` : ""}</span>
+      <span class="mono text-xs whitespace-nowrap">${f.amount ?? "—"}</span>
     </li>`).join("");
   const finBody = finVis === "full"
     ? (finList ? `<ul>${finList}</ul>` : `<p class="text-sm text-gray-400">暂无报销数据</p>`)
@@ -852,6 +2162,7 @@ function renderDashboard(d) {
   status.textContent = `更新于 ${new Date(d.generatedAt).toLocaleTimeString("zh-CN")}${d.stale ? "（缓存快照）" : ""} · 缓存 5 分钟`;
 
   box.innerHTML = `
+    ${goalsSection(d.goals)}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">${cards}</div>
     ${d.members?.error ? `<div class="text-xs text-amber-600">⚠ 队员名单：${esc(d.members.error)}</div>` : ""}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -873,8 +2184,292 @@ function renderDashboard(d) {
       ${finBody}
       ${errNote(d.finance?.error)}
     </div>
-    <p class="text-xs text-gray-400">数据源：飞书多维表格（base ${esc(d.base)}）· 队员名单 / 任务进度 / 物资台账 / 财务报销 · 5 分钟缓存 · 财务区按登录角色脱敏</p>
+    ${reimburseCard()}
+    <p class="text-xs text-gray-400">数据源：飞书多维表格（base ${esc(d.base)}）· 队员名单 / 任务进度 / 物资台账 / 财务报销${d.goals?.configured ? " / 赛季目标" : ""} · 5 分钟缓存 · 财务区按登录角色脱敏</p>
   `;
+  mountReimburse();
+  renderGoalBanner(d.goals);
+}
+
+
+// ===== 报销提交：报销时间 + 单据/付款凭证 OCR 识别（Tesseract.js 本地识别，不上传第三方） =====
+// 表单挂在持久节点上：看板每次刷新都会 innerHTML 重建 dash-body，这里把表单节点"移动"进新插槽，
+// 避免用户填到一半被重渲染清空（dataset.authed 记录登录态，登录/登出时才重建节点）
+let REIMBURSE_NODE = null;
+function reimburseCard() {
+  return '<div id="reimburse-slot"></div>';
+}
+function mountReimburse() {
+  const slot = document.getElementById('reimburse-slot');
+  if (!slot) return;
+  const authed = !!(ME && ME.authenticated);
+  if (REIMBURSE_NODE && REIMBURSE_NODE.dataset.authed === String(authed)) {
+    slot.appendChild(REIMBURSE_NODE);
+    return;
+  }
+  const wrap = document.createElement('div');
+  wrap.innerHTML = authed ? reimburseFormHtml() :
+    '<div class="bg-white rounded-xl shadow p-5 text-sm text-gray-500">🔐 登录后可在线提交报销：上传发票图片/PDF 自动识别金额、日期与发票号，识别均在本地完成。</div>';
+  REIMBURSE_NODE = wrap.firstElementChild;
+  REIMBURSE_NODE.dataset.authed = String(authed);
+  slot.appendChild(REIMBURSE_NODE);
+  const form = REIMBURSE_NODE.querySelector('#reimburse-form');
+  if (form) {
+    form.addEventListener('input', queueReimburseDraft);
+    restoreReimburseDraft();
+  }
+}
+
+// 草稿持久化：文本字段防抖写入 localStorage，刷新/误关页面后可恢复（文件选择无法持久化，需重传）
+const REIMBURSE_DRAFT_KEY = 'nec_reimburse_draft';
+let _reimburseDraftTimer = null;
+function queueReimburseDraft() {
+  clearTimeout(_reimburseDraftTimer);
+  _reimburseDraftTimer = setTimeout(() => {
+    const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+    const draft = { item: g('r-item'), amount: g('r-amount'), date: g('r-date'), invno: g('r-invno'), note: g('r-note'), savedAt: Date.now() };
+    try {
+      if (draft.item || draft.amount || draft.invno || draft.note) {
+        localStorage.setItem(REIMBURSE_DRAFT_KEY, JSON.stringify(draft));
+      } else {
+        localStorage.removeItem(REIMBURSE_DRAFT_KEY);
+      }
+    } catch { /* 隐私模式等场景写不进就跳过 */ }
+  }, 400);
+}
+function restoreReimburseDraft() {
+  let draft = null;
+  try { draft = JSON.parse(localStorage.getItem(REIMBURSE_DRAFT_KEY) || 'null'); } catch { return; }
+  if (!draft) return;
+  const put = (id, v) => {
+    const el = document.getElementById(id);
+    if (el && v) { el.value = v; el.dataset.ocr = ''; }
+  };
+  put('r-item', draft.item); put('r-amount', draft.amount);
+  put('r-date', draft.date); put('r-invno', draft.invno); put('r-note', draft.note);
+  const st = document.getElementById('r-submit-status');
+  if (st && (draft.item || draft.amount || draft.invno || draft.note)) {
+    st.textContent = '📝 已恢复 ' + new Date(draft.savedAt).toLocaleString('zh-CN') + ' 的未提交草稿（凭证文件需重新上传）';
+  }
+}
+function clearReimburseDraft() {
+  clearTimeout(_reimburseDraftTimer);
+  try { localStorage.removeItem(REIMBURSE_DRAFT_KEY); } catch {}
+}
+function reimburseFormHtml() {
+  const today = new Date().toLocaleDateString('sv-SE'); // 本地时区 YYYY-MM-DD
+  const rows = [
+  '<div class="bg-white rounded-xl shadow p-5">',
+    '<h3 class="font-bold mb-3">提交报销</h3>',
+    '<form id="reimburse-form" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm" onsubmit="return submitReimburse(event)">',
+    F('事项', '<input id="r-item" required class="mt-1 w-full border rounded px-2 py-1.5" placeholder="如：元器件采购" />'),
+    F('金额（元）', '<input id="r-amount" required inputmode="decimal" class="mt-1 w-full border rounded px-2 py-1.5" placeholder="上传凭证后自动识别，可修改" oninput="this.dataset.ocr=\'\';this.classList.remove(\'ocr-filled\')" />'),
+    // data-ocr="1" 表示当前值是自动生成的（默认可被 OCR 覆盖），用户一旦手动编辑即清除该标记与高亮
+    F('报销时间', '<input id="r-date" type="date" required class="mt-1 w-full border rounded px-2 py-1.5" data-ocr="1" value=' + today + ' oninput="this.dataset.ocr=\'\';this.classList.remove(\'ocr-filled\')" />'),
+    F('发票号（选填）', '<input id="r-invno" class="mt-1 w-full border rounded px-2 py-1.5" placeholder="上传发票后自动识别，可修改" oninput="this.dataset.ocr=\'\';this.classList.remove(\'ocr-filled\')" />'),
+    F('备注（选填）', '<input id="r-note" class="mt-1 w-full border rounded px-2 py-1.5" />'),
+    F('上传单据', '<input id="r-receipt" type="file" class="mt-1 w-full text-xs" accept="image/*,application/pdf" onchange="recognizeFile(this, 1)">' + '<div id=r-receipt-status aria-live="polite" class="text-xs text-gray-400 mt-1">发票/收据图片或 PDF 自动识别金额、日期与发票号（≤10MB）</div>'),
+    F('付款凭证', '<input id="r-payment" type="file" class="mt-1 w-full text-xs" accept="image/*,application/pdf" onchange="recognizeFile(this, 2)">' + '<div id=r-payment-status aria-live="polite" class="text-xs text-gray-400 mt-1">微信/支付宝付款截图可识别金额（≤10MB）</div>'),
+    '<div class="md:col-span-2" style="display:flex;gap:12px;align-items:center">',
+      '<button id="r-submit-btn" class="hover:opacity-90 disabled:opacity-50 transition-opacity" style="background:var(--nec-navy);color:#fff;padding:8px 16px;border-radius:6px">提交报销</button>',
+      '<span id=r-submit-status aria-live="polite" class="text-xs text-gray-400"></span>',
+    '</div>',
+    '</form>',
+  '</div>'];
+  return rows.join('');
+}
+function F(label, inner) {
+  return '<label class="block" style="font-size:14px">' + label + '<div style="margin-top:4px">' + inner + '</div></label>';
+}
+
+// OCR 依赖的 CDN：jsdelivr 主站在部分网络下被重置，默认走 fastly 镜像，失败再回退主站
+const CDN_FASTLY = 'https://fastly.jsdelivr.net/npm';
+const CDN_JSDELIVR = 'https://cdn.jsdelivr.net/npm';
+const TESS_OPTS = {
+  workerPath: CDN_FASTLY + '/tesseract.js@5/dist/worker.min.js',
+  corePath: CDN_FASTLY + '/tesseract.js-core@5',
+  langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+};
+function injectScript(url) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = url;
+    s.onload = res;
+    s.onerror = () => { s.remove(); rej(new Error(url)); };
+    document.head.appendChild(s);
+  });
+}
+
+let _tessLoading = null;
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  if (!_tessLoading) {
+    _tessLoading = injectScript(CDN_FASTLY + '/tesseract.js@5/dist/tesseract.min.js')
+      .catch(() => injectScript(CDN_JSDELIVR + '/tesseract.js@5/dist/tesseract.min.js'))
+      .then(() => window.Tesseract)
+      .catch(() => { _tessLoading = null; throw new Error('识别引擎加载失败（网络）'); });
+  }
+  return _tessLoading;
+}
+
+let _pdfLoading = null;
+function loadPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (!_pdfLoading) {
+    _pdfLoading = injectScript(CDN_FASTLY + '/pdfjs-dist@3.11.174/build/pdf.min.js')
+      .catch(() => injectScript(CDN_JSDELIVR + '/pdfjs-dist@3.11.174/build/pdf.min.js'))
+      .then(() => {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = CDN_FASTLY + '/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+        return window.pdfjsLib;
+      })
+      .catch(() => { _pdfLoading = null; throw new Error('PDF 解析组件加载失败（网络）'); });
+  }
+  return _pdfLoading;
+}
+
+/** PDF → 逐页渲染成 canvas → Tesseract 识别（最多前 3 页，全电发票通常 1 页） */
+async function ocrPdfText(file, Tesseract, st) {
+  const pdfjsLib = await loadPdfJs();
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const pages = Math.min(pdf.numPages, 3);
+  let text = '';
+  for (let p = 1; p <= pages; p++) {
+    st.textContent = '🔍 PDF 识别中（第 ' + p + '/' + pages + ' 页，首次需加载识别引擎）…';
+    const page = await pdf.getPage(p);
+    const viewport = page.getViewport({ scale: 2 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    const res = await Tesseract.recognize(canvas, 'chi_sim+eng', TESS_OPTS);
+    text += '\n' + ((res && res.data && res.data.text) || '');
+  }
+  return text;
+}
+
+/** 从 OCR 文本里提取金额、日期与发票号（发票/收据/付款截图的常见版式） */
+function parseFinanceText(text) {
+  const t = String(text || '').replace(/[，\s]/g, '');
+  const out = {};
+  const amtPatterns = [
+    /[（(]小写[)）][^0-9]{0,8}(\d{1,7}(?:\.\d{1,2})?)/,
+    /价税合计[^0-9]{0,25}(\d{1,7}(?:\.\d{1,2})?)/,
+    /(?:合计|总计|实付|金额|付款|支付)\D{0,6}(\d{1,7}(?:\.\d{1,2})?)/,
+    /[¥￥]\s*(\d{1,7}(?:\.\d{1,2})?)/
+  ];
+  for (const re of amtPatterns) { const m = t.match(re); if (m) { out.amount = m[1]; break; } }
+  const di = t.match(/开票日期\D{0,4}(20\d{2})[-\/年.]?(\d{1,2})[-\/月.]?(\d{1,2})/);
+  const d = di || t.match(/(20\d{2})[-\/年.](\d{1,2})[-\/月.](\d{1,2})/);
+  if (d) out.date = d[1] + '-' + String(d[2]).padStart(2, '0') + '-' + String(d[3]).padStart(2, '0');
+  const inv = t.match(/发票号码\D{0,4}(\d{20}|\d{8})/) || t.match(/\b(\d{20})\b/);
+  if (inv) out.invno = inv[1];
+  return out;
+}
+
+/** OCR 回填守卫：字段为空、或当前值来自上一次 OCR/默认值（data-ocr=1）时才写入，不覆盖用户手改 */
+function ocrFill(id, value) {
+  const el = document.getElementById(id);
+  if (!el || !value) return false;
+  if (el.value && el.dataset.ocr !== '1') return false;
+  el.value = value;
+  el.dataset.ocr = '1';
+  el.classList.add('ocr-filled');
+  return true;
+}
+
+let _ocrRunning = 0; // 进行中的 OCR 任务数，提交时用于拦截
+async function recognizeFile(input, kind) {
+  const st = document.getElementById(kind === 1 ? 'r-receipt-status' : 'r-payment-status');
+  const f = input.files && input.files[0];
+  if (!f) return;
+  if (f.size > 10 * 1024 * 1024) {
+    st.textContent = '⚠ 文件超过 10MB 上限，请压缩后再上传';
+    input.value = '';
+    return;
+  }
+  _ocrRunning++;
+  st.textContent = '🔍 识别中（首次需加载识别引擎，约十几秒）…';
+  try {
+    const Tesseract = await loadTesseract();
+    let text;
+    if (f.type === 'application/pdf') {
+      text = await ocrPdfText(f, Tesseract, st);
+    } else {
+      const res = await Tesseract.recognize(f, 'chi_sim+eng', Object.assign({}, TESS_OPTS, {
+        logger: m => { if (m.status === 'recognizing text') st.textContent = '🔍 识别中 ' + Math.round(m.progress * 100) + '%…'; }
+      }));
+      text = res && res.data && res.data.text;
+    }
+    const found = parseFinanceText(text);
+    const hints = [];
+    const skipped = [];
+    if (found.amount) (ocrFill('r-amount', found.amount) ? hints : skipped).push('金额 ¥' + found.amount);
+    if (found.date) (ocrFill('r-date', found.date) ? hints : skipped).push('日期 ' + found.date);
+    if (found.invno && kind === 1) (ocrFill('r-invno', found.invno) ? hints : skipped).push('发票号 ' + found.invno);
+    st.textContent = (hints.length ? '✅ 已识别回填：' + hints.join(' · ') : '')
+      + (skipped.length ? (hints.length ? '；' : '') + '识别到 ' + skipped.join(' · ') + '，因已手动填写未覆盖' : '')
+      + (hints.length || skipped.length ? '（可手动修改）' : '⚠ 未识别到有效信息，请手动填写');
+  } catch (e) {
+    st.textContent = '⚠ 识别失败：' + (e.message || e) + '，请手动填写';
+  } finally {
+    _ocrRunning--;
+  }
+}
+
+async function submitReimburse(ev) {
+  ev.preventDefault();
+  const st = document.getElementById('r-submit-status');
+  const btn = document.getElementById('r-submit-btn');
+  if (btn.disabled) return;
+  if (_ocrRunning > 0) {
+    st.textContent = '⏳ 凭证识别仍在进行，请稍候几秒再提交';
+    return false;
+  }
+  const amountStr = document.getElementById('r-amount').value.trim();
+  if (!/^\d{1,7}(\.\d{1,2})?$/.test(amountStr)) {
+    st.textContent = '⚠ 金额格式不正确：应为数字，最多两位小数';
+    document.getElementById('r-amount').focus();
+    return false;
+  }
+  const fd = new FormData();
+  fd.set('item', document.getElementById('r-item').value.trim());
+  fd.set('amount', amountStr);
+  fd.set('date', document.getElementById('r-date').value);
+  fd.set('note', document.getElementById('r-note').value.trim());
+  fd.set('invno', document.getElementById('r-invno').value.trim());
+  const r1 = document.getElementById('r-receipt').files[0];
+  const r2 = document.getElementById('r-payment').files[0];
+  if (r1) fd.set('receipt', r1);
+  if (r2) fd.set('payment', r2);
+  btn.disabled = true;
+  btn.textContent = '提交中…';
+  st.textContent = '提交中…';
+  try {
+    const resp = await fetch('/api/reimburse', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || ('HTTP ' + resp.status));
+    st.textContent = '✅ 已提交' + (data.recordId ? '，已写入财务报销表' : '') + (data.warning ? '；⚠ ' + data.warning : '');
+    clearReimburseDraft();
+    document.getElementById('reimburse-form').reset();
+    ['r-amount', 'r-invno'].forEach(id => {
+      const el = document.getElementById(id);
+      el.dataset.ocr = '';
+      el.classList.remove('ocr-filled');
+    });
+    const dateEl = document.getElementById('r-date');
+    dateEl.value = new Date().toLocaleDateString('sv-SE');
+    dateEl.dataset.ocr = '1';
+    dateEl.classList.remove('ocr-filled');
+    document.getElementById('r-receipt-status').textContent = '发票/收据图片或 PDF 自动识别金额、日期与发票号（≤10MB）';
+    document.getElementById('r-payment-status').textContent = '微信/支付宝付款截图可识别金额（≤10MB）';
+    loadDashboard();
+  } catch (e) {
+    st.textContent = '❌ 提交失败：' + (e.message || e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '提交报销';
+  }
+  return false;
 }
 
 function loadDashboard() {
@@ -882,43 +2477,94 @@ function loadDashboard() {
     document.getElementById("dash-body").innerHTML =
       `<div class="bg-white rounded-xl shadow p-6 text-sm text-red-500">看板加载失败，请稍后重试。</div>`;
   });
-  loadValidate();
 }
 
-// 数据健康（FE-05）：展示最近一次 validate_bitable 全量校验报告
-function loadValidate() {
-  fetch("/api/validate").then(r => r.json()).then(v => {
-    const box = document.getElementById("validate-body");
-    if (!v || v.ran === false) {
-      box.innerHTML = `
-        <div class="bg-white rounded-xl shadow p-5">
-          <h3 class="font-bold mb-2">数据健康</h3>
-          <p class="text-sm text-gray-400">${esc(v?.hint || "还没有校验报告。让 Agent 调用 nec-hub MCP 的 validate_bitable 跑一次全量校验。")}</p>
-        </div>`;
-      return;
-    }
-    const rows = Object.entries(v.tables ?? {}).map(([t, tv]) => {
-      const bad = (tv.anomalyCount ?? 0) > 0;
-      return `
-        <div class="flex items-center justify-between border-t border-gray-100 py-2">
-          <span class="text-sm">${esc(t)} <span class="text-xs text-gray-400">（${tv.totalRecords ?? 0} 条记录）</span></span>
-          <span class="text-sm font-bold ${bad ? "text-red-500" : "text-green-600"}">${tv.anomalyCount ?? 0} 项异常</span>
-        </div>
-        ${bad ? `<div class="pl-3 pb-2">${(tv.byRule ?? []).map(r =>
-          `<p class="text-xs text-gray-500">· ${esc(r.name)} × ${r.count}</p>`).join("")}</div>` : ""}`;
-    }).join("");
+// ===== FE-05 数据健康：最新校验报告展示 + 手动触发（mine 所有登录用户 / all 仅队长·组长） =====
+function isLeader() {
+  return !!(ME.authenticated && ME.user && /队长|组长/.test(ME.user.role || ""));
+}
+
+async function loadValidateHealth() {
+  const box = document.getElementById("dash-health");
+  if (!box) return;
+  if (!ME.authenticated) {
+    box.innerHTML = `<div class="bg-white rounded-xl shadow p-5 text-sm text-gray-500">🩺 数据健康：登录后可查看校验报告并触发校验（队员校验自己的数据，队长/组长可全量校验）。</div>`;
+    return;
+  }
+  let report = null;
+  try {
+    const resp = await fetch("/api/validate/report");
+    if (resp.ok) report = await resp.json();
+  } catch { /* 报告读取失败按空处理 */ }
+  renderValidateHealth(report && !report.empty ? report : null);
+}
+
+function renderValidateHealth(report) {
+  const box = document.getElementById("dash-health");
+  if (!box) return;
+  const btns = `
+    <button onclick="runValidate('mine')" id="vh-btn-mine" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600">校验我的数据</button>
+    ${isLeader() ? `<button onclick="runValidate('all')" id="vh-btn-all" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:var(--nec-navy)">全量校验</button>` : ""}`;
+  if (!report) {
     box.innerHTML = `
       <div class="bg-white rounded-xl shadow p-5">
         <div class="flex items-center justify-between mb-2">
           <h3 class="font-bold">数据健康</h3>
-          <span class="text-xs text-gray-400">校验于 ${new Date(v.validatedAt).toLocaleString("zh-CN")}${v.scope !== "all" ? " · 范围 " + esc(v.scope) : ""}</span>
+          <div class="flex gap-2">${btns}</div>
         </div>
-        ${v.anomalyCount === 0
-          ? `<p class="text-sm text-green-600">✅ 全部规则通过，共 ${Object.keys(v.tables ?? {}).length} 张表。</p>`
-          : `<p class="text-sm text-red-500 mb-1">共 ${v.anomalyCount} 项异常（明细见中台数据看板或问 Agent）</p>`}
-        ${rows}
+        <p class="text-sm text-gray-400">暂无校验报告：点「校验我的数据」立即跑一次，或等每周一 08:00 自动巡检（摘要推送飞书群）。</p>
       </div>`;
-  }).catch(() => {});
+    return;
+  }
+  const groups = (report.byType ?? []).map(t => {
+    const items = report.violations.filter(v => v.type === t.type).slice(0, 20).map(v => `
+      <li class="py-1.5 border-t border-gray-100 text-sm">
+        <div class="flex items-baseline gap-2 flex-wrap">
+          <span class="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">${esc(v.table)}</span>
+          <span class="text-gray-600">字段「${esc(v.field)}」${v.value ? `=${esc(v.value)}` : "为空"}</span>
+          <a href="${esc(v.link)}" target="_blank" class="text-xs hover:underline" style="color:var(--nec-cyan)">打开记录 →</a>
+        </div>
+        <p class="text-xs text-gray-400 mt-0.5">建议：${esc(v.suggestion)}</p>
+      </li>`).join("");
+    return `
+      <div class="mt-3">
+        <p class="text-sm font-medium text-slate-700">${esc(t.type)} <span class="text-xs text-gray-400">× ${t.count}</span></p>
+        <ul>${items}</ul>
+      </div>`;
+  }).join("");
+  box.innerHTML = `
+    <div class="bg-white rounded-xl shadow p-5">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="font-bold">数据健康</h3>
+        <div class="flex gap-2">${btns}</div>
+      </div>
+      <p class="text-xs text-gray-400 mb-1">上次全量校验：${report.generatedAt ? new Date(report.generatedAt).toLocaleString("zh-CN") : "—"} · 共 <b class="${report.total ? "text-red-600" : ""}" style="${report.total ? "" : "color:var(--nec-cyan)"}">${report.total}</b> 条异常 · 每周一 08:00 自动巡检</p>
+      ${groups || '<p class="text-sm text-gray-400 mt-2">🎉 未发现异常，4 张底表数据全绿。</p>'}
+      ${report.errors ? `<p class="text-xs text-amber-600 mt-2">⚠ ${Object.entries(report.errors).map(([t, e]) => `${esc(t)}：${esc(e)}`).join("；")}</p>` : ""}
+    </div>`;
+}
+
+async function runValidate(scope) {
+  const btn = document.getElementById(scope === "all" ? "vh-btn-all" : "vh-btn-mine");
+  if (btn) { btn.disabled = true; btn.textContent = "校验中…"; }
+  try {
+    const resp = await fetch("/api/validate/run", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ scope }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || ("HTTP " + resp.status));
+    if (scope === "all") {
+      renderValidateHealth(data);
+    } else {
+      alert(data.total ? `发现与你相关的 ${data.total} 条异常：\n` + data.violations.slice(0, 10).map(v => `· [${v.type}] ${v.table} 表「${v.field}」→ ${v.suggestion}`).join("\n") + (data.total > 10 ? `\n… 另有 ${data.total - 10} 条` : "") : "🎉 你的数据没有异常");
+    }
+  } catch (e) {
+    alert("校验失败：" + (e.message || e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = scope === "all" ? "全量校验" : "校验我的数据"; }
+  }
 }
 
 bootAuth();

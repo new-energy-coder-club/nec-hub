@@ -23,7 +23,7 @@
   --nec-line: #D9DFF0;         /* 描边/分割线 */
 
   /* ---- 字体族 Typography ---- */
-  --nec-font-cn: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  --nec-font-cn: "Source Han Sans SC", "思源黑体 CN", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; /* VI 规范：中文思源黑体优先 */
   --nec-font-en: Arial, Helvetica, sans-serif;
   --nec-font-display: "Arial Black", Arial, "Microsoft YaHei", sans-serif; /* 大标题/口号 */
   --nec-font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;    /* 编号/代码/数据 */
