@@ -108,6 +108,25 @@ import { json } from "./shared/http";
 import { handleTodos } from "./todos";
 import { handleValidateQuery, handleValidateReport, handleValidateRun, runWeeklyValidation } from "./validation/handlers";
 
+/** cron 任务去重守卫：guardSec 秒内已执行过返回 false（多触发器并存/旧触发器残留时防双重执行与重复推送） */
+async function cronDue(env: Env, name: string, guardSec: number): Promise<boolean> {
+  try {
+    const raw = await env.REGISTRY.get(`cron:guard:${name}`);
+    if (raw) {
+      const at = (JSON.parse(raw) as { at?: number }).at ?? 0;
+      if (Date.now() - at < guardSec * 1000) return false;
+    }
+  } catch { /* 读失败视为可执行，任务内部另有幂等保护 */ }
+  return true;
+}
+
+/** 标记 cron 任务已执行（30 天 TTL；写失败不影响本次执行） */
+function cronMark(env: Env, ctx: ExecutionContext, name: string): void {
+  ctx.waitUntil(
+    env.REGISTRY.put(`cron:guard:${name}`, JSON.stringify({ at: Date.now() }), { expirationTtl: 30 * 86400 }).catch(() => {}),
+  );
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -252,38 +271,52 @@ export default {
     }
   },
 
-  /** Cron：每 8 分钟刷看板缓存；每小时跑审批时效巡检（G-03）、刷仓库缓存并推送图纸评审阻塞告警；每周一 08:00（UTC+8）跑数据校验周报。
-   *  注意（2026-10-15 验收实测，两个坑）：
-   *  ① 本账户的 Cloudflare 触发器变更疑似不生效——配置里的 7 * * * * 从未触发，已下线两天的 23 * * * * 却仍在每小时触发，
-   *     故 handler 按实际生效的触发器匹配（7* 保留匹配仅为账户修复后前向兼容）；
-   *  ② Free 档单次 cron 调用 50 子请求上限：SLA 与仓库预热/阻塞告警合并在同一调用会超限（实测 HW 取消被截断），
-   *     故 SLA 挂在快触发器的每小时 :08 窗口（与看板预热合计 ~15 子请求，安全），23* 只跑仓库缓存与告警。
-   *  2026-10-15 配额治理：快触发器每 4 分钟 → 每 8 分钟（每天 360→180 次），handler 同时匹配新旧两条表达式（防坑①：旧触发器可能继续触发）；
-   *  看板缓存 TTL 900→1800s，TTL 过期才重写，dashboard:cache:* 写量 480→≤240 次/日，给登录会话等用户写入留出配额。 */
+  /** Cron 调度：时间窗驱动 + guard 去重，与"实际生效的是哪条触发器"解耦。
+   *  设计背景（2026-10-15/16 实测）：
+   *  ① 本账户触发器变更疑似不生效——曾配置的 7 * 从未触发，已下线两天的 23 * 却持续每小时触发；
+   *     故 handler 不依赖触发器表达式路由任务，全部按 UTC 时间窗判定，任意触发器组合都能驱动全部任务；
+   *  ② 免费档单次 cron 50 子请求上限：SLA（重）独占 :08 窗口，仓库预热/阻塞告警在 :24 窗口，看板预热 TTL 过期才写，互不叠加超限；
+   *  ③ 多触发器可能并发命中同一窗口（新 8 分钟档 + 残留的 4 分钟档 / 23 *），每任务带 cron:guard:<name> 时间戳去重，防双重执行/重复推送；
+   *  ④ 窗口选取：旧 4 分钟档与新 8 分钟档的共同 tick 必为 8 的倍数，宽 4 分钟的窗口恰含一个 tick——
+   *     :08 G-03 审批时效巡检 · :24 仓库缓存+图纸评审阻塞告警 · 周一 00:00–00:04 数据校验周报。
+   *  配额治理（2026-10-15）：快触发器 360→180 次/日；看板缓存 TTL 900→1800s（过期才重写，≤240 写/日），
+   *  探针整点才落 KV，给登录会话等用户写入留出免费档 1,000 写/日的余量。 */
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    // 触发探针：每个 cron 事件落 KV（30 天），用于确认触发器真实到达（排障手段，勿删）。
-    // 注意：快触发器每天 180–360 次，全量落 KV 会吃掉免费档 1,000 次/日写配额的大头，
-    // 故快触发器每小时只在整点（minute === 0）写一次；小时/周级触发器照常全量记录。
+    const t = new Date(controller.scheduledTime);
+    const minute = t.getUTCMinutes();
     const isFastCron = controller.cron === "*/4 * * * *" || controller.cron === "*/8 * * * *";
-    const probeMinute = new Date(controller.scheduledTime).getUTCMinutes();
-    if (!isFastCron || probeMinute === 0) {
+    const isHourlyCron = controller.cron === "7 * * * *" || controller.cron === "23 * * * *";
+    const isWeeklyCron = controller.cron === "0 0 * * 1";
+
+    // 触发探针：每个 cron 事件落 KV（30 天），确认触发器真实到达（排障手段，勿删）。
+    // 快触发器每天 180–360 次，全量落 KV 会吃掉免费档写配额大头，故只在整点写一次。
+    if (!isFastCron || minute === 0) {
       ctx.waitUntil(
         env.REGISTRY.put("cron:last:" + controller.cron, JSON.stringify({ at: Date.now() }), { expirationTtl: 30 * 86400 }).catch(() => {}),
       );
     }
-    if (controller.cron === "0 0 * * 1") ctx.waitUntil(runWeeklyValidation(env));
-    else if (isFastCron) {
-      ctx.waitUntil(prewarmDashboard(env, ctx));
-      // G-03 时效巡检：每小时 :08（UTC）顺带执行；*/4 与 */8 的 7–10 分窗口都只会命中 :08 一次
-      const minute = new Date(controller.scheduledTime).getUTCMinutes();
-      if (minute >= 7 && minute < 11) {
-        ctx.waitUntil(import("./approvals/sla").then((m) => m.runApprovalSla(env)));
-      }
-    } else if (controller.cron === "7 * * * *" || controller.cron === "23 * * * *") {
+
+    // ① 看板缓存预热：快触发器每 tick；TTL（30 分钟）过期才重写
+    if (isFastCron) ctx.waitUntil(prewarmDashboard(env, ctx));
+
+    // ② G-03 审批时效巡检：每小时 :08 窗口（只挂快触发器，与 ③ 错峰；30 分钟去重防并发双跑）
+    if (isFastCron && minute >= 6 && minute < 10 && (await cronDue(env, "sla", 1800))) {
+      cronMark(env, ctx, "sla");
+      ctx.waitUntil(import("./approvals/sla").then((m) => m.runApprovalSla(env)));
+    }
+
+    // ③ 仓库缓存 + 图纸评审阻塞告警：每小时 :24 窗口（小时级触发器 :23 直接命中；其不触发时由快触发器兜底）
+    if ((isHourlyCron || (isFastCron && minute >= 22 && minute < 26)) && (await cronDue(env, "hourly", 2700))) {
+      cronMark(env, ctx, "hourly");
       ctx.waitUntil(prewarmRepos(env));
-      ctx.waitUntil(
-        import("./drawing-review/alert.service").then((m) => m.pushBlockerAlerts(env)),
-      );
+      ctx.waitUntil(import("./drawing-review/alert.service").then((m) => m.pushBlockerAlerts(env)));
+    }
+
+    // ④ 数据校验周报：周一 00:00（UTC）窗口（周触发器与快触发器谁先到谁跑，12 小时去重）
+    const isWeeklyWindow = t.getUTCDay() === 1 && t.getUTCHours() === 0 && minute < 4;
+    if ((isWeeklyCron || isFastCron) && isWeeklyWindow && (await cronDue(env, "weekly", 12 * 3600))) {
+      cronMark(env, ctx, "weekly");
+      ctx.waitUntil(runWeeklyValidation(env));
     }
   },
 } satisfies ExportedHandler<Env>;
