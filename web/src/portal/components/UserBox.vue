@@ -1,13 +1,15 @@
 <script setup lang="ts">
-// 用户盒：登录态徽章 / 登录按钮（带"上次登录"提示）
+// 用户盒：登录态徽章 / 登录按钮（带"上次登录"提示 + 登录中过渡态 + 内联错误提示）
 import { computed } from 'vue'
 import { auth, getLastLogin, logout, startLogin } from '@shared/auth'
+import AuthToast from '@shared/ui/AuthToast.vue'
 
 // 角色徽标补充权限说明（external 等非常规角色用户常不知道边界）
 const ROLE_TIPS: Record<string, string> = { external: '外部协作者：可查看公开数据，审批/报销等功能需队长开通' }
 
 const me = computed(() => auth.me)
 const config = computed(() => auth.config)
+const exchanging = computed(() => auth.phase === 'exchanging')
 // “记住上次登录”：登录成功后后端写入非 HttpOnly 的 nec_last_login Cookie（30 天，仅展示信息）
 const last = computed(() => getLastLogin())
 const roleTip = computed(() => (me.value.user?.role && ROLE_TIPS[me.value.user.role]) || '')
@@ -23,6 +25,11 @@ const roleTip = computed(() => (me.value.user?.role && ROLE_TIPS[me.value.user.r
       <span v-if="me.user.group" class="text-gray-400 hidden sm:inline">{{ me.user.group }}</span>
       <button @click="logout" class="text-gray-400 hover:text-gray-600 ml-1">登出</button>
     </template>
+    <template v-else-if="exchanging">
+      <!-- OAuth 回跳兑换会话中：过渡态占位，避免闪现"未登录" -->
+      <span class="inline-block w-3.5 h-3.5 border-2 border-gray-200 rounded-full animate-spin" style="border-top-color:var(--nec-cyan)"></span>
+      <span class="text-gray-500">飞书登录中…</span>
+    </template>
     <template v-else-if="config.loginEnabled">
       <template v-if="last && last.name">
         <img v-if="last.avatar_url" :src="last.avatar_url" class="w-6 h-6 rounded-full opacity-70" alt="" />
@@ -31,4 +38,7 @@ const roleTip = computed(() => (me.value.user?.role && ROLE_TIPS[me.value.user.r
       <button @click="startLogin" class="px-3 py-1 rounded text-white" style="background:var(--nec-navy)">{{ last && last.name ? '以 ' + last.name + ' 继续登录' : '飞书登录' }}</button>
     </template>
   </div>
+
+  <!-- 登录错误提示：内联横幅（替代原生 alert），可手动关闭/重试 -->
+  <AuthToast />
 </template>

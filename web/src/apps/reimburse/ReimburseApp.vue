@@ -3,7 +3,8 @@
 // embedded：隐藏顶栏、工具栏贴顶（原 ?embedded=1 / iframe 嵌入语义）
 // skipAuthBoot：门户内复用时登录态由门户统一引导（portal/main.ts 已 bootAuth），本子应用不再重复兑换 OAuth code
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import { auth, bootAuth, startLogin } from '@shared/auth'
+import { auth, bootAuth, tryStartLogin } from '@shared/auth'
+import AuthToast from '@shared/ui/AuthToast.vue'
 import { store, restoreDraft, loadErpMeta, loadMine, loadLedger, recognizeFile, today } from './store'
 import TopBar from './components/TopBar.vue'
 import Toolbar from './components/Toolbar.vue'
@@ -24,6 +25,7 @@ const props = withDefaults(defineProps<{ embedded?: boolean; skipAuthBoot?: bool
 const emit = defineEmits<{ (e: 'exit'): void }>()
 
 const authed = computed(() => !!(auth.me.authenticated && auth.me.user))
+const exchanging = computed(() => auth.phase === 'exchanging')
 const creatorTime = ref('—')
 
 function onAuthed() {
@@ -33,8 +35,7 @@ function onAuthed() {
 }
 
 function onLoginClick() {
-  if (!auth.config.loginEnabled) { alert('中台未配置飞书应用，请联系管理员'); return }
-  startLogin()
+  tryStartLogin()
 }
 
 /** 视图切换：填报(默认) / 我的报销 / 单据列表；切到列表视图即拉数据（登录后） */
@@ -92,15 +93,23 @@ watch(authed, now => {
     <Toolbar v-if="store.view === 'form'" :embedded="embedded" @exit="emit('exit')" />
 
     <main class="max-w-6xl mx-auto px-4 py-4 space-y-4">
+      <!-- 登录态确认中（启动 / OAuth 回跳兑换）：占位防门禁闪现 -->
+      <section v-if="!authed && auth.phase !== 'ready'" class="erp-section">
+        <div class="body flex items-center gap-3 text-sm text-nec-gray">
+          <span class="inline-block w-4 h-4 border-2 border-gray-200 rounded-full animate-spin" style="border-top-color:var(--nec-cyan)"></span>
+          {{ auth.phase === 'exchanging' ? '飞书登录中…' : '正在确认登录态…' }}
+        </div>
+      </section>
+
       <!-- 登录门禁 -->
-      <section v-if="!authed" id="login-gate" class="erp-section">
+      <section v-else-if="!authed" id="login-gate" class="erp-section">
         <div class="body flex flex-col sm:flex-row sm:items-center gap-4">
           <div class="text-3xl">🔐</div>
           <div class="flex-1">
             <h2 class="font-bold text-nec-ink">登录后使用报销助手</h2>
             <p class="text-sm text-nec-gray mt-1">使用飞书账号登录 NEC 中台。发票识别全程在浏览器本地完成，凭证文件仅存入团队 R2 存档。</p>
           </div>
-          <button id="login-btn" class="tool-btn primary" @click="onLoginClick">飞书登录</button>
+          <button id="login-btn" class="tool-btn primary" :disabled="exchanging" @click="onLoginClick">{{ exchanging ? '飞书登录中…' : '飞书登录' }}</button>
         </div>
       </section>
 
@@ -137,5 +146,6 @@ watch(authed, now => {
     <FlowModal />
     <AttachModal />
     <DocModal />
+    <AuthToast />
   </div>
 </template>

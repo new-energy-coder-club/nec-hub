@@ -3,7 +3,8 @@
 // embedded：隐藏 Hero、改用紧凑导航、body 底色换 paper（原 ?embedded=1 / iframe 嵌入语义）
 // skipAuthBoot：门户内复用时登录态由门户统一引导（portal/main.ts 已 bootAuth），本子应用不再重复兑换 OAuth code
 import { computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { auth, bootAuth, startLogin } from '@shared/auth'
+import { auth, bootAuth, tryStartLogin } from '@shared/auth'
+import AuthToast from '@shared/ui/AuthToast.vue'
 import { loadMine, loadTodos } from './store'
 import HeroHeader from './components/HeroHeader.vue'
 import SubmitForm from './components/SubmitForm.vue'
@@ -14,6 +15,7 @@ import './compliance.css'
 const props = withDefaults(defineProps<{ embedded?: boolean; skipAuthBoot?: boolean }>(), { embedded: false, skipAuthBoot: false })
 
 const authed = computed(() => !!(auth.me && auth.me.authenticated))
+const exchanging = computed(() => auth.phase === 'exchanging')
 
 function onAuthed() {
   loadMine()
@@ -21,8 +23,7 @@ function onAuthed() {
 }
 
 function onLoginClick() {
-  if (!auth.config.loginEnabled) { alert('中台未配置飞书应用，请联系管理员'); return }
-  startLogin()
+  tryStartLogin()
 }
 
 onMounted(async () => {
@@ -50,15 +51,23 @@ watch(authed, now => { if (now) onAuthed() })
 
     <main class="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
+      <!-- 登录态确认中（启动 / OAuth 回跳兑换）：占位防门禁闪现 -->
+      <section v-if="!authed && auth.phase !== 'ready'" class="nec-card p-6">
+        <div class="flex items-center gap-3 text-sm text-nec-gray">
+          <span class="inline-block w-4 h-4 border-2 border-gray-200 rounded-full animate-spin" style="border-top-color:var(--nec-cyan)"></span>
+          {{ auth.phase === 'exchanging' ? '飞书登录中…' : '正在确认登录态…' }}
+        </div>
+      </section>
+
       <!-- 登录门禁 -->
-      <section v-if="!authed" id="login-gate" class="nec-card p-6">
+      <section v-else-if="!authed" id="login-gate" class="nec-card p-6">
         <div class="flex flex-col sm:flex-row sm:items-center gap-4">
           <div class="text-3xl">🔐</div>
           <div class="flex-1">
             <h2 class="font-bold text-nec-ink">登录后使用合规申请</h2>
             <p class="text-sm text-nec-gray mt-1">使用飞书账号登录 NEC 中台。对外发布、商务合作、授权使用等内容须过审后才可发布。</p>
           </div>
-          <button id="login-btn" class="btn-primary whitespace-nowrap" @click="onLoginClick">飞书登录</button>
+          <button id="login-btn" class="btn-primary whitespace-nowrap" :disabled="exchanging" @click="onLoginClick">{{ exchanging ? '飞书登录中…' : '飞书登录' }}</button>
         </div>
       </section>
 
@@ -77,5 +86,7 @@ watch(authed, now => { if (now) onAuthed() })
         </p>
       </footer>
     </main>
+
+    <AuthToast />
   </div>
 </template>

@@ -3,7 +3,7 @@
 // 数据源：队长/财务走 /api/erp/reimburse/manage（全量分页，loadLedger 内选路）；普通成员回退 docs/mine 映射
 // 状态筛选为前端过滤；行点击无动作（详情查看仍在「我的报销」视图提供）
 import { computed } from 'vue'
-import { auth, startLogin } from '@shared/auth'
+import { auth, tryStartLogin } from '@shared/auth'
 import { store, loadLedger, searchLedger, gotoForm, fmtMoneyErp, statusColor, type LedgerRow } from '../store'
 
 const STATUS_FILTERS = ['全部', '审批中', '已通过', '已驳回', '已打款', '已完成']
@@ -21,8 +21,7 @@ const totalPages = computed(() => Math.max(1, Math.ceil((loaded.value ? store.le
 const sortLabel = computed(() => (store.ledger.sort === 'desc' ? '日期 ↓' : '日期 ↑'))
 
 function onLoginClick() {
-  if (!auth.config.loginEnabled) { alert('中台未配置飞书应用，请联系管理员'); return }
-  startLogin()
+  tryStartLogin()
 }
 
 function toggleSort() {
