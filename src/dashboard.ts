@@ -1,8 +1,8 @@
 /**
  * 数据看板（飞书多维表格聚合 + KV 缓存）与资料页
  *
- * 5 分钟表缓存（dashboard:cache:<table>）供 buildDashboard / 角色解析 / 数据校验共用；
- * Cron 每 4 分钟预热，让用户请求始终命中热缓存。
+ * 表缓存（dashboard:cache:<table>，TTL 见 DASH_CACHE_TTL_SEC）供 buildDashboard / 角色解析 / 数据校验共用；
+ * Cron 快触发器（每 8 分钟）预热，让用户请求始终命中热缓存。
  */
 
 import {
@@ -42,8 +42,9 @@ export interface TableFetchResult {
   error?: string;
 }
 
-/** 看板数据缓存 TTL（秒）。方案文档约定：看板类接口 5 分钟级缓存，避免打满飞书免费配额 */
-const DASH_CACHE_TTL_SEC = 300;
+/** 看板数据缓存 TTL（秒）。原为 5 分钟；2026-10-15 调整为 15 分钟，同日因 KV 免费档 1,000 次/日写配额
+ *  被打爆再调整为 30 分钟——快触发器预热配合 fetchTableCached 按 TTL 过期才写，5 张表写量 ≤240 次/日。 */
+const DASH_CACHE_TTL_SEC = 1800;
 
 export async function getDashboardConfig(env: Env): Promise<DashboardConfig | null> {
   const raw = await env.REGISTRY.get("dashboard:config");
@@ -55,7 +56,7 @@ export async function getDashboardConfig(env: Env): Promise<DashboardConfig | nu
   }
 }
 
-/** 读一张表：命中 5 分钟缓存直接返回；刷新失败时降级返回过期缓存 */
+/** 读一张表：命中 TTL 内缓存直接返回；刷新失败时降级返回过期缓存 */
 export async function fetchTableCached(env: Env, cfg: DashboardConfig, key: DashTable, ctx?: ExecutionContext): Promise<TableFetchResult> {
   const tableId = cfg.tables[key];
   if (!tableId) return { records: [], cachedAt: "", error: "未配置 table_id" };
@@ -94,13 +95,13 @@ export async function refreshTableCache(env: Env, cfg: DashboardConfig, key: Das
   return { records, cachedAt: new Date().toISOString() };
 }
 
-/** Cron 预热：刷新所有已配置看板表的缓存，让用户请求始终命中热缓存 */
-export async function prewarmDashboard(env: Env): Promise<void> {
+/** Cron 预热：走 fetchTableCached 按 TTL 过期才重写（不再无条件 put），让用户请求始终命中热缓存 */
+export async function prewarmDashboard(env: Env, ctx?: ExecutionContext): Promise<void> {
   if (!env.FEISHU_APP_ID || !env.FEISHU_APP_SECRET) return;
   const cfg = await getDashboardConfig(env);
   if (!cfg) return;
   await Promise.allSettled(
-    DASH_TABLES.filter((k) => cfg.tables[k]).map((k) => refreshTableCache(env, cfg, k)),
+    DASH_TABLES.filter((k) => cfg.tables[k]).map((k) => fetchTableCached(env, cfg, k, ctx)),
   );
 }
 

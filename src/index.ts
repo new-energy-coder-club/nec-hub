@@ -252,21 +252,29 @@ export default {
     }
   },
 
-  /** Cron：每 4 分钟刷看板缓存；每小时跑审批时效巡检（G-03）、刷仓库缓存并推送图纸评审阻塞告警；每周一 08:00（UTC+8）跑数据校验周报。
+  /** Cron：每 8 分钟刷看板缓存；每小时跑审批时效巡检（G-03）、刷仓库缓存并推送图纸评审阻塞告警；每周一 08:00（UTC+8）跑数据校验周报。
    *  注意（2026-10-15 验收实测，两个坑）：
    *  ① 本账户的 Cloudflare 触发器变更疑似不生效——配置里的 7 * * * * 从未触发，已下线两天的 23 * * * * 却仍在每小时触发，
    *     故 handler 按实际生效的触发器匹配（7* 保留匹配仅为账户修复后前向兼容）；
    *  ② Free 档单次 cron 调用 50 子请求上限：SLA 与仓库预热/阻塞告警合并在同一调用会超限（实测 HW 取消被截断），
-   *     故 SLA 挂在「每 4 分钟」触发器的每小时 :08 窗口（与看板预热合计 ~15 子请求，安全），23* 只跑仓库缓存与告警。 */
+   *     故 SLA 挂在快触发器的每小时 :08 窗口（与看板预热合计 ~15 子请求，安全），23* 只跑仓库缓存与告警。
+   *  2026-10-15 配额治理：快触发器每 4 分钟 → 每 8 分钟（每天 360→180 次），handler 同时匹配新旧两条表达式（防坑①：旧触发器可能继续触发）；
+   *  看板缓存 TTL 900→1800s，TTL 过期才重写，dashboard:cache:* 写量 480→≤240 次/日，给登录会话等用户写入留出配额。 */
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    // 触发探针：每个 cron 事件落 KV（30 天），用于确认触发器真实到达（排障手段，勿删）
-    ctx.waitUntil(
-      env.REGISTRY.put("cron:last:" + controller.cron, JSON.stringify({ at: Date.now() }), { expirationTtl: 30 * 86400 }).catch(() => {}),
-    );
+    // 触发探针：每个 cron 事件落 KV（30 天），用于确认触发器真实到达（排障手段，勿删）。
+    // 注意：快触发器每天 180–360 次，全量落 KV 会吃掉免费档 1,000 次/日写配额的大头，
+    // 故快触发器每小时只在整点（minute === 0）写一次；小时/周级触发器照常全量记录。
+    const isFastCron = controller.cron === "*/4 * * * *" || controller.cron === "*/8 * * * *";
+    const probeMinute = new Date(controller.scheduledTime).getUTCMinutes();
+    if (!isFastCron || probeMinute === 0) {
+      ctx.waitUntil(
+        env.REGISTRY.put("cron:last:" + controller.cron, JSON.stringify({ at: Date.now() }), { expirationTtl: 30 * 86400 }).catch(() => {}),
+      );
+    }
     if (controller.cron === "0 0 * * 1") ctx.waitUntil(runWeeklyValidation(env));
-    else if (controller.cron === "*/4 * * * *") {
-      ctx.waitUntil(prewarmDashboard(env));
-      // G-03 时效巡检：每小时 :08（UTC，*/4 的 7–10 分窗口只会命中 :08 一次）顺带执行
+    else if (isFastCron) {
+      ctx.waitUntil(prewarmDashboard(env, ctx));
+      // G-03 时效巡检：每小时 :08（UTC）顺带执行；*/4 与 */8 的 7–10 分窗口都只会命中 :08 一次
       const minute = new Date(controller.scheduledTime).getUTCMinutes();
       if (minute >= 7 && minute < 11) {
         ctx.waitUntil(import("./approvals/sla").then((m) => m.runApprovalSla(env)));

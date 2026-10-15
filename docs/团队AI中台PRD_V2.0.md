@@ -571,7 +571,7 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 - 校验规则集：KV `validate:rules`，声明式 JSON，新增规则零代码。
 - 个性化：KV `home:<user_id>` / `home:group:<组名>`（个人 > 组 > 默认三层回退）。
 - 业务域配置：各流程域独立 `config_*`（KV），缺失时 503 + 前端黄条，互不影响。
-- Cron（wrangler.jsonc triggers）：`*/4 * * * *` 预热看板缓存；`23 * * * *` 刷新仓库缓存 + 图纸评审阻塞告警；`0 0 * * 1` 数据校验周报（周一 08:00 UTC+8）。
+- Cron（wrangler.jsonc triggers）：`*/8 * * * *` 预热看板缓存；`23 * * * *` 刷新仓库缓存 + 图纸评审阻塞告警；`0 0 * * 1` 数据校验周报（周一 08:00 UTC+8）。
 - 分支策略：fix/vi 为存续主线，main 能力按《主线合并对照》清单移植后归档（A 组剩：签名 webhook 群通知域、应用广场按角色过滤）。
 - 前端路线（已规划）：流程页按"页面级微前端"拆分——图纸评审 Vue 3 / 硬件·合同审批 React，公共层 `@nec/core` 框架无关，门户壳保持 vanilla + hash 路由（见《页面与Tab状态现状》§5）。
 
