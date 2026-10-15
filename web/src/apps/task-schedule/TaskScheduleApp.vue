@@ -1,11 +1,12 @@
 <script setup lang="ts">
 // 任务排期（Taskto 地铁线路图 Todo）：独立页（/apps/task-schedule/）与门户 Tab 共用本视图
 // embedded：隐藏顶栏、收窄边距（原 ?embedded=1 / iframe 嵌入语义）
-// 纯本地应用：数据存 localStorage「nec-taskto-v1」，无后端端点
+// 纯本地应用：数据存 localStorage「nec-taskto-v1」，UI 偏好（白底/左侧视图）存「nec-taskto-ui-v1」
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import { store, save, uid, lineOf, fmtDate, visibleTasks, resetToDefault } from './store'
+import { store, save, saveUi, uid, lineOf, fmtDate, visibleTasks, resetToDefault } from './store'
 import TaskRow from './components/TaskRow.vue'
 import MetroMap from './components/MetroMap.vue'
+import GitFlowPanel from './components/GitFlowPanel.vue'
 import AddTodoDialog from './components/AddTodoDialog.vue'
 import SettingsDialog from './components/SettingsDialog.vue'
 import './taskto.css'
@@ -23,11 +24,11 @@ const statText = computed(() => {
   return `共 ${total} 项 · 已完成 ${done} · 待办 ${total - done}`
 })
 
-// 线路图依赖任务行实际布局，任何影响列表/线路/展开态的变化后等 DOM 绘制再量坐标（原 render() 末尾 rAF(renderMap)）
+// 线路图依赖任务行实际布局，任何影响列表/线路/展开态/视图切换的变化后等 DOM 绘制再量坐标（原 render() 末尾 rAF(renderMap)）
 function scheduleRedraw() {
   nextTick(() => requestAnimationFrame(() => mapRef.value?.redraw(listEl.value)))
 }
-watch([visibleTasks, () => store.lines, () => store.expandedId], scheduleRedraw, { deep: true })
+watch([visibleTasks, () => store.lines, () => store.expandedId, () => store.leftView], scheduleRedraw, { deep: true })
 
 function onResize() { if (store.mapVisible) mapRef.value?.redraw(listEl.value) }
 onMounted(() => {
@@ -60,7 +61,7 @@ function addTask(p: { title: string; date: string; line: string; note: string })
 }
 function onFilterChange() { store.expandedId = null }
 
-// 点击站点圆点：展开对应任务并平滑滚动到该行
+// 点击站点圆点/Git 节点：展开对应任务并平滑滚动到该行
 function selectStop(id: string) {
   store.expandedId = id
   nextTick(() => {
@@ -72,6 +73,20 @@ function selectStop(id: string) {
 function expandMap() {
   store.mapVisible = true
   scheduleRedraw()
+}
+
+/* ---------------- 左侧视图 / 白底偏好 ---------------- */
+function switchLeftView(v: 'metro' | 'git') {
+  if (store.leftView === v) return
+  store.leftView = v
+  // 切到 Git 流线图时若面板处于收起状态，自动展开
+  if (v === 'git' && !store.mapVisible) store.mapVisible = true
+  saveUi()
+  scheduleRedraw()
+}
+function toggleWhiteBg() {
+  store.whiteBg = !store.whiteBg
+  saveUi()
 }
 
 /* ---------------- 设置行为 ---------------- */
@@ -104,7 +119,7 @@ function resetData() {
 </script>
 
 <template>
-  <div class="taskto-root max-w-4xl mx-auto" :class="embedded ? '' : 'px-5 py-6'">
+  <div class="taskto-root max-w-4xl mx-auto" :class="[embedded ? '' : 'px-5 py-6', { 'white-bg': store.whiteBg }]">
 
     <!-- 顶栏（embedded 隐藏） -->
     <header v-if="!embedded" class="flex items-center justify-between mb-6">
@@ -134,11 +149,25 @@ function resetData() {
           </optgroup>
         </select>
       </div>
-      <button
-        class="flex items-center gap-1.5 bg-white text-black font-semibold text-sm px-5 py-2 rounded-full hover:bg-neutral-200 transition"
-        @click="addDlg?.open()">
-        <span class="text-lg leading-none">+</span> Add Todo
-      </button>
+      <div class="flex items-center gap-3">
+        <!-- 左侧视图切换（收起状态不显示） -->
+        <div v-show="store.mapVisible" class="view-switch">
+          <button :class="{ active: store.leftView === 'metro' }" @click="switchLeftView('metro')">地铁图</button>
+          <button :class="{ active: store.leftView === 'git' }" @click="switchLeftView('git')">Git流线</button>
+        </div>
+        <!-- 白底切换：深色状态显示太阳（点击切白底），白底显示月亮 -->
+        <button title="白底切换"
+          class="flex-none border border-neutral-800 rounded-full w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-white transition"
+          @click="toggleWhiteBg">
+          <svg v-if="!store.whiteBg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        </button>
+        <button
+          class="flex items-center gap-1.5 bg-white text-black font-semibold text-sm px-5 py-2 rounded-full hover:bg-neutral-200 transition"
+          @click="addDlg?.open()">
+          <span class="text-lg leading-none">+</span> Add Todo
+        </button>
+      </div>
     </div>
 
     <!-- 统计折叠条 -->
@@ -149,9 +178,12 @@ function resetData() {
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform" :style="{ transform: store.statOpen ? 'rotate(180deg)' : '' }"><path d="m6 9 6 6 6-6"/></svg>
     </button>
 
-    <!-- 主体：线路图 + 任务列表 -->
+    <!-- 主体：线路图（地铁图/Git流线）+ 任务列表 -->
     <div class="flex gap-3 items-stretch">
-      <MetroMap v-show="store.mapVisible" ref="mapRef"
+      <MetroMap v-show="store.mapVisible && store.leftView === 'metro'" ref="mapRef"
+        :lines="store.lines" :tasks="visibleTasks"
+        @collapse="store.mapVisible = false" @select="selectStop" />
+      <GitFlowPanel v-show="store.mapVisible && store.leftView === 'git'"
         :lines="store.lines" :tasks="visibleTasks"
         @collapse="store.mapVisible = false" @select="selectStop" />
       <button v-if="!store.mapVisible" title="展开线路图"

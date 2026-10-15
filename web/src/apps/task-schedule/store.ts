@@ -1,11 +1,15 @@
 // 任务排期（Taskto 地铁线路图 Todo）共享状态与工具：独立入口（/apps/task-schedule/）与门户 Tab 复用同一套
-// 纯本地应用：无 fetch 端点、无登录门控，唯一持久化为 localStorage「nec-taskto-v1」（与原 public/apps/task-schedule/index.html 对齐）
+// 纯本地应用：无 fetch 端点、无登录门控，持久化分两处：
+//   lines/tasks → localStorage「nec-taskto-v1」（与原 public/apps/task-schedule/index.html 对齐，导出/导入 schema 不变）
+//   UI 偏好（白底/左侧视图）→ localStorage「nec-taskto-ui-v1」，与数据互不混写
 import { reactive, computed } from 'vue'
 
 export interface TaskLine { id: string; name: string; color: string }
 export interface TaskItem { id: string; title: string; date: string; line: string; done: boolean; note: string }
+export interface UiPref { whiteBg: boolean; leftView: 'metro' | 'git' }
 
 export const LS_KEY = 'nec-taskto-v1'
+export const UI_KEY = 'nec-taskto-ui-v1'
 
 export const DEFAULT_DATA: { lines: TaskLine[]; tasks: TaskItem[] } = {
   lines: [
@@ -38,16 +42,34 @@ function load(): { lines: TaskLine[]; tasks: TaskItem[] } {
   return structuredClone(DEFAULT_DATA)
 }
 
+// UI 偏好读取：逐字段校验，任何异常回退默认值（白底关闭、左侧地铁图）
+function loadUi(): UiPref {
+  const d: UiPref = { whiteBg: false, leftView: 'metro' }
+  try {
+    const raw = localStorage.getItem(UI_KEY)
+    if (raw) {
+      const p = JSON.parse(raw)
+      if (p && typeof p.whiteBg === 'boolean') d.whiteBg = p.whiteBg
+      if (p && (p.leftView === 'metro' || p.leftView === 'git')) d.leftView = p.leftView
+    }
+  } catch { /* ignore */ }
+  return d
+}
+
 export const store = reactive({
   ...load(),
   filter: 'all',
   expandedId: null as string | null,
   mapVisible: true,
   statOpen: false,
+  ...loadUi(),
 })
 
 // 只持久化 lines/tasks（与原 state 结构一致，UI 状态不落盘）
 export function save() { localStorage.setItem(LS_KEY, JSON.stringify({ lines: store.lines, tasks: store.tasks })) }
+
+// UI 偏好单独落盘，不触碰 lines/tasks 的保存行为与导出 schema
+export function saveUi() { localStorage.setItem(UI_KEY, JSON.stringify({ whiteBg: store.whiteBg, leftView: store.leftView })) }
 
 export function resetToDefault() {
   const d = structuredClone(DEFAULT_DATA)

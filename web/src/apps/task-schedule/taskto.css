@@ -42,3 +42,73 @@ dialog::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(3px); }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 4px; }
+
+/* Git 流线图面板：图例吸顶背景（盖住滚过的 SVG）、节点 hover 放大 */
+.gitflow-legend { background: #000; }
+.gitflow-node { cursor: pointer; transform-box: fill-box; transform-origin: center; transition: transform .12s ease; }
+.gitflow-node:hover { transform: scale(1.35); }
+
+/* 左侧视图切换（地铁图 / Git流线）：自定类便于白底主题整体翻转 */
+.view-switch { display: flex; align-items: center; border: 1px solid #404040; border-radius: 8px; overflow: hidden; flex: none; }
+.view-switch button { padding: 6px 10px; font-size: 12px; line-height: 1; color: #737373; border: none; background: transparent; transition: all .15s ease; }
+.view-switch button:hover { color: #fff; }
+.view-switch button.active { background: #262626; color: #fff; }
+
+/* ============ 白底主题覆盖（全部限定 .taskto-root.white-bg，不外溢门户） ============ */
+.taskto-root.white-bg { background: #f6f7f9; color: #0f172a; }
+.taskto-root.white-bg .logo::after { background: #0f172a; }
+
+/* 勾选圈：深灰描边；done 反色（黑底白勾） */
+.taskto-root.white-bg .row-check { border-color: #334155; }
+.taskto-root.white-bg .row-check:hover { border-color: #0f172a; box-shadow: 0 0 0 4px rgba(15,23,42,.08); }
+.taskto-root.white-bg .row-check.done { background: #0f172a; border-color: #0f172a; color: #fff; }
+
+/* 任务行 hover / 完成文字深色系 */
+.taskto-root.white-bg .task-row:hover { background: rgba(15,23,42,.04); }
+.taskto-root.white-bg .done-text { color: rgba(15,23,42,.45); }
+
+/* 表单控件：select 箭头换深色 stroke、选项白底、文字深色、日期控件浅色配色 */
+.taskto-root.white-bg select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+.taskto-root.white-bg option { background: #fff; color: #0f172a; }
+.taskto-root.white-bg input, .taskto-root.white-bg textarea, .taskto-root.white-bg select { color: #0f172a; }
+.taskto-root.white-bg .\[color-scheme\:dark\] { color-scheme: light !important; }
+
+/* 站内弹窗（SettingsDialog / AddTodoDialog 原生 <dialog>）与遮罩 */
+.taskto-root.white-bg dialog { background: #fff; color: #0f172a; border-color: #d1d5db; }
+.taskto-root.white-bg dialog::backdrop { background: rgba(15,23,42,.35); backdrop-filter: blur(3px); }
+
+/* 局部滚动条深色 */
+.taskto-root.white-bg ::-webkit-scrollbar-thumb { background: rgba(15,23,42,.2); }
+
+/* 视图切换 / Git 图例在白底下的配色 */
+.taskto-root.white-bg .view-switch { border-color: #cbd5e1; }
+.taskto-root.white-bg .view-switch button { color: #64748b; }
+.taskto-root.white-bg .view-switch button:hover { color: #0f172a; }
+.taskto-root.white-bg .view-switch button.active { background: #0f172a; color: #fff; }
+.taskto-root.white-bg .gitflow-legend { background: #f6f7f9; }
+
+/* Tailwind 工具类覆盖（utility 无法条件化，用后代选择器 + !important） */
+.taskto-root.white-bg .text-white { color: #0f172a !important; }
+.taskto-root.white-bg .text-black { color: #fff !important; }
+.taskto-root.white-bg .text-neutral-300 { color: #475569 !important; }
+.taskto-root.white-bg .text-neutral-400 { color: #475569 !important; }
+.taskto-root.white-bg .text-neutral-500 { color: #64748b !important; }
+.taskto-root.white-bg .text-neutral-600 { color: #64748b !important; }
+.taskto-root.white-bg .text-red-400 { color: #dc2626 !important; }
+.taskto-root.white-bg .hover\:text-white:hover { color: #0f172a !important; }
+.taskto-root.white-bg .hover\:text-neutral-300:hover { color: #334155 !important; }
+.taskto-root.white-bg .hover\:text-red-300:hover { color: #b91c1c !important; }
+.taskto-root.white-bg .border-neutral-700 { border-color: #cbd5e1 !important; }
+.taskto-root.white-bg .border-neutral-800 { border-color: #e2e8f0 !important; }
+.taskto-root.white-bg .border-red-900 { border-color: #fecaca !important; }
+.taskto-root.white-bg .hover\:border-neutral-400:hover { border-color: #94a3b8 !important; }
+.taskto-root.white-bg .hover\:border-red-500:hover { border-color: #ef4444 !important; }
+.taskto-root.white-bg .focus\:border-neutral-400:focus { border-color: #94a3b8 !important; }
+.taskto-root.white-bg .focus\:border-white:focus { border-color: #0f172a !important; }
+.taskto-root.white-bg .decoration-neutral-700 { text-decoration-color: #cbd5e1 !important; }
+.taskto-root.white-bg .bg-black { background-color: #fff !important; }
+/* 白底模式下 .bg-white 按钮反转：黑底白字，hover 提亮 */
+.taskto-root.white-bg .bg-white { background-color: #0f172a !important; color: #fff !important; }
+.taskto-root.white-bg .hover\:bg-neutral-200:hover { background-color: #334155 !important; }
