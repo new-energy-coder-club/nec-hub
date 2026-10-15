@@ -1,0 +1,87 @@
+/* 硬件评审流程样式：全部限定在 .nec-hw 根节点下，嵌入门户时不外溢（自原单文件 <style> 迁入） */
+.nec-hw { font-family: var(--nec-font-cn); background: var(--nec-fog); color: var(--nec-ink); }
+.nec-hw .mono { font-family: var(--nec-font-mono); }
+
+/* 状态徽章（原版在普通 <style> 里写 @apply 不生效，这里展开为等价 CSS） */
+.nec-hw .status-badge { font-size: 12px; line-height: 16px; padding: 4px 8px; border-radius: 9999px; font-weight: 500; }
+
+/* KV：蓝图网格 Hero（只铺在头部区域） */
+.nec-hw .hero {
+  position: relative; overflow: hidden;
+  background-color: var(--nec-paper);
+  background-image:
+    linear-gradient(var(--nec-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--nec-grid) 1px, transparent 1px),
+    linear-gradient(var(--nec-grid-fine) 1px, transparent 1px),
+    linear-gradient(90deg, var(--nec-grid-fine) 1px, transparent 1px);
+  background-size: 92px 92px, 92px 92px, 23px 23px, 23px 23px;
+}
+.nec-hw .hero-title { font-weight: 900; letter-spacing: -.015em; color: var(--nec-ink); }
+.nec-hw .hero-title .accent { color: var(--nec-cyan); }
+.nec-hw .horizon { position: absolute; left: 0; right: 0; bottom: 30px; height: 3px; background: var(--nec-cyan); }
+.nec-hw .base-line { height: 5px; background: var(--nec-horizon); }
+
+/* 卡片：NEC 圆角与阴影 */
+.nec-hw .nec-card {
+  background: var(--nec-paper);
+  border: 1px solid var(--nec-line);
+  border-radius: var(--nec-radius);
+  box-shadow: var(--nec-shadow);
+}
+
+/* 导航按钮 */
+.nec-hw .nav-btn { border: 1.5px solid var(--nec-line); color: var(--nec-gray); background: var(--nec-paper); }
+.nec-hw .nav-btn:hover { border-color: var(--nec-royal); color: var(--nec-royal); }
+.nec-hw .nav-btn.on { border-color: var(--nec-royal); color: #fff; background: var(--nec-royal); }
+
+/* 必填标记与字段级错误 */
+.nec-hw .req::after { content: " *"; color: #C22E2E; }
+.nec-hw .field-error { color: #C22E2E; font-size: 12px; margin-top: 4px; }
+.nec-hw .input-invalid { border-color: #C22E2E !important; }
+
+/* 流程步骤条 */
+.nec-hw .flow-step { display: flex; align-items: center; gap: 6px; }
+.nec-hw .flow-step .dot {
+  width: 22px; height: 22px; border-radius: 999px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; border: 1.5px solid var(--nec-line);
+  background: var(--nec-paper); color: var(--nec-gray);
+}
+.nec-hw .flow-step.done .dot { background: var(--nec-royal); border-color: var(--nec-royal); color: #fff; }
+.nec-hw .flow-step.current .dot { background: var(--nec-royal-100); border-color: var(--nec-royal); color: var(--nec-royal); }
+.nec-hw .flow-step .lbl { font-size: 12px; color: var(--nec-gray); white-space: nowrap; }
+.nec-hw .flow-step.done .lbl { color: var(--nec-navy); font-weight: 600; }
+.nec-hw .flow-step.current .lbl { color: var(--nec-royal); font-weight: 700; }
+.nec-hw .flow-conn { flex: 1; min-width: 12px; height: 1.5px; background: var(--nec-line); }
+.nec-hw .flow-conn.done { background: var(--nec-royal); }
+
+/* 文件上传拖放区 */
+.nec-hw .dropzone { border: 1.5px dashed var(--nec-line); border-radius: var(--nec-radius); transition: border-color .15s, background .15s; cursor: pointer; }
+.nec-hw .dropzone:hover, .nec-hw .dropzone.dragover { border-color: var(--nec-royal); background: var(--nec-royal-100); }
+
+/* 主按钮 */
+.nec-hw .btn-primary { background: var(--nec-royal); color: #fff; }
+.nec-hw .btn-primary:hover { background: var(--nec-royal-700, #10277E); }
+.nec-hw .btn-accent { background: var(--nec-cyan); color: #fff; }
+.nec-hw .btn-accent:hover { background: #1891c9; }
+
+/* 链接与交互统一破晓青 */
+.nec-hw a, .nec-hw .link { color: var(--nec-cyan); }
+.nec-hw a:hover { color: #1891c9; }
+
+.nec-hw input:focus, .nec-hw textarea:focus, .nec-hw select:focus {
+  outline: none; border-color: var(--nec-cyan) !important;
+  box-shadow: 0 0 0 3px rgba(31, 169, 232, .15);
+}
+
+/* ---- 移动端适配 Mobile ---- */
+.nec-hw .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.nec-hw .scrollbar-hide::-webkit-scrollbar { display: none; }
+/* iOS Safari：输入框 font-size < 16px 会触发自动放大 */
+.nec-hw input, .nec-hw textarea, .nec-hw select { font-size: 16px; }
+@media (min-width: 640px) { .nec-hw input, .nec-hw textarea, .nec-hw select { font-size: inherit; } }
+@media (max-width: 639px) {
+  .nec-hw button, .nec-hw a[class*="rounded"], .nec-hw [role="button"] { touch-action: manipulation; }
+  .nec-hw .nav-btn { min-height: 40px; display: inline-flex; align-items: center; }
+}
+.nec-hw .overflow-x-auto { -webkit-overflow-scrolling: touch; }

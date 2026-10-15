@@ -15,7 +15,7 @@ export const TOOLS = [
           description:
             "应用名，即访问路径 /apps/<name>/。小写字母/数字/连字符，须以小写字母或数字开头，2-41 字符，如 inventory-check",
         },
-        title: { type: "string", description: "展示名称，如 物资盘点助手；缺省用 name" },
+        title: { type: "string", description: "展示名称，如 报销助手；缺省用 name" },
         author: { type: "string", description: "作者（队员姓名）；缺省显示「未知」" },
         visibility: { type: "string", description: "可见范围：all 或组别名，默认 all" },
         version: { type: "string", description: "版本号，默认 0.1.0；覆盖更新时建议递增" },

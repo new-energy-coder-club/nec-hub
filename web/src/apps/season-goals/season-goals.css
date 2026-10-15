@@ -1,0 +1,23 @@
+/* 赛季目标管理样式（自 public/apps/season-goals/index.html <style> 迁移） */
+.view { display: none; }
+.view.active { display: block; }
+
+/* 原版以 @apply 写在普通 <style> 中（浏览器不解析、实际无效），此处展开为等价原子样式 */
+.status-badge {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-weight: 500;
+}
+
+/* ---- 移动端适配 Mobile ---- */
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+input, textarea, select { font-size: 16px; }
+@media (min-width: 640px) { input, textarea, select { font-size: inherit; } }
+@media (max-width: 639px) {
+  button, a[class*="rounded"], [role="button"] { touch-action: manipulation; }
+  .nav-btn { min-height: 40px; display: inline-flex; align-items: center; }
+}
+.overflow-x-auto { -webkit-overflow-scrolling: touch; }

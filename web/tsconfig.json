@@ -8,7 +8,12 @@
     "noEmit": true,
     "jsx": "preserve",
     "skipLibCheck": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "paths": {
+      "@shared/*": ["./src/shared/*"],
+      "@portal/*": ["./src/portal/*"],
+      "@apps/*": ["./src/apps/*"]
+    }
   },
-  "include": ["src/**/*.ts", "src/**/*.vue"]
+  "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"]
 }

@@ -10,13 +10,12 @@
 
 门户共 9 个 Tab：我的首页 / 图纸评审（配置后显示）/ 应用广场 / Skill 中心 / 资料页 / 开源仓库 / 数据看板 / PRD 看板 / NEC-MCP。
 
-应用广场 12 个应用（实时列表见 [`GET /api/apps`](https://hub.newenergycoder.club/api/apps)）：
+应用广场 11 个应用（实时列表见 [`GET /api/apps`](https://hub.newenergycoder.club/api/apps)）：
 
 | 应用 | 说明 | 链接 |
 |---|---|---|
 | 擎天塔重建 // NEON PROTOCOL | 战队年度项目门户 | <https://tower.newenergycoder.club> |
 | NEC 仓库作业台 | MES 仓储系统（电控组，飞书免登） | <https://mes.newenergycoder.club> |
-| MES | MES 仓储系统（原物资盘点助手入口，电控组） | <https://mes.newenergycoder.club> |
 | KV Assets | 主视觉资产库（KV 画廊 + 飞书宣传栏 + PNG 物料） | [/apps/kv-assets/](https://hub.newenergycoder.club/apps/kv-assets/) |
 | 常州工NEC · 新人招募海报 | 招募静态页 | [/apps/recruit-poster/](https://hub.newenergycoder.club/apps/recruit-poster/) |
 | solarglyph26.07 / newenergycoder-club / gexo-website / public-beta-calculator / r2-web / fluid-workstation-ui / fibersteelstudio | Vercel 项目，`sync_vercel` 自动登记 | 见 `/api/apps` |

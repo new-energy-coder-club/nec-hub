@@ -1,0 +1,89 @@
+/* 协议签署 OA 审批样式：全部限定在 .nec-cs 根节点下，嵌入门户时不外溢（对齐原 public/apps/contract-signing/index.html 内联样式） */
+.nec-cs { font-family: var(--nec-font-cn); background: var(--nec-fog); color: var(--nec-ink); }
+.nec-cs.embedded { background: var(--nec-paper); }
+.nec-cs .mono { font-family: var(--nec-font-mono); }
+
+/* 原 .status-badge 使用 Tailwind @apply，但写在普通 <style> 中不会被 CDN 编译，浏览器会整条丢弃；
+   这里展开为等价原生 CSS（text-xs px-2 py-1 rounded-full font-medium） */
+.nec-cs .status-badge { font-size: 0.75rem; line-height: 1rem; padding: 0.25rem 0.5rem; border-radius: 9999px; font-weight: 500; }
+
+/* KV：蓝图网格 Hero（只铺在头部区域） */
+.nec-cs .hero {
+  position: relative; overflow: hidden;
+  background-color: var(--nec-paper);
+  background-image:
+    linear-gradient(var(--nec-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--nec-grid) 1px, transparent 1px),
+    linear-gradient(var(--nec-grid-fine) 1px, transparent 1px),
+    linear-gradient(90deg, var(--nec-grid-fine) 1px, transparent 1px);
+  background-size: 92px 92px, 92px 92px, 23px 23px, 23px 23px;
+}
+.nec-cs .hero-title { font-weight: 900; letter-spacing: -.015em; color: var(--nec-ink); }
+.nec-cs .hero-title .accent { color: var(--nec-cyan); }
+.nec-cs .horizon { position: absolute; left: 0; right: 0; bottom: 30px; height: 3px; background: var(--nec-cyan); }
+.nec-cs .base-line { height: 5px; background: var(--nec-horizon); }
+
+/* 卡片：NEC 圆角与阴影 */
+.nec-cs .nec-card {
+  background: var(--nec-paper);
+  border: 1px solid var(--nec-line);
+  border-radius: var(--nec-radius);
+  box-shadow: var(--nec-shadow);
+}
+
+/* 导航按钮 */
+.nec-cs .nav-btn { border: 1.5px solid var(--nec-line); color: var(--nec-gray); background: var(--nec-paper); }
+.nec-cs .nav-btn:hover { border-color: var(--nec-royal); color: var(--nec-royal); }
+.nec-cs .nav-btn.on { border-color: var(--nec-royal); color: #fff; background: var(--nec-royal); }
+
+/* 必填标记与字段级错误 */
+.nec-cs .req::after { content: " *"; color: #C22E2E; }
+.nec-cs .field-error { color: #C22E2E; font-size: 12px; margin-top: 4px; }
+.nec-cs .input-invalid { border-color: #C22E2E !important; }
+
+/* 流程步骤条 */
+.nec-cs .flow-step { display: flex; align-items: center; gap: 6px; }
+.nec-cs .flow-step .dot {
+  width: 22px; height: 22px; border-radius: 999px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; border: 1.5px solid var(--nec-line);
+  background: var(--nec-paper); color: var(--nec-gray);
+}
+.nec-cs .flow-step.done .dot { background: var(--nec-royal); border-color: var(--nec-royal); color: #fff; }
+.nec-cs .flow-step.current .dot { background: var(--nec-royal-100); border-color: var(--nec-royal); color: var(--nec-royal); }
+.nec-cs .flow-step .lbl { font-size: 12px; color: var(--nec-gray); white-space: nowrap; }
+.nec-cs .flow-step.done .lbl { color: var(--nec-navy); font-weight: 600; }
+.nec-cs .flow-step.current .lbl { color: var(--nec-royal); font-weight: 700; }
+.nec-cs .flow-conn { flex: 1; min-width: 12px; height: 1.5px; background: var(--nec-line); }
+.nec-cs .flow-conn.done { background: var(--nec-royal); }
+
+/* 文件上传拖放区 */
+.nec-cs .dropzone { border: 1.5px dashed var(--nec-line); border-radius: var(--nec-radius); transition: border-color .15s, background .15s; cursor: pointer; }
+.nec-cs .dropzone:hover, .nec-cs .dropzone.dragover { border-color: var(--nec-royal); background: var(--nec-royal-100); }
+
+/* 主按钮 */
+.nec-cs .btn-primary { background: var(--nec-royal); color: #fff; }
+.nec-cs .btn-primary:hover { background: var(--nec-royal-700, #10277E); }
+.nec-cs .btn-accent { background: var(--nec-cyan); color: #fff; }
+.nec-cs .btn-accent:hover { background: #1891c9; }
+
+/* 链接与交互统一破晓青 */
+.nec-cs a, .nec-cs .link { color: var(--nec-cyan); }
+.nec-cs a:hover { color: #1891c9; }
+
+.nec-cs input:focus, .nec-cs textarea:focus, .nec-cs select:focus {
+  outline: none; border-color: var(--nec-cyan) !important;
+  box-shadow: 0 0 0 3px rgba(31, 169, 232, .15);
+}
+
+/* ---- 移动端适配 Mobile ---- */
+.nec-cs .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.nec-cs .scrollbar-hide::-webkit-scrollbar { display: none; }
+/* iOS Safari：输入框 font-size < 16px 会触发自动放大 */
+.nec-cs input, .nec-cs textarea, .nec-cs select { font-size: 16px; }
+@media (min-width: 640px) { .nec-cs input, .nec-cs textarea, .nec-cs select { font-size: inherit; } }
+@media (max-width: 639px) {
+  .nec-cs button, .nec-cs a[class*="rounded"], .nec-cs [role="button"] { touch-action: manipulation; }
+  .nec-cs .nav-btn { min-height: 40px; display: inline-flex; align-items: center; }
+}
+.nec-cs .overflow-x-auto { -webkit-overflow-scrolling: touch; }

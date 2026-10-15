@@ -1,0 +1,1 @@
+import{x as a}from"../runtime-dom.esm-bundler-C4hRs6Zd.js";import{_ as e}from"../TaskScheduleApp.vue_vue_type_script_setup_true_lang-CxQDQewO.js";const o=new URLSearchParams(location.search),m=o.get("embedded")==="1"||window.parent!==window;a(e,{embedded:m}).mount("#app");

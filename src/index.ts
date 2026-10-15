@@ -239,16 +239,26 @@ export default {
     }
   },
 
-  /** Cron：每 4 分钟刷看板缓存；每小时第 7 分跑审批时效巡检（G-03）+ 刷仓库缓存并推送图纸评审阻塞告警（两条每小时任务复用同一触发器，规避 Free 档账户级 5 条 cron 上限）；每周一 08:00（UTC+8）跑数据校验周报（见 wrangler.jsonc triggers） */
+  /** Cron：每 4 分钟刷看板缓存；每小时跑审批时效巡检（G-03）、刷仓库缓存并推送图纸评审阻塞告警；每周一 08:00（UTC+8）跑数据校验周报。
+   *  注意（2026-10-15 验收实测，两个坑）：
+   *  ① 本账户的 Cloudflare 触发器变更疑似不生效——配置里的 7 * * * * 从未触发，已下线两天的 23 * * * * 却仍在每小时触发，
+   *     故 handler 按实际生效的触发器匹配（7* 保留匹配仅为账户修复后前向兼容）；
+   *  ② Free 档单次 cron 调用 50 子请求上限：SLA 与仓库预热/阻塞告警合并在同一调用会超限（实测 HW 取消被截断），
+   *     故 SLA 挂在「每 4 分钟」触发器的每小时 :08 窗口（与看板预热合计 ~15 子请求，安全），23* 只跑仓库缓存与告警。 */
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    // 触发探针：每个 cron 事件落 KV（30 天），用于确认触发器真实到达（02:07 事件静默丢失后的排障手段）
+    // 触发探针：每个 cron 事件落 KV（30 天），用于确认触发器真实到达（排障手段，勿删）
     ctx.waitUntil(
       env.REGISTRY.put("cron:last:" + controller.cron, JSON.stringify({ at: Date.now() }), { expirationTtl: 30 * 86400 }).catch(() => {}),
     );
     if (controller.cron === "0 0 * * 1") ctx.waitUntil(runWeeklyValidation(env));
-    else if (controller.cron === "*/4 * * * *") ctx.waitUntil(prewarmDashboard(env));
-    else if (controller.cron === "7 * * * *") {
-      ctx.waitUntil(import("./approvals/sla").then((m) => m.runApprovalSla(env)));
+    else if (controller.cron === "*/4 * * * *") {
+      ctx.waitUntil(prewarmDashboard(env));
+      // G-03 时效巡检：每小时 :08（UTC，*/4 的 7–10 分窗口只会命中 :08 一次）顺带执行
+      const minute = new Date(controller.scheduledTime).getUTCMinutes();
+      if (minute >= 7 && minute < 11) {
+        ctx.waitUntil(import("./approvals/sla").then((m) => m.runApprovalSla(env)));
+      }
+    } else if (controller.cron === "7 * * * *" || controller.cron === "23 * * * *") {
       ctx.waitUntil(prewarmRepos(env));
       ctx.waitUntil(
         import("./drawing-review/alert.service").then((m) => m.pushBlockerAlerts(env)),

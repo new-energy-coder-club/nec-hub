@@ -197,5 +197,5 @@ public/
 1. **Tab 数量口径过期**：§1.1 写 10 个 Tab，评审日实测 13 个（home / my-tasks / drawing-review / reimburse / task-schedule / season-goals / apps / skills / docs / repos / dashboard / prd / agent）。ST-01/ST-02 的验收口径按 13 个执行；ST-04 落地后「更多」为 5 项的结论同步顺延。
 2. **ST-08a 已落地**：随 V1.2 提交（2026-10-15）进入 `ci-cd.yml`（独立 test job，deploy 需 typecheck+test 双绿）。验收项「故意挂测试的 PR 被 CI 拦下」仍待实测勾选。
 3. **resolveSession 三副本问题已清零**：唯一实现 `src/shared/session.ts`，27 个调用点全部收敛；`docs/页面与Tab状态现状.md` 问题 3 已同步标记解决。§1.2 痛点 8 仅剩 `user-prefs:hw:` 变体（ST-07 覆盖）。
-4. **`web/` 废弃 Vite 脚手架需处置**：该目录是不完整的 Vue3 预研残留（缺 App.vue，build 必败），wrangler 不引用。建议本轮直接删除，或在 §2.2 非目标中显式交代去留，避免误导后续迭代。
+4. **`web/` 脚手架去留已明确（2026-10-15，`6208853`）**：原不完整的 Vue3 预研残留已补全为可构建工程（`App.vue`/`main.ts`/`components/`/`composables/` 齐备，`node_modules` 不入库），定位为 §5 所述 V3 框架化迁移的探索脚手架；本轮原生 ESM 路线不变，CI 暂不构建 web/。
 5. **ST-03 方案 A/B**：维持「M2 开始前用 drawing-review 做半天 spike」的决策点，不提前锁方案。
