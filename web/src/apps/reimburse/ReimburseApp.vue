@@ -4,7 +4,7 @@
 // skipAuthBoot：门户内复用时登录态由门户统一引导（portal/main.ts 已 bootAuth），本子应用不再重复兑换 OAuth code
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { auth, bootAuth, startLogin } from '@shared/auth'
-import { store, restoreDraft, loadErpMeta, loadMine, recognizeFile, today } from './store'
+import { store, restoreDraft, loadErpMeta, loadMine, loadLedger, recognizeFile, today } from './store'
 import TopBar from './components/TopBar.vue'
 import Toolbar from './components/Toolbar.vue'
 import BasicInfo from './components/BasicInfo.vue'
@@ -13,6 +13,7 @@ import PayeeSection from './components/PayeeSection.vue'
 import AttachSection from './components/AttachSection.vue'
 import SopSection from './components/SopSection.vue'
 import MineList from './components/MineList.vue'
+import LedgerList from './components/LedgerList.vue'
 import CatModal from './components/CatModal.vue'
 import FlowModal from './components/FlowModal.vue'
 import AttachModal from './components/AttachModal.vue'
@@ -36,6 +37,16 @@ function onLoginClick() {
   startLogin()
 }
 
+/** 视图切换：填报(默认) / 我的报销 / 单据列表；切到列表视图即拉数据（登录后） */
+function switchView(v: 'form' | 'mine' | 'ledger') {
+  store.view = v
+  if (authed.value) {
+    if (v === 'mine') loadMine()
+    if (v === 'ledger') loadLedger()
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 // Ctrl+V 粘贴截图 → 优先填入空的发票槽（与 ERP「支持 ctrl+v 粘贴截图」一致）
 function onPaste(ev: ClipboardEvent) {
   if (!authed.value) return
@@ -49,11 +60,20 @@ onMounted(async () => {
   restoreDraft()
   document.addEventListener('paste', onPaste)
   if (!props.skipAuthBoot) await bootAuth()
-  if (authed.value) onAuthed()
+  if (authed.value) {
+    onAuthed()
+    if (store.view === 'ledger') loadLedger()
+  }
 })
 onBeforeUnmount(() => document.removeEventListener('paste', onPaste))
 
-watch(authed, now => { if (now) onAuthed() })
+watch(authed, now => {
+  if (now) {
+    onAuthed()
+    // 登录完成/门户注入登录态时，若已在单据列表视图则补拉台账
+    if (store.view === 'ledger') loadLedger()
+  }
+})
 </script>
 
 <template>
@@ -61,8 +81,15 @@ watch(authed, now => { if (now) onAuthed() })
     <!-- ERP 顶栏（embedded 隐藏） -->
     <TopBar v-if="!embedded" />
 
-    <!-- ERP 工具栏 -->
-    <Toolbar :embedded="embedded" @exit="emit('exit')" />
+    <!-- 视图 Tab：费用报销单 / 我的报销 / 单据列表（与门户 TabNav 同款下划线样式） -->
+    <nav class="view-tabs" aria-label="报销助手视图">
+      <button class="view-tab" :class="{ on: store.view === 'form' }" @click="switchView('form')">费用报销单</button>
+      <button class="view-tab" :class="{ on: store.view === 'mine' }" @click="switchView('mine')">我的报销</button>
+      <button class="view-tab" :class="{ on: store.view === 'ledger' }" @click="switchView('ledger')">单据列表</button>
+    </nav>
+
+    <!-- ERP 工具栏（填报视图专属） -->
+    <Toolbar v-if="store.view === 'form'" :embedded="embedded" @exit="emit('exit')" />
 
     <main class="max-w-6xl mx-auto px-4 py-4 space-y-4">
       <!-- 登录门禁 -->
@@ -78,22 +105,31 @@ watch(authed, now => { if (now) onAuthed() })
       </section>
 
       <div v-else id="app-body" class="space-y-4">
-        <BasicInfo />
-        <LinesTable />
-        <PayeeSection />
-        <AttachSection />
-        <SopSection />
-        <MineList />
+        <!-- 填报视图：与既有表单一致 -->
+        <template v-if="store.view === 'form'">
+          <BasicInfo />
+          <LinesTable />
+          <PayeeSection />
+          <AttachSection />
+          <SopSection />
+          <MineList />
 
-        <!-- 制单信息 -->
-        <details class="erp-section">
-          <summary>制单信息</summary>
-          <div class="body flex flex-wrap gap-x-10 gap-y-2 text-sm text-nec-gray">
-            <span>创建人：<b id="creator-name" class="text-nec-ink">{{ auth.me.user?.name || '—' }}</b></span>
-            <span>创建时间：<b id="creator-time" class="text-nec-ink mono text-xs">{{ creatorTime }}</b></span>
-            <span>数据来源：报销助手（R-01 · 审批与通知中心 PRD V1.1 Plan B）</span>
-          </div>
-        </details>
+          <!-- 制单信息 -->
+          <details class="erp-section">
+            <summary>制单信息</summary>
+            <div class="body flex flex-wrap gap-x-10 gap-y-2 text-sm text-nec-gray">
+              <span>创建人：<b id="creator-name" class="text-nec-ink">{{ auth.me.user?.name || '—' }}</b></span>
+              <span>创建时间：<b id="creator-time" class="text-nec-ink mono text-xs">{{ creatorTime }}</b></span>
+              <span>数据来源：报销助手（R-01 · 审批与通知中心 PRD V1.1 Plan B）</span>
+            </div>
+          </details>
+        </template>
+
+        <!-- 我的报销视图 -->
+        <MineList v-else-if="store.view === 'mine'" />
+
+        <!-- 单据列表（台账）视图 -->
+        <LedgerList v-else />
       </div>
     </main>
 

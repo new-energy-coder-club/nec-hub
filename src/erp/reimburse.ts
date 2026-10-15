@@ -6,13 +6,14 @@
  *   PUT  /api/erp/reimburse/payee       → 保存我的收款账户（D1 payees，按 open_id upsert）
  *   POST /api/erp/reimburse/submit      → 整单提交：SOP 校验 → 审批引擎写底表 → D1 单据快照
  *   GET  /api/erp/reimburse/docs/mine   → 我的单据列表（D1，降序 20 条）
+ *   GET  /api/erp/reimburse/manage      → 报销单据台账（队长/财务，全量 + q 过滤/排序/分页）
  *   GET  /api/erp/reimburse/docs/<单号> → 单据详情（本人或队长/财务），供查看/复制
  *
  * 分工：审批状态以飞书底表为准（引擎写）；D1 只存 ERP 整单快照（明细行/收款/附件 key），
  * 附件二进制仍在 R2 receipts/ 前缀（/api/approvals/upload 上传）。
  */
 
-import { resolveUserRole } from "../auth/role";
+import { canSeeFinanceDetail, resolveUserRole } from "../auth/role";
 import { ApprovalError } from "../approvals/flows";
 import { submitApprovalCore } from "../approvals/engine";
 import { json } from "../shared/http";
@@ -67,6 +68,26 @@ function payeeOf(v: unknown): ErpPayee {
 
 const INVNO_RE = /^\d{8}$|^\d{20}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** 解析 D1 快照里的明细行（损坏/缺失时返回空数组） */
+function parsePayloadLines(payloadJson: string): ErpLine[] {
+  try {
+    const p = JSON.parse(payloadJson) as { lines?: unknown };
+    return Array.isArray(p.lines) ? (p.lines as unknown[]).map(lineOf) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** 有效明细摘要：行数 / 合计金额（2 位小数）/ 首行事项。docs/mine 与 manage 台账共用 */
+function parseDocSummary(payloadJson: string): { lines: number; total: number; firstItem: string } {
+  const ls = parsePayloadLines(payloadJson).filter((l) => l.cat && l.item);
+  return {
+    lines: ls.length,
+    total: Math.round(ls.reduce((s, l) => s + (Number(l.amount) || 0), 0) * 100) / 100,
+    firstItem: ls[0]?.item ?? "",
+  };
+}
 
 /** 服务端 SOP 校验（与页面同源规则）：返回错误信息数组，空 = 通过 */
 export function validateErpDoc(lines: ErpLine[], noinv: string, attachmentCount: number): string[] {
@@ -132,6 +153,7 @@ export async function handleErpReimburse(
   if (pathname === "/api/erp/reimburse/payee" && request.method === "PUT") return await handlePutPayee(request, env, ctx);
   if (pathname === "/api/erp/reimburse/submit" && request.method === "POST") return await handleSubmit(request, env, ctx);
   if (pathname === "/api/erp/reimburse/docs/mine" && request.method === "GET") return await handleDocsMine(request, env, ctx);
+  if (pathname === "/api/erp/reimburse/manage" && request.method === "GET") return await handleManage(request, env, ctx);
   const docMatch = pathname.match(/^\/api\/erp\/reimburse\/docs\/([A-Za-z0-9-]+)$/);
   if (docMatch && request.method === "GET") return await handleDocDetail(request, env, docMatch[1], ctx);
   return null;
@@ -213,20 +235,67 @@ async function handleDocsMine(request: Request, env: Env, ctx?: ExecutionContext
   )
     .bind(session.user.open_id)
     .all<DocRow>();
-  const docs = (res.results ?? []).map((r) => {
-    let summary = { lines: 0, total: 0, firstItem: "" };
-    try {
-      const p = JSON.parse(r.payload_json) as { lines?: ErpLine[] };
-      const ls = (p.lines ?? []).filter((l) => l.cat && l.item);
-      summary = {
-        lines: ls.length,
-        total: Math.round(ls.reduce((s, l) => s + (Number(l.amount) || 0), 0) * 100) / 100,
-        firstItem: ls[0]?.item ?? "",
-      };
-    } catch { /* 快照损坏时退化为空摘要 */ }
-    return { application_id: r.application_id, status: r.status, created_at: r.created_at, ...summary };
-  });
+  const docs = (res.results ?? []).map((r) => ({
+    application_id: r.application_id,
+    status: r.status,
+    created_at: r.created_at,
+    ...parseDocSummary(r.payload_json),
+  }));
   return applyRenewedSession(json({ docs }), session.renewed);
+}
+
+/**
+ * 报销单据台账（队长/财务）：只读全量快照，内存过滤（编号/明细事项）→ created_at 排序 → 分页。
+ * 参数：page(默认1) / pageSize(默认20,上限50) / q(trim 后编号或明细子串) / sort(desc 默认|asc)。
+ */
+async function handleManage(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
+  const session = await resolveSession(env, request, ctx);
+  if (!session) return json({ error: "unauthorized" }, 401);
+  const role = await resolveUserRole(env, session.user, ctx);
+  if (!canSeeFinanceDetail(role)) {
+    return applyRenewedSession(json({ error: "forbidden", hint: "仅队长/财务可查看报销单据台账" }, 403), session.renewed);
+  }
+
+  const url = new URL(request.url);
+  const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
+  const pageSize = Math.min(50, Math.max(1, Number(url.searchParams.get("pageSize")) || 20));
+  const q = (url.searchParams.get("q") ?? "").trim();
+  const sort = url.searchParams.get("sort") === "asc" ? "asc" : "desc";
+
+  const res = await env.ERP_DB.prepare(
+    "SELECT application_id, open_id, applicant, payload_json, status, created_at FROM reimburse_docs",
+  ).all<DocRow>();
+
+  const rows = (res.results ?? []).map((r) => {
+    const summary = parseDocSummary(r.payload_json);
+    const searchText =
+      r.application_id +
+      " " +
+      parsePayloadLines(r.payload_json)
+        .map((l) => `${l.cat} ${l.item}`)
+        .join(" ");
+    return { ...r, ...summary, searchText };
+  });
+  const filtered = q ? rows.filter((r) => r.searchText.includes(q)) : rows;
+  filtered.sort((a, b) => (sort === "asc" ? a.created_at - b.created_at : b.created_at - a.created_at));
+  const total = filtered.length;
+  const start = (page - 1) * pageSize;
+  const docs = filtered.slice(start, start + pageSize).map((r) => {
+    const paidDone = r.status === "已打款" || r.status === "已完成";
+    return {
+      application_id: r.application_id,
+      applicant: r.applicant,
+      status: r.status,
+      created_at: r.created_at,
+      submitted_at: r.created_at,
+      title: r.firstItem || "未填事项",
+      lines: r.lines,
+      total: r.total,
+      paid: paidDone ? r.total : null,
+      handler: r.status === "审批中" ? "队长/财务审核" : r.applicant,
+    };
+  });
+  return applyRenewedSession(json({ docs, total, page, pageSize }), session.renewed);
 }
 
 /** 单据详情：本人或队长/财务可查（复制为新单 / 查看附件用） */

@@ -3,12 +3,13 @@
  *
  * 覆盖：validateErpDoc 服务端 SOP 校验 · buildApprovalFields 整单→底表字段
  * meta（目录+收款账户）· payee upsert · submit（审批引擎 + D1 快照）· docs/mine 与 docs/<id> 权限
+ * manage 管理台账（队长/财务：401/403 权限、字段派生、desc/asc 排序、分页与 q 过滤）
  *
  * mock 风格沿用 approvals.test.ts：内存 KV + fetch 路由（bitable CRUD）；D1 用按 SQL 分支的假实现。
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
-import { buildApprovalFields, handleErpReimburse, validateErpDoc } from "../erp/reimburse";
+import { buildApprovalFields, handleErpReimburse, validateErpDoc, type ErpLine } from "../erp/reimburse";
 
 const BASE = "appMockBase";
 const TBL_REIMBURSE = "tblReimburse";
@@ -44,10 +45,14 @@ function fakeD1() {
     }),
     all: vi.fn(async () => {
       if (sql.includes("FROM expense_items")) return { results: expenseItems };
-      if (sql.includes("FROM reimburse_docs") && sql.includes("WHERE open_id")) {
-        const rows = [...docs.values()].filter((d) => d.open_id === args[0]);
-        rows.sort((a, b) => Number(b.created_at) - Number(a.created_at));
-        return { results: rows };
+      if (sql.includes("FROM reimburse_docs")) {
+        if (sql.includes("WHERE open_id")) {
+          const rows = [...docs.values()].filter((d) => d.open_id === args[0]);
+          rows.sort((a, b) => Number(b.created_at) - Number(a.created_at));
+          return { results: rows };
+        }
+        // manage 台账：无 WHERE，全量读出，过滤/排序/分页在 handler 内存完成
+        return { results: [...docs.values()] };
       }
       return { results: [] };
     }),
@@ -280,5 +285,160 @@ describe("GET docs/mine 与 docs/<id>", () => {
     // 不存在 404
     const missing = await handleErpReimburse(req("/api/erp/reimburse/docs/BX-2026-9999", "sid-member"), ctx.env, "/api/erp/reimburse/docs/BX-2026-9999");
     expect(missing!.status).toBe(404);
+  });
+});
+
+describe("管理台账 GET /api/erp/reimburse/manage", () => {
+  const mkLine = (cat: string, item: string, amount: string): ErpLine => ({ cat, item, date: "", invno: "", amount, note: "" });
+
+  function seed(
+    d1: ReturnType<typeof createCtx>["d1"],
+    id: string,
+    applicant: string,
+    openId: string,
+    status: string,
+    created_at: number,
+    lines: ErpLine[],
+  ) {
+    d1.docs.set(id, { application_id: id, open_id: openId, applicant, payload_json: JSON.stringify({ lines }), status, created_at });
+  }
+
+  function seedFive(ctx: ReturnType<typeof createCtx>) {
+    seed(ctx.d1, "BX-2026-0001", "张三", "ou-member", "审批中", 1000, [mkLine("研发费用支出.材料费", "螺丝", "30")]);
+    seed(ctx.d1, "BX-2026-0002", "李四", "ou-other", "已驳回", 2000, [mkLine("运营办公.快递运费", "顺丰快递", "50")]);
+    seed(ctx.d1, "BX-2026-0003", "王五", "ou-wang", "已完成", 3000, [mkLine("研发费用支出.材料费", "铝型材", "66")]);
+    seed(ctx.d1, "BX-2026-0004", "赵六", "ou-zhao", "已打款", 4000, [mkLine("其他.其他费用", "采购垫付", "88.5")]);
+    seed(ctx.d1, "BX-2026-0005", "张三", "ou-member", "审批中", 5000, [
+      mkLine("研发费用支出.材料费", "铝型材打样", "120"),
+      mkLine("生产加工.打样费", "齿轮加工", "80"),
+    ]);
+  }
+
+  type LedgerDoc = {
+    application_id: string;
+    applicant: string;
+    status: string;
+    title: string;
+    lines: number;
+    total: number;
+    paid: number | null;
+    handler: string;
+    created_at: number;
+    submitted_at: number;
+  };
+
+  it("未登录 401；普通成员 403", async () => {
+    const ctx = createCtx();
+    const noAuth = await handleErpReimburse(req("/api/erp/reimburse/manage", "nope"), ctx.env, "/api/erp/reimburse/manage");
+    expect(noAuth!.status).toBe(401);
+
+    const denied = await handleErpReimburse(req("/api/erp/reimburse/manage", "sid-member"), ctx.env, "/api/erp/reimburse/manage");
+    expect(denied!.status).toBe(403);
+    const deniedBody = (await denied!.json()) as { error: string; hint: string };
+    expect(deniedBody.error).toBe("forbidden");
+    expect(deniedBody.hint).toContain("队长/财务");
+  });
+
+  it("队长视角：默认 desc、分页元信息与行字段派生正确（total/lines/paid/handler/title）", async () => {
+    const ctx = createCtx();
+    seedFive(ctx);
+    const res = await handleErpReimburse(
+      req("/api/erp/reimburse/manage?page=1&pageSize=2", "sid-captain"),
+      ctx.env,
+      "/api/erp/reimburse/manage",
+    );
+    expect(res!.status).toBe(200);
+    const data = (await res!.json()) as { docs: LedgerDoc[]; total: number; page: number; pageSize: number };
+    expect(data.total).toBe(5);
+    expect(data.page).toBe(1);
+    expect(data.pageSize).toBe(2);
+    expect(data.docs.map((d) => d.application_id)).toEqual(["BX-2026-0005", "BX-2026-0004"]);
+
+    // 审批中的两行单：title=首行事项、lines=1、total=200、paid=null、handler=审核方
+    const first = data.docs[0];
+    expect(first.title).toBe("铝型材打样");
+    expect(first.lines).toBe(2);
+    expect(first.total).toBe(200);
+    expect(first.paid).toBeNull();
+    expect(first.handler).toBe("队长/财务审核");
+    expect(first.applicant).toBe("张三");
+    expect(first.submitted_at).toBe(first.created_at);
+
+    // 已打款单：paid=total、handler=申请人
+    const second = data.docs[1];
+    expect(second.total).toBe(88.5);
+    expect(second.paid).toBe(88.5);
+    expect(second.handler).toBe("赵六");
+  });
+
+  it("sort=asc 按 created_at 升序，第二页返回中间两条", async () => {
+    const ctx = createCtx();
+    seedFive(ctx);
+    const res = await handleErpReimburse(
+      req("/api/erp/reimburse/manage?sort=asc&page=2&pageSize=2", "sid-captain"),
+      ctx.env,
+      "/api/erp/reimburse/manage",
+    );
+    const data = (await res!.json()) as { docs: LedgerDoc[]; total: number; page: number };
+    expect(data.total).toBe(5);
+    expect(data.page).toBe(2);
+    expect(data.docs.map((d) => d.application_id)).toEqual(["BX-2026-0003", "BX-2026-0004"]);
+  });
+
+  it("q 同时命中编号与明细事项；pageSize 上限 50；非法 sort 归为 desc", async () => {
+    const ctx = createCtx();
+    seedFive(ctx);
+    const byNo = await (await handleErpReimburse(
+      req("/api/erp/reimburse/manage?q=BX-2026-0002", "sid-captain"), ctx.env, "/api/erp/reimburse/manage",
+    ))!.json() as { docs: LedgerDoc[]; total: number };
+    expect(byNo.total).toBe(1);
+    expect(byNo.docs[0].application_id).toBe("BX-2026-0002");
+
+    const byItem = await (await handleErpReimburse(
+      req("/api/erp/reimburse/manage?q=顺丰", "sid-captain"), ctx.env, "/api/erp/reimburse/manage",
+    ))!.json() as { docs: LedgerDoc[]; total: number };
+    expect(byItem.total).toBe(1);
+    expect(byItem.docs[0].application_id).toBe("BX-2026-0002");
+
+    const cap = await (await handleErpReimburse(
+      req("/api/erp/reimburse/manage?pageSize=999", "sid-captain"), ctx.env, "/api/erp/reimburse/manage",
+    ))!.json() as { docs: LedgerDoc[]; pageSize: number };
+    expect(cap.pageSize).toBe(50);
+    expect(cap.docs).toHaveLength(5);
+
+    const badSort = await (await handleErpReimburse(
+      req("/api/erp/reimburse/manage?sort=weird", "sid-captain"), ctx.env, "/api/erp/reimburse/manage",
+    ))!.json() as { docs: LedgerDoc[] };
+    expect(badSort.docs[0].application_id).toBe("BX-2026-0005");
+  });
+
+  it("空明细/损坏快照兜底：未填事项 0 行；paid 仅 已打款/已完成 有值", async () => {
+    const ctx = createCtx();
+    seed(ctx.d1, "BX-2026-0011", "钱七", "ou-qian", "审批中", 7000, []);
+    seed(ctx.d1, "BX-2026-0012", "孙八", "ou-sun", "已通过", 8000, [mkLine("运营办公.团建活动", "团建聚餐", "99.99")]);
+    ctx.d1.docs.set("BX-2026-0013", {
+      application_id: "BX-2026-0013", open_id: "ou-bad", applicant: "坏快照",
+      payload_json: "{not json", status: "已完成", created_at: 9000,
+    });
+
+    const res = await handleErpReimburse(
+      req("/api/erp/reimburse/manage?sort=asc", "sid-captain"), ctx.env, "/api/erp/reimburse/manage",
+    );
+    expect(res!.status).toBe(200);
+    const data = (await res!.json()) as { docs: LedgerDoc[]; total: number };
+    expect(data.total).toBe(3);
+    const byId = new Map(data.docs.map((d) => [d.application_id, d]));
+
+    expect(byId.get("BX-2026-0011")!.title).toBe("未填事项");
+    expect(byId.get("BX-2026-0011")!.lines).toBe(0);
+    expect(byId.get("BX-2026-0011")!.total).toBe(0);
+    expect(byId.get("BX-2026-0011")!.paid).toBeNull();
+
+    expect(byId.get("BX-2026-0012")!.paid).toBeNull(); // 已通过尚未付款
+    expect(byId.get("BX-2026-0012")!.handler).toBe("孙八");
+    expect(byId.get("BX-2026-0012")!.total).toBe(99.99);
+
+    expect(byId.get("BX-2026-0013")!.lines).toBe(0);
+    expect(byId.get("BX-2026-0013")!.paid).toBe(0); // 已完成 → paid=total(损坏快照合计 0)
   });
 });

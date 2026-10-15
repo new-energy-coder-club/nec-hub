@@ -318,3 +318,15 @@ nec-hub/
 - 多团队并发改同一领域模块、发布冲突频繁
 - 出现跨流程强事务一致性需求（飞书表格无事务能力）
 - 数据合规要求脱离飞书自存
+
+---
+
+## 2026-10-15 更新：报销单据列表（ERP 台账）
+
+对标公司 ERP「费用报销单列表」页，报销助手新增**单据列表**视图（App 内三视图：费用报销单 / 我的报销 / 单据列表）。
+
+- **前端**：`web/src/apps/reimburse/components/LedgerList.vue`（8 列表格：单据编号/报销事由/申请人/核定金额/已付现金额/当前处理人/单据日期/状态）+ `ReimburseApp.vue` 三 Tab 切换 + `store.ts` ledger 状态与 `loadLedger` 选路。
+- **接口**：`GET /api/erp/reimburse/manage`（`src/erp/reimburse.ts` `handleManage`）——队长/财务专用台账：`page`（默认 1）/`pageSize`（默认 20，上限 50）/`q`（单据编号或事项子串）/`sort`（created_at asc|desc）；行字段含核定金额（明细合计）、已付现金额（状态为 已打款/已完成 时=核定额）、当前处理人（审批中→"队长/财务审核"，否则申请人）。
+- **普通成员**切该视图时走 `docs/mine` 同形映射（仅本人单据）。
+- 数据源为 D1 `reimburse_docs` 快照全量内存分页（量级可接受；量大后可下沉 SQL 分页）；飞书位图侧已付/审核时间暂未接入。
+- 测试：`src/__tests__/erp-reimburse.test.ts` 新增 manage 5 例（401/403/分页/搜索/排序/派生字段），全量 342 用例绿。
