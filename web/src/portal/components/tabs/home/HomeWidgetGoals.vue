@@ -1,23 +1,76 @@
 <script setup lang="ts">
 // 赛季目标（前 5 条 + 未配置时的接入 Prompt 引导）
+// #1 进度条：数值统一归一化到 0-100 后再渲染（文案与条宽同一个 Math.round 值，保证视觉线性）
+// #2 风险分级：goalRisk 与顶部告警条同口径，late 红底红条 / warn 黄底琥珀条；整行点击跳赛季目标 Tab
+// #10 排序：截止日升序；已过期未完成置灰 +「已过期」灰徽章沉底
 import { ref, onMounted, inject } from 'vue'
 import { GOALS_CONFIG_PROMPT } from '@shared/prompts'
 import { copyText } from '@shared/api'
 import { fmtDashDate, goalBarColor } from '@shared/format'
+import { goalRisk } from '@portal/composables/useBanners'
 
 const props = defineProps<{ shared: { load(name: string): Promise<any> } }>()
 const noteHomeFreshness = inject<(d: any) => void>('noteHomeFreshness', () => {})
+const goto = inject<(tab: string) => void>('homeGoto', () => {})
 
 const g = ref<any>(undefined)
 const items = ref<any[]>([])
 const failed = ref(false)
+
+/** 进度归一化：后端组装已归一 0-100（src/dashboard.ts），这里兜底（0-1 小数 ×100），并钳制 [0,100] */
+function normPct(v: any): number {
+  let p = typeof v === 'number' && isFinite(v) ? v : Number(v)
+  if (!isFinite(p)) return 0
+  if (p > 0 && p <= 1) p = p * 100
+  return Math.min(Math.max(Math.round(p), 0), 100)
+}
+
+function riskOf(it: any): 'late' | 'warn' | 'ok' {
+  if (it.done) return 'ok' // 已达标不再告警
+  return goalRisk(it.deadline, it.progress)
+}
+
+/** 整行底色（与 VI 语义色一致）：late → danger 浅底；warn → warning 浅底 */
+function rowClass(it: any): string {
+  const r = riskOf(it)
+  if (r === 'late') return 'bg-[#FBEAEA]'
+  if (r === 'warn') return 'bg-[#FDEADD]'
+  return 'hover:bg-gray-50/60'
+}
+
+/** 徽章：已过期（灰）优先；否则 late/warn 显示风险徽章 */
+function badgeOf(it: any): { text: string; cls: string } {
+  if (it.overdue && !it.done) return { text: '已过期', cls: 'bg-gray-200 text-gray-500' }
+  const r = riskOf(it)
+  if (r === 'late') return { text: '⚠ 风险', cls: 'bg-[#FBEAEA] text-[#C22E2E]' }
+  if (r === 'warn') return { text: '⚠ 风险', cls: 'bg-[#FDEADD] text-[#B45309]' }
+  return { text: '', cls: '' }
+}
+
+/**
+ * 进度条颜色：late 红（--nec-danger）/ warn 琥珀（--nec-warning）/ ok 沿用 goalBarColor（逾期红、完成 navy、进行 cyan）。
+ * 轨道为无 padding 的纯灰底（h-1.5 overflow-hidden），width 百分比即真实轨道占比；条自身 max-width:100% + 一个取整值。
+ */
+function barColor(it: any): string {
+  const r = riskOf(it)
+  if (r === 'late') return 'var(--nec-danger)'
+  if (r === 'warn') return 'var(--nec-warning)'
+  return goalBarColor(it)
+}
 
 onMounted(async () => {
   try {
     const d = await props.shared.load('dashboard')
     noteHomeFreshness(d)
     g.value = d?.goals ?? null
-    items.value = (g.value?.items ?? []).slice(0, 5)
+    const all = g.value?.items ?? []
+    // 截止日升序；已过期且未完成的沉到底部（#10）
+    items.value = all.slice().sort((a: any, b: any) => {
+      const pa = a.overdue && !a.done ? 1 : 0
+      const pb = b.overdue && !b.done ? 1 : 0
+      if (pa !== pb) return pa - pb
+      return (a.deadline ?? Infinity) - (b.deadline ?? Infinity)
+    }).slice(0, 5)
   } catch { failed.value = true }
 })
 </script>
@@ -33,16 +86,21 @@ onMounted(async () => {
   </template>
   <p v-else-if="!items.length" class="text-sm text-gray-400">赛季目标表已配置但暂无数据：在飞书赛季目标表中添加第一条目标（含截止日期）后即可显示在这里。</p>
   <template v-else>
-    <a v-for="(it, i) in items" :key="i" :href="it.link" target="_blank" class="block py-1.5 border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
-      <div class="flex items-center gap-2">
+    <div v-for="(it, i) in items" :key="i"
+         class="py-1.5 border-b border-gray-100 last:border-0 rounded-md -mx-1 px-1 cursor-pointer"
+         :class="rowClass(it)" title="点击进入赛季目标 Tab" role="button" tabindex="0"
+         @click="goto('season-goals')" @keydown.enter="goto('season-goals')">
+      <div class="flex items-center gap-2" :class="{ 'opacity-60': it.overdue && !it.done }">
+        <span v-if="badgeOf(it).text" class="text-[10px] px-1.5 py-0.5 rounded shrink-0 font-medium" :class="badgeOf(it).cls">{{ badgeOf(it).text }}</span>
         <span class="text-xs text-gray-400 mono shrink-0">{{ fmtDashDate(it.deadline) }}</span>
-        <span class="flex-1 min-w-0 truncate">{{ it.title }}</span>
-        <span v-if="it.overdue" class="text-xs text-red-600 font-bold shrink-0">已逾期</span>
-        <span class="text-xs text-gray-500 mono shrink-0">{{ it.progress === null ? '—' : Math.round(it.progress) + '%' }}</span>
+        <span class="flex-1 min-w-0 truncate" :class="{ 'line-through text-gray-400': it.overdue && !it.done }">{{ it.title }}</span>
+        <span class="text-xs text-gray-500 mono shrink-0">{{ it.progress === null ? '—' : normPct(it.progress) + '%' }}</span>
+        <span class="text-xs text-gray-300 shrink-0" aria-hidden="true">›</span>
+        <a :href="it.link" target="_blank" @click.stop title="打开飞书记录" class="text-xs text-gray-300 hover:text-gray-500 shrink-0" aria-label="打开飞书记录">↗</a>
       </div>
       <div class="h-1.5 rounded bg-gray-100 overflow-hidden mt-1">
-        <div :style="`width:${(it.progress ?? 0).toFixed(0)}%;height:100%;background:${goalBarColor(it)}`"></div>
+        <div :style="{ width: normPct(it.progress) + '%', height: '100%', maxWidth: '100%', background: barColor(it) }"></div>
       </div>
-    </a>
+    </div>
   </template>
 </template>

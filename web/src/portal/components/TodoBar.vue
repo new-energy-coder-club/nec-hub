@@ -13,7 +13,7 @@ function localMeta(x: any): string {
 </script>
 
 <template>
-  <div id="todo-bar" v-show="todoBar.data">
+  <div id="todo-bar" v-show="todoBar.data && !todoBar.hidden">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 py-2.5 text-sm text-white" style="background:#B45309">
       <div class="flex items-center gap-3">
         <span class="shrink-0">✅</span>
