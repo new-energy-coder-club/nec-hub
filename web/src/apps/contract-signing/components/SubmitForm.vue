@@ -1,150 +1,126 @@
 <script setup lang="ts">
-// 新建提交视图：合同字段 + 文件上传（/api/approvals/upload）/ 批量导入 + 审批人动态行 + 字段级校验
-import { reactive, ref, onMounted, watch } from 'vue'
-import { store, router, api, levelMap, parseParties, parseFileBatch, formatSize } from '../store'
+// 提交审批单（抽屉内容，不再独占视图）：金额/币种、自动编号预览、MembersPicker 会签、
+// FilePicker 三模式、防丢（关闭确认 + 800ms 节流自动草稿）、到期<生效即时红字校验
+import { reactive, ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { store, api, typeMap, parseParties, formatAmount, MAX_AMOUNT } from '../store'
+import MembersPicker, { type ApproverChip } from './MembersPicker.vue'
+import FilePicker, { type FileDraft } from './FilePicker.vue'
 
-interface UploadEntry { name: string; size: number; token?: string; uploading?: boolean }
-interface ApproverRow { level: string; approverId: string; name: string }
+const emit = defineEmits<{ (e: 'submitted', approvalId: string): void }>()
 
 const form = reactive({
   contractName: '',
   contractNumber: '',
   contractType: 'service',
   parties: '',
+  amountRaw: '',      // 数值字符串（可 parseFloat），展示层千分位
+  currency: 'CNY',
   effectiveDate: '',
   expirationDate: '',
   summary: '',
 })
-const filesBatch = ref('')
-const uploadedFiles = ref<UploadEntry[]>([])
-const approverRows = ref<ApproverRow[]>([])
-const errors = reactive<Record<string, string>>({ contractName: '', contractFiles: '', approvers: '' })
+const chips = ref<ApproverChip[]>([])
+const files = ref<FileDraft[]>([])
+
+const errors = reactive<Record<string, string>>({
+  contractName: '', contractNumber: '', amount: '', expirationDate: '', contractFiles: '', approvers: '',
+})
 const submitting = ref(false)
 const resultMsg = ref('')
 const resultColor = ref('')
-const dragover = ref(false)
-const fileInput = ref<HTMLInputElement | null>(null)
+const nextNumber = ref('')
+const nextNumberLoading = ref(false)
+const nextNumberError = ref('')
+const draftRestored = ref(false)
 
-/* ---------- 提交表单初始化：填写指引 + 默认给一行审批人（prefilled 幂等） ---------- */
-let prefilled = false
-async function prefillSubmitForm() {
-  if (prefilled) return
-  prefilled = true
-  try {
-    await api('/api/contract-approval/start')
-  } catch { /* ignore */ }
-  if (!approverRows.value.length) addApproverRow()
-}
+/* ---------- 金额：内部存数值字符串，渲染千分位 ---------- */
+const amountDisplay = computed(() => formatAmount(form.amountRaw))
 
-onMounted(prefillSubmitForm)
-// 原 router('submit') 每次切入都会尝试 prefill（prefilled 守护）
-watch(() => store.view, v => { if (v === 'submit') prefillSubmitForm() })
-
-/* ---------- 审批人：动态增删行 ---------- */
-function addApproverRow(level = 'team_lead', approverId = '', name = '') {
-  approverRows.value.push({ level, approverId, name })
-}
-function removeApproverRow(i: number) {
-  approverRows.value.splice(i, 1)
-}
-function collectApprovers() {
-  return approverRows.value
-    .map(r => {
-      const approverId = r.approverId.trim()
-      if (!approverId) return null
-      const name = r.name.trim()
-      return { level: r.level, approverId, ...(name ? { name } : {}) }
-    })
-    .filter(Boolean) as { level: string; approverId: string; name?: string }[]
+function onAmountInput(e: Event) {
+  let v = (e.target as HTMLInputElement).value.replace(/,/g, '').replace(/[^\d.]/g, '')
+  const dot = v.indexOf('.')
+  if (dot >= 0) v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '')
+  const [int, dec] = v.split('.')
+  form.amountRaw = dec !== undefined ? int.slice(0, 7) + '.' + dec.slice(0, 2) : int.slice(0, 7)
+  setFieldError('amount', '')
 }
 
-/* ---------- 合同文件：上传 + 批量导入 ---------- */
-function removeFile(i: number) {
-  uploadedFiles.value.splice(i, 1)
+function amountError(): string {
+  const raw = form.amountRaw.trim()
+  if (!raw) return '请填写合同金额'
+  const n = parseFloat(raw)
+  if (isNaN(n) || n <= 0) return '金额必须大于 0'
+  if (n > MAX_AMOUNT) return '金额不能超过 9,999,999.99'
+  if ((raw.split('.')[1] || '').length > 2) return '金额最多两位小数'
+  return ''
 }
 
-async function uploadFiles(fileList: FileList | null) {
-  if (!fileList) return
-  for (const file of Array.from(fileList)) {
-    if (file.size > 10 * 1024 * 1024) {
-      setFieldError('contractFiles', `「${file.name}」超过 10MB 上限`)
-      continue
-    }
-    const entry: UploadEntry = { name: file.name, size: file.size, uploading: true }
-    uploadedFiles.value.push(entry)
-    try {
-      const fd = new FormData()
-      fd.append('file', file)
-      const data = await api('/api/approvals/upload', { method: 'POST', body: fd })
-      const saved = data.files?.[0]
-      entry.token = saved?.key || ''
-      entry.name = saved?.name || file.name
-      entry.size = saved?.size ?? file.size
-    } catch (err: any) {
-      uploadedFiles.value = uploadedFiles.value.filter(f => f !== entry)
-      setFieldError('contractFiles', `「${file.name}」上传失败：${err.message}`)
-    } finally {
-      entry.uploading = false
-    }
-  }
+/* ---------- 日期：到期必须晚于生效（缺一则跳过） ---------- */
+function dateError(): string {
+  if (!form.effectiveDate || !form.expirationDate) return ''
+  return form.expirationDate <= form.effectiveDate ? '到期日期必须晚于生效日期' : ''
 }
 
-function onDrop(e: DragEvent) {
-  dragover.value = false
-  uploadFiles(e.dataTransfer?.files || null)
-}
-function onPick() {
-  fileInput.value?.click()
-}
-function onFileChange() {
-  uploadFiles(fileInput.value?.files || null)
-  if (fileInput.value) fileInput.value.value = ''
-}
-
-function collectContractFiles() {
-  const batch = parseFileBatch(filesBatch.value)
-  const uploaded = uploadedFiles.value.filter(f => f.token).map(f => ({ name: f.name, token: f.token!, size: f.size }))
-  return [...uploaded, ...batch]
-}
-
-/* ---------- 字段级校验 ---------- */
-function setFieldError(field: string, msg: string) {
+/* ---------- 字段级错误与滚动定位 ---------- */
+function setFieldError(field: keyof typeof errors, msg: string) {
   errors[field] = msg || ''
 }
 function scrollToError(field: string) {
   document.querySelector(`.field-error[data-for="${field}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
-function validateSubmitForm(): boolean {
-  const approvers = collectApprovers()
-  const checks: [string, unknown, string][] = [
-    ['contractName', form.contractName.trim(), '请填写合同名称'],
-    ['contractFiles', collectContractFiles().length, '请至少上传或导入一份合同文件'],
-    ['approvers', approvers.length, '请至少指定一名审批人'],
-  ]
-  let firstBad = ''
-  for (const [field, val, msg] of checks) {
-    const bad = !val
-    setFieldError(field, bad ? msg : '')
-    if (bad && !firstBad) firstBad = field
+/* ---------- 编号预览（只预览不占用） ---------- */
+async function previewNumber() {
+  nextNumberError.value = ''
+  nextNumber.value = ''
+  nextNumberLoading.value = true
+  try {
+    const data = await api('/api/contract-approval/next-number')
+    nextNumber.value = data?.number || '—'
+  } catch (err: any) {
+    nextNumberError.value = '预览失败：' + err.message
+  } finally {
+    nextNumberLoading.value = false
   }
-  // 提交人不能兼任审批人（前端先拦截，后端也会校验）
-  if (!firstBad && store.currentUser && approvers.some(a => a.approverId === store.currentUser!.open_id)) {
-    setFieldError('approvers', '提交人不能兼任审批人')
-    firstBad = 'approvers'
+}
+
+/* ---------- 校验与提交 ---------- */
+function collectApprovers() {
+  return chips.value.map(c => ({ level: c.level, approverId: c.approverId, ...(c.name ? { name: c.name } : {}) }))
+}
+function collectContractFiles() {
+  return files.value.map(f => f.kind === 'upload'
+    ? { name: f.name, token: 'r2:' + f.key, size: f.size }
+    : { name: f.name, url: f.url })
+}
+
+function validateSubmit(): boolean {
+  let firstBad = ''
+  const mark = (field: keyof typeof errors, bad: boolean, msg: string) => {
+    setFieldError(field, bad ? msg : '')
+    if (bad && !firstBad) firstBad = field as string
+  }
+  mark('contractName', !form.contractName.trim(), '请填写合同名称')
+  mark('amount', !!amountError(), amountError())
+  mark('expirationDate', !!dateError(), dateError())
+  mark('contractFiles', files.value.length === 0, '请至少添加一份合同文件')
+  mark('approvers', chips.value.length === 0, '请至少指定一名审批人')
+  if (!firstBad && store.currentUser && chips.value.some(c => c.approverId === store.currentUser!.open_id)) {
+    mark('approvers', true, '提交人不能兼任审批人')
   }
   if (firstBad) scrollToError(firstBad)
   return !firstBad
 }
 
-/* ---------- 提交 ---------- */
 async function onSubmit() {
-  if (!validateSubmitForm()) {
+  nextNumberError.value = ''
+  if (!validateSubmit()) {
     resultColor.value = '#C22E2E'
     resultMsg.value = '请先补全上方标记为必填的内容'
     return
   }
   submitting.value = true
+  resultMsg.value = ''
   try {
     const data = await api('/api/contract-approval/submit', {
       method: 'POST',
@@ -153,6 +129,8 @@ async function onSubmit() {
         contractName: form.contractName.trim(),
         ...(form.contractNumber.trim() ? { contractNumber: form.contractNumber.trim() } : {}),
         contractType: form.contractType,
+        amount: Math.round(parseFloat(form.amountRaw) * 100) / 100,
+        currency: form.currency,
         ...(parseParties(form.parties).length ? { parties: parseParties(form.parties) } : {}),
         ...(form.effectiveDate ? { effectiveDate: form.effectiveDate } : {}),
         ...(form.expirationDate ? { expirationDate: form.expirationDate } : {}),
@@ -161,39 +139,135 @@ async function onSubmit() {
         approvers: collectApprovers(),
       }),
     })
-    resultColor.value = '#177A4C'
-    resultMsg.value = `提交成功：${data.approvalId}`
-    form.contractName = ''
-    form.contractNumber = ''
-    form.contractType = 'service'
-    form.parties = ''
-    form.effectiveDate = ''
-    form.expirationDate = ''
-    form.summary = ''
-    filesBatch.value = ''
-    uploadedFiles.value = []
-    approverRows.value = []
-    prefilled = false
-    router('list')
+    clearDraft()
+    resetForm()
+    emit('submitted', data.approvalId)
   } catch (err: any) {
+    // 编号重复：错误落回编号字段下方红字
+    if (/合同编号已存在/.test(String(err.message))) {
+      setFieldError('contractNumber', err.message)
+      scrollToError('contractNumber')
+      return
+    }
     resultColor.value = '#C22E2E'
-    resultMsg.value = '失败：' + err.message
+    resultMsg.value = '提交失败：' + err.message
   } finally {
     submitting.value = false
   }
 }
+
+function resetForm() {
+  Object.assign(form, {
+    contractName: '', contractNumber: '', contractType: 'service', parties: '',
+    amountRaw: '', currency: 'CNY', effectiveDate: '', expirationDate: '', summary: '',
+  })
+  chips.value = []
+  files.value = []
+  ;(Object.keys(errors) as (keyof typeof errors)[]).forEach(k => setFieldError(k, ''))
+  nextNumber.value = ''
+  nextNumberError.value = ''
+  resultMsg.value = ''
+  resultColor.value = ''
+  draftRestored.value = false
+  draftSnapshot = draftPayload()
+}
+
+/* ---------- 防丢：自动草稿（800ms 节流） + 关闭确认 ---------- */
+const DRAFT_KEY = 'nec-contract-draft'
+let draftTimer: ReturnType<typeof setTimeout> | null = null
+let draftSnapshot = ''
+
+function draftPayload(): string {
+  return JSON.stringify({ ...form, chips: chips.value, files: files.value })
+}
+const dirty = computed(() => draftPayload() !== draftSnapshot)
+
+function saveDraftNow() {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ form: { ...form }, chips: chips.value, files: files.value }))
+  } catch { /* ignore */ }
+}
+function saveDraftThrottled() {
+  if (draftTimer) clearTimeout(draftTimer)
+  draftTimer = setTimeout(saveDraftNow, 800)
+}
+
+function loadDraft(): boolean {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return false
+    const d = JSON.parse(raw)
+    if (!d || typeof d !== 'object' || !d.form) return false
+    const f = d.form
+    Object.assign(form, {
+      contractName: typeof f.contractName === 'string' ? f.contractName : '',
+      contractNumber: typeof f.contractNumber === 'string' ? f.contractNumber : '',
+      contractType: typeof f.contractType === 'string' ? f.contractType : 'service',
+      parties: typeof f.parties === 'string' ? f.parties : '',
+      amountRaw: typeof f.amountRaw === 'string' ? f.amountRaw : '',
+      currency: typeof f.currency === 'string' ? f.currency : 'CNY',
+      effectiveDate: typeof f.effectiveDate === 'string' ? f.effectiveDate : '',
+      expirationDate: typeof f.expirationDate === 'string' ? f.expirationDate : '',
+      summary: typeof f.summary === 'string' ? f.summary : '',
+    })
+    chips.value = Array.isArray(d.chips)
+      ? d.chips.filter((c: any) => c && typeof c.approverId === 'string' && typeof c.level === 'string')
+          .map((c: any) => ({ level: c.level, approverId: c.approverId, name: typeof c.name === 'string' ? c.name : '' }))
+      : []
+    files.value = Array.isArray(d.files)
+      ? d.files.filter((x: any) => x && typeof x.name === 'string' && (x.kind === 'upload' ? typeof x.key === 'string' : typeof x.url === 'string'))
+      : []
+    return true
+  } catch {
+    return false
+  }
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
+}
+
+function onClearDraft() {
+  clearDraft()
+  resetForm()
+}
+
+// 关闭前确认（父组件通过 defineExpose 调用）
+function confirmClose(): boolean {
+  if (!dirty.value) return true
+  return window.confirm('放弃本次填写？')
+}
+defineExpose({ confirmClose })
+
+watch([form, chips, files], saveDraftThrottled, { deep: true })
+// 有效期任一变化即重算倒挂校验；到期 blur 时即时提示
+watch(() => [form.effectiveDate, form.expirationDate], () => {
+  setFieldError('expirationDate', dateError())
+})
+
+onMounted(async () => {
+  const blank = draftPayload()
+  loadDraft()
+  draftRestored.value = draftPayload() !== blank
+  draftSnapshot = draftPayload()
+  // 原 /start 填写指引（幂等，后端保证）
+  try { await api('/api/contract-approval/start') } catch { /* ignore */ }
+})
+
+onBeforeUnmount(() => {
+  if (draftTimer) clearTimeout(draftTimer)
+})
 </script>
 
 <template>
-  <div class="nec-card p-5 sm:p-7">
-    <div class="flex items-start justify-between flex-wrap gap-2 mb-1">
-      <div>
-        <h2 class="text-lg font-bold text-nec-ink">新建合同审批</h2>
-        <p class="mono text-xs text-nec-gray tracking-wider">CONTRACT APPROVAL SUBMISSION</p>
-      </div>
+  <div class="cs-form">
+    <!-- 草稿恢复提示 -->
+    <div v-if="draftRestored" class="cs-draft-bar">
+      <span>🕘 已恢复上次草稿</span>
+      <button type="button" class="link text-xs" @click="onClearDraft">清除草稿</button>
     </div>
 
-    <form id="submit-form" novalidate class="space-y-5 mt-4" @submit.prevent="onSubmit">
+    <form id="submit-form" novalidate class="space-y-5" @submit.prevent="onSubmit">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label class="req block text-sm font-medium text-nec-navy mb-1">合同名称</label>
@@ -204,16 +278,23 @@ async function onSubmit() {
         </div>
         <div>
           <label class="block text-sm font-medium text-nec-navy mb-1">合同编号</label>
-          <input type="text" name="contractNumber" v-model="form.contractNumber" class="mono w-full rounded-lg border border-nec-line px-3 py-2.5 text-sm" placeholder="示例：HT-2026-001" />
+          <div class="flex items-center gap-2">
+            <input type="text" name="contractNumber" v-model="form.contractNumber" @input="setFieldError('contractNumber', '')"
+              class="mono w-full rounded-lg border border-nec-line px-3 py-2.5 text-sm"
+              :class="{ 'input-invalid': errors.contractNumber }"
+              placeholder="留空自动生成 HT-2026-XXX" />
+            <button type="button" class="cs-num-btn flex-none" :disabled="nextNumberLoading" @click="previewNumber">
+              {{ nextNumberLoading ? '…' : '预览' }}
+            </button>
+          </div>
+          <p v-if="nextNumber" class="cs-num-preview mono">自动编号预览：{{ nextNumber }}（不占用）</p>
+          <p v-if="nextNumberError" class="field-error">{{ nextNumberError }}</p>
+          <p class="field-error" :class="{ hidden: !errors.contractNumber }" data-for="contractNumber">{{ errors.contractNumber }}</p>
         </div>
         <div>
           <label class="block text-sm font-medium text-nec-navy mb-1">合同类型</label>
           <select name="contractType" v-model="form.contractType" class="w-full rounded-lg border border-nec-line px-3 py-2.5 text-sm bg-white">
-            <option value="purchase">采购合同</option>
-            <option value="sales">销售合同</option>
-            <option value="service">服务合同</option>
-            <option value="partnership">合作协议</option>
-            <option value="nda">保密协议</option>
+            <option v-for="(label, value) in typeMap" :key="value" :value="value">{{ label }}</option>
           </select>
         </div>
         <div>
@@ -221,12 +302,34 @@ async function onSubmit() {
           <input type="text" name="parties" v-model="form.parties" class="w-full rounded-lg border border-nec-line px-3 py-2.5 text-sm" placeholder="多方用逗号分隔，如：甲方公司, 乙方公司" />
         </div>
         <div>
+          <label class="req block text-sm font-medium text-nec-navy mb-1">合同金额</label>
+          <div class="flex items-stretch gap-2">
+            <div class="relative flex-1">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-nec-gray">¥</span>
+              <input type="text" inputmode="decimal" name="amount" :value="amountDisplay" @input="onAmountInput" @blur="setFieldError('amount', amountError())"
+                class="w-full rounded-lg border border-nec-line pl-7 pr-3 py-2.5 text-sm"
+                :class="{ 'input-invalid': errors.amount }" placeholder="0.00" />
+            </div>
+            <select name="currency" v-model="form.currency" class="rounded-lg border border-nec-line px-2 py-2.5 text-sm bg-white flex-none">
+              <option v-for="(label, value) in { CNY: 'CNY · 人民币', USD: 'USD · 美元', EUR: 'EUR · 欧元', JPY: 'JPY · 日元', GBP: 'GBP · 英镑', HKD: 'HKD · 港币' }" :key="value" :value="value">{{ label }}</option>
+            </select>
+          </div>
+          <p class="mono text-xs text-nec-gray mt-1">大于 0，不超过 9,999,999.99，最多两位小数</p>
+          <p class="field-error" :class="{ hidden: !errors.amount }" data-for="amount">{{ errors.amount }}</p>
+        </div>
+        <div class="hidden md:block"></div>
+        <div>
           <label class="block text-sm font-medium text-nec-navy mb-1">生效日期</label>
-          <input type="date" name="effectiveDate" v-model="form.effectiveDate" class="mono w-full rounded-lg border border-nec-line px-3 py-2.5 text-sm" />
+          <input type="date" name="effectiveDate" v-model="form.effectiveDate" placeholder="YYYY-MM-DD"
+            class="mono w-full rounded-lg border border-nec-line px-3 py-2.5 text-sm" />
         </div>
         <div>
           <label class="block text-sm font-medium text-nec-navy mb-1">到期日期</label>
-          <input type="date" name="expirationDate" v-model="form.expirationDate" class="mono w-full rounded-lg border border-nec-line px-3 py-2.5 text-sm" />
+          <input type="date" name="expirationDate" v-model="form.expirationDate" placeholder="YYYY-MM-DD"
+            @blur="setFieldError('expirationDate', dateError())"
+            class="mono w-full rounded-lg border border-nec-line px-3 py-2.5 text-sm"
+            :class="{ 'input-invalid': errors.expirationDate }" />
+          <p class="field-error" :class="{ hidden: !errors.expirationDate }" data-for="expirationDate">{{ errors.expirationDate }}</p>
         </div>
       </div>
 
@@ -237,56 +340,12 @@ async function onSubmit() {
 
       <div>
         <label class="req block text-sm font-medium text-nec-navy mb-1">合同文件</label>
-        <div
-          id="file-drop"
-          class="dropzone p-5 text-center"
-          :class="{ dragover, 'input-invalid': errors.contractFiles }"
-          @click="onPick"
-          @dragenter.prevent="dragover = true"
-          @dragover.prevent="dragover = true"
-          @dragleave.prevent="dragover = false"
-          @drop.prevent="onDrop"
-        >
-          <p class="text-sm text-nec-navy font-medium">拖拽文件到这里，或 <span class="link">点击选择</span></p>
-          <p class="mono text-xs text-nec-gray mt-1">PDF / DOCX / XLSX / ZIP 等，单文件 ≤ 10MB，可多选</p>
-          <input type="file" ref="fileInput" multiple class="hidden"
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.zip,.png,.jpg,.jpeg"
-            @change="onFileChange" />
-        </div>
-        <div id="file-list" class="mt-2 space-y-2">
-          <div v-for="(f, i) in uploadedFiles" :key="i" class="flex items-center gap-2 rounded-lg border border-nec-line bg-white px-3 py-2 text-sm">
-            <span class="mono text-xs text-nec-royal font-bold">FILE</span>
-            <span class="text-nec-ink truncate">{{ f.name }}</span>
-            <span class="mono text-xs text-nec-gray flex-none">{{ f.uploading ? '上传中…' : formatSize(f.size || 0) }}</span>
-            <button type="button" class="ml-auto text-nec-gray hover:text-red-600 leading-none" title="移除" @click="removeFile(i)">×</button>
-          </div>
-        </div>
-        <p class="field-error" :class="{ hidden: !errors.contractFiles }" data-for="contractFiles">{{ errors.contractFiles }}</p>
-        <details class="mt-2 text-xs text-nec-gray">
-          <summary class="link cursor-pointer select-none">批量导入（高级：名称|文件token|链接，每行一条）</summary>
-          <textarea v-model="filesBatch" rows="2" class="mono mt-2 w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="采购合同 V1.0.pdf|file_token_xxx&#10;附件-报价单.xlsx"></textarea>
-        </details>
+        <FilePicker v-model="files" :error="errors.contractFiles" :disabled="submitting" />
       </div>
 
       <div>
-        <label class="req block text-sm font-medium text-nec-navy mb-1">审批人（会签：全部通过才生效）</label>
-        <div class="rounded-lg border border-nec-line overflow-hidden" :class="{ 'input-invalid': errors.approvers }">
-          <div class="hidden sm:grid grid-cols-12 gap-2 px-3 py-2 text-xs text-nec-gray" style="background:var(--nec-fog)">
-            <span class="col-span-3">审批层级</span><span class="col-span-5">审批人 open_id</span><span class="col-span-3">姓名（可选）</span><span class="col-span-1"></span>
-          </div>
-          <div id="approver-rows">
-            <div v-for="(row, i) in approverRows" :key="i" class="approver-row grid grid-cols-12 gap-2 px-3 py-2 items-center" style="border-top:1px solid var(--nec-line)">
-              <select v-model="row.level" class="approver-level col-span-12 sm:col-span-3 rounded border border-nec-line px-2 py-1.5 text-sm bg-white">
-                <option v-for="(label, value) in levelMap" :key="value" :value="value">{{ label }}</option>
-              </select>
-              <input type="text" v-model="row.approverId" class="approver-id mono col-span-12 sm:col-span-5 rounded border border-nec-line px-2 py-1.5 text-sm" placeholder="ou_ 开头的 open_id" />
-              <input type="text" v-model="row.name" class="approver-name col-span-10 sm:col-span-3 rounded border border-nec-line px-2 py-1.5 text-sm" placeholder="姓名" />
-              <button type="button" class="col-span-2 sm:col-span-1 text-nec-gray hover:text-red-600 text-lg leading-none" title="删除本行" @click="removeApproverRow(i)">×</button>
-            </div>
-          </div>
-        </div>
-        <button type="button" class="mt-2 text-xs link" @click="addApproverRow()">+ 添加审批人</button>
-        <p class="field-error" :class="{ hidden: !errors.approvers }" data-for="approvers">{{ errors.approvers }}</p>
+        <label class="req block text-sm font-medium text-nec-navy mb-1">审批人</label>
+        <MembersPicker v-model="chips" :error="errors.approvers" :disabled="submitting" />
       </div>
 
       <div class="flex items-center justify-end gap-3 pt-2" style="border-top:1px solid var(--nec-line)">

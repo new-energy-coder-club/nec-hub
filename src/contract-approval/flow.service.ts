@@ -45,6 +45,10 @@ export interface SubmitApprovalInput {
   expirationDate?: string;
   contractFiles: Attachment[];
   summary?: string;
+  /** 合同金额（元），>0 且 ≤ 9,999,999.99，最多两位小数 */
+  amount?: number;
+  /** 币种，默认 CNY */
+  currency?: string;
   /** 会签审批人，至少一名；不能包含提交人自己 */
   approvers: Array<{ level: ApprovalLevel; approverId: string; name?: string }>;
 }
@@ -73,21 +77,105 @@ const DECISION_BY_ACTION: Record<ApprovalActionInput["action"], Approver["status
   revise: "rejected",
 };
 
+/** 金额上限（元） */
+export const MAX_CONTRACT_AMOUNT = 9_999_999.99;
+/** 币种白名单（默认 CNY） */
+export const CURRENCIES: readonly string[] = ["CNY", "USD", "EUR", "JPY", "GBP", "HKD"];
+
+/** 合同编号计数的 KV 最小接口（测试注入 Map 实现，生产传 env.REGISTRY） */
+export interface ContractNumberCounter {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string): Promise<void>;
+}
+
+export function contractNumberKey(year: string | number): string {
+  return `contract-no:${year}`;
+}
+
+/** 拼合同编号：HT-<YYYY>-<3 位补零序号> */
+export function formatContractNumber(year: string | number, seq: number): string {
+  return `HT-${year}-${String(seq).padStart(3, "0")}`;
+}
+
+function parseCounterValue(raw: string | null): number {
+  const n = Number.parseInt(raw ?? "0", 10);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+/** 预览下一个合同编号（只读，不占用） */
+export async function peekNextContractNumber(
+  counter: ContractNumberCounter,
+  year: string | number,
+): Promise<string> {
+  const raw = await counter.get(contractNumberKey(year));
+  return formatContractNumber(year, parseCounterValue(raw) + 1);
+}
+
+/** 占用下一个合同编号（get → +1 → put，并发冲突接受 last-write） */
+export async function consumeNextContractNumber(
+  counter: ContractNumberCounter,
+  year: string | number,
+): Promise<string> {
+  const key = contractNumberKey(year);
+  const raw = await counter.get(key);
+  const seq = parseCounterValue(raw) + 1;
+  await counter.put(key, String(seq));
+  return formatContractNumber(year, seq);
+}
+
+/** 提交时金额校验：>0、≤ 上限、最多两位小数，返回原值 */
+export function validateContractAmount(amount: unknown): number {
+  if (typeof amount !== "number" || !Number.isFinite(amount)) throw new Error("金额为必填项");
+  if (amount <= 0) throw new Error("金额必须大于 0");
+  if (amount > MAX_CONTRACT_AMOUNT) throw new Error("金额不能超过 9,999,999.99");
+  const frac = String(amount).split(".")[1];
+  if (frac && frac.length > 2) throw new Error("金额最多两位小数");
+  return amount;
+}
+
+/** 提交时币种校验：默认 CNY，白名单外拒绝，返回规范化大写值 */
+export function validateCurrency(currency: unknown): string {
+  const normalized = String(currency ?? "CNY").trim().toUpperCase();
+  if (!CURRENCIES.includes(normalized)) {
+    throw new Error(`币种不合法：${normalized}（仅支持 ${CURRENCIES.join("/")}）`);
+  }
+  return normalized;
+}
+
 export class ContractApprovalFlowService {
-  constructor(private store: ApprovalStore) {}
+  constructor(private store: ApprovalStore, private counter?: ContractNumberCounter) {}
 
   async submit(input: SubmitApprovalInput, actorId: string): Promise<ContractApproval & { recordId: string }> {
     if (!input.contractName?.trim()) throw new Error("合同名称为必填项");
     if (!input.contractFiles || input.contractFiles.length === 0) throw new Error("合同文件为必填项");
+    const amount = validateContractAmount(input.amount);
+    const currency = validateCurrency(input.currency);
+    if (input.effectiveDate && input.expirationDate && input.expirationDate <= input.effectiveDate) {
+      throw new Error("到期日期必须晚于生效日期");
+    }
     const approvers = this.buildApprovers(input.approvers, actorId);
+
+    // 手动编号查重；留空则按 KV 计数自动生成（预览接口不占用）
+    const manualNumber = input.contractNumber?.trim() ?? "";
+    let contractNumber = manualNumber;
+    if (contractNumber) {
+      const duplicated = (await this.store.listApprovals()).some(
+        (a) => a.contractNumber && a.contractNumber === contractNumber,
+      );
+      if (duplicated) throw new Error(`合同编号已存在（${contractNumber}）`);
+    } else if (this.counter) {
+      contractNumber = await consumeNextContractNumber(this.counter, new Date().getFullYear());
+    }
 
     const now = new Date().toISOString();
     const approval: ContractApproval = {
       approvalId: generateApprovalId(),
       contractName: input.contractName.trim(),
-      contractNumber: input.contractNumber?.trim() ?? "",
+      contractNumber,
       contractType: input.contractType ?? "service",
       parties: input.parties ?? [],
+      amount,
+      currency,
       effectiveDate: input.effectiveDate,
       expirationDate: input.expirationDate,
       contractFiles: input.contractFiles,

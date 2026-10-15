@@ -87,3 +87,242 @@
   .nec-cs .nav-btn { min-height: 40px; display: inline-flex; align-items: center; }
 }
 .nec-cs .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+
+/* ==================== 提交抽屉（≥768px 右滑 560px + 遮罩；<768px 全屏层） ==================== */
+.nec-cs .cs-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(10, 20, 50, .45);
+  animation: csFade .18s ease;
+}
+.nec-cs .cs-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 61;
+  width: 560px; max-width: 100vw;
+  background: var(--nec-paper);
+  display: flex; flex-direction: column;
+  box-shadow: -12px 0 40px rgba(10, 14, 64, .18);
+  animation: csSlideIn .22s cubic-bezier(.2, .8, .25, 1);
+}
+.nec-cs .cs-drawer-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-bottom: 1px solid var(--nec-line); flex: none;
+}
+.nec-cs .cs-drawer-x {
+  font-size: 22px; line-height: 1; color: var(--nec-gray);
+  padding: 4px 10px; border-radius: 8px;
+}
+.nec-cs .cs-drawer-x:hover { background: var(--nec-fog); color: #C22E2E; }
+.nec-cs .cs-drawer-body { flex: 1; overflow-y: auto; padding: 18px 20px 24px; }
+@keyframes csFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes csSlideIn { from { transform: translateX(40px); opacity: .6; } to { transform: none; opacity: 1; } }
+@media (max-width: 767px) {
+  .nec-cs .cs-drawer { left: 0; width: 100%; }
+}
+
+/* ==================== 列表：头部 / tabs / 搜索筛选 / 表格 / 空态 ==================== */
+.nec-cs .cs-list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.nec-cs .cs-open-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 10px; }
+.nec-cs .cs-tabs { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--nec-line); margin-top: 14px; padding-bottom: 10px; }
+.nec-cs .cs-tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; padding: 6px 12px; border-radius: 999px;
+  color: var(--nec-gray); background: transparent; border: 1px solid transparent;
+  transition: all .12s;
+}
+.nec-cs .cs-tab:hover { color: var(--nec-royal); }
+.nec-cs .cs-tab.on { background: var(--nec-royal-100); color: var(--nec-royal); font-weight: 600; border-color: var(--nec-royal); }
+.nec-cs .cs-tab-count {
+  min-width: 18px; text-align: center; font-size: 11px; padding: 1px 6px; border-radius: 999px;
+  background: var(--nec-line); color: var(--nec-navy);
+}
+.nec-cs .cs-tab.on .cs-tab-count { background: var(--nec-royal); color: #fff; }
+.nec-cs .cs-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
+.nec-cs .cs-filter-input, .nec-cs .cs-filter-input:focus {
+  border: 1px solid var(--nec-line); border-radius: 8px; padding: 7px 10px; font-size: 13px;
+  background: #fff; color: var(--nec-ink); min-width: 0;
+}
+.nec-cs .cs-expiry-banner {
+  background: #FFF8E6; border: 1px solid #F5D876; color: #8A6D1A;
+  padding: 9px 14px; border-radius: 10px; margin: 4px 0 12px; font-size: 13px;
+}
+.nec-cs .cs-table-wrap {
+  overflow-x: auto; border: 1px solid var(--nec-line); border-radius: var(--nec-radius);
+  background: var(--nec-paper);
+}
+.nec-cs .cs-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.nec-cs .cs-table th {
+  text-align: left; padding: 10px 12px; background: var(--nec-fog); color: var(--nec-gray);
+  font-size: 12px; font-weight: 600; white-space: nowrap; border-bottom: 1px solid var(--nec-line);
+}
+.nec-cs .cs-table td { padding: 10px 12px; border-bottom: 1px solid #EDF0F7; vertical-align: middle; }
+.nec-cs .cs-table tbody tr { cursor: pointer; transition: background .12s; }
+.nec-cs .cs-table tbody tr:hover { background: var(--nec-royal-100); }
+.nec-cs .cs-table tbody tr.row-new, .nec-cs .cs-card-item.row-new { animation: csRowNew 3s ease; }
+@keyframes csRowNew { 0% { background: #FFF3C4; } 70% { background: #FFF9E0; } 100% { background: transparent; } }
+.nec-cs .cs-name-link { color: var(--nec-royal); font-weight: 600; }
+.nec-cs .cs-table tr:hover .cs-name-link { text-decoration: underline; }
+.nec-cs .cs-exp { font-size: 12px; }
+.nec-cs .cs-exp.exp-soon { background: #FFF3C4; color: #92610B; font-weight: 700; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+.nec-cs .cs-exp.exp-over { color: #C22E2E; font-weight: 600; }
+.nec-cs .cs-view-btn {
+  font-size: 12px; padding: 4px 12px; border-radius: 8px;
+  border: 1px solid var(--nec-royal); color: var(--nec-royal); background: #fff; white-space: nowrap;
+}
+.nec-cs .cs-view-btn:hover { background: var(--nec-royal-100); }
+.nec-cs .cs-empty { text-align: center; padding: 48px 16px; }
+.nec-cs .cs-empty p { color: var(--nec-gray); font-size: 14px; margin-bottom: 16px; }
+
+/* 移动端（≤640px）：表格退化为卡片列表 */
+.nec-cs .cs-card-list { display: none; }
+@media (max-width: 640px) {
+  .nec-cs .cs-table-wrap { display: none; }
+  .nec-cs .cs-card-list { display: block; }
+}
+.nec-cs .cs-card-item {
+  border: 1px solid var(--nec-line); border-radius: 12px;
+  background: var(--nec-paper); padding: 12px 14px; margin-bottom: 10px; cursor: pointer;
+}
+.nec-cs .cs-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--nec-gray); margin-top: 8px; }
+
+/* ==================== MembersPicker：chips / 搜索下拉 / 会签说明 ==================== */
+.nec-cs .cs-picker-bar { display: flex; gap: 8px; flex-wrap: wrap; }
+.nec-cs .cs-picker-level, .nec-cs .cs-picker-q {
+  border: 1px solid var(--nec-line); border-radius: 8px; padding: 8px 10px; font-size: 14px;
+  background: #fff; color: var(--nec-ink);
+}
+.nec-cs .cs-search-wrap { position: relative; flex: 1; min-width: 220px; }
+.nec-cs .cs-dd {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30;
+  background: #fff; border: 1px solid var(--nec-line); border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(10, 14, 64, .12);
+  max-height: 220px; overflow-y: auto;
+}
+.nec-cs .cs-dd-item {
+  display: flex; justify-content: space-between; gap: 10px; width: 100%;
+  padding: 8px 12px; font-size: 13px; text-align: left;
+}
+.nec-cs .cs-dd-item:hover { background: var(--nec-royal-100); }
+.nec-cs .cs-hint { padding: 9px 12px; font-size: 12px; color: #A8892E; background: #FFF8E6; }
+.nec-cs .cs-chips { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.nec-cs .cs-chip {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--nec-line); background: #fff; border-radius: 10px;
+  padding: 6px 10px; font-size: 13px; cursor: grab;
+}
+.nec-cs .cs-chip.dragging { opacity: .45; }
+.nec-cs .cs-chip.drag-over { border-color: var(--nec-cyan); background: var(--nec-royal-100); }
+.nec-cs .cs-chip-idx {
+  flex: none; width: 20px; height: 20px; border-radius: 999px;
+  background: var(--nec-fog); color: var(--nec-gray);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700;
+}
+.nec-cs .level-badge {
+  display: inline-flex; align-items: center; flex: none;
+  padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  background: #E8ECFB; color: #1A2FA0;
+}
+.nec-cs .cs-chip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--nec-ink); }
+.nec-cs .cs-move-btn {
+  flex: none; color: var(--nec-gray); padding: 2px 6px; border-radius: 6px; font-size: 12px; line-height: 1;
+}
+.nec-cs .cs-move-btn:hover:not(:disabled) { background: var(--nec-fog); color: var(--nec-royal); }
+.nec-cs .cs-move-btn:disabled { opacity: .3; cursor: default; }
+.nec-cs .cs-chip-x { margin-left: auto; }
+.nec-cs .cs-chip-x:hover:not(:disabled) { color: #C22E2E; background: #FBE3E3; }
+.nec-cs .cs-sign-note { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--nec-gray); flex-wrap: wrap; }
+.nec-cs .cs-sign-tag {
+  background: var(--nec-royal); color: #fff; padding: 2px 10px; border-radius: 999px;
+  font-size: 11px; font-weight: 600;
+}
+.nec-cs .cs-or-btn {
+  border: 1px dashed var(--nec-line); color: var(--nec-gray); background: var(--nec-fog);
+  padding: 2px 10px; border-radius: 999px; font-size: 11px; cursor: not-allowed;
+}
+
+/* ==================== FilePicker：文件卡片 / 上传进度 ==================== */
+.nec-cs .cs-file-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.nec-cs .cs-upload-zone {
+  flex: 1; min-width: 240px; border: 1.5px dashed var(--nec-line); border-radius: 10px;
+  padding: 12px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
+}
+.nec-cs .cs-upload-zone:hover, .nec-cs .cs-upload-zone.dragover { border-color: var(--nec-cyan); background: var(--nec-royal-100); }
+.nec-cs .cs-url-zone { flex: 1; min-width: 240px; }
+.nec-cs .cs-add-url-btn {
+  flex: none; font-size: 13px; padding: 8px 14px; border-radius: 8px;
+  border: 1px solid var(--nec-cyan); color: var(--nec-cyan); background: #fff;
+}
+.nec-cs .cs-add-url-btn:hover:not(:disabled) { background: var(--nec-royal-100); }
+.nec-cs .cs-add-url-btn:disabled { opacity: .4; cursor: default; }
+.nec-cs .cs-file-card {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--nec-line); border-radius: 10px; background: #fff;
+  padding: 8px 12px; cursor: pointer; transition: border-color .12s;
+}
+.nec-cs .cs-file-card:hover { border-color: var(--nec-cyan); }
+.nec-cs .cs-file-icon {
+  flex: none; width: 40px; height: 40px; border-radius: 8px;
+  background: var(--nec-royal-100); color: var(--nec-royal);
+  font-size: 10px; font-weight: 700; font-family: var(--nec-font-mono);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.nec-cs .cs-file-name { font-size: 13px; color: var(--nec-ink); word-break: break-all; }
+.nec-cs .cs-file-sub { font-size: 11px; color: var(--nec-gray); word-break: break-all; margin-top: 1px; }
+.nec-cs .cs-file-x { margin-left: auto; flex: none; color: var(--nec-gray); font-size: 16px; padding: 2px 8px; border-radius: 6px; }
+.nec-cs .cs-file-x:hover { color: #C22E2E; background: #FBE3E3; }
+.nec-cs .cs-up-progress { height: 6px; border-radius: 999px; background: var(--nec-line); overflow: hidden; width: 100%; }
+.nec-cs .cs-up-bar { height: 100%; background: var(--nec-cyan); transition: width .15s; border-radius: 999px; }
+.nec-cs .cs-up-indeterminate { height: 100%; width: 35%; background: var(--nec-cyan); border-radius: 999px; animation: csIndet 1s infinite linear; }
+@keyframes csIndet { from { margin-left: -35%; } to { margin-left: 100%; } }
+.nec-cs .cs-feishu-tip {
+  background: var(--nec-fog); border: 1px dashed var(--nec-line); color: var(--nec-gray);
+  font-size: 12px; padding: 9px 12px; border-radius: 8px; margin-top: 10px;
+}
+
+/* ==================== 提交表单：编号预览 / 草稿提示 ==================== */
+.nec-cs .cs-num-btn {
+  flex: none; font-size: 12px; padding: 8px 12px; border-radius: 8px;
+  border: 1px solid var(--nec-line); color: var(--nec-royal); background: #fff;
+}
+.nec-cs .cs-num-btn:hover:not(:disabled) { background: var(--nec-royal-100); border-color: var(--nec-royal); }
+.nec-cs .cs-num-btn:disabled { opacity: .5; cursor: default; }
+.nec-cs .cs-num-preview { font-size: 12px; color: var(--nec-gray); margin-top: 4px; }
+.nec-cs .cs-draft-bar {
+  background: #E8ECFB; border: 1px solid var(--nec-line); color: var(--nec-navy);
+  font-size: 12px; padding: 8px 12px; border-radius: 8px; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+
+/* ==================== 详情：审批时间线 / 文件行 ==================== */
+.nec-cs .cs-timeline { padding-top: 2px; }
+.nec-cs .cs-tl-item { display: flex; gap: 12px; }
+.nec-cs .cs-tl-rail { display: flex; flex-direction: column; align-items: center; flex: none; }
+.nec-cs .cs-tl-dot {
+  width: 24px; height: 24px; border-radius: 999px; flex: none;
+  border: 1.5px solid var(--nec-line); background: var(--nec-paper); color: var(--nec-gray);
+  font-size: 11px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.nec-cs .cs-tl-dot.done { background: #177A4C; border-color: #177A4C; color: #fff; }
+.nec-cs .cs-tl-dot.bad { background: #C22E2E; border-color: #C22E2E; color: #fff; }
+.nec-cs .cs-tl-dot.skip { background: var(--nec-fog); border-color: var(--nec-line); color: var(--nec-gray); }
+.nec-cs .cs-tl-line { width: 1.5px; flex: 1; min-height: 16px; background: var(--nec-line); margin: 4px 0; }
+.nec-cs .cs-tl-body {
+  flex: 1; min-width: 0; border: 1px solid var(--nec-line); background: #fff;
+  border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;
+}
+.nec-cs .cs-tl-time { font-size: 11px; color: var(--nec-gray); margin-top: 4px; }
+.nec-cs .cs-tl-comment {
+  background: var(--nec-fog); padding: 8px 10px; border-radius: 6px;
+  margin-top: 8px; font-size: 13px; color: var(--nec-gray); white-space: pre-wrap;
+}
+.nec-cs .cs-tl-comment.rejected {
+  background: #FBE3E3; border-left: 3px solid #C22E2E; color: #C22E2E; font-weight: 600;
+}
+.nec-cs .cs-detail-file {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--nec-line); background: #fff; border-radius: 10px; padding: 8px 12px;
+}
+.nec-cs .cs-dl-btn {
+  flex: none; font-size: 12px; color: var(--nec-gray); border: 1px solid var(--nec-line);
+  padding: 3px 10px; border-radius: 6px;
+}
+.nec-cs .cs-dl-btn:hover { color: var(--nec-royal); border-color: var(--nec-royal); }

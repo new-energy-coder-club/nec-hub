@@ -37,6 +37,10 @@ export interface ContractApproval {
   contractNumber: string;
   contractType: ContractType;
   parties: string[]; // 合同各方名称
+  /** 合同金额（元）；未填写时为 null */
+  amount: number | null;
+  /** 币种，默认 CNY */
+  currency: string;
   effectiveDate?: string;
   expirationDate?: string;
   contractFiles: Attachment[];

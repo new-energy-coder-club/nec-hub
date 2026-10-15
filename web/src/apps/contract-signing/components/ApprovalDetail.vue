@@ -1,9 +1,12 @@
 <script setup lang="ts">
-// 详情视图：审批单详情 + 审批人进度 + 操作（开始审批/同意/拒绝/要求修改/归档/重新提交）+ 评论
+// 详情视图：信息卡（名称/编号/类型/金额币种/签约方/生效-到期/摘要/文件预览下载）+
+// 审批进度时间线（姓名+级别、decisionBadge、actedAt、rejected 红色突出意见）+ 后端评论 +
+// 操作（开始审批/同意/拒绝/要求修改/归档/重新提交，权限判定沿用现有一致逻辑）
 import { ref, computed, onMounted } from 'vue'
 import {
   store, router, api,
   statusBadge, renderType, renderLevel, decisionBadge, personLabel, formatSize,
+  fmtMoney, fmtDate, filePreviewHref, fileIcon,
   stepBar, parseFileBatch, parseApproverBatch,
   type CsApproval, type CsComment,
 } from '../store'
@@ -118,6 +121,14 @@ async function resubmitApproval() {
   }
 }
 
+/* ---------- 时间线节点配色 ---------- */
+function dotCls(s?: string): string {
+  if (s === 'approved') return 'done'
+  if (s === 'rejected') return 'bad'
+  if (s === 'not_required') return 'skip'
+  return ''
+}
+
 onMounted(loadDetail)
 </script>
 
@@ -130,6 +141,7 @@ onMounted(loadDetail)
       <p v-if="loading" class="text-sm text-nec-gray">加载中…</p>
       <p v-else-if="errorMsg" class="text-sm" style="color:#C22E2E">加载失败：{{ errorMsg }}</p>
       <template v-else-if="detail">
+        <!-- 信息卡 -->
         <div class="nec-card p-5" style="border-top:3px solid var(--nec-cyan)">
           <div class="flex items-start justify-between gap-2">
             <div>
@@ -147,9 +159,11 @@ onMounted(loadDetail)
           </div>
           <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div><span class="text-nec-gray">提交人：</span><span :title="detail.submittedBy">{{ personLabel(detail.submittedBy) }}</span></div>
-            <div><span class="text-nec-gray">创建时间：</span><span class="mono">{{ fmtTime(detail.createdAt) }}</span></div>
-            <div v-if="detail.effectiveDate"><span class="text-nec-gray">生效日期：</span><span class="mono">{{ detail.effectiveDate }}</span></div>
-            <div v-if="detail.expirationDate"><span class="text-nec-gray">到期日期：</span><span class="mono">{{ detail.expirationDate }}</span></div>
+            <div><span class="text-nec-gray">创建时间：</span><span class="mono">{{ fmtDate(detail.createdAt) }}</span></div>
+            <div><span class="text-nec-gray">合同金额：</span><span class="font-medium text-nec-navy mono">{{ fmtMoney(detail.amount, detail.currency) }}</span></div>
+            <div><span class="text-nec-gray">币种：</span><span class="mono">{{ detail.currency || 'CNY' }}</span></div>
+            <div v-if="detail.effectiveDate"><span class="text-nec-gray">生效日期：</span><span class="mono">{{ fmtDate(detail.effectiveDate) }}</span></div>
+            <div v-if="detail.expirationDate"><span class="text-nec-gray">到期日期：</span><span class="mono">{{ fmtDate(detail.expirationDate) }}</span></div>
             <div v-if="(detail.parties || []).length" class="sm:col-span-2"><span class="text-nec-gray">合同各方：</span>{{ (detail.parties || []).join('、') }}</div>
           </div>
           <div v-if="detail.summary" class="mt-4">
@@ -157,14 +171,15 @@ onMounted(loadDetail)
             <p class="text-sm text-nec-gray whitespace-pre-wrap">{{ detail.summary }}</p>
           </div>
           <div class="mt-4">
-            <h3 class="text-sm font-bold text-nec-navy mb-2">合同文件</h3>
+            <h3 class="text-sm font-bold text-nec-navy mb-2">合同文件（点击预览）</h3>
             <div class="space-y-2">
               <template v-if="(detail.contractFiles || []).length">
-                <div v-for="(f, i) in detail.contractFiles" :key="i" class="flex items-center gap-2 rounded-lg border border-nec-line bg-white px-3 py-2 text-sm">
-                  <span class="mono text-xs text-nec-royal font-bold">FILE</span>
-                  <a v-if="f.url" :href="f.url" target="_blank" class="link hover:underline truncate">{{ f.name }}</a>
-                  <span v-else class="text-nec-ink truncate">{{ f.name }}</span>
+                <div v-for="(f, i) in detail.contractFiles" :key="i" class="cs-detail-file">
+                  <span class="cs-file-icon">{{ fileIcon(f.name) }}</span>
+                  <a v-if="filePreviewHref(f)" :href="filePreviewHref(f)!" target="_blank" rel="noopener" class="link hover:underline truncate" :title="f.name">{{ f.name }}</a>
+                  <span v-else class="text-nec-ink truncate" :title="f.name">{{ f.name }}</span>
                   <span v-if="f.size" class="mono text-xs text-nec-gray flex-none">{{ formatSize(f.size) }}</span>
+                  <a v-if="filePreviewHref(f)" :href="filePreviewHref(f)!" class="cs-dl-btn flex-none" :download="f.name" title="下载" @click.stop>下载</a>
                 </div>
               </template>
               <p v-else class="text-xs text-nec-gray">无</p>
@@ -172,18 +187,25 @@ onMounted(loadDetail)
           </div>
         </div>
 
-        <!-- 审批人进度 -->
+        <!-- 审批进度时间线（会签顺序） -->
         <div class="nec-card p-5">
-          <h3 class="text-sm font-bold text-nec-navy mb-3">审批人进度（会签：全部同意才通过）</h3>
-          <div class="space-y-2">
-            <template v-for="(a, i) in detail.approvers || []" :key="i">
-              <div class="flex items-center gap-3 rounded-lg border border-nec-line bg-white px-3 py-2 text-sm flex-wrap">
-                <span class="status-badge" style="background:var(--nec-royal-100);color:var(--nec-royal)">{{ renderLevel(a.level) }}</span>
-                <span class="text-nec-ink font-medium" :title="a.approverId">{{ personLabel(a.approverId, a.name) }}</span>
-                <span class="status-badge ml-auto" :style="decisionBadge(a.status).color">{{ decisionBadge(a.status).label }}</span>
+          <h3 class="text-sm font-bold text-nec-navy mb-3">审批进度（会签：全部同意才通过）</h3>
+          <div class="cs-timeline">
+            <div v-for="(a, i) in detail.approvers || []" :key="i" class="cs-tl-item">
+              <div class="cs-tl-rail">
+                <span class="cs-tl-dot mono" :class="dotCls(a.status)">{{ String(i + 1).padStart(2, '0') }}</span>
+                <span v-if="i < (detail.approvers || []).length - 1" class="cs-tl-line"></span>
               </div>
-              <p v-if="a.comment" class="text-xs text-nec-gray pl-3 -mt-1">意见：{{ a.comment }}<template v-if="a.actedAt"> · <span class="mono">{{ fmtTime(a.actedAt) }}</span></template></p>
-            </template>
+              <div class="cs-tl-body">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="level-badge">{{ renderLevel(a.level) }}</span>
+                  <span class="text-nec-ink font-medium" :title="a.approverId">{{ personLabel(a.approverId, a.name) }}</span>
+                  <span class="status-badge ml-auto" :style="decisionBadge(a.status).color">{{ decisionBadge(a.status).label }}</span>
+                </div>
+                <p v-if="a.actedAt" class="cs-tl-time mono">审批时间：{{ fmtTime(a.actedAt) }}</p>
+                <p v-if="a.comment" class="cs-tl-comment" :class="{ rejected: a.status === 'rejected' }">审批意见：{{ a.comment }}</p>
+              </div>
+            </div>
           </div>
         </div>
 

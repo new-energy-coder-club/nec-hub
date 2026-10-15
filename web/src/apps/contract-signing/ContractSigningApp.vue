@@ -1,14 +1,31 @@
 <script setup lang="ts">
 // 协议签署 OA 审批（/apps/contract-signing/）：独立页与门户 Tab 复用本视图
 // embedded：隐藏 Hero、改用紧凑导航（原 ?embedded=1 / iframe 嵌入语义）
-import { onMounted } from 'vue'
-import { store, router, loadCurrentUser, probeConfig } from './store'
+// 列表为主视图；「＋ 提交审批单」打开 SubmitForm 抽屉（≥768px 右滑 560px + 遮罩，<768px 全屏层）
+import { ref, onMounted } from 'vue'
+import { store, router, loadCurrentUser, probeConfig, openSubmit, markHighlight } from './store'
 import ApprovalList from './components/ApprovalList.vue'
 import SubmitForm from './components/SubmitForm.vue'
 import ApprovalDetail from './components/ApprovalDetail.vue'
 import './app.css'
 
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+
+const submitFormRef = ref<InstanceType<typeof SubmitForm> | null>(null)
+
+/** 提交成功：关抽屉、回到列表、刷新并置顶高亮新单 3 秒 */
+function onSubmitted(approvalId: string) {
+  store.drawerOpen = false
+  store.view = 'list'
+  markHighlight(approvalId)
+  store.listTick++
+}
+
+/** 遮罩 / × 关闭：表单有改动时确认（SubmitForm.confirmClose 暴露） */
+function onDrawerCloseRequest() {
+  const ok = submitFormRef.value?.confirmClose?.() ?? true
+  if (ok) store.drawerOpen = false
+}
 
 onMounted(async () => {
   await loadCurrentUser()
@@ -30,7 +47,7 @@ onMounted(async () => {
           <nav class="ml-auto flex gap-2">
             <a href="/" class="nav-btn mono px-3 py-2 text-sm rounded-lg">← 门户</a>
             <button class="nav-btn mono px-3 py-2 text-sm rounded-lg" :class="{ on: store.view === 'list' }" @click="router('list')">审批单</button>
-            <button class="nav-btn mono px-3 py-2 text-sm rounded-lg" :class="{ on: store.view === 'submit' }" @click="router('submit')">新建提交</button>
+            <button class="nav-btn mono px-3 py-2 text-sm rounded-lg" @click="openSubmit()">＋ 提交审批单</button>
           </nav>
         </div>
 
@@ -68,7 +85,7 @@ onMounted(async () => {
         <h1 class="text-lg font-black text-nec-ink">协议签署 OA 审批</h1>
         <nav class="flex gap-2">
           <button class="nav-btn mono px-3 py-1.5 text-sm rounded-lg" :class="{ on: store.view === 'list' }" @click="router('list')">审批单</button>
-          <button class="nav-btn mono px-3 py-1.5 text-sm rounded-lg" :class="{ on: store.view === 'submit' }" @click="router('submit')">新建提交</button>
+          <button class="nav-btn mono px-3 py-1.5 text-sm rounded-lg" @click="openSubmit()">＋ 提交审批单</button>
         </nav>
       </div>
     </div>
@@ -86,14 +103,9 @@ onMounted(async () => {
         <p class="text-sm text-nec-gray">本应用需要飞书登录态，请回到 <a href="/" class="link hover:underline">门户首页</a> 完成登录后再访问。</p>
       </div>
 
-      <!-- 审批单列表视图 -->
+      <!-- 审批单列表（主视图） -->
       <section v-show="store.view === 'list'" id="view-list">
         <ApprovalList />
-      </section>
-
-      <!-- 新建提交视图 -->
-      <section v-show="store.view === 'submit'" id="view-submit">
-        <SubmitForm />
       </section>
 
       <!-- 详情视图 -->
@@ -101,5 +113,22 @@ onMounted(async () => {
         <ApprovalDetail v-if="store.view === 'detail'" :key="store.detailId" :approval-id="store.detailId" />
       </section>
     </div>
+
+    <!-- 提交审批单抽屉：≥768px 右滑 560px + 遮罩；<768px 全屏层 -->
+    <template v-if="store.drawerOpen">
+      <div class="cs-overlay" @click="onDrawerCloseRequest"></div>
+      <aside class="cs-drawer" role="dialog" aria-modal="true" aria-label="提交审批单">
+        <div class="cs-drawer-head">
+          <div>
+            <h2 class="text-base font-bold text-nec-ink">提交审批单</h2>
+            <p class="mono text-[11px] text-nec-gray tracking-wider">CONTRACT APPROVAL SUBMISSION</p>
+          </div>
+          <button type="button" class="cs-drawer-x" title="关闭" @click="onDrawerCloseRequest">×</button>
+        </div>
+        <div class="cs-drawer-body">
+          <SubmitForm ref="submitFormRef" @submitted="onSubmitted" />
+        </div>
+      </aside>
+    </template>
   </div>
 </template>

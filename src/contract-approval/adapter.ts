@@ -7,6 +7,7 @@
 
 import {
   BitableRecord,
+  fieldNum,
   fieldText,
 } from "../feishu/bitable";
 import { FeishuTableAdapter } from "../shared/feishu-table-adapter";
@@ -123,6 +124,8 @@ export class ContractApprovalAdapter
       contractNumber: pickText(f, ["合同编号", "contractNumber"]),
       contractType: CONTRACT_TYPES.includes(rawType as ContractType) ? (rawType as ContractType) : "service",
       parties: parseStringList(pickText(f, ["签约方", "parties"])),
+      amount: fieldNum(f["合同金额"]) ?? fieldNum(f["amount"]),
+      currency: pickText(f, ["币种", "currency"]) || "CNY",
       effectiveDate: pickText(f, ["生效日期", "effectiveDate"]) || undefined,
       expirationDate: pickText(f, ["到期日期", "expirationDate"]) || undefined,
       contractFiles: parseJson<Attachment[]>(pickText(f, ["合同文件", "contractFiles"]), []),
@@ -144,6 +147,7 @@ export class ContractApprovalAdapter
       合同名称: approval.contractName,
       合同编号: approval.contractNumber,
       合同类型: approval.contractType,
+      币种: approval.currency,
       生效日期: approval.effectiveDate,
       到期日期: approval.expirationDate,
       合同摘要: approval.summary,
@@ -153,6 +157,7 @@ export class ContractApprovalAdapter
     for (const [fieldName, v] of Object.entries(textMap)) {
       if (v !== undefined) fields[fieldName] = v;
     }
+    if (approval.amount !== undefined) fields["合同金额"] = approval.amount;
     if (approval.parties !== undefined) fields["签约方"] = approval.parties.join("、");
     if (approval.contractFiles !== undefined) fields["合同文件"] = JSON.stringify(approval.contractFiles);
     if (approval.approvers !== undefined) fields["审批人"] = JSON.stringify(approval.approvers);

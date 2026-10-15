@@ -12,6 +12,10 @@ export interface CsApproval {
   contractNumber?: string
   contractType?: string
   parties?: string[]
+  /** 合同金额（数字或 null，提交时必填） */
+  amount?: number | null
+  /** 币种（CNY/USD/EUR/JPY/GBP/HKD，默认 CNY） */
+  currency?: string
   effectiveDate?: string
   expirationDate?: string
   summary?: string
@@ -34,11 +38,30 @@ export const store = reactive({
   authFailed: false,
   /** 飞书 Base 未配置：展示「联系管理员配置」提示 */
   notConfigured: false,
+  /** 提交抽屉开关（默认视图为列表，抽屉叠于其上） */
+  drawerOpen: false,
+  /** 新提交单置顶高亮 3 秒：highlightId + highlightAt 时间戳 */
+  highlightId: '',
+  highlightAt: 0,
+  /** 列表刷新信号：提交成功后自增，ApprovalList 监听重载 */
+  listTick: 0,
 })
 
 export function router(view: CsView, id = '') {
   store.view = view
   if (view === 'detail' && id) store.detailId = id
+}
+
+/** 打开提交抽屉（固定在列表视图上打开） */
+export function openSubmit() {
+  store.view = 'list'
+  store.drawerOpen = true
+}
+
+/** 提交成功：标记新审批单，供列表置顶高亮 3 秒 */
+export function markHighlight(approvalId: string) {
+  store.highlightId = approvalId
+  store.highlightAt = Date.now()
 }
 
 // ---- fetch 封装：非 2xx 抛出带后端 error 文案的 Error；401 额外标记未登录 ----
@@ -161,4 +184,62 @@ export function stepBar(status: string): FlowStep[] {
     const lbl = i === 3 && cur === 3 && statusMap[status] ? statusMap[status].label : label
     return { label: lbl, dot, cls, connDone: i <= cur }
   })
+}
+
+/* ---------- 金额 / 币种 / 日期 ---------- */
+export const CURRENCIES = ['CNY', 'USD', 'EUR', 'JPY', 'GBP', 'HKD'] as const
+export const MAX_AMOUNT = 9_999_999.99
+
+/** 金额千分位渲染（输入层内部保留可解析的数值字符串，仅展示层加千分位） */
+export function formatAmount(raw: string): string {
+  const m = raw.match(/^(\d+)(\.\d*)?$/)
+  if (!m) return raw
+  const int = m[1].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return int + (m[2] ? m[2].slice(0, 3) : '')
+}
+
+/** 列表/详情金额展示：¥ 千分位 + 币种；null → — */
+export function fmtMoney(amount?: number | null, currency?: string | null): string {
+  if (amount === null || amount === undefined) return '—'
+  try {
+    const n = new Intl.NumberFormat('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount)
+    return `¥ ${n} ${currency || 'CNY'}`
+  } catch {
+    return `¥ ${amount} ${currency || 'CNY'}`
+  }
+}
+
+/** 列表/详情日期一律 YYYY-MM-DD（截断 ISO 时间部分） */
+export function fmtDate(v?: string): string {
+  return v ? String(v).slice(0, 10) : '—'
+}
+
+/** 距到期剩余天数（按自然日，负数=已过期）；解析失败返回 null */
+export function daysUntil(expirationDate?: string): number | null {
+  if (!expirationDate) return null
+  const t = new Date(String(expirationDate).slice(0, 10) + 'T00:00:00').getTime()
+  if (isNaN(t)) return null
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  return Math.round((t - now.getTime()) / 86400000)
+}
+
+/** 合同文件预览链接：r2 token → /api/contract-approval/file；url 型 → 原链接 */
+export function filePreviewHref(f: CsFile): string | null {
+  if (f.url) return f.url
+  if (f.token && f.token.startsWith('r2:')) {
+    const key = f.token.slice(3)
+    return `/api/contract-approval/file?key=${encodeURIComponent(key)}&name=${encodeURIComponent(f.name || key.split('/').pop() || 'file')}`
+  }
+  return null
+}
+
+/** 文件类型图标（按扩展名） */
+export function fileIcon(name?: string): string {
+  const ext = (name || '').split('.').pop()?.toLowerCase() || ''
+  if (ext === 'pdf') return 'PDF'
+  if (ext === 'doc' || ext === 'docx') return 'DOC'
+  if (ext === 'xls' || ext === 'xlsx' || ext === 'csv') return 'XLS'
+  if (ext === 'png' || ext === 'jpg' || ext === 'jpeg') return 'IMG'
+  return 'FILE'
 }
