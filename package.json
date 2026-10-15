@@ -8,9 +8,12 @@
     "types": "wrangler types --include-runtime=false",
     "check": "tsc --noEmit",
     "test": "vitest",
+    "test:ci": "vitest run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage",
-    "reimburse:simulate": "node scripts/simulate-reimbursements.js"
+    "reimburse:simulate": "node scripts/simulate-reimbursements.js",
+    "build:web": "npm --prefix web run build",
+    "dev:web": "npm --prefix web run dev"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261013.1",

@@ -9,7 +9,7 @@ import { pushFeishuWebhook } from "../validation/service";
 export async function notifyFeishuGroup(env: Env, text: string): Promise<void> {
   if (!env.FEISHU_WEBHOOK_URL) return;
   try {
-    await pushFeishuWebhook(env.FEISHU_WEBHOOK_URL, text);
+    await pushFeishuWebhook(env.FEISHU_WEBHOOK_URL, text, env.FEISHU_WEBHOOK_SECRET);
   } catch (err) {
     console.error("[drawing-review] webhook notify failed:", err);
   }

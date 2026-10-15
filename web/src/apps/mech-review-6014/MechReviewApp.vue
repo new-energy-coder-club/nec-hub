@@ -1,0 +1,142 @@
+<script setup lang="ts">
+// 6014 电机尾部安装方案 · 评审纪要：独立页（/apps/mech-review-6014/）与门户 Tab 共用本视图
+// embedded：隐藏页头（含下载链接行）与底部打印提示（原 ?embedded=1 / iframe 嵌入语义）
+// 纯静态纪要页：无后端请求、无本地存储；附件一律引用 /apps/mech-review-6014/ 下的静态文件
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+
+const APP_BASE = '/apps/mech-review-6014'
+</script>
+
+<template>
+  <header v-if="!embedded" class="hero border-b border-nec-line">
+    <div class="max-w-5xl mx-auto px-6 py-8">
+      <p class="text-xs mono text-nec-gray mb-1">NEC HUB · 机械评审</p>
+      <h1 class="text-2xl sm:text-3xl font-black tracking-tight">6014 电机尾部安装方案 · 评审纪要</h1>
+      <p class="text-sm text-nec-gray mt-2">数据来源：官方 STEP（6014快速安装 / 环抱安装 / 赛事推荐安装）实测提取 · 单位 mm · 2026-10</p>
+      <div class="mt-4 flex flex-wrap gap-3 text-sm no-print">
+        <a :href="`${APP_BASE}/sketch.png`" download class="px-3 py-1.5 rounded-lg text-white" style="background:var(--nec-royal)">下载草图 PNG</a>
+        <a :href="`${APP_BASE}/adapter_plate.dxf`" download class="px-3 py-1.5 rounded-lg text-white" style="background:var(--nec-navy)">下载转接板 DXF</a>
+        <a :href="`${APP_BASE}/tail_hole_coordinates.csv`" download class="px-3 py-1.5 rounded-lg border border-nec-line bg-white">孔位坐标 CSV</a>
+        <a :href="`${APP_BASE}/minutes.md`" download class="px-3 py-1.5 rounded-lg border border-nec-line bg-white">纪要源文件 MD</a>
+        <a href="/" class="px-3 py-1.5 rounded-lg border border-nec-line bg-white text-nec-gray">← 返回门户</a>
+      </div>
+    </div>
+    <div class="base-line"></div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-6 py-8 space-y-6">
+
+    <!-- 会议信息 -->
+    <section class="nec-card p-5">
+      <h2 class="font-bold text-nec-navy mb-3">会议信息</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+        <p>会议日期：<span class="text-nec-gray">____年__月__日</span></p>
+        <p>地点 / 线上：<span class="text-nec-gray">__________</span></p>
+        <p>记录人：<span class="text-nec-gray">__________</span></p>
+        <p class="sm:col-span-3">参会人：<span class="text-nec-gray">__________　/　__________　/　__________　/　__________</span></p>
+      </div>
+    </section>
+
+    <!-- 争议点核查 -->
+    <section class="nec-card p-5">
+      <h2 class="font-bold text-nec-navy mb-3">一、背景与争议点核查</h2>
+      <table>
+        <thead><tr><th style="width:2.5rem">#</th><th>争议点</th><th>提出人观点</th><th>STEP 模型核查结论</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1</td><td>电机尾部无螺丝孔，无法固定</td><td>"6014 屁股后面没有螺丝孔"</td>
+            <td><span class="badge-no text-xs px-2 py-0.5 rounded-full font-medium">不成立</span>　三份官方 STEP 均显示尾部 6 孔 @ PCD Ø33（环抱/快速版为 M4 底孔 Ø3.3，赛事版为 Ø4.0 通孔）</td>
+          </tr>
+          <tr>
+            <td>2</td><td>环抱安装 3D 打印强度不够</td><td>"打印件支撑不了"</td>
+            <td><span class="badge-warn text-xs px-2 py-0.5 rounded-full font-medium">成立但可规避</span>　官方抱箍为机加件构型；改用尾部孔 + 铝转接板即可绕开</td>
+          </tr>
+          <tr>
+            <td>3</td><td>6014 只能给机器狗用</td><td>"专用件"</td>
+            <td><span class="badge-no text-xs px-2 py-0.5 rounded-full font-medium">不成立</span>　尾部孔群即通用安装接口，赛事方案还用它做双电机串联</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 实测数据 -->
+    <section class="nec-card p-5">
+      <h2 class="font-bold text-nec-navy mb-3">二、STEP 实测关键数据（评审依据）</h2>
+      <ul class="text-sm space-y-1.5 list-disc pl-5">
+        <li>主安装接口：<b>6×M4（底孔 Ø3.3）@ PCD Ø33.000</b>，60° 均布、偏置 30°（90° 方向有孔，0°/180° 无孔），端面 x=-36.8</li>
+        <li>备选接口：3×M6（底孔 Ø5.0）@ PCD Ø31.6，端面 x=-39.8（与 M4 面台阶 3.0mm）</li>
+        <li>同环面通风孔：12×Ø2.2 @ PCD Ø64.2（转接板须开通风槽/镂空）</li>
+        <li>中心：Ø22/23 凹槽（对应转接板 Ø24 走线孔）；尾帽外径 Ø65</li>
+      </ul>
+      <a :href="`${APP_BASE}/sketch.svg`" target="_blank" class="block mt-4 border border-nec-line rounded-lg overflow-hidden hover:shadow-md transition">
+        <img :src="`${APP_BASE}/sketch.png`" alt="6014 电机尾部转接板评审草图" class="w-full" />
+      </a>
+      <p class="text-xs text-nec-gray mt-2">转接板示意：Ø80 × t4 6061-T6，6×Ø4.5 通孔 @ PCD Ø33，中心 Ø24 走线孔 + Ø36×3.5 沉台，4×Ø5.5 @ 68×68 机体接口（示意）。点击图查看 SVG 原图。</p>
+    </section>
+
+    <!-- 待确认项 -->
+    <section class="nec-card p-5">
+      <h2 class="font-bold text-nec-navy mb-3">三、实物待确认项（现场逐项核实）</h2>
+      <table>
+        <thead><tr><th style="width:2.5rem">#</th><th>待确认项</th><th>确认方法</th><th style="width:11rem">结果</th><th style="width:6rem">确认人</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>尾部 6 孔是否已攻丝 M4（还是 Ø4.0 光孔）</td><td>实物试拧 M4 螺钉 / 卡尺测孔径（Ø3.3=底孔，Ø4.0=通孔）</td><td>☐ 已攻丝　☐ 光孔</td><td></td></tr>
+          <tr><td>2</td><td>尾端面台阶实际高度（模型为 3.0mm）与凸台外径</td><td>深度尺 / 卡尺</td><td>____mm / Ø____mm</td><td></td></tr>
+          <tr><td>3</td><td>实物版本与模型批次是否一致（"IM6014最新"）</td><td>核对电机铭牌 / 采购批次</td><td>☐ 一致　☐ 不一致</td><td></td></tr>
+          <tr><td>4</td><td>通风孔实际位置与数量</td><td>对照 PCD Ø64.2 目视</td><td>☐ 一致　☐ 不一致</td><td></td></tr>
+          <tr><td>5</td><td>中心凹槽是否需走线（驱动板出线方式）</td><td>看实物线束走向</td><td>☐ 需要　☐ 不需要</td><td></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 结论 -->
+    <section class="nec-card p-5">
+      <h2 class="font-bold text-nec-navy mb-3">四、评审结论</h2>
+      <div class="text-sm space-y-2">
+        <p>☐ <b>通过</b>：按转接板方案出加工图（6061-T6，Ø80×t4，6×Ø4.5 @ PCD Ø33）</p>
+        <p>☐ <b>有条件通过</b>：先完成第三节确认项，再出图（责任人：______）</p>
+        <p>☐ <b>驳回</b>，改走：☐ 铝 CNC 抱箍　☐ 官方钢箍快拆　☐ 其他：__________</p>
+      </div>
+    </section>
+
+    <!-- 行动项 -->
+    <section class="nec-card p-5">
+      <h2 class="font-bold text-nec-navy mb-3">五、行动项</h2>
+      <table>
+        <thead><tr><th style="width:2.5rem">#</th><th>事项</th><th style="width:7rem">责任人</th><th style="width:7rem">截止</th><th style="width:6rem">状态</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>实物核实尾部孔 / 台阶并回填第三节</td><td></td><td></td><td></td></tr>
+          <tr><td>2</td><td>按确认结果出转接板加工图（DXF 已备好）</td><td></td><td></td><td></td></tr>
+          <tr><td>3</td><td>确定机体侧接口孔位（替换示意 4×Ø5.5）</td><td></td><td></td><td></td></tr>
+          <tr><td>4</td><td>打样与装机验证</td><td></td><td></td><td></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 签字 -->
+    <section class="nec-card p-5">
+      <h2 class="font-bold text-nec-navy mb-3">六、签字</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+        <p>机械：__________</p><p>整机：__________</p><p>负责人：__________</p>
+      </div>
+    </section>
+
+    <p v-if="!embedded" class="text-center text-xs text-nec-gray no-print">提示：本页可直接 Ctrl/Cmd+P 打印为评审记录纸质档 · <a :href="`${APP_BASE}/minutes.md`" class="underline">Markdown 源文件</a></p>
+  </main>
+</template>
+
+<style>
+body { font-family: var(--nec-font-cn); background: var(--nec-fog); color: var(--nec-ink); }
+.nec-card { background: var(--nec-paper); border: 1px solid var(--nec-line); border-radius: var(--nec-radius); box-shadow: var(--nec-shadow); }
+.hero { position: relative; overflow: hidden; background-color: var(--nec-paper);
+  background-image: linear-gradient(var(--nec-grid) 1px, transparent 1px), linear-gradient(90deg, var(--nec-grid) 1px, transparent 1px);
+  background-size: 92px 92px, 92px 92px; }
+.base-line { height: 5px; background: var(--nec-horizon); }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--nec-line); padding: 6px 10px; font-size: 13px; text-align: left; }
+th { background: var(--nec-royal-100); font-weight: 700; }
+.badge-ok { background:#E7F6EC; color:#1C7C3C; }
+.badge-no { background:#FDECEA; color:#C0392B; }
+.badge-warn { background:#FDF4E3; color:#9A6A00; }
+@media print { .no-print { display: none; } body { background: #fff; } .nec-card { box-shadow: none; } }
+</style>

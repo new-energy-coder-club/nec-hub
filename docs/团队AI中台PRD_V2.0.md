@@ -6,8 +6,33 @@
 > 更新：2026-10-14 同步本地任务进展 —— FE-01/FE-03 已落地，FE-08 进展更新，新增 FE-14（新增机图纸评审流程，专项 PRD 见 docs/）
 > 更新：2026-10-14 补充需求变更记录/测试策略/上线部署/培训支持章节（§11-§14）
 > 更新：2026-10-14 深夜 同步 fix/vi 主线全量进展：单体按域拆分重构、FE-15 硬件评审 / FE-16 合同审批 / FE-17 我的任务 / FE-18 赛季目标专项应用上线、FE-08 报销审批动作与我的报销列表（A2/A3 移植）、FE-01 会话续期修复、VI V1.1 语义色体系、图纸评审联想功能、飞书会议共享服务
+> 更新：2026-10-15 §0 按代码现状与各 FE 进展记录全面刷新（原 10-12 盘点多处过期：FE-03/04/05/06/07/10/12/13 实际已上线）；§4 现状盘点同步修订
+> 更新：2026-10-15 二更：FE-14 补库存手动导入兜底/灰度执行手册/决策跟踪表；§4 补泛域名直达与 web/ Vue 门户脚手架（6208853）
 > 参考：[万涂幻象《卡兹克的飞书工作台是怎么搭的？我从 0 到 1 手把手带你搭一遍》(2026-10-11)](https://mp.weixin.qq.com/s/WgXz7xasqh9vClny6am-SQ)、数字生命卡兹克《我花了5天时间，对公司进行了一场AI化改造》
 > 前置文档：《团队AI中台搭建方案_V1.0.md》《网页版vs飞书工作台版_评估.md》《飞书定制工作台配置手册.md》《飞书工作台上架手册_NEC仓库作业台.md》
+
+---
+
+## 0. 实施状态总览（2026-10-15 按代码现状与各 FE 进展记录刷新，原 10-12 盘点已过期项均已更正）
+
+> 图例：✅ 完成上线 ｜ 🔄 代码上线但待配置/待实测/待补内容 ｜ ⬜ 未开始
+
+| 需求 | 状态 | 说明 |
+|---|---|---|
+| FE-01 登录态与角色 | 🔄 | 会话/whoami/应用广场过滤/财务脱敏/MCP whoami/refresh_token 持久化已上线；**飞书内 JSAPI 免登（验收 1）未做**；名单 53 人已录；✅ 真实登录走查（2026-10-15）：维护者账号 matched=true（open_id 写回名单 + role.ts 姓名双向包含兜底），角色/组别正确解析 |
+| FE-02 数据基建 | 🔄 | 正式 Base 已接入生产；✅ 灌数收口（2026-10-15）：物资 12 条 / 财务 6 条 / 赛季目标 6 条已灌，名单组别 48/53（科研 5 / 实习 5 / 指导 2 新组别），看板四区全部有数；剩 5 人（杨万洁/闻志伟/孙振祥/沈家耀/史珺瑞）通讯录查无部门待人工确认 |
+| FE-03 资料页 | ✅ | 后端 + 门户 Tab + `publish_doc` 已上线；种子四类 10 条 + 真实资料 2 条（CLA 贡献协议/招商手册，存 R2）已上架 |
+| FE-04 赛季目标面板 | ✅ | goals 看板区块（里程碑时间线/各组完成度/逾期红色告警）+ `update_progress`（模糊匹配回写）+ 门户顶部 goal-banner T-7 提醒已上线；另有 season-goals 独立应用（`src/season-goals/` + `/apps/season-goals/`） |
+| FE-05 数据校验 | ✅ | 声明式规则引擎 + 门户「数据健康」区块 + 周一 08:00 cron 周报 diff 推群已上线；规则已按真实表校准（生产 KV 12 条）；首轮异常（组别缺失 40 / 飞书ID异常 26 / 负责人缺失 26）确认属实，待清零（目标 ≤2 周） |
+| FE-06 个性化首页 | ✅ | 「我的首页」Tab + 白名单 6 组件 + `GET/POST /api/home` + `set_home_layout` 已上线（20 条单测）；待真实账号走查验收 1/2/3 |
+| FE-07 组别默认首页 | ✅ | 三层回退（个人 > 组 > 内置默认）已上线；`scope=group` 限组长/队长且只能配本组 |
+| FE-08 标杆应用：报销助手 | 🔄 | Plan B 引擎 + ERP 报销单应用页（`/apps/reimburse/`）+ OCR（PDF/发票号/付款凭证）+ D1 `nec-hub-erp` 存储分层已上线（详见审批 PRD V1.1 §0 / V1.2）；待端到端实测一单 |
+| FE-09 审批/待办聚合 | 🔄 | `/api/todos` 四类聚合 + 合规 T-1 标红已交付（V1.2 G-04）；登录实测（2026-10-15）：✅ 降级 warnings 不白屏、✅ 5 分钟缓存、✅ approvals_local 聚合命中（CP-2026-0001）；⏳ 队长 48h 视角/队员对照/T-1 标红渲染待复核；飞书审批 API scope 未开通持续降级 |
+| FE-10 品牌 Skill | ✅ | `nec-vi` / `nec-ppt` 已按 VI 手册撰写并上架 Skill 中心（在线可读 + 安装 Prompt）；⚠️ gitee `SKill` 分支被并行会话强推重写（本地领先 7/落后 1191），待分支收敛后同步 |
+| FE-11 工作台 Level 3 | 🔄 | 就绪待管理员操作（2026-10-15）：FE-01 真实登录实测已通过（维护者账号 matched），《飞书定制工作台配置手册》路径④步骤齐；剩余动作 = 超管在 feishu.cn/admin 授权「定制工作台」→ 新建网页嵌入工作台指向 hub → 发布全员（纯后台手动，无 OpenAPI，FE-13 已证实） |
+| FE-12 Skill CI | ✅ | 已确认满足：`quality-check.yml` 强制校验 SKILL.md + PR 自动评论质量报告 |
+| FE-13 lark-cli 调研 | ✅ | 《lark-cli能力边界验证报告》已归档；结论：多维表格读写全自动化、应用版本发布可走 api 逃生舱（未实测）、定制工作台无 OpenAPI |
+| FE-14 图纸评审流程 | ✅ | 10 张逻辑表配齐 + 询价比价 + 流程看板（阻塞预警/甘特图）+ 群通知 + 阻塞告警 cron 已上线；审批侧五组端到端实测通过（V1.1 F-01）；**2026-10-15 增补**：库存手动导入兜底（`inventory.service.ts`，§13.7 验收 2，幂等可重复导入）、§11 待确认问题转决策跟踪表（7 项均附建议方案）、《灰度执行手册》归档；持续迭代（联想/BOM/6014 专项页） |
 
 ---
 
@@ -39,13 +64,13 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 | 队员 | role=队员 | 找应用、找资料、报任务、交报销 | 全员可见范围内读写 |
 | 校友 / 指导老师 | role=校友，飞书组织外 | 只读了解战队动态 | 仅公开区（无登录态亦可看公开页） |
 
-## 4. 现状盘点（截至 2026-10-14 深夜）
+## 4. 现状盘点（截至 2026-10-14 深夜；2026-10-15 origin/main 增补已并入）
 
 **已上线（实测确认，代码现状与生产一致）**：
 
-- **架构**：Cloudflare Worker 单体已按域拆分（`src/index.ts` 收敛为 192 行路由表 + `scheduled` 入口），15+ 域模块：`auth/`（登录态/角色）、`hosting/`（R2 托管与 KV 注册表）、`dashboard/`（看板/资料页）、`repos/`、`reimburse/`（报销）、`mcp/`（MCP 端点与工具）、`validation/`（FE-05）、`home/`（FE-06/07）、`todos/`（FE-09）、`season-goals/`（FE-18）、`my-tasks/`（FE-17）、`drawing-review/`（FE-14）、`hardware-review/`（FE-15）、`contract-approval/`（FE-16）、`meeting/`（飞书会议共享服务）、`shared/`（会话/模块网关/表适配器等公共层）
-- 门户九 Tab：我的首页（默认落地）/ 我的任务 / 图纸评审（登录后可见）/ 应用广场 / Skill 中心 / 资料页 / 开源仓库 / 数据看板 / NEC-MCP；评审域配套独立应用页 `public/apps/`：drawing-review（图纸评审全屏版）/ hardware-review（硬件评审）/ season-goals（赛季目标）/ scoring（NEC 评分看板），门户与独立页共用同一套 `/api/*` 与飞书多维表格数据
-- MCP 工具 20 个：`deploy_app` / `register_app` / `sync_vercel` / `import_skills` / `remove_skills` / `publish_skill` / `query_bitable` / `config_dashboard` / `config_drawing_review` / `config_hardware_review` / `config_contract_approval` / `publish_doc` / `update_progress` / `validate_bitable` / `config_validate_rules` / `schedule_meeting` / `set_home_layout` / `send_notice` / `whoami` / `send_mail`（MCP server 0.4.0；写操作强制 `MCP_TOKEN`；`whoami` 供 Agent 接入自检，`send_mail` 为 N-02 飞书邮箱通道）
+- **架构**：Cloudflare Worker 单体已按域拆分（`src/index.ts` 收敛为 192 行路由表 + `scheduled` 入口），15+ 域模块：`auth/`（登录态/角色）、`hosting/`（R2 托管与 KV 注册表）、`dashboard/`（看板/资料页）、`repos/`、`reimburse/`（报销）、`mcp/`（MCP 端点与工具）、`validation/`（FE-05）、`home/`（FE-06/07）、`todos/`（FE-09）、`season-goals/`（FE-18）、`my-tasks/`（FE-17）、`drawing-review/`（FE-14）、`hardware-review/`（FE-15）、`contract-approval/`（FE-16）、`meeting/`（飞书会议共享服务）、`shared/`（会话/模块网关/表适配器等公共层）；origin/main 并线并入 `prd/`（PRD 看板）、`approvals/`（Plan B 审批引擎）、`domains/`（泛域名直达 wildcard）等模块
+- 门户九 Tab：我的首页（默认落地）/ 我的任务 / 图纸评审（登录后可见）/ 应用广场 / Skill 中心 / 资料页 / 开源仓库 / 数据看板 / NEC-MCP；origin/main 并线新增「PRD 看板」Tab（`GET /api/prd` + `update_prd` 维护）；评审域配套独立应用页 `public/apps/`：drawing-review（图纸评审全屏版）/ hardware-review（硬件评审）/ season-goals（赛季目标）/ scoring（NEC 评分看板），门户与独立页共用同一套 `/api/*` 与飞书多维表格数据
+- MCP 工具 20 个：`deploy_app` / `register_app` / `sync_vercel` / `import_skills` / `remove_skills` / `publish_skill` / `query_bitable` / `config_dashboard` / `config_drawing_review` / `config_hardware_review` / `config_contract_approval` / `publish_doc` / `update_progress` / `validate_bitable` / `config_validate_rules` / `schedule_meeting` / `set_home_layout` / `send_notice` / `whoami` / `send_mail`（MCP server 0.4.0；写操作强制 `MCP_TOKEN`；`whoami` 供 Agent 接入自检，`send_mail` 为 N-02 飞书邮箱通道）；origin/main 线另有审批四件套/数据基建/`update_inventory`/`apply_domain`/`release_domain` 等，两线合并后工具 union 30 个，以合并后 `src/mcp/tools.ts` 为准
 - **登录态与角色（FE-01）已落地**：`/auth/feishu` code 兑换 + HttpOnly 会话 Cookie（KV `session:<sid>`，7 天，**同 sid 原地滑动续期——bug 已修复**）、`whoami`、按"队员名单"表实时判定角色（60s 缓存，退队即时失效）、登出入口；财务报销按角色三级脱敏（hidden/summary/full），`query_bitable` finance 表带角色门禁
 - **三条业务流程域**：图纸评审（FE-14）、硬件评审（FE-15）、合同审批（FE-16），同构子路由 + 状态机 + 事件日志，数据全部落飞书多维表格；飞书视频会议预约走 `meeting/` 共享服务（未开通 vc:meeting:write 权限时降级 mock，不破坏状态机）
 - **报销链路（FE-08）**：OCR 识别（Tesseract.js 本地）、凭证 R2 存档、回写财务表；**审批动作 approve/reject/pay（幂等 + 状态前置校验）+ 我的报销列表 + 提交即生单号入「审批中」已上线**（main 分支 A2/A3 移植完成）
@@ -61,8 +86,10 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 - **VI V1.1**：语义色定义（§3.4）落地 nec tokens，门户首页 / 图纸评审 / 硬件评审 / 评分 / 赛季目标页状态色已统一收口；品牌视觉中心页 `/brand/`
 - **Skill 中心**：分类体系与检索体验上线；`nec-vi` / `nec-ppt` Skill 就绪
 - **工程质量**：主线合并对照 A 组 5 项已全部移植入库（续期修复 `94fc174`、报销动作/列表 `c9fcfb9`、签名 webhook 通知域 + 应用广场角色过滤 + send_notice + whoami，见 `docs/主线合并对照_main_vs_fixvi.md`）；fix/vi 为存续主线，main 按计划归档只读；vitest 20 文件 200 用例全绿；《主线整合与执行方案_V1.0.md》为唯一版本与协作公约入口
+- **泛域名应用直达（2026-10-15，`6208853`）**：`src/domains/wildcard.ts` —— `<app>.<zone>` 直接服务 R2 `apps/<app>/` 静态应用，`deploy_app` 上架即得独立域名，零 DNS 配置；保留子域名与已登记外部目标自动透传
+- **web/ Vue 门户脚手架（2026-10-15，`6208853`）**：`web/` Vue3 + Vite 工程已建（V3 框架化探索，不改变结构优化 PRD 的本轮原生 ESM 路线）
 
-**缺口（本 PRD 覆盖）**：飞书内 JSAPI 免登端到端验证、三角色测试账号走查、数据基建真实灌数（物资/报销两表仍 0 记录、队员名单组别待补）、飞书视频会议企业授权与 ERP/MES 集成联调（未就绪前手动导入模板兜底）、硬件评审/合同审批前端页面、D 组新建能力（飞书邮件通道 + refresh_token 持久化、真两级审批、48h 代理人升级，见主线对照文尾）。
+**缺口（本 PRD 覆盖）**：飞书内 JSAPI 免登端到端验证、三角色测试账号走查、数据基建灌数收口走查（物资 12 / 财务 6 / 赛季目标 6 已灌，剩 5 人通讯录查无部门待人工确认，见 §0 FE-02）、飞书视频会议企业授权与 ERP/MES 集成联调（未就绪前手动导入模板兜底）、硬件评审/合同审批前端页面、D 组新建能力（飞书邮件通道 + refresh_token 持久化、真两级审批、48h 代理人升级，见主线对照文尾）；工作台 Level 3 切换待超管后台操作；图纸评审全流程集成（腾讯会议/ERP/MES）待联调。
 
 ## 5. 功能需求
 
@@ -124,7 +151,8 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 - ✅ 任务进度：从「NEC ROBOCON 2026 项目管理」Base 解析导入 39 条真实任务（任务/负责人/状态/完成度），看板已渲染（进行中 27 / 未开始 6 / 已完成 6）。
 - ✅ 队员名单组别：从任务记录里的机构组/视觉组归属反推，回填 12 人机械 + 1 人视觉，看板分组统计生效。
 - ⚠️ 名单核对结论（2026-10-14，队长确认）：彭柯颖、顾佳欣为**退队队员**，不在 2026 赛季名单内；其名下 3 条任务（直线导轨出图组装、SolidWorks基础学习、R4R5装配）已从任务进度表删除，任务总数 39 → 36。权限侧无需额外处理：名单表无其记录，FE-01 实时判定机制下其会话下一次请求即失效。
-- 待办：物资台账/财务报销在飞书侧未找到可导入的数据源（库存中台 Base 对本账号仅见空表），需组长手工补录或经 MES 导出；剩余 40 人组别待各组长补录。
+- 待办：物资台账/财务报销在飞书侧未找到可导入的数据源（库存中台 Base 对本账号仅见空表），需组长手工补录或经 MES 导出。
+- ✅ 队员名单组别二次回填（2026-10-15，lark-cli 通讯录部门反查）：40 名未分组队员中 23 人按飞书部门归属回填（RC 机构 SIG→机械 +11、RC 视觉 SIG→视觉 +7、RC 运营 SIG→运营 +5），看板分组生效（机械 23 / 视觉 8 / 运营 5）；剩余 17 人未分组：NEC 科研 SIG 4 人（含指导）、NEC 实习 SIG 5 人（平台无对应组别）、无部门/查无此人 6 人、维护者/指导身份 2 人——待队长确认科研/实习 SIG 的组别归属后补录。
 
 ### FE-03 资料页（P1）——对标卡兹克"中台资料页"
 
@@ -178,7 +206,7 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 - ✅ 「赛季目标」表已建并配入 `dashboard:config`（goals 键）；`buildDashboard` 新增 goals 聚合：里程碑时间线 + 各组完成度条形图 + 逾期红色告警 + 记录直链。
 - ✅ MCP `update_progress`（record_id + progress 0-100 / status；MCP_TOKEN 或 user_token 鉴权；写后清 goals 缓存 ≤1 分钟刷新）；飞书进度字段 0-1 自动换算。
 - ✅ 门户顶部 `#goal-banner`：T-7 未达标与逾期目标提醒，可点击跳多维表格、可关闭。
-- 待办：灌入真实赛季目标后走查验收 1/3；进度字段换算在真实表验证一次。
+- ✅ 验收 3 已通过（2026-10-15）：灌入 6 条真实目标（含截止=次日的测试目标），门户顶部 goal-banner 出现「T-2 天 · 【测试】T-7 告警验收目标」提醒条，可关闭；待办：验收 1（记录直链点击）与进度 0-1 换算真表复核。
 
 **进展（2026-10-14，目标面板已上线）**：
 
@@ -593,6 +621,7 @@ M2 结束、工作台切换 2 周后，按对标文章建议发**飞书问卷**�
 | V2.0 修订 | 2026-10-14 深夜 | **fix/vi 主线全量同步**：单体按域拆分重构（index.ts 1955→192 行 + 15 域模块）；新增 FE-15 硬件评审 / FE-16 合同审批 / FE-17 我的任务 / FE-18 赛季目标收集与自动规划（均含进展记录）；FE-08 报销审批动作 approve/reject/pay + 我的报销列表（main A2/A3 移植）；FE-01 会话同 sid 原地续期修复（A1 移植）；FE-10 VI V1.1 语义色体系；FE-14 图纸联想功能 45 用例全绿 + 飞书视频会议共享服务（腾讯会议降为备选）+ 10 表配置完毕；MCP 工具 10→17 个；Cron 增加看板 4 分钟预热；vitest 16 文件 174 用例全绿；《主线合并对照》《页面与Tab状态现状》归档 docs/ |
 | V2.0 修订 | 2026-10-14 深夜二更 | **主线移植收尾（main 归档）**：A4 签名群机器人通知域（`src/feishu/notify.ts` 加签/分流/重试/失败留痕，报销提交与审批四类事件接入）、A5 应用广场按角色过滤 visibleApps、B2 `send_notice` MCP、C 组 `whoami` MCP（Agent 接入自检）、B4《审批与通知中心 PRD V1.1》搬运并按 fix/vi 重标 §0；MCP 工具 17→19 个；vitest 19 文件 191 用例全绿；main 分支打 tag 归档，旧工作副本物理删除，fix/vi 单线演进 |
 | V2.0 修订 | 2026-10-14 三更 | **N-02 飞书邮箱通道 + 全量部署**：`src/feishu/mail.ts`（RFC 5822 EML 构造/建草稿/发送/profile 取发件地址，refresh_token 持久化续期）+ `send_mail` MCP 工具（第 20 个）+ 登录 scope 追加 `mail:user_mailbox.message:modify`；姓名→open_id 目录抽至共享模块 `feishu/member-directory`（meeting/mail 共用）；vitest 20 文件 200 用例全绿；全量部署生产；《主线整合与执行方案_V1.0》归档 docs/ |
+| V2.0 修订 | 2026-10-15 | §0 全面刷新（对齐代码现状与各 FE 进展：FE-03/04/05/06/07/10/12/13/14 升 ✅，FE-08/09 刷新为审批 PRD V1.1/V1.2 口径）；§4 现状盘点修订（域拆分架构、灌数进展、缺口清单更新） |
 
 ### 11.2 变更流程
 

@@ -1,20 +1,25 @@
 /**
  * FE-09 审批/待办聚合 — GET /api/todos（需登录）
  *
- * 聚合三类待办：
+ * 聚合四类待办：
  *   ① 任务表：负责人=当前用户 且 截止<今天 且 状态≠完成 的逾期任务（跳多维表格记录直链）；
  *   ② 财务报销表：状态为待确认/进行中的记录（队员只见自己，队长/财务见全部，复用看板角色判定）；
- *   ③ 飞书审批待办：尝试调飞书审批 API；权限不足/未开通时静默降级到 warnings，不报错。
+ *   ③ 飞书审批待办：尝试调飞书审批 API；权限不足/未开通时静默降级到 warnings，不报错；
+ *   ④ 本地审批底表（G-04）：4 张流程底表中状态="审批中"的单——审批人见全部，队员只见自己
+ *      提交的；compliance 流程带计划发布时间 deadline，距发布 ≤24h 标 urgent（门户 T-1 标红）。
  *
  * 结果按用户缓存（KV todos:<open_id>，TTL 5 分钟），飞书免费版限流保护。
  */
 
 import { canSeeFinanceDetail, resolveUserRole } from "./auth/role";
+import { fetchFlowRecordsCached } from "./approvals/engine";
+import { APPROVAL_TYPES, getFlowsConfig, isApprover, type ApprovalType } from "./approvals/flows";
 import { fetchTableCached, getDashboardConfig } from "./dashboard";
 import { fieldNum, fieldText, fieldTs, findFieldKey, firstFieldText, getTenantAccessToken, type BitableRecord } from "./feishu/bitable";
 import { json } from "./shared/http";
 import { applyRenewedSession, resolveSession } from "./shared/session";
 import { buildRecordLink } from "./validation/service";
+import type { UserRole } from "./auth/role";
 
 /** 待办缓存 TTL（秒）：与看板一致 5 分钟 */
 const TODOS_CACHE_TTL_SEC = 300;
@@ -44,6 +49,17 @@ export interface TodoFinanceItem {
   link: string;
 }
 
+export interface TodoApprovalLocalItem {
+  application_id: string;
+  title: string;
+  url: string;
+  type: ApprovalType;
+  /** 仅 compliance：计划发布时间（毫秒时间戳），其他流程为 null */
+  deadline: number | null;
+  /** compliance 且距计划发布 ≤24h（含已过点）且仍审批中 */
+  urgent: boolean;
+}
+
 export interface TodosPayload {
   generatedAt: string;
   /** true = 命中 5 分钟缓存 */
@@ -52,7 +68,63 @@ export interface TodosPayload {
   tasks: TodoTask[];
   finance: { count: number; scope: "mine" | "all"; items: TodoFinanceItem[] };
   approvals: { count: number; items: Array<{ title: string; link: string }> };
+  approvals_local: { count: number; items: TodoApprovalLocalItem[] };
   warnings: string[];
+}
+
+/** T-1 标红阈值：距计划发布 ≤ 24h */
+const T1_URGENT_MS = 24 * 3600e3;
+
+/**
+ * G-04 本地审批底表待办：状态="审批中"的单。
+ * 审批人（isApprover）见全部；普通队员只见自己提交的（申请人 open_id 匹配，兜底姓名匹配）。
+ * 复用 aggregateTodos 的 todo:tbl:<type> 5 分钟缓存（fetchFlowRecordsCached）。
+ */
+async function buildLocalApprovalTodos(
+  env: Env,
+  user: { name: string; open_id: string },
+  role: UserRole,
+): Promise<{ count: number; items: TodoApprovalLocalItem[] }> {
+  const cfg = await getFlowsConfig(env);
+  const items: TodoApprovalLocalItem[] = [];
+  const now = Date.now();
+  for (const type of APPROVAL_TYPES) {
+    const res = await fetchFlowRecordsCached(env, type);
+    if (!res) continue;
+    const { records, base, tableId } = res;
+    const statusKey = findFieldKey(records, [/^状态$/, /状态/, /进度/]);
+    if (!statusKey) continue;
+    const idKey = findFieldKey(records, [/^申请单号$/, /申请单号/, /单号/]);
+    const openIdKey = findFieldKey(records, [/open_?id/i]);
+    const applicantKey = findFieldKey(records, [/^申请人$/, /申请人/, /报销人/]);
+    const deadlineKey = type === "compliance" ? findFieldKey(records, [/计划发布时间/, /发布时间/]) : null;
+    const seeAll = isApprover(role, cfg[type].approvers);
+    for (const r of records) {
+      if (fieldText(r.fields[statusKey]) !== "审批中") continue;
+      if (!seeAll) {
+        const mine =
+          (openIdKey && fieldText(r.fields[openIdKey]) === user.open_id) ||
+          (!openIdKey && applicantKey && personMatches(fieldText(r.fields[applicantKey]), user.name));
+        if (!mine) continue;
+      }
+      const appId = idKey ? fieldText(r.fields[idKey]) : r.record_id;
+      const deadline = deadlineKey ? fieldTs(r.fields[deadlineKey]) : null;
+      items.push({
+        application_id: appId,
+        title: `${appId} ${firstFieldText(r)}`.trim(),
+        url: buildRecordLink(base, tableId, r.record_id),
+        type,
+        deadline,
+        urgent: type === "compliance" && deadline !== null && deadline - now <= T1_URGENT_MS,
+      });
+    }
+  }
+  // urgent（T-1）置顶，其余按 deadline 升序（无 deadline 排最后）
+  items.sort((a, b) => {
+    if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
+    return (a.deadline ?? Infinity) - (b.deadline ?? Infinity);
+  });
+  return { count: items.length, items: items.slice(0, 20) };
 }
 
 /** 记录的人名字段是否包含当前用户（负责人/申请人等多值字段按分隔符拆分后精确比对） */
@@ -158,6 +230,7 @@ export async function buildTodos(env: Env, user: { name: string; open_id: string
   let tasks: TodoTask[] = [];
   let finance: { count: number; scope: "mine" | "all"; items: TodoFinanceItem[] } = { count: 0, scope: "mine", items: [] };
   let approvals: { count: number; items: Array<{ title: string; link: string }> } = { count: 0, items: [] };
+  let approvalsLocal: { count: number; items: TodoApprovalLocalItem[] } = { count: 0, items: [] };
 
   // 审批待办与看板表互不依赖，先行启动，最后统一收口（warnings 顺序保持不变）
   const approvalsPromise =
@@ -167,13 +240,13 @@ export async function buildTodos(env: Env, user: { name: string; open_id: string
           (err: unknown) => ({ ok: false as const, err }),
         )
       : null;
+  const rolePromise = resolveUserRole(env, user, ctx);
 
   const cfg = await getDashboardConfig(env);
   if (!cfg) {
     warnings.push("数据看板未配置，仅聚合飞书审批待办");
   } else {
-    // 角色解析（members 表）与任务/财务表读取并行
-    const rolePromise = resolveUserRole(env, user, ctx);
+    // 任务/财务表读取并行（角色解析已在上方启动）
     const [t, f] = await Promise.all([fetchTableCached(env, cfg, "tasks", ctx), fetchTableCached(env, cfg, "finance", ctx)]);
     const seeAllFinance = canSeeFinanceDetail(await rolePromise);
     if (cfg.tables.tasks) {
@@ -189,6 +262,13 @@ export async function buildTodos(env: Env, user: { name: string; open_id: string
     }
   }
 
+  // G-04 本地审批底表：失败不阻断其他待办（降级为 0 条 + warning）
+  try {
+    approvalsLocal = await buildLocalApprovalTodos(env, user, await rolePromise);
+  } catch (err) {
+    warnings.push(`本地审批底表读取失败：${err instanceof Error ? err.message : String(err)}`);
+  }
+
   if (approvalsPromise) {
     const res = await approvalsPromise;
     if (res.ok) approvals = res.value;
@@ -202,10 +282,11 @@ export async function buildTodos(env: Env, user: { name: string; open_id: string
   const payload: TodosPayload = {
     generatedAt: new Date().toISOString(),
     cached: false,
-    total: tasks.length + finance.count + approvals.count,
+    total: tasks.length + finance.count + approvals.count + approvalsLocal.count,
     tasks,
     finance,
     approvals,
+    approvals_local: approvalsLocal,
     warnings,
   };
   const write = env.REGISTRY.put(cacheKey, JSON.stringify({ data: payload, cachedAt: Date.now() }));
@@ -229,6 +310,7 @@ export async function handleTodos(request: Request, env: Env, ctx?: ExecutionCon
       tasks: [],
       finance: { count: 0, scope: "mine", items: [] },
       approvals: { count: 0, items: [] },
+      approvals_local: { count: 0, items: [] },
       warnings: [`待办聚合失败：${err instanceof Error ? err.message : String(err)}`],
     } satisfies TodosPayload), session.renewed);
   }

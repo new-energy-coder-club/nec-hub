@@ -1,0 +1,1 @@
+import{x as a}from"../runtime-dom.esm-bundler-C4hRs6Zd.js";import{_ as o}from"../SeasonGoalsApp.vue_vue_type_script_setup_true_lang-BJYu-VNT.js";const m=new URLSearchParams(location.search),e=m.get("embedded")==="1"||window.parent!==window;e&&document.body.classList.remove("bg-gray-50");a(o,{embedded:e}).mount("#app");

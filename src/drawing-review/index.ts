@@ -14,6 +14,7 @@ import { BOMService } from "./bom.service";
 import { getDrawingReviewConfig } from "./config";
 import { ReviewFlowService, nextStatus, type SubmitReviewInput } from "./flow.service";
 import { InquiryService } from "./inquiry.service";
+import { InventoryService } from "./inventory.service";
 import { SuggestionService } from "./suggestion.service";
 import type { DrawingReviewConfig } from "./types";
 
@@ -100,6 +101,25 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
   const inqListMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/inquiries$/);
   if (inqListMatch && request.method === "GET") {
     return json(await adapter.listInquiries(inqListMatch[1]));
+  }
+
+  // 库存：手动导入兜底（ERP/MES 未就绪，PRD §13.7；须放在 /{id} 详情匹配之前）
+  const invImportMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/inventory\/import$/);
+  if (invImportMatch && request.method === "POST") {
+    const review = await flow.getReview(invImportMatch[1]);
+    if (!review) return json({ error: "评审单不存在" }, 404);
+    const body = (await request.json().catch(() => ({}))) as { rows?: unknown };
+    if (!Array.isArray(body.rows) || body.rows.length === 0) {
+      return json({ error: "rows 必须是非空数组" }, 400);
+    }
+    const svc = new InventoryService(adapter);
+    return json(await svc.importRows(invImportMatch[1], body.rows, session.open_id));
+  }
+
+  // 库存：按评审单查询
+  const invListMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/inventory$/);
+  if (invListMatch && request.method === "GET") {
+    return json(await adapter.listInventoryByReview(invListMatch[1]));
   }
 
   const detailMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)$/);

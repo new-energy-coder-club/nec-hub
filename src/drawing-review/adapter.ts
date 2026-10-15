@@ -21,6 +21,7 @@ import type {
   DrawingReviewConfig,
   DrawingReviewTable,
   Inquiry,
+  InventoryRecord,
   ProcessEvent,
   ReviewConclusion,
   ReviewMinutes,
@@ -355,6 +356,60 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
       deliveryDate: fieldText(f["交期"] ?? f["deliveryDate"]) || undefined,
       status: (fieldText(f["状态"] ?? f["status"]) as Inquiry["status"]) || "sent",
       createdAt: fieldText(f["创建时间"] ?? f["createdAt"]) || undefined,
+    };
+  }
+
+  // ---------- 库存（手动导入兜底，PRD §13.7） ----------
+
+  /** 按评审单查询库存行（字段口径与 board.service 读取一致：关联评审单/物料编码/物料名称） */
+  async listInventoryByReview(reviewId: string): Promise<Array<InventoryRecord & { recordId: string }>> {
+    const records = await this.listRecords("inventory");
+    return records
+      .map((r) => this.recordToInventory(r))
+      .filter((i) => i.reviewId === reviewId);
+  }
+
+  async createInventoryRow(row: InventoryRecord): Promise<InventoryRecord & { recordId: string }> {
+    const rec = await this.createRecord("inventory", this.inventoryToFields(row));
+    return this.recordToInventory(rec);
+  }
+
+  async updateInventoryRow(recordId: string, row: InventoryRecord): Promise<InventoryRecord & { recordId: string }> {
+    const rec = await this.updateRecord("inventory", recordId, this.inventoryToFields(row));
+    return this.recordToInventory(rec);
+  }
+
+  private inventoryToFields(row: InventoryRecord): Record<string, unknown> {
+    return {
+      物料编码: row.materialCode,
+      物料名称: row.materialName,
+      规格型号: row.specification,
+      数量: row.quantity,
+      单位: row.unit,
+      仓库: row.warehouse,
+      库位: row.location,
+      来源: row.source ?? "手动导入",
+      关联评审单: row.reviewId,
+      导入人: row.importedBy,
+      导入时间: row.importedAt ?? new Date().toISOString(),
+    };
+  }
+
+  private recordToInventory(r: BitableRecord): InventoryRecord & { recordId: string } {
+    const f = r.fields;
+    return {
+      recordId: r.record_id,
+      materialCode: fieldText(f["物料编码"] ?? f["materialCode"]),
+      materialName: fieldText(f["物料名称"] ?? f["materialName"]),
+      specification: fieldText(f["规格型号"] ?? f["specification"]) || undefined,
+      quantity: fieldNum(f["数量"] ?? f["quantity"]) ?? 0,
+      unit: fieldText(f["单位"] ?? f["unit"]) || undefined,
+      warehouse: fieldText(f["仓库"] ?? f["warehouse"]) || undefined,
+      location: fieldText(f["库位"] ?? f["location"]) || undefined,
+      source: fieldText(f["来源"] ?? f["source"]) || undefined,
+      reviewId: fieldText(f["关联评审单"] ?? f["reviewId"]) || undefined,
+      importedBy: fieldText(f["导入人"] ?? f["importedBy"]) || undefined,
+      importedAt: fieldText(f["导入时间"] ?? f["importedAt"]) || undefined,
     };
   }
 

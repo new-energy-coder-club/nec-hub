@@ -189,7 +189,7 @@ export async function runWeeklyValidation(env: Env): Promise<void> {
       console.log("[nec-hub] weekly validate done；FEISHU_WEBHOOK_URL 未配置，跳过群推送");
       return;
     }
-    await pushFeishuWebhook(env.FEISHU_WEBHOOK_URL, buildWeeklySummaryText(report, diff));
+    await pushFeishuWebhook(env.FEISHU_WEBHOOK_URL, buildWeeklySummaryText(report, diff), env.FEISHU_WEBHOOK_SECRET);
   } catch (err) {
     console.error("[nec-hub] weekly validate failed:", err);
   }

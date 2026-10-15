@@ -96,6 +96,21 @@ export interface InventoryResult {
   status: "sufficient" | "insufficient" | "out_of_stock" | "in_wip";
 }
 
+/** 库存行（手动导入兜底，PRD §13.7；来源固定「手动导入」） */
+export interface InventoryRecord {
+  materialCode: string;
+  materialName: string;
+  specification?: string;
+  quantity: number;
+  unit?: string;
+  warehouse?: string;
+  location?: string;
+  source?: string;
+  reviewId?: string;
+  importedBy?: string;
+  importedAt?: string;
+}
+
 export interface DeliveryList {
   deliveryId: string;
   reviewId: string;

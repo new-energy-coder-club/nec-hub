@@ -302,4 +302,76 @@ describe("GET /api/todos（FE-09）", () => {
     expect(d.cached).toBe(true);
     expect(ctx.fetchMock.mock.calls.length).toBe(callsAfterFirst);
   });
+
+  // ---------- G-04 本地审批底表聚合 + 合规 T-1 标红 ----------
+  const TBL_CP = "tblCP";
+  const TBL_DR = "tblDR";
+
+  function seedLocalApprovals(ctx: Ctx) {
+    seedTodos(ctx);
+    ctx.kv.set("flows:config", JSON.stringify({
+      compliance: { tableId: TBL_CP, base: "" },
+      drawing: { tableId: TBL_DR, base: "" },
+    }));
+    // 合规单：李四的、明天发布（urgent）；张三自己的、3 天后发布（非 urgent）；李四的已过发布点（urgent）；已通过的排除
+    ctx.seed(TBL_CP, { 申请单号: "CP-2026-0001", 标题: "招新推文发布", 状态: "审批中", 申请人: "李四", "申请人 open_id": "ou-other", 计划发布时间: Date.now() + 12 * 3600e3 }, "rec-c1");
+    ctx.seed(TBL_CP, { 申请单号: "CP-2026-0002", 标题: "我的合规单", 状态: "审批中", 申请人: "张三", "申请人 open_id": "ou-member", 计划发布时间: daysFromNow(3) }, "rec-c2");
+    ctx.seed(TBL_CP, { 申请单号: "CP-2026-0003", 标题: "旧合规单", 状态: "已通过", 申请人: "李四", "申请人 open_id": "ou-other", 计划发布时间: daysFromNow(-5) }, "rec-c3");
+    ctx.seed(TBL_CP, { 申请单号: "CP-2026-0004", 标题: "逾期合规单", 状态: "审批中", 申请人: "李四", "申请人 open_id": "ou-other", 计划发布时间: Date.now() - 3600e3 }, "rec-c4");
+    // 图纸单：张三自己的（非 compliance 无 deadline）
+    ctx.seed(TBL_DR, { 申请单号: "MECH-2026-0001", 图纸名称: "底座", 状态: "审批中", 申请人: "张三", "申请人 open_id": "ou-member" }, "rec-d1");
+  }
+
+  it("G-04 队员：只见自己提交的审批中单；compliance 带 deadline；total 含 approvals_local", async () => {
+    const ctx = createCtx();
+    seedLocalApprovals(ctx);
+    const res = await handleTodos(new Request("http://x/api/todos", { headers: { cookie: "nec_session=sid-member" } }), ctx.env);
+    expect(res.status).toBe(200);
+    const d = (await res.json()) as Record<string, any>;
+    expect(d.approvals_local.count).toBe(2);
+    const ids = d.approvals_local.items.map((x: any) => x.application_id).sort();
+    expect(ids).toEqual(["CP-2026-0002", "MECH-2026-0001"]);
+    const cp = d.approvals_local.items.find((x: any) => x.application_id === "CP-2026-0002");
+    expect(cp.type).toBe("compliance");
+    expect(cp.deadline).not.toBeNull();
+    expect(cp.urgent).toBe(false); // 3 天后 > 24h
+    expect(cp.url).toBe(`https://feishu.cn/base/${BASE}?table=${TBL_CP}&record=rec-c2`);
+    const dr = d.approvals_local.items.find((x: any) => x.application_id === "MECH-2026-0001");
+    expect(dr.deadline).toBeNull();
+    expect(dr.urgent).toBe(false);
+    // total = 逾期任务 1 + 报销 1 + 飞书审批 0 + 本地审批 2
+    expect(d.total).toBe(4);
+  });
+
+  it("G-04 队长（审批人）：见全部审批中单，T-1 标红置顶（含已过发布点的单）", async () => {
+    const ctx = createCtx();
+    seedLocalApprovals(ctx);
+    const res = await handleTodos(new Request("http://x/api/todos", { headers: { cookie: "nec_session=sid-captain" } }), ctx.env);
+    const d = (await res.json()) as Record<string, any>;
+    expect(d.approvals_local.count).toBe(4);
+    const items = d.approvals_local.items as Array<{ application_id: string; urgent: boolean }>;
+    expect(items[0].urgent).toBe(true);
+    expect(items[1].urgent).toBe(true);
+    expect(new Set(items.slice(0, 2).map((x) => x.application_id))).toEqual(new Set(["CP-2026-0001", "CP-2026-0004"]));
+    expect(items[2].urgent).toBe(false);
+    expect(items[3].urgent).toBe(false);
+    expect(d.approvals_local.items.some((x: any) => x.application_id === "CP-2026-0003")).toBe(false); // 已通过排除
+  });
+
+  it("G-04 本地底表复用 todo:tbl 缓存：第二次聚合不再拉底表", async () => {
+    const ctx = createCtx();
+    seedLocalApprovals(ctx);
+    // 预热整包缓存之前的第一次请求会拉表；清空用户级缓存后第二次应命中 todo:tbl 表缓存
+    await handleTodos(new Request("http://x/api/todos", { headers: { cookie: "nec_session=sid-captain" } }), ctx.env);
+    ctx.kv.delete("todos:ou-captain");
+    expect(ctx.kv.get("todo:tbl:compliance")).toBeTruthy();
+    const calls = ctx.fetchMock.mock.calls.length;
+    const res = await handleTodos(new Request("http://x/api/todos", { headers: { cookie: "nec_session=sid-captain" } }), ctx.env);
+    const d = (await res.json()) as Record<string, any>;
+    expect(d.cached).toBe(false); // 用户级缓存已清，重新聚合
+    expect(d.approvals_local.count).toBe(4);
+    const bitableReads = ctx.fetchMock.mock.calls.slice(calls).filter((c: any[]) =>
+      String(c[0]?.url ?? c[0]).includes(`/tables/${TBL_CP}/records`) || String(c[0]?.url ?? c[0]).includes(`/tables/${TBL_DR}/records`));
+    expect(bitableReads.length).toBe(0);
+  });
 });

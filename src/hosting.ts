@@ -127,7 +127,13 @@ export async function serveApp(url: URL, env: Env, ctx: ExecutionContext): Promi
   if (hit) return hit;
 
   const obj = await env.APPS_BUCKET.get(`apps/${name}/${rest}`);
-  if (!obj) return json({ error: `app file not found: ${name}/${rest}` }, 404);
+  if (!obj) {
+    // R2 未托管时回退到仓库内 public/apps/ 静态资源（新应用可不经 deploy_app 直接生效）
+    const fallback = await env.ASSETS.fetch(new Request(url.toString(), { method: "GET" }));
+    if (fallback.status === 404) return json({ error: `app file not found: ${name}/${rest}` }, 404);
+    ctx.waitUntil(caches.default.put(cacheKey, fallback.clone()));
+    return fallback;
+  }
   const ext = rest.split(".").pop()?.toLowerCase() ?? "";
   const res = new Response(obj.body, {
     headers: {

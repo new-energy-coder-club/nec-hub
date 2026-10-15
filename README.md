@@ -8,9 +8,9 @@
 
 ## 线上内容（截至 2026-10-14）
 
-门户共 8 个 Tab：我的首页 / 图纸评审（配置后显示）/ 应用广场 / Skill 中心 / 资料页 / 开源仓库 / 数据看板 / NEC-MCP。
+门户共 9 个 Tab：我的首页 / 图纸评审（配置后显示）/ 应用广场 / Skill 中心 / 资料页 / 开源仓库 / 数据看板 / PRD 看板 / NEC-MCP。
 
-应用广场 12 个应用（实时列表见 [`GET /api/apps`](https://hub.newenergycoder.club/api/apps)）：
+应用广场 11 个应用（实时列表见 [`GET /api/apps`](https://hub.newenergycoder.club/api/apps)）：
 
 | 应用 | 说明 | 链接 |
 |---|---|---|
@@ -40,11 +40,13 @@ src/
 ├── dashboard.ts        # 数据看板聚合（KV 5 分钟缓存）
 ├── repos.ts            # GitHub + Gitee 开源仓库合并（KV 1 小时缓存）
 ├── reimburse.ts        # 报销提交（发票号 + OCR 识别）
+├── prd.ts              # PRD 看板（/api/prd + update_prd）+ GitHub push webhook
+├── approvals/          # Plan B 审批引擎：flows 配置 / 状态机 / REST / MCP 工具
 ├── hosting.ts          # /apps/ /skills/ 静态托管（R2 + Cache API 边缘缓存）
 ├── drawing-review/     # 图纸评审：flow/board/bom/inquiry/suggestion(联想) 服务
 ├── hardware-review/    # 硬件评审流程
 ├── contract-approval/  # 合同审批流程
-├── feishu/             # 飞书多维表格客户端（token 实例缓存 + in-flight 去重）
+├── feishu/             # 飞书多维表格客户端（token 实例缓存 + in-flight 去重）+ 群机器人 webhook（加签/重试/留痕）
 ├── mcp/                # MCP 端点：handler / tools / implementations / module-config-tools
 └── __tests__/          # vitest 测试（各域另有就近 __tests__）
 ```
@@ -59,11 +61,20 @@ src/
 - **目标回写（FE-04）**：MCP `update_progress` 回写赛季目标表完成度/状态，写后自动清看板缓存。
 - **数据校验（FE-05）**：`/api/validate*` + MCP `validate_bitable` / `config_validate_rules`，校验看板 4 张底表脏数据（声明式 JSON 规则存 KV，新增规则无需改代码），每周一 08:00 cron 自动全量校验并推送群机器人摘要。
 - **报销提交**：`POST /api/reimburse`（multipart/form-data，需登录），门户数据看板内直接提交报销单；支持发票号字段与发票 OCR 识别（含 PDF）。
+- **审批引擎（Plan B）**：`POST /api/approvals` 统一发起（reimburse / drawing / hardware / compliance 四流程，flows:config 配置驱动，required + conditional 声明式校验 + 金额须 >0），`POST /api/approvals/<type>/<单号>/<action>` 状态机动作（approve/reject/pay/start/archive/arrive/issue/publish，幂等），`GET /api/approvals/mine` 我的申请（门户「数据看板 → 我的报销」数据源）；状态机落多维表格底表「状态」字段，结果推飞书群机器人（多群分流 + 加签 + 重试 + `notify:failed` 留痕）。
+- **PRD 看板与提交推送**：门户「PRD 看板」Tab（`GET /api/prd`，M1/M2/M3 三列卡片 + 总进度 + 最近 git 提交）；初始状态为 PRD V2.0 盘点基线（`src/prd.ts` 内 `DEFAULT_PRD_ITEMS`），之后由 Agent 调 `update_prd` 维护（覆盖存 KV `prd:status`）；`POST /api/hooks/github` 接收 GitHub push webhook（HMAC-SHA256 验签），记录最近提交到看板并推飞书群（可用 `FEISHU_BOT_WEBHOOK_PRD` 分流）。
 - **图纸评审**：`src/drawing-review/` 模块 + 门户「图纸评审」Tab + 静态页 `public/apps/drawing-review/`，对接飞书多维表格（评审单/纪要/整改项/BOM/事件日志）；含列表/看板双视图（`/api/drawing-review/board`）与联想功能（`/api/drawing-review/suggestions`）；PRD 与设计文档见 `docs/新增机图纸评审流程_*.md`，联想功能全套文档见 `docs/文档目录索引.md`。
 - **硬件评审**：`src/hardware-review/` + `/api/hardware-review/*`（提交/列表/发起），MCP `config_hardware_review` 配置底表。
 - **合同审批**：`src/contract-approval/` + `/api/contract-approval/*`（提交/列表/发起），MCP `config_contract_approval` 配置底表。
 - **资料页**：品牌规范 / 文档模板 / 制度 SOP / 培训材料的登记与展示（`GET /api/docs` + `publish_doc` 工具）。
 - **开源仓库**：`/api/repos` 合并 GitHub org `new-energy-coder-club` 与 Gitee `darrenpig`，含 Star/Fork/Commit，KV 1 小时缓存（可选 `GITHUB_TOKEN` / `GITEE_TOKEN` 提额）。
+
+## 审批通知与 webhook 配置（两步待办）
+
+1. **GitHub 侧**：仓库 Settings → Webhooks → Add webhook → `https://hub.newenergycoder.club/api/hooks/github`，Content type 选 `application/json`，secret 用 `GITHUB_WEBHOOK_SECRET` 的值（`wrangler secret put GITHUB_WEBHOOK_SECRET` 先写入）。
+2. **飞书群机器人**：战队群 → 群设置 → 群机器人 → 添加「自定义机器人」→ webhook 地址写入 `FEISHU_BOT_WEBHOOK`（加签 secret 写 `FEISHU_BOT_WEBHOOK_SECRET`）；可按流程分流 `FEISHU_BOT_WEBHOOK_<TYPE>`（PRD/REIMBURSE/DRAWING/HARDWARE/COMPLIANCE，secret 同名 `_SECRET` 后缀）。未配置时推送静默跳过，失败留痕 KV `notify:failed`（7 天 TTL，100 条截断）。
+
+FE-05 校验周报与图纸评审告警走另一变量 `FEISHU_WEBHOOK_URL`（加签 secret 为 `FEISHU_WEBHOOK_SECRET`）。
 
 ## 相关仓库与文档
 
@@ -100,7 +111,7 @@ Cron（`wrangler.jsonc` triggers，3 条）：`*/4 * * * *` 预热看板缓存 �
 
 | 路径 | 说明 |
 |---|---|
-| `GET /` | 门户（8 个 Tab：我的首页 / 图纸评审 / 应用广场 / Skill 中心 / 资料页 / 开源仓库 / 数据看板 / NEC-MCP） |
+| `GET /` | 门户（9 个 Tab：我的首页 / 图纸评审 / 应用广场 / Skill 中心 / 资料页 / 开源仓库 / 数据看板 / PRD 看板 / NEC-MCP） |
 | `POST /mcp` | MCP streamable HTTP 端点（JSON-RPC；写操作需 `MCP_TOKEN`） |
 | `POST /auth/feishu` · `POST /auth/logout` · `GET /api/whoami` | 飞书 OAuth 登录 / 登出 / 当前用户与角色 |
 | `GET /api/config` | 公开配置（飞书 App ID、登录是否启用） |
@@ -110,6 +121,11 @@ Cron（`wrangler.jsonc` triggers，3 条）：`*/4 * * * *` 预热看板缓存 �
 | `GET /api/dashboard` | 数据看板聚合（KV 5 分钟缓存；财务区按登录角色脱敏） |
 | `GET/POST /api/home` · `POST /api/home/reset` | 个人首页布局（需登录；个人 > 组 > 默认三级覆盖） |
 | `GET /api/todos` | 审批/待办聚合（需登录） |
+| `GET /api/prd` | 动态 PRD 看板（M1/M2/M3 需求状态 + 总进度 + 最近 git 提交；状态经 MCP `update_prd` 维护） |
+| `POST /api/hooks/github` | GitHub push webhook（HMAC-SHA256 验签 → 记录最近提交 → 推飞书群机器人；需 `GITHUB_WEBHOOK_SECRET`） |
+| `POST /api/approvals` | 发起审批（需登录；4 流程统一入口，flows:config 配置驱动；external / 越组 403） |
+| `POST /api/approvals/<type>/<单号>/<action>` | 审批与流程动作（approve/reject/pay/start/archive/arrive/issue/publish，幂等） |
+| `GET /api/approvals/mine?type=` | 我的申请列表（按 open_id 过滤，提交时间降序 20 条） |
 | `GET /api/validate` · `/api/validate/report` · `POST /api/validate/run` | 数据校验查询 / 最新报告 / 手动触发（FE-05） |
 | `POST /api/reimburse` | 报销提交（multipart/form-data，需登录；发票号 + OCR） |
 | `/api/drawing-review/*` | 图纸评审（`config` 无需登录；列表/提交/看板/联想需登录） |
@@ -118,7 +134,7 @@ Cron（`wrangler.jsonc` triggers，3 条）：`*/4 * * * *` 预热看板缓存 �
 | `GET /apps/<name>/` | 队员应用（R2，Cache API 边缘缓存） |
 | `GET /skills/<name>/SKILL.md` | Skill 原文 |
 
-## MCP 工具（16 个）
+## MCP 工具（30 个）
 
 | 工具 | 说明 |
 |---|---|
@@ -138,6 +154,20 @@ Cron（`wrangler.jsonc` triggers，3 条）：`*/4 * * * *` 预热看板缓存 �
 | `config_validate_rules` | 查看/整体替换/恢复数据校验规则集（声明式 JSON 存 KV，新增规则无需改代码） |
 | `set_home_layout` | 配置个人首页布局（FE-06/07；scope=user 本人 / scope=group 组别默认，需组长/队长） |
 | `publish_doc` | 发布/更新资料页条目（brand / template / sop / training 四类） |
+| `remove_docs` | 按 id 从资料页移除条目（只删索引，不动资料本体） |
+| `setup_bitable` | 数据基建一键建表：按标准 schema 在指定 base 创建 队员名单/任务进度/物资台账/财务报销 四张表并写入看板配置（仅管理端） |
+| `add_records` | 往飞书多维表格追加记录（字段名预检，人话报错；仅管理端）。典型用法：报销回写财务表、任务批量导入、名单录入 |
+| `update_prd` | 更新 PRD 看板需求状态（done/partial/pending/todo），看板实时同步、状态变化推群（仅管理端） |
+| `submit_approval` | 代发起审批申请（4 流程 type 参数化，按 flows:config 声明式规则校验；仅管理端） |
+| `list_todos` | 按 open_id 拉取待办聚合（各流程底表中待其审批的单 + 逾期任务，按流程分组；仅管理端） |
+| `send_notice` | 向指定流程发送飞书群机器人通知（多群分流 + 加签；失败重试 2 次并留痕 `notify:failed`；channel=mail/both 走 N-02 邮件通道；仅管理端） |
+| `config_flows` | 查看/修改审批流程配置 flows:config（底表/单号前缀/审批角色/必填规则/金额会签阈值/sla 时效；set 深合并校验；仅管理端） |
+| `schedule_meeting` | 一键创建飞书日历日程 + 视频会议（`src/meeting/`，评审模块拉会共用；未授权时降级 mock） |
+| `whoami` | 验证当前调用身份（Agent 接入自检：管理端返回 admin；user_token 返回 open_id/姓名/角色） |
+| `send_mail` | N-02 飞书邮箱发信（本人 user_token 或管理端 from 代发；from_address 显式地址；未配置发件人时返回降级说明） |
+| `update_inventory` | 物资台账手工调账（inbound 入库 / outbound 出库 / adjust 盘点调账；物料名模糊匹配自动建行，审批台账联动失败补偿；仅管理端） |
+| `apply_domain` | 代申请 NEC 三级域名 `<subdomain>.newenergycoder.club`（CNAME/A/AAAA，已配 CF 凭证时自动建 DNS 记录并推群公示；仅管理端） |
+| `release_domain` | 释放已登记的 NEC 三级域名（删 DNS 记录 + 删登记 + 推群公示；仅管理端） |
 
 ## Skill 同步脚本
 
@@ -152,8 +182,8 @@ python scripts/sync-gitee-skills.py --repo owner/name --branch SKill --dir skill
 ## 已配置的生产资源
 
 - 自定义域名：`hub.newenergycoder.club`（custom domain，自动签发证书）
-- Secrets：`FEISHU_APP_ID` / `FEISHU_APP_SECRET`（OAuth 登录 + MES 免登）· `MCP_TOKEN`（MCP 写保护，已启用）· `VERCEL_TOKEN`（sync_vercel）
-- 可选：`GITHUB_TOKEN` / `GITEE_TOKEN`（`/api/repos` 提额）
+- Secrets：`FEISHU_APP_ID` / `FEISHU_APP_SECRET`（OAuth 登录 + MES 免登）· `MCP_TOKEN`（MCP 写保护，已启用）· `VERCEL_TOKEN`（sync_vercel）· `FEISHU_WEBHOOK_URL`（群机器人：每周校验周报 + 图纸评审通知/阻塞告警；机器人开启签名校验时配套 `FEISHU_WEBHOOK_SECRET`）
+- 可选：`GITHUB_TOKEN` / `GITEE_TOKEN`（`/api/repos` 提额）· `GITHUB_WEBHOOK_SECRET`（`/api/hooks/github` 验签）· `FEISHU_BOT_WEBHOOK` 系列（审批/PRD 群通知，可按流程分流）
 
 ## 待办（第二/三阶段）
 
@@ -166,6 +196,7 @@ python scripts/sync-gitee-skills.py --repo owner/name --branch SKill --dir skill
 - [x] Skill 中心治理：仅保留 NEC 原创（白名单 + `remove_skills`）
 - [x] 单体按域拆分重构（`1df02d8`：index.ts 2161 行 → ~160 行纯路由表，公共层沉淀 `src/shared/`）
 - [x] FE-04 赛季目标回写（`update_progress`）· FE-05 数据校验（声明式规则 + 每周一群推送）· FE-06/07 个人首页布局 · FE-09 审批/待办聚合
+- [x] Plan B 审批引擎 v1（4 流程配置驱动 + 状态机落表 + 群机器人通知）· PRD 看板（`/api/prd` + `update_prd` + GitHub push webhook）· 数据基建工具（`setup_bitable` / `add_records` / `remove_docs`）
 - [x] 边缘缓存/Cron 预热性能优化（Cache API + `ctx.waitUntil` + token in-flight 去重）
 - [x] 图纸评审联想功能 + 全套文档体系（`docs/文档目录索引.md`，`dd12d14`）
 - [ ] 图纸评审流程完整闭环（当前为基础接入：配置 + 提交 + 列表 + 看板 + 联想；评审流/整改/BOM/会议纪要服务已就位待联调）

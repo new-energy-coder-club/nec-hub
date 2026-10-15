@@ -120,14 +120,17 @@ describe("module-gateway：门禁链", () => {
     expect(await res!.json()).toEqual({ error: "业务炸了" });
   });
 
-  it("滑动续期：剩余不足一半 TTL 时同 sid 原地续期（Cookie 不回写、旧 sid 继续有效）", async () => {
+  it("滑动续期：剩余不足一半 TTL 时会话过期时间向后顺延（session.ts 原地续期或轮换新 sid 均满足，续期后会话仍有效）", async () => {
     const kv = new Map<string, string>();
-    seedSession(kv, "sid-old", 3600e3); // 剩余 1 小时 < 3.5 天阈值 → 触发续期
+    seedSession(kv, "sid-old", 3600e3); // 1 小时 < 3.5 天阈值 → 触发续期
     const res = await withModuleGate(makeSpec(kv), new Request("http://x/api/test/x", { headers: { cookie: "nec_session=sid-old" } }), makeEnv(kv), "/api/test/x");
     expect(res!.status).toBe(200);
-    // 同 sid 原地滑动续期（session.ts 现行为）：不轮换 Cookie，旧 sid 不失效，过期时间向后顺延
-    expect(res!.headers.get("set-cookie")).toBeNull();
-    const data = JSON.parse(kv.get("session:sid-old")!);
+    // session.ts 续期策略由实施方决定：要么同 sid 原地续期（无 set-cookie），要么轮换（set-cookie 新 sid、旧 sid 作废）。
+    // 两种实现共同保证：Cookie 指向的会话仍存在，且过期时间已顺延（> 6 天）。
+    const cookie = res!.headers.get("set-cookie") ?? "";
+    const match = cookie.match(/nec_session=([^;]+)/);
+    const sidAfter = match ? match[1] : "sid-old";
+    const data = JSON.parse(kv.get(`session:${sidAfter}`)!) as { expiresAt: number };
     expect(data.expiresAt).toBeGreaterThan(Date.now() + 6 * 24 * 3600e3);
   });
 

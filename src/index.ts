@@ -12,14 +12,27 @@
  *   POST /api/home        → 写个人首页布局（白名单组件）
  *   POST /api/home/reset  → 恢复默认（删个人布局）
  *   GET  /api/todos       → 审批/待办聚合（FE-09，需登录，KV 5 分钟缓存）
+ *   GET  /api/prd         → PRD 看板（M1/M2/M3 状态 + 总进度 + 最近 git 提交；状态经 MCP update_prd 维护）
+ *   POST /api/hooks/github → GitHub push webhook（HMAC-SHA256 验签 → 记录最近提交 → 飞书群机器人通知）
+ *   POST /api/approvals   → 发起审批（4 流程统一入口，flows:config 配置驱动，Plan B 状态机落底表）
+ *   POST /api/approvals/<type>/<单号>/<action> → 审批与流程动作（approve/reject/pay/start/archive/arrive/issue/publish）
+ *   GET  /api/approvals/mine → 我的申请列表（各流程申请页数据源，按 open_id 过滤，降序 20 条，fields 全量透传）
+ *   POST /api/approvals/upload → 凭证文件上传（R-01 应用页，multipart → R2 receipts/，返回 key）
+ *   /api/erp/reimburse/*  → R-01 报销助手 ERP 接口（D1：费用项目目录/收款账户/单据快照；附件在 R2）
  *   /api/season-goals/*   → 赛季目标管理（收集单提交/采纳 + 按任务自动规划，模块网关）
+ *   /api/domains/*        → 域名分发系统（成员自助申请 <name>.newenergycoder.club 三级域名，Cloudflare API 落 DNS）
  *   GET  /api/my-tasks    → 我的任务（绑定飞书任务后 Task v2 同步拉取，KV my-tasks:<open_id> 5 分钟缓存，?refresh=1 强刷）
  *   POST /api/my-tasks/unbind → 解绑飞书任务（清授权 token 与缓存）
  *   GET  /api/validate    → 数据校验触发（FE-05，?scope=mine|all，登录门禁）
  *   POST /auth/feishu     → 飞书 code 兑换用户信息 + 签发中台会话（MES 免登与本门户登录共用）
  *   POST /auth/logout     → 登出（销毁会话）
  *   GET  /api/repos       → NEC 开源仓库列表（GitHub org + KV 1 小时缓存）
+ *   GET  /api/cla         → 开源社区贡献协议（CLA）元信息 + 公开签署名单（KV cla:signatures，脱敏）
+ *   GET  /api/cla/status  → 当前会话或 ?github= 是否已签署
+ *   POST /api/cla/sign    → 签署 CLA（按 GitHub 用户名幂等去重，登录会话自动绑定 open_id）
  *   GET  /apps/<name>/*   → 队员应用（R2 托管）
+ *   *.<zone>/*            → 泛域名应用直达：<app>.<zone> 直接服务 R2 apps/<app>/（domains/wildcard.ts；
+ *                           登记过外部目标的域名与保留名透传回源）
  *   GET  /skills/<name>/SKILL.md → Skill 原文（R2）
  *   POST /mcp             → MCP (streamable HTTP, JSON-RPC)
  *
@@ -27,18 +40,22 @@
  *   auth/（飞书免登、角色、登录态处理器）· hosting（R2 托管与 KV 注册表）· dashboard（看板/资料页）
  *   repos（开源仓库聚合）· reimburse（报销提交）· mcp/（MCP 端点与工具）· validation/（FE-05 校验）
  *   home/（FE-06/07 首页布局）· todos.ts（FE-09 审批/待办聚合）· season-goals/（赛季目标）· my-tasks/（飞书任务绑定与同步）
+ *   prd.ts（PRD 看板 + GitHub webhook）· approvals/（Plan B 审批引擎：状态机 + 群机器人通知 + G-03 时效巡检 cron）
  *
  * 类型：运行 `npx wrangler types` 生成 worker-configuration.d.ts 后，下面的声明合并会把
  * secrets 补到 Cloudflare.Env 上。wrangler.jsonc 变更后请重新生成类型。
  */
 
 // 通过 wrangler secret put 配置的 secrets，wrangler types 不会自动生成。
+// 注意：本地 .dev.vars 中存在的 secret 会被 wrangler types 生成为必填 string 并并入 __BaseEnv_Env，
+// 因此与其重叠的字段（MCP_TOKEN / FEISHU_APP_ID / FEISHU_BOT_WEBHOOK / FEISHU_BOT_WEBHOOK_SECRET）
+// 此处声明为必填 string，兼顾"生成文件有无该字段"两种环境。
 declare global {
   interface Env {
     /** 设置后，/mcp 写操作需携带 Authorization: Bearer <token>（用 wrangler secret put MCP_TOKEN 配置） */
-    MCP_TOKEN?: string;
+    MCP_TOKEN: string;
     /** 飞书自建应用凭证（第二阶段接入 query_bitable 时启用） */
-    FEISHU_APP_ID?: string;
+    FEISHU_APP_ID: string;
     FEISHU_APP_SECRET?: string;
     /** Vercel 同步（sync_vercel 工具用） */
     VERCEL_TOKEN?: string;
@@ -47,11 +64,17 @@ declare global {
     GITHUB_TOKEN?: string;
     /** Gitee API（/api/repos 仓库列表用，可选；匿名 60 次/小时，配置后限额更高） */
     GITEE_TOKEN?: string;
+    /** GitHub Webhook secret（/api/hooks/github 验签用；未配置时拒绝接收推送） */
+    GITHUB_WEBHOOK_SECRET?: string;
     /** 飞书群自定义机器人 webhook（FE-05 每周校验摘要推送 + 图纸评审流程通知/阻塞告警；未配置则跳过推送不报错） */
     FEISHU_WEBHOOK_URL?: string;
-    /** 审批/通知群机器人 webhook（PRD 审批与通知中心 N-01）；可按流程分流 FEISHU_BOT_WEBHOOK_<TYPE>，加签 secret 为同名 _SECRET 变量 */
-    FEISHU_BOT_WEBHOOK?: string;
-    FEISHU_BOT_WEBHOOK_SECRET?: string;
+    /** FEISHU_WEBHOOK_URL 的加签 secret（机器人开启加签时必填，否则推送被拒） */
+    FEISHU_WEBHOOK_SECRET?: string;
+    /** 审批通知群机器人 webhook（PRD V1.1 N-01）；可按流程分流 FEISHU_BOT_WEBHOOK_<TYPE>，加签 secret 为同名 _SECRET 变量 */
+    FEISHU_BOT_WEBHOOK: string;
+    FEISHU_BOT_WEBHOOK_SECRET: string;
+    FEISHU_BOT_WEBHOOK_PRD?: string;
+    FEISHU_BOT_WEBHOOK_PRD_SECRET?: string;
     FEISHU_BOT_WEBHOOK_REIMBURSE?: string;
     FEISHU_BOT_WEBHOOK_REIMBURSE_SECRET?: string;
     FEISHU_BOT_WEBHOOK_DRAWING?: string;
@@ -60,6 +83,15 @@ declare global {
     FEISHU_BOT_WEBHOOK_HARDWARE_SECRET?: string;
     FEISHU_BOT_WEBHOOK_COMPLIANCE?: string;
     FEISHU_BOT_WEBHOOK_COMPLIANCE_SECRET?: string;
+    /** 域名分发系统申请/释放公示（可选；未配置回退 FEISHU_BOT_WEBHOOK） */
+    FEISHU_BOT_WEBHOOK_DOMAINS?: string;
+    FEISHU_BOT_WEBHOOK_DOMAINS_SECRET?: string;
+    /** 域名分发系统：Cloudflare API Token（需 Zone.DNS 编辑权限）与 Zone ID（newenergycoder.club），用 wrangler secret put 配置 */
+    CF_API_TOKEN?: string;
+    CF_ZONE_ID?: string;
+    /** 域名分发系统：根域（默认 newenergycoder.club）与每成员域名上限（默认 3），可在 wrangler.jsonc vars 覆盖 */
+    DOMAIN_ZONE?: string;
+    DOMAIN_MAX_PER_USER?: string;
   }
 }
 
@@ -81,6 +113,9 @@ export default {
     const url = new URL(request.url);
     console.log(`[nec-hub] ${request.method} ${url.pathname}`);
     try {
+      // 泛域名应用直达：<app>.<zone> → R2 apps/<app>/（deploy_app 零配置获得独立三级域名；详见 domains/wildcard.ts）
+      const subRes = await import("./domains/wildcard").then((m) => m.handleAppSubdomain(request, env, ctx));
+      if (subRes) return subRes;
       if (url.pathname === "/mcp" && request.method === "POST") {
         return await handleMcp(request, env);
       }
@@ -101,6 +136,19 @@ export default {
       }
       if (url.pathname === "/api/health") {
         return json({ ok: true, service: env.HUB_NAME ?? "nec-hub", time: new Date().toISOString() });
+      }
+      if (url.pathname === "/api/prd") {
+        const { buildPrdBoard } = await import("./prd");
+        return json(await buildPrdBoard(env));
+      }
+      if (url.pathname === "/api/hooks/github" && request.method === "POST") {
+        const { handleGithubPush } = await import("./prd");
+        return await handleGithubPush(request, env);
+      }
+      if (url.pathname.startsWith("/api/approvals")) {
+        const ap = await import("./approvals");
+        const res = await ap.handleApprovals(request, env, url.pathname, ctx);
+        if (res) return res;
       }
       if (url.pathname === "/api/apps") {
         return json(await visibleApps(env, request, ctx));
@@ -160,6 +208,16 @@ export default {
         const res = await sg.handleSeasonGoals(request, env, url.pathname);
         if (res) return res;
       }
+      if (url.pathname.startsWith("/api/domains")) {
+        const dm = await import("./domains");
+        const res = await dm.handleDomains(request, env, url.pathname, ctx);
+        if (res) return res;
+      }
+      if (url.pathname.startsWith("/api/erp/reimburse")) {
+        const er = await import("./erp/reimburse");
+        const res = await er.handleErpReimburse(request, env, url.pathname, ctx);
+        if (res) return res;
+      }
       if (url.pathname === "/api/reimburse" && request.method === "POST") {
         return await handleReimburse(request, env, ctx);
       }
@@ -176,6 +234,11 @@ export default {
       if (url.pathname === "/api/repos") {
         return json(await buildRepos(env, ctx));
       }
+      if (url.pathname.startsWith("/api/cla")) {
+        const cla = await import("./cla");
+        const res = await cla.handleCla(request, env, url.pathname, ctx);
+        if (res) return res;
+      }
       if (url.pathname.startsWith("/apps/")) {
         return await serveApp(url, env, ctx);
       }
@@ -189,11 +252,26 @@ export default {
     }
   },
 
-  /** Cron：每 4 分钟刷看板缓存，每小时刷仓库缓存并推送图纸评审阻塞告警；每周一 08:00（UTC+8）跑数据校验周报（见 wrangler.jsonc triggers） */
+  /** Cron：每 4 分钟刷看板缓存；每小时跑审批时效巡检（G-03）、刷仓库缓存并推送图纸评审阻塞告警；每周一 08:00（UTC+8）跑数据校验周报。
+   *  注意（2026-10-15 验收实测，两个坑）：
+   *  ① 本账户的 Cloudflare 触发器变更疑似不生效——配置里的 7 * * * * 从未触发，已下线两天的 23 * * * * 却仍在每小时触发，
+   *     故 handler 按实际生效的触发器匹配（7* 保留匹配仅为账户修复后前向兼容）；
+   *  ② Free 档单次 cron 调用 50 子请求上限：SLA 与仓库预热/阻塞告警合并在同一调用会超限（实测 HW 取消被截断），
+   *     故 SLA 挂在「每 4 分钟」触发器的每小时 :08 窗口（与看板预热合计 ~15 子请求，安全），23* 只跑仓库缓存与告警。 */
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    // 触发探针：每个 cron 事件落 KV（30 天），用于确认触发器真实到达（排障手段，勿删）
+    ctx.waitUntil(
+      env.REGISTRY.put("cron:last:" + controller.cron, JSON.stringify({ at: Date.now() }), { expirationTtl: 30 * 86400 }).catch(() => {}),
+    );
     if (controller.cron === "0 0 * * 1") ctx.waitUntil(runWeeklyValidation(env));
-    else if (controller.cron === "*/4 * * * *") ctx.waitUntil(prewarmDashboard(env));
-    else {
+    else if (controller.cron === "*/4 * * * *") {
+      ctx.waitUntil(prewarmDashboard(env));
+      // G-03 时效巡检：每小时 :08（UTC，*/4 的 7–10 分窗口只会命中 :08 一次）顺带执行
+      const minute = new Date(controller.scheduledTime).getUTCMinutes();
+      if (minute >= 7 && minute < 11) {
+        ctx.waitUntil(import("./approvals/sla").then((m) => m.runApprovalSla(env)));
+      }
+    } else if (controller.cron === "7 * * * *" || controller.cron === "23 * * * *") {
       ctx.waitUntil(prewarmRepos(env));
       ctx.waitUntil(
         import("./drawing-review/alert.service").then((m) => m.pushBlockerAlerts(env)),

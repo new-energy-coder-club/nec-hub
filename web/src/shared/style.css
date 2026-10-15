@@ -1,0 +1,81 @@
+body { font-family: var(--nec-font-cn); }
+.mono { font-family: var(--nec-font-mono); }
+.tab-active { border-bottom: 3px solid var(--nec-cyan); color: var(--nec-navy); }
+pre.prompt { white-space: pre-wrap; word-break: break-all; }
+
+/* OCR 自动回填高亮：用户手动编辑时移除 */
+.ocr-filled { border-color: var(--nec-cyan) !important; background: #EAF7FD; transition: background 1.2s ease, border-color 1.2s ease; }
+
+/* KV V2 — 蓝图网格 Hero（网格线用低透明度青色，仅作底纹不抢内容） */
+.hero {
+  position: relative; overflow: hidden; background: var(--nec-paper);
+  background-image:
+    linear-gradient(rgba(31,169,232,.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31,169,232,.10) 1px, transparent 1px),
+    linear-gradient(rgba(31,169,232,.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31,169,232,.045) 1px, transparent 1px);
+  background-size: 92px 92px, 92px 92px, 23px 23px, 23px 23px;
+}
+/* 压缩模式：已登录用户与已见过全尺寸 Hero 的回访访客，只保留一条品牌细条 */
+#hero-mini { display: none; }
+.hero.compact .hero-inner { padding-top: .65rem; padding-bottom: .65rem; }
+.hero.compact #hero-mini { display: inline; }
+.hero.compact #hero-full, .hero.compact .hero-sun, .hero.compact .horizon { display: none; }
+.hero-title { font-weight: 900; line-height: .95; letter-spacing: -.015em; color: var(--nec-ink); }
+.hero-title .to { color: var(--nec-cyan); }
+.horizon { position: absolute; left: 0; right: 0; height: 3px; background: var(--nec-cyan); }
+.base-line { height: 5px; background: linear-gradient(90deg, var(--nec-cyan), var(--nec-sky) 55%, transparent); }
+.chip { border: 1.5px solid var(--nec-navy); color: var(--nec-navy); }
+.chip i { color: var(--nec-cyan); }
+.host-btn { border: 1.5px solid var(--nec-line); color: var(--nec-gray); background: var(--nec-paper); }
+.host-btn.on { border-color: var(--nec-navy); color: #fff; background: var(--nec-navy); }
+.doc-cat-btn { border: 1.5px solid var(--nec-line); color: var(--nec-gray); background: var(--nec-paper); }
+.doc-cat-btn.on { border-color: var(--nec-navy); color: #fff; background: var(--nec-navy); }
+.skill-cat-btn { border: 1.5px solid var(--nec-line); color: var(--nec-gray); background: var(--nec-paper); }
+.skill-cat-btn.on { border-color: var(--nec-navy); color: #fff; background: var(--nec-navy); }
+
+/* NEC-MCP 特效：渐变流光标题 + 呼吸光晕 */
+@keyframes nec-flow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+@keyframes nec-glow { 0%,100% { box-shadow: 0 0 0 0 rgba(31,169,232,.35); } 50% { box-shadow: 0 0 24px 4px rgba(31,169,232,.18); } }
+#tab-agent h2 .bg-gradient-to-r {
+  background-size: 200% auto;
+  animation: nec-flow 4s linear infinite;
+}
+#tab-agent .bg-gradient-to-br.from-\[\#1A2FA0\] {
+  animation: nec-glow 5s ease-in-out infinite;
+}
+pre.prompt { border-left: 3px solid var(--nec-cyan); }
+
+/* ---- 移动端适配 Mobile ---- */
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+/* iOS Safari：输入框 font-size < 16px 会触发自动放大，统一 16px */
+input, textarea, select { font-size: 16px; }
+@media (min-width: 640px) { input, textarea, select { font-size: inherit; } }
+/* 触控目标：小屏下主要操作按钮不小于 44px 高 */
+@media (max-width: 639px) {
+  .tab-btn { min-height: 44px; }
+  button, a[class*="rounded"], [role="button"] { touch-action: manipulation; }
+}
+/* 表格横向滚动视觉提示 */
+.overflow-x-auto { -webkit-overflow-scrolling: touch; }
+
+/* PRD 文档库在线阅读器（marked 渲染结果的排版） */
+.prd-doc h1 { font-size: 1.35rem; font-weight: 800; color: var(--nec-navy); margin: 1.2rem 0 .6rem; }
+.prd-doc h2 { font-size: 1.15rem; font-weight: 700; color: var(--nec-navy); margin: 1.1rem 0 .5rem; border-bottom: 1px solid var(--nec-line); padding-bottom: .3rem; }
+.prd-doc h3 { font-size: 1rem; font-weight: 700; color: var(--nec-navy); margin: .9rem 0 .4rem; }
+.prd-doc h4 { font-size: .9rem; font-weight: 700; margin: .8rem 0 .3rem; }
+.prd-doc p { margin: .45rem 0; }
+.prd-doc ul, .prd-doc ol { margin: .45rem 0 .45rem 1.3rem; }
+.prd-doc ul { list-style: disc; }
+.prd-doc ol { list-style: decimal; }
+.prd-doc li { margin: .2rem 0; }
+.prd-doc blockquote { border-left: 3px solid var(--nec-cyan); background: var(--nec-paper); padding: .4rem .8rem; margin: .6rem 0; color: var(--nec-gray); }
+.prd-doc code { background: var(--nec-paper); border: 1px solid var(--nec-line); border-radius: 4px; padding: 0 .3em; font-size: .85em; }
+.prd-doc pre { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: .8rem 1rem; overflow-x: auto; margin: .6rem 0; }
+.prd-doc pre code { background: none; border: none; padding: 0; color: inherit; }
+.prd-doc table { border-collapse: collapse; width: 100%; margin: .6rem 0; font-size: .82rem; display: block; overflow-x: auto; }
+.prd-doc th, .prd-doc td { border: 1px solid var(--nec-line); padding: .35rem .6rem; text-align: left; white-space: nowrap; }
+.prd-doc th { background: var(--nec-paper); color: var(--nec-navy); font-weight: 700; }
+.prd-doc a { color: var(--nec-cyan); text-decoration: underline; }
+.prd-doc hr { border: none; border-top: 1px solid var(--nec-line); margin: 1rem 0; }

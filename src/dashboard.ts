@@ -119,6 +119,7 @@ export interface DocEntry {
   description: string;
   /** 分类：brand=品牌规范 template=文档模板 sop=制度SOP training=培训材料 */
   category: "brand" | "template" | "sop" | "training";
+  /** 为空字符串表示占位条目，前端展示「即将上线」且不可点击 */
   url: string;
   visibility: string;
   maintainer: string;
@@ -164,9 +165,9 @@ const SEED_DOCS: DocEntry[] = [
   {
     id: "tech-report-template",
     title: "技术方案报告模板",
-    description: "项目立项/技术评审/成果总结通用报告结构（待接入飞书文档）",
+    description: "项目立项/技术评审/成果总结通用报告结构（即将上线）",
     category: "template",
-    url: "https://example.feishu.cn/docx/tech-report",
+    url: "",
     visibility: "all",
     maintainer: "待认领",
     updatedAt: new Date().toISOString(),
@@ -175,9 +176,9 @@ const SEED_DOCS: DocEntry[] = [
   {
     id: "meeting-minutes-template",
     title: "会议纪要模板",
-    description: "例会/评审会标准纪要结构，含行动项追踪（待接入飞书文档）",
+    description: "例会/评审会标准纪要结构，含行动项追踪（即将上线）",
     category: "template",
-    url: "https://example.feishu.cn/docx/meeting-minutes",
+    url: "",
     visibility: "all",
     maintainer: "待认领",
     updatedAt: new Date().toISOString(),
@@ -208,9 +209,9 @@ const SEED_DOCS: DocEntry[] = [
   {
     id: "handover-checklist",
     title: "换届交接清单",
-    description: "中台资产/账号/文档/权限交接 checklist（待接入飞书文档）",
+    description: "中台资产/账号/文档/权限交接 checklist（即将上线）",
     category: "sop",
-    url: "https://example.feishu.cn/docx/handover",
+    url: "",
     visibility: "all",
     maintainer: "待认领",
     updatedAt: new Date().toISOString(),
@@ -219,9 +220,9 @@ const SEED_DOCS: DocEntry[] = [
   {
     id: "mech-onboarding",
     title: "机械组入门教程",
-    description: "机械组常用工具链、设计规范、常用元件手册（待接入飞书文档）",
+    description: "机械组常用工具链、设计规范、常用元件手册（即将上线）",
     category: "training",
-    url: "https://example.feishu.cn/wiki/mech-onboarding",
+    url: "",
     visibility: "all",
     maintainer: "待认领",
     updatedAt: new Date().toISOString(),
@@ -230,9 +231,9 @@ const SEED_DOCS: DocEntry[] = [
   {
     id: "elec-onboarding",
     title: "电控组入门教程",
-    description: "电路设计、嵌入式开发、调试工具使用指南（待接入飞书文档）",
+    description: "电路设计、嵌入式开发、调试工具使用指南（即将上线）",
     category: "training",
-    url: "https://example.feishu.cn/wiki/elec-onboarding",
+    url: "",
     visibility: "all",
     maintainer: "待认领",
     updatedAt: new Date().toISOString(),
@@ -241,9 +242,9 @@ const SEED_DOCS: DocEntry[] = [
   {
     id: "vision-onboarding",
     title: "视觉组入门教程",
-    description: "OpenCV/深度学习/相机标定/部署流程（待接入飞书文档）",
+    description: "OpenCV/深度学习/相机标定/部署流程（即将上线）",
     category: "training",
-    url: "https://example.feishu.cn/wiki/vision-onboarding",
+    url: "",
     visibility: "all",
     maintainer: "待认领",
     updatedAt: new Date().toISOString(),
@@ -256,6 +257,13 @@ export async function buildDocs(env: Env, request: Request, ctx?: ExecutionConte
   if (docs.length === 0) {
     docs = SEED_DOCS;
     await env.REGISTRY.put(DOCS_REGISTRY_KEY, JSON.stringify(docs));
+  } else {
+    // 历史种子里的 example.feishu.cn 占位链接 → 置空 url，前端展示「即将上线」
+    const cleaned = docs.map((d) => (d.url.includes("example.feishu.cn") ? { ...d, url: "" } : d));
+    if (cleaned.some((d, i) => d.url !== docs[i].url)) {
+      docs = cleaned;
+      await env.REGISTRY.put(DOCS_REGISTRY_KEY, JSON.stringify(docs));
+    }
   }
   const session = await resolveSession(env, request, ctx);
   if (!session) {
@@ -283,7 +291,17 @@ export async function buildDashboard(env: Env, request: Request, ctx?: Execution
     finance: { records: [], cachedAt: "" },
     goals: { records: [], cachedAt: "" },
   };
-  await Promise.all(DASH_TABLES.map(async (k) => { fetched[k] = await fetchTableCached(env, cfg, k, ctx); }));
+  // ?fresh=1 手动刷新：绕过 5 分钟缓存强制拉飞书，失败时降级回 fetchTableCached（返回过期快照而非报错）
+  const fresh = new URL(request.url).searchParams.get("fresh") === "1";
+  await Promise.all(DASH_TABLES.map(async (k) => {
+    if (fresh) {
+      try {
+        fetched[k] = await refreshTableCache(env, cfg, k, ctx);
+        return;
+      } catch { /* 降级走缓存路径 */ }
+    }
+    fetched[k] = await fetchTableCached(env, cfg, k, ctx);
+  }));
 
   // 队员名单：总数 + 组别分布
   const m = fetched.members;
@@ -312,6 +330,8 @@ export async function buildDashboard(env: Env, request: Request, ctx?: Execution
     return s ? !TASK_DONE_RE.test(s) : false;
   });
   const upcomingSrc = pending.length > 0 ? pending : t.records;
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
   const upcoming = upcomingSrc
     .map((r) => ({
       title: (tTitleKey ? fieldText(r.fields[tTitleKey]) : "") || firstFieldText(r),
@@ -320,9 +340,15 @@ export async function buildDashboard(env: Env, request: Request, ctx?: Execution
       deadline: tDeadlineKey ? fieldNum(r.fields[tDeadlineKey]) : null,
       priority: tPriorityKey ? fieldText(r.fields[tPriorityKey]) : "",
       level: tLevelKey ? fieldText(r.fields[tLevelKey]) : "",
+      link: buildRecordLink(cfg.base, cfg.tables.tasks as string, r.record_id),
     }))
     .sort((a, b) => (a.deadline ?? Infinity) - (b.deadline ?? Infinity))
     .slice(0, 8);
+  // 逾期未完成任务数（全量统计，不限于 upcoming 前 8 条）
+  const tasksOverdueCount = pending.filter((r) => {
+    const dl = tDeadlineKey ? fieldNum(r.fields[tDeadlineKey]) : null;
+    return dl !== null && dl < dayStart.getTime();
+  }).length;
 
   // 物资台账：种类数 + 数量合计 + 明细
   const inv = fetched.inventory;
@@ -359,6 +385,20 @@ export async function buildDashboard(env: Env, request: Request, ctx?: Execution
     (sum, r) => sum + (fAmountKey ? (fieldNum(r.fields[fAmountKey]) ?? 0) : 0),
     0,
   );
+  // 本月/上月金额与笔数：统计卡环比对比（本月 vs 上月）
+  const nowDate = new Date();
+  const monthStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1).getTime();
+  const prevMonthStart = new Date(nowDate.getFullYear(), nowDate.getMonth() - 1, 1).getTime();
+  let monthAmount = 0;
+  let monthCount = 0;
+  let prevMonthAmount = 0;
+  for (const r of fin.records) {
+    const amt = fAmountKey ? (fieldNum(r.fields[fAmountKey]) ?? 0) : 0;
+    const ts = fDateKey ? fieldTs(r.fields[fDateKey]) : null;
+    if (ts === null) continue;
+    if (ts >= monthStart) { monthAmount += amt; monthCount++; }
+    else if (ts >= prevMonthStart) prevMonthAmount += amt;
+  }
 
   const wrap = (r: TableFetchResult, agg: Record<string, unknown>) => ({
     ...agg,
@@ -436,6 +476,7 @@ export async function buildDashboard(env: Env, request: Request, ctx?: Execution
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count),
       upcoming,
+      overdueCount: tasksOverdueCount,
     }),
     inventory: wrap(fetched.inventory, {
       kinds: inv.records.length,
@@ -448,8 +489,11 @@ export async function buildDashboard(env: Env, request: Request, ctx?: Execution
         ? {}
         : {
             records: fin.records.length,
-            totalAmount: financeTotal,
-            ...(financeLevel === "full" ? { recent: financeRecent } : {}),
+            monthCount,
+            // summary（队员）只给笔数，不给金额合计——团队报销总额对普通队员不公开
+            ...(financeLevel === "full"
+              ? { totalAmount: financeTotal, monthAmount, prevMonthAmount, recent: financeRecent }
+              : {}),
           }),
     }),
     goals: goalsAgg,

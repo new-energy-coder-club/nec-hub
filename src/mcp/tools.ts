@@ -140,6 +140,25 @@ export const TOOLS = [
     },
   },
   {
+    name: "update_inventory",
+    description:
+      "物资台账手工调账（仅管理端 MCP_TOKEN）：inbound 入库 / outbound 出库 / adjust 盘点调账（直接设为目标值，可为 0）。按「物料」字段精确匹配 item_name，spec 非空时匹配键为 物料名称（规格型号）；无匹配行自动建行（位置默认「未登记」）。出库写「领用人」= operator；负库存放行但返回 ⚠️ 提示并发群告警。用于盘点修正、历史补录、审批台账联动失败补偿。需先用 config_dashboard 配置 tables.inventory。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["inbound", "outbound", "adjust"], description: "inbound 入库 / outbound 出库 / adjust 盘点调账（设为目标值）" },
+        item_name: { type: "string", description: "物料名称（匹配规则同审批台账联动）" },
+        spec: { type: "string", description: "可选：规格型号，参与拼接匹配键 物料名称（规格型号）" },
+        quantity: { type: "number", description: "数量（inbound/outbound 须 >0；adjust 为目标库存值，≥0）" },
+        operator: { type: "string", description: "操作人姓名（出库写「领用人」，进通知）" },
+        location: { type: "string", description: "可选：位置（入库/新建行时写入）" },
+        note: { type: "string", description: "可选：备注，追加到群通知" },
+        approval_id: { type: "string", description: "可选：关联申请单号（如 HW-2026-0003），写入通知便于追溯" },
+      },
+      required: ["action", "item_name", "quantity", "operator"],
+    },
+  },
+  {
     name: "config_dashboard",
     description:
       "配置/查看数据看板对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。写入后自动清空看板缓存。",
@@ -373,16 +392,96 @@ export const TOOLS = [
     },
   },
   {
-    name: "send_notice",
-    description:
-      "向指定流程的飞书群发送机器人通知（需管理端 MCP_TOKEN）。webhook 未配置时返回降级说明；发送失败自动重试 2 次并记录到 notify:failed。",
+    name: "remove_docs",
+    description: "从资料页移除指定资料（只删索引，不动资料本体）。",
     inputSchema: {
       type: "object",
       properties: {
-        flow: { type: "string", description: "reimburse | drawing | hardware | compliance（决定用哪个群 webhook，未配置 fallback 主群）" },
+        ids: { type: "array", items: { type: "string" }, description: "要移除的资料 id 列表" },
+      },
+      required: ["ids"],
+    },
+  },
+  {
+    name: "add_records",
+    description:
+      "往飞书多维表格追加记录（飞书字段名 → 值；数字/日期字段传数字，日期为毫秒时间戳）。仅管理端（MCP_TOKEN）可用。典型用法：报销回写财务表、任务批量导入。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        table: { type: "string", description: "表名：members | tasks | inventory | finance | goals" },
+        records: { type: "array", items: { type: "object" }, description: "记录数组，每条为 {字段名: 值}，如 [{\"姓名\":\"张三\",\"组别\":\"机械\"}]" },
+      },
+      required: ["table", "records"],
+    },
+  },
+  {
+    name: "setup_bitable",
+    description:
+      "数据基建一键建表：在指定飞书多维表格 base 里按标准字段 schema 创建 队员名单/任务进度/物资台账/财务报销 四张表，并把 table_id 写入看板配置。需先在飞书云文档新建空白多维表格，把 URL 中 /base/ 后的 app_token 传给 base 参数。仅管理端（MCP_TOKEN）可用。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        base: { type: "string", description: "多维表格 app_token（URL 中 /base/ 后的一段）" },
+        tables: { type: "array", items: { type: "string" }, description: "可选：只建部分表，如 [\"members\",\"tasks\"]，默认全部四张" },
+        force: { type: "boolean", description: "true 时即使配置里已有该表也强制新建（会留下旧表，谨慎）" },
+      },
+      required: ["base"],
+    },
+  },
+  {
+    name: "update_prd",
+    description:
+      "更新 PRD 看板需求状态（done | partial | pending | todo），门户「PRD 看板」Tab 实时同步；状态变化会推飞书群（webhook 已配置时）。仅管理端（MCP_TOKEN）可用。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "需求编号：FE-01 ~ FE-13" },
+        status: { type: "string", description: "done | partial | pending | todo" },
+        note: { type: "string", description: "可选：备注（覆盖旧备注）" },
+      },
+      required: ["id", "status"],
+    },
+  },
+  {
+    name: "submit_approval",
+    description:
+      "代发起审批申请（Agent 帮队员代提交，需管理端 MCP_TOKEN）。type 限 4 枚举；fields 按 flows:config 的声明式规则校验；applicant_open_id 可指定申请人（缺省 mcp-admin）。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        type: { type: "string", description: "reimburse | drawing | hardware | compliance" },
+        fields: { type: "object", description: "业务字段（与底表字段名一致），如 {\"事项\":\"打样\",\"报销金额\":120}" },
+        applicant_name: { type: "string", description: "可选：申请人姓名（缺省取 fields.applicant_open_id 或 mcp-admin）" },
+      },
+      required: ["type", "fields"],
+    },
+  },
+  {
+    name: "list_todos",
+    description:
+      "拉取指定用户的待办聚合（各流程底表中 审批中 且待其审批的单 + 逾期任务，按流程分组）。需管理端 MCP_TOKEN；角色由 open_id 查队员名单表解析。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        open_id: { type: "string", description: "飞书 open_id（ou 开头）" },
+      },
+      required: ["open_id"],
+    },
+  },
+  {
+    name: "send_notice",
+    description:
+      "向指定流程发送通知（需管理端 MCP_TOKEN）。channel=bot 走飞书群机器人（webhook 未配置返回降级说明，失败重试 2 次并记录 notify:failed）；channel=mail 走飞书邮箱（G-05，需配置 MAIL_SENDER_OPEN_ID 且发信人已授权，收件人用 to 或 env MAIL_TO）；channel=both 双通道。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        flow: { type: "string", description: "reimburse | drawing | hardware | compliance（bot 通道决定用哪个群 webhook，未配置 fallback 主群）" },
         title: { type: "string", description: "标题" },
         content: { type: "string", description: "正文" },
         link: { type: "string", description: "可选：去处理链接" },
+        channel: { type: "string", enum: ["bot", "mail", "both"], description: "通知通道，默认 bot" },
+        to: { type: "string", description: "channel 含 mail 时的收件人，逗号分隔多个；缺省用 env MAIL_TO" },
       },
       required: ["flow", "title", "content"],
     },
@@ -405,6 +504,48 @@ export const TOOLS = [
         user_token: { type: "string", description: "飞书 user_access_token；本人发信必填（管理端指定 from 时忽略）" },
       },
       required: ["to", "subject"],
+    },
+  },
+  {
+    name: "config_flows",
+    description:
+      "查看/修改审批流程配置 flows:config（底表 tableId/base、单号前缀、审批角色、必填与条件必填校验规则、金额会签阈值）。action=set 深合并写入；tableId 须 tbl 开头或留空。仅管理端（MCP_TOKEN）。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", description: "get（默认）| set" },
+        flows: { type: "object", description: "set 时必填：{ reimburse: { tableId, base, ... } }，只传要改的字段" },
+      },
+    },
+  },
+  {
+    name: "apply_domain",
+    description:
+      "代申请 NEC 团队三级域名 <subdomain>.newenergycoder.club（域名分发系统，仅管理端 MCP_TOKEN）。校验规则同门户：标签小写字母/数字/连字符、2-63 字符、保留名不开放；type 支持 CNAME/A/AAAA，CNAME 目标须为主机名且不能指向根域自身；四级及更深子域名（如 app.dev）强制仅 DNS。已配置 CF 凭证时自动创建 DNS 记录并推飞书群公示。注意：R2 托管应用（deploy_app）自带 <name>.<zone> 直达域名，无需申请；本工具用于指向 Vercel/服务器等外部目标。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        subdomain: { type: "string", description: "子域名前缀，如 demo 或 app.dev（多级）" },
+        type: { type: "string", description: "CNAME（默认）| A | AAAA" },
+        target: { type: "string", description: "解析目标：CNAME 为主机名（如 my-app.pages.dev），A/AAAA 为 IP" },
+        description: { type: "string", description: "用途说明（≤120 字）" },
+        proxied: { type: "boolean", description: "是否走 Cloudflare 代理（橙云），默认 false；四级及更深域名强制 false" },
+        applicant_name: { type: "string", description: "申请人姓名（缺省 mcp-admin）" },
+      },
+      required: ["subdomain", "target"],
+    },
+  },
+  {
+    name: "release_domain",
+    description:
+      "释放 NEC 团队三级域名（域名分发系统，仅管理端 MCP_TOKEN）：先删 Cloudflare DNS 记录再删登记，并推飞书群公示。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        subdomain: { type: "string", description: "要释放的子域名前缀" },
+        applicant_name: { type: "string", description: "操作人姓名（缺省 mcp-admin）" },
+      },
+      required: ["subdomain"],
     },
   },
 ];

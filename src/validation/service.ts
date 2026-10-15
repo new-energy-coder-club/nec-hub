@@ -4,6 +4,7 @@
  */
 
 import { BitableRecord, fieldText, findFieldKey } from "../feishu/bitable";
+import { sendFeishuBotText } from "../feishu/bot";
 import {
   DEFAULT_RULES,
   ValidateRule,
@@ -174,15 +175,9 @@ export async function snapshotAndDiff(env: Env, report: ValidateReport) {
   return diff;
 }
 
-/** 推送飞书群自定义机器人（text 消息）；未配置 webhook 时调用方应跳过 */
-export async function pushFeishuWebhook(webhookUrl: string, text: string): Promise<void> {
-  const resp = await fetch(webhookUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ msg_type: "text", content: { text } }),
-  });
-  const data = (await resp.json()) as { code?: number; msg?: string };
-  if (data.code !== 0) throw new Error(`飞书群机器人推送失败：${data.msg ?? `code ${data.code}`}`);
+/** 推送飞书群自定义机器人（text 消息）；未配置 webhook 时调用方应跳过。secret 传 FEISHU_WEBHOOK_SECRET 时带加签（HMAC-SHA256(key=`${timestamp}\n${secret}`, data="") 后 base64） */
+export async function pushFeishuWebhook(webhookUrl: string, text: string, secret?: string): Promise<void> {
+  await sendFeishuBotText(webhookUrl, text, secret);
 }
 
 /** 周报摘要文案（本周新增 / 已清零 / 持续异常） */
