@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <c:date1904 val="0"/>
+  <c:lang val="zh-CN"/>
+  <c:roundedCorners val="0"/>
+  <mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+    <mc:Choice xmlns:c14="http://schemas.microsoft.com/office/drawing/2007/8/2/chart" Requires="c14">
+      <c14:style val="102"/>
+    </mc:Choice>
+    <mc:Fallback>
+      <c:style val="2"/>
+    </mc:Fallback>
+  </mc:AlternateContent>
+  <c:chart>
+    <c:autoTitleDeleted val="1"/>
+    <c:plotArea>
+      <c:layout/>
+      <c:doughnutChart>
+        <c:varyColors val="1"/>
+        <c:ser>
+          <c:idx val="0"/>
+          <c:order val="0"/>
+          <c:tx>
+            <c:strRef>
+              <c:f>Sheet1!$B$1</c:f>
+              <c:strCache>
+                <c:ptCount val="1"/>
+                <c:pt idx="0">
+                  <c:v>s</c:v>
+                </c:pt>
+              </c:strCache>
+            </c:strRef>
+          </c:tx>
+          <c:explosion val="0"/>
+          <c:dPt>
+            <c:idx val="0"/>
+            <c:bubble3D val="0"/>
+            <c:spPr>
+              <a:solidFill>
+                <a:srgbClr val="003A70"/>
+              </a:solidFill>
+              <a:ln>
+                <a:noFill/>
+              </a:ln>
+            </c:spPr>
+          </c:dPt>
+          <c:dPt>
+            <c:idx val="1"/>
+            <c:bubble3D val="0"/>
+            <c:spPr>
+              <a:solidFill>
+                <a:srgbClr val="E7E6E6"/>
+              </a:solidFill>
+              <a:ln>
+                <a:noFill/>
+              </a:ln>
+            </c:spPr>
+          </c:dPt>
+          <c:dLbls>
+            <c:delete val="1"/>
+          </c:dLbls>
+          <c:cat>
+            <c:strRef>
+              <c:f>Sheet1!$A$2:$A$3</c:f>
+              <c:strCache>
+                <c:ptCount val="2"/>
+                <c:pt idx="0">
+                  <c:v>a</c:v>
+                </c:pt>
+                <c:pt idx="1">
+                  <c:v>b</c:v>
+                </c:pt>
+              </c:strCache>
+            </c:strRef>
+          </c:cat>
+          <c:val>
+            <c:numRef>
+              <c:f>Sheet1!$B$2:$B$3</c:f>
+              <c:numCache>
+                <c:formatCode>General</c:formatCode>
+                <c:ptCount val="2"/>
+                <c:pt idx="0">
+                  <c:v>0.50</c:v>
+                </c:pt>
+                <c:pt idx="1">
+                  <c:v>0.50</c:v>
+                </c:pt>
+              </c:numCache>
+            </c:numRef>
+          </c:val>
+        </c:ser>
+        <c:dLbls>
+          <c:showLegendKey val="0"/>
+          <c:showVal val="0"/>
+          <c:showCatName val="0"/>
+          <c:showSerName val="0"/>
+          <c:showPercent val="0"/>
+          <c:showBubbleSize val="0"/>
+          <c:showLeaderLines val="1"/>
+        </c:dLbls>
+        <c:firstSliceAng val="0"/>
+        <c:holeSize val="50"/>
+      </c:doughnutChart>
+    </c:plotArea>
+    <c:plotVisOnly val="1"/>
+    <c:dispBlanksAs val="gap"/>
+    <c:showDLblsOverMax val="0"/>
+  </c:chart>
+  <c:txPr>
+    <a:bodyPr/>
+    <a:lstStyle/>
+    <a:p>
+      <a:pPr>
+        <a:defRPr lang="zh-CN" sz="1800"/>
+      </a:pPr>
+    </a:p>
+  </c:txPr>
+  <c:externalData r:id="rId1">
+    <c:autoUpdate val="0"/>
+  </c:externalData>
+</c:chartSpace>

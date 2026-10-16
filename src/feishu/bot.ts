@@ -10,6 +10,8 @@
  *     失败重试 2 次（1s、4s）并留痕 KV notify:failed；未配置 webhook 时降级返回不抛错（审批引擎/GitHub webhook/PRD 状态变更用）
  */
 
+import { envSecret } from "./client";
+
 /** 飞书加签：HMAC-SHA256(`${timestamp}\n${secret}`) → Base64 */
 export async function feishuBotSign(secret: string, timestamp: number): Promise<string> {
   // 飞书官方算法：把 `${timestamp}\n${secret}` 作为 HMAC 密钥，对空内容签名（官方 Python 示例即 hmac.new(string_to_sign, digestmod=sha256)）
@@ -39,11 +41,6 @@ export async function sendFeishuBotText(webhookUrl: string, text: string, secret
   });
   const data = (await resp.json()) as { code?: number; msg?: string };
   if (data.code !== 0) throw new Error(`飞书群机器人推送失败：${data.msg ?? `code ${data.code}`}`);
-}
-
-/** 动态读 Env 字符串变量（webhook 按流程名拼接变量名用） */
-function envSecret(env: Env, key: string): string | undefined {
-  return (env as unknown as Record<string, string | undefined>)[key];
 }
 
 /** 通知失败记录（KV notify:failed，7 天 TTL，截断 100 条，管理端可查） */

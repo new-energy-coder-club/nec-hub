@@ -5,9 +5,9 @@
  * 入口骨架（配置接口 / 503 / 会话 / 401 / 500 兜底）统一由 shared/module-gateway 提供。
  */
 
-import { json } from "../shared/http";
+import { json, readJson } from "../shared/http";
 import { handleScheduleMeeting } from "../shared/meeting.service";
-import { withModuleGate, type ModuleRouteContext } from "../shared/module-gateway";
+import { withModuleGate, CONFIG_ADMIN_ROLES, type ModuleRouteContext } from "../shared/module-gateway";
 import { HardwareReviewAdapter } from "./adapter";
 import { getHardwareReviewConfig, setHardwareReviewConfig } from "./config";
 import { ConclusionInput, ReviewFlowService, SubmitReviewInput } from "./flow.service";
@@ -23,6 +23,7 @@ export async function handleHardwareReview(request: Request, env: Env, pathname:
       getConfig: getHardwareReviewConfig,
       handleConfig,
       handler: handleAuthed,
+      configRoles: CONFIG_ADMIN_ROLES,
     },
     request,
     env,
@@ -37,7 +38,8 @@ async function handleAuthed(ctx: ModuleRouteContext<HardwareReviewConfig>): Prom
 
   // 评审单提交
   if (pathname === "/api/hardware-review/submit" && request.method === "POST") {
-    const body = (await request.json()) as Partial<SubmitReviewInput>;
+    const body = await readJson<Partial<SubmitReviewInput>>(request);
+    if (!body) return json({ error: "请求体必须是 JSON" }, 400);
     const input: SubmitReviewInput = {
       projectId: body.projectId,
       hardwareName: body.hardwareName,
@@ -91,7 +93,8 @@ async function handleAuthed(ctx: ModuleRouteContext<HardwareReviewConfig>): Prom
   // 会议纪要
   const minutesMatch = pathname.match(/^\/api\/hardware-review\/([^/]+)\/minutes$/);
   if (minutesMatch && request.method === "POST") {
-    const body = (await request.json()) as Parameters<ReviewFlowService["saveMinutes"]>[1];
+    const body = await readJson<Parameters<ReviewFlowService["saveMinutes"]>[1]>(request);
+    if (!body) return json({ error: "请求体必须是 JSON" }, 400);
     const minutes = await flow.saveMinutes(minutesMatch[1], body, session.open_id);
     return json(minutes);
   }
@@ -99,7 +102,8 @@ async function handleAuthed(ctx: ModuleRouteContext<HardwareReviewConfig>): Prom
   // 评审结论
   const conclusionMatch = pathname.match(/^\/api\/hardware-review\/([^/]+)\/conclusion$/);
   if (conclusionMatch && request.method === "POST") {
-    const body = (await request.json()) as ConclusionInput;
+    const body = await readJson<ConclusionInput>(request);
+    if (!body) return json({ error: "请求体必须是 JSON" }, 400);
     const review = await flow.conclude(conclusionMatch[1], body, session.open_id);
     return json(review);
   }
@@ -114,7 +118,8 @@ async function handleAuthed(ctx: ModuleRouteContext<HardwareReviewConfig>): Prom
   // 评审报告生成（生成后自动流转 report_generating → assessing）
   const reportMatch = pathname.match(/^\/api\/hardware-review\/([^/]+)\/report\/generate$/);
   if (reportMatch && request.method === "POST") {
-    const body = (await request.json()) as GenerateReportInput;
+    const body = await readJson<GenerateReportInput>(request);
+    if (!body) return json({ error: "请求体必须是 JSON" }, 400);
     const reportService = new ReportService(adapter);
     const result = await reportService.generate(reportMatch[1], body);
     await flow.transitionTo(reportMatch[1], "generated", session.open_id);
@@ -132,7 +137,7 @@ async function handleAuthed(ctx: ModuleRouteContext<HardwareReviewConfig>): Prom
   // 评估结果（assessing → approved / draft）
   const assessMatch = pathname.match(/^\/api\/hardware-review\/([^/]+)\/assess$/);
   if (assessMatch && request.method === "POST") {
-    const body = (await request.json()) as { result?: string };
+    const body = (await readJson<{ result?: string }>(request)) ?? {};
     const event = body.result === "fail" ? "fail" : "pass";
     const review = await flow.transitionTo(assessMatch[1], event, session.open_id, { result: event });
     return json(review);
@@ -149,7 +154,7 @@ async function handleAuthed(ctx: ModuleRouteContext<HardwareReviewConfig>): Prom
 }
 
 async function handleConfig(request: Request, env: Env): Promise<Response> {
-  const body = (await request.json()) as { action?: string; base?: string; tables?: Record<string, string> };
+  const body = (await readJson<{ action?: string; base?: string; tables?: Record<string, string> }>(request)) ?? {};
   if (body.action === "get" || !body.action) {
     const cfg = await getHardwareReviewConfig(env);
     return json({ configured: !!cfg, base: cfg?.base ?? null, tables: cfg?.tables ?? {} });

@@ -276,13 +276,72 @@ describe("询价路由权限（compare/select 需 队长/采购/项目经理）"
     expect(res!.status).toBe(401);
   });
 
-  it("名单表未配置时降级为仅登录校验（操作人记事件日志）", async () => {
+  it("名单表未配置/未匹配时不再降级，select 一律 403", async () => {
     const ctx = createDrMock({ session: { sid: "sid-any", openId: "ou-any", name: "任意用户" } });
     seedQuotedInquiry(ctx);
     const res = await handleDrawingReview(compareRequest({ selections: { "M-001": "INQ-A" } }, "sid-any"), ctx.env, "/api/drawing-review/DR-1/inquiries/compare");
+    expect(res!.status).toBe(403);
+    expect(ctx.tables[DR_TABLES.inquiries][0].fields["状态"]).toBe("quoted");
+  });
+});
+
+describe("询价路由权限（quote 报价回填需 队长/采购/项目经理）", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function seedSentInquiry(ctx: DrMockCtx) {
+    ctx.seed(DR_TABLES.inquiries, {
+      询价单号: "INQ-A", 关联评审单: ["DR-1"], 关联物料: "item-1", 物料编码: "M-001",
+      物料名称: "伺服电机", 需求数量: 2, 状态: "sent",
+      创建时间: new Date(NOW - 10 * 3600e3).toISOString(),
+    }, "rec-inq-a");
+  }
+
+  function seedMembers(ctx: DrMockCtx, openId: string, role: string) {
+    ctx.kv.set("dashboard:config", JSON.stringify({ base: "appMockBase", tables: { members: "tblMembers" }, updatedAt: "" }));
+    ctx.seed("tblMembers", { open_id: openId, 姓名: "测试用户", 权限角色: role }, "rec-member-1");
+  }
+
+  function quoteRequest(sid: string) {
+    return new Request("http://localhost/api/drawing-review/inquiries/INQ-A/quote", {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: `nec_session=${sid}` },
+      body: JSON.stringify({ supplier: "甲供应商", price: 100, deliveryDate: "2026-10-20" }),
+    });
+  }
+
+  it("普通队员报价回填被 403 拒绝，且数据未被修改", async () => {
+    const ctx = createDrMock({ session: { sid: "sid-member", openId: "ou-member", name: "测试用户" } });
+    seedSentInquiry(ctx);
+    seedMembers(ctx, "ou-member", "队员");
+
+    const res = await handleDrawingReview(quoteRequest("sid-member"), ctx.env, "/api/drawing-review/inquiries/INQ-A/quote");
+    expect(res).not.toBeNull();
+    expect(res!.status).toBe(403);
+    const rec = ctx.tables[DR_TABLES.inquiries][0];
+    expect(rec.fields["状态"]).toBe("sent");
+    expect(rec.fields["报价"]).toBeUndefined();
+  });
+
+  it("名单表未配置/未匹配时报价回填同样 403", async () => {
+    const ctx = createDrMock({ session: { sid: "sid-any", openId: "ou-any", name: "任意用户" } });
+    seedSentInquiry(ctx);
+    const res = await handleDrawingReview(quoteRequest("sid-any"), ctx.env, "/api/drawing-review/inquiries/INQ-A/quote");
+    expect(res!.status).toBe(403);
+    expect(ctx.tables[DR_TABLES.inquiries][0].fields["状态"]).toBe("sent");
+  });
+
+  it("采购角色报价回填成功", async () => {
+    const ctx = createDrMock({ session: { sid: "sid-buyer", openId: "ou-buyer", name: "测试用户" } });
+    seedSentInquiry(ctx);
+    seedMembers(ctx, "ou-buyer", "采购");
+
+    const res = await handleDrawingReview(quoteRequest("sid-buyer"), ctx.env, "/api/drawing-review/inquiries/INQ-A/quote");
+    expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
-    const events = (ctx.tables[DR_TABLES.events] ?? []).filter((r) => r.fields["动作"] === "inquiry_select");
-    expect(events).toHaveLength(1);
-    expect(events[0].fields["操作人"]).toBe("ou-any");
+    const rec = ctx.tables[DR_TABLES.inquiries][0];
+    expect(rec.fields["状态"]).toBe("quoted");
+    expect(rec.fields["报价"]).toBe(100);
   });
 });

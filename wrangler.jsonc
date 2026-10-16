@@ -51,6 +51,7 @@
     "crons": ["*/8 * * * *", "0 0 * * 1"]
   },
   "vars": {
-    "HUB_NAME": "NEC 团队 AI 中台"
+    "HUB_NAME": "NEC 团队 AI 中台",
+    "GITEE_USER": "darrenpig"
   }
 }

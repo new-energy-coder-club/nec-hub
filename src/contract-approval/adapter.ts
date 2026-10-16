@@ -95,8 +95,13 @@ export class ContractApprovalAdapter
   }
 
   async findApprovalById(approvalId: string): Promise<(ContractApproval & { recordId: string }) | null> {
-    const records = await this.listRecords("approvals");
-    const rec = records.find((r) => pickText(r.fields, ["审批单号", "approvalId"]) === approvalId);
+    // filter 下推按「审批单号」精确查；search 失败（字段名不符等）回退全表扫描（match 与原逻辑一致）
+    const records = await this.queryRecords(
+      "approvals",
+      [{ field_name: "审批单号", operator: "is", value: [approvalId] }],
+      (r) => pickText(r.fields, ["审批单号", "approvalId"]) === approvalId,
+    );
+    const rec = records[0];
     return rec ? this.recordToApproval(rec) : null;
   }
 
@@ -182,9 +187,13 @@ export class ContractApprovalAdapter
   }
 
   async getCommentsByApproval(approvalId: string): Promise<Array<ApprovalComment & { recordId: string }>> {
-    const records = await this.listRecords("comments");
+    // filter 下推按「关联审批单」只拉本单评论；search 失败回退全表扫描（match 与原逻辑一致）
+    const records = await this.queryRecords(
+      "comments",
+      [{ field_name: "关联审批单", operator: "is", value: [approvalId] }],
+      (r) => pickText(r.fields, ["关联审批单"]) === approvalId,
+    );
     return records
-      .filter((r) => pickText(r.fields, ["关联审批单"]) === approvalId)
       .map((r) => ({
         commentId: pickText(r.fields, ["评论ID", "commentId"]) || r.record_id,
         approvalId,

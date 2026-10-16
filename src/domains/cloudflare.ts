@@ -52,7 +52,7 @@ export async function createDnsRecord(env: Env, entry: DomainEntry): Promise<str
       content: entry.target,
       proxied: entry.proxied,
       ttl: 1, // 1 = automatic
-      comment: `nec-hub domains: ${entry.owner.name} (${entry.owner.open_id})`,
+      comment: `nec-hub domains: ${entry.owner.name}`,
     }),
   });
   return rec.id;

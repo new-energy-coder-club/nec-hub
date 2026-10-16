@@ -7,13 +7,32 @@
  */
 
 import { createSession, sessionCookie, type HubUser } from "../shared/session";
+import { FEISHU_API, cachedToken, type CachedToken } from "../feishu/client";
 
-const FEISHU_API = "https://open.feishu.cn/open-apis";
+/** 未命中白名单时回退的固定允许源（门户主域） */
+const CORS_FALLBACK_ORIGIN = "https://hub.newenergycoder.club";
+
+/**
+ * 威胁模型：登录接口会写会话 Cookie，回显任意 Origin 会让恶意站点带凭据跨域读响应，
+ * 故仅放行 *.newenergycoder.club（含根域）与本地开发端口，未命中回退固定门户域。
+ */
+function isAllowedOrigin(origin: string): boolean {
+  if (!origin) return false;
+  try {
+    const u = new URL(origin);
+    if (u.protocol === "https:" && (u.hostname === "newenergycoder.club" || u.hostname.endsWith(".newenergycoder.club"))) {
+      return true;
+    }
+    return u.protocol === "http:" && (u.hostname === "localhost" || u.hostname === "127.0.0.1");
+  } catch {
+    return false;
+  }
+}
 
 function corsHeaders(request: Request): Record<string, string> {
-  const origin = request.headers.get("origin") ?? "*";
+  const origin = request.headers.get("origin") ?? "";
   return {
-    "access-control-allow-origin": origin,
+    "access-control-allow-origin": isAllowedOrigin(origin) ? origin : CORS_FALLBACK_ORIGIN,
     "access-control-allow-methods": "GET, POST, OPTIONS",
     "access-control-allow-headers": "content-type, authorization",
     "access-control-max-age": "86400",
@@ -49,8 +68,23 @@ export async function handleFeishuAuth(request: Request, env: Env): Promise<Resp
       500,
     );
   }
-  const { code } = (await request.json()) as { code?: string };
+  let body: { code?: string; state?: string };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return jsonCors({ error: "请求体必须是 JSON" }, 400);
+  }
+  const { code, state } = body;
   if (!code) return jsonCors({ error: "missing code" }, 400);
+
+  // 服务端签发的 state（"我的任务"重新授权等场景，oauth:state:<state>，TTL 10 分钟）一次性消费：
+  // 比对不上视为伪造/过期，直接 400。门户自身登录的 state 由前端 sessionStorage 校验，不带到这里
+  if (state) {
+    const stateKey = `oauth:state:${state}`;
+    const stored = await env.REGISTRY.get(stateKey);
+    if (!stored) return jsonCors({ error: "state 校验失败或已过期，请重新发起授权" }, 400);
+    await env.REGISTRY.delete(stateKey);
+  }
 
   // 1. app_access_token（KV 缓存，提前 5 分钟过期）
   const appToken = await getAppAccessToken(env);
@@ -141,28 +175,12 @@ async function saveUserToken(
   );
 }
 
-/** 实例内 app_access_token 缓存 + in-flight 去重（同 getTenantAccessToken 的模式） */
-let appTokenMem: { token: string; expireAt: number } | null = null;
-let appTokenInflight: Promise<string> | null = null;
-
 /** 供 feishu/user-token.ts 续期 refresh 时复用 */
 export async function getAppAccessToken(env: Env): Promise<string> {
-  if (appTokenMem && appTokenMem.expireAt > Date.now()) return appTokenMem.token;
-  appTokenInflight ??= fetchAppAccessToken(env).finally(() => {
-    appTokenInflight = null;
-  });
-  return appTokenInflight;
+  return cachedToken(env, "feishu:app_access_token", fetchAppAccessToken);
 }
 
-async function fetchAppAccessToken(env: Env): Promise<string> {
-  const cached = await env.REGISTRY.get("feishu:app_access_token", "json") as
-    | { token: string; expireAt: number }
-    | null;
-  if (cached && cached.expireAt > Date.now()) {
-    appTokenMem = cached;
-    return cached.token;
-  }
-
+async function fetchAppAccessToken(env: Env): Promise<CachedToken> {
   const resp = await fetch(`${FEISHU_API}/auth/v3/app_access_token/internal`, {
     method: "POST",
     headers: { "content-type": "application/json; charset=utf-8" },
@@ -172,10 +190,7 @@ async function fetchAppAccessToken(env: Env): Promise<string> {
   if (data.code !== 0 || !data.app_access_token) {
     throw new Error(`获取 app_access_token 失败：${data.msg ?? "unknown"}`);
   }
-  const expireAt = Date.now() + ((data.expire ?? 7200) - 300) * 1000;
-  appTokenMem = { token: data.app_access_token, expireAt };
-  await env.REGISTRY.put("feishu:app_access_token", JSON.stringify(appTokenMem));
-  return data.app_access_token;
+  return { token: data.app_access_token, expireAt: Date.now() + ((data.expire ?? 7200) - 300) * 1000 };
 }
 
 /** 校验飞书 user_access_token，返回 open_id 与姓名（无效则抛错） */

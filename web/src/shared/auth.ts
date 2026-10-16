@@ -1,6 +1,7 @@
 // 飞书登录态（FE-01）：OAuth 跳转登录 + 会话 Cookie + 角色徽章
 import { reactive } from 'vue'
 import { pendingHash } from '@shared/pendingTab'
+import { LEADER_ROLE_RE, hasRole } from '@shared/roles'
 
 export interface HubUser {
   name: string
@@ -70,7 +71,9 @@ export async function bootAuth() {
         const resp = await fetch('/auth/feishu', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ code }),
+          // 本会话发起（saved 存在）的 state 已在上面对过；saved 为空说明 state 来自服务端签发
+          // （如"我的任务"重新授权），交给 /auth/feishu 与 KV 里的 oauth:state:<state> 一次性比对
+          body: JSON.stringify(saved ? { code } : { code, state }),
         })
         const data = await resp.json()
         if (!resp.ok || data.error) throw new Error(data.error || ('HTTP ' + resp.status))
@@ -150,5 +153,5 @@ export async function logout() {
 }
 
 export function isLeader(): boolean {
-  return !!(auth.me.authenticated && auth.me.user && /队长|组长/.test(auth.me.user.role || ''))
+  return !!(auth.me.authenticated && auth.me.user && hasRole(auth.me.user.role, LEADER_ROLE_RE))
 }

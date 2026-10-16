@@ -9,7 +9,9 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
-import { buildApprovalFields, handleErpReimburse, validateErpDoc, type ErpLine } from "../erp/reimburse";
+import { handleApprovalAction } from "../approvals/handlers";
+import { buildApprovalFields, handleErpReimburse, syncReimburseDocStatus, validateErpDoc, type ErpLine } from "../erp/reimburse";
+import { mockGetRecordResponse, mockSearchResponse } from "./bitable-search-mock";
 
 const BASE = "appMockBase";
 const TBL_REIMBURSE = "tblReimburse";
@@ -26,6 +28,19 @@ function fakeD1() {
   ];
   const payees = new Map<string, Record<string, unknown>>();
   const docs = new Map<string, Record<string, unknown>>();
+  // LIKE '%x%' ESCAPE '\' 的内存模拟：剥首尾 % 并还原转义后做子串包含
+  const likeContains = (val: unknown, pattern: unknown) => {
+    const inner = String(pattern).replace(/^%|%$/g, "").replace(/\\(.)/g, "$1");
+    return String(val ?? "").includes(inner);
+  };
+  // manage 台账的 WHERE LIKE 过滤（SQL 层下推后的形态）
+  const filterDocs = (sql: string, args: unknown[]) => {
+    let rows = [...docs.values()];
+    if (sql.includes("LIKE")) {
+      rows = rows.filter((d) => likeContains(d.application_id, args[0]) || likeContains(d.payload_json, args[1]));
+    }
+    return rows;
+  };
   const runSql = (sql: string, args: unknown[]) => ({
     run: vi.fn(async () => {
       if (sql.includes("INSERT INTO payees")) {
@@ -35,11 +50,15 @@ function fakeD1() {
           application_id: args[0], open_id: args[1], applicant: args[2],
           payload_json: args[3], status: args[4], created_at: args[5],
         });
+      } else if (sql.includes("UPDATE reimburse_docs")) {
+        const doc = docs.get(String(args[1]));
+        if (doc) doc.status = args[0];
       }
       return { success: true };
     }),
     first: vi.fn(async () => {
       if (sql.includes("FROM payees")) return payees.get(String(args[0])) ?? null;
+      if (sql.includes("COUNT(*)")) return { n: filterDocs(sql, args).length };
       if (sql.includes("FROM reimburse_docs")) return docs.get(String(args[0])) ?? null;
       return null;
     }),
@@ -51,8 +70,16 @@ function fakeD1() {
           rows.sort((a, b) => Number(b.created_at) - Number(a.created_at));
           return { results: rows };
         }
-        // manage 台账：无 WHERE，全量读出，过滤/排序/分页在 handler 内存完成
-        return { results: [...docs.values()] };
+        // manage 台账：WHERE LIKE / ORDER BY / LIMIT / OFFSET 均在 SQL 层（bind 尾部两参为 limit/offset）
+        let rows = filterDocs(sql, args);
+        const desc = sql.includes("DESC");
+        rows = rows.sort((a, b) => (desc ? Number(b.created_at) - Number(a.created_at) : Number(a.created_at) - Number(b.created_at)));
+        if (sql.includes("LIMIT")) {
+          const limit = Number(args[args.length - 2]);
+          const offset = Number(args[args.length - 1]);
+          rows = rows.slice(offset, offset + limit);
+        }
+        return { results: rows };
       }
       return { results: [] };
     }),
@@ -86,10 +113,18 @@ function createCtx() {
     const [, , tableId, recordId] = m;
     const method = (init?.method ?? "GET").toUpperCase();
     const items = (tables[tableId] ??= []);
+    if (method === "POST" && recordId === "search") return mockSearchResponse(items, init?.body ?? "{}");
+    if (method === "GET" && recordId) return mockGetRecordResponse(items, recordId);
     if (method === "GET") return jsonResp({ code: 0, data: { items, has_more: false } });
     if (method === "POST" && !recordId) {
       const rec: BitableRecord = { record_id: `rec-${++seq}`, fields: JSON.parse(init!.body!).fields };
       items.push(rec);
+      return jsonResp({ code: 0, data: { record: rec } });
+    }
+    if (method === "PUT" && recordId) {
+      const rec = items.find((r) => r.record_id === recordId);
+      if (!rec) return jsonResp({ code: 1254045, msg: "record not found" });
+      Object.assign(rec.fields, JSON.parse(init!.body!).fields);
       return jsonResp({ code: 0, data: { record: rec } });
     }
     return jsonResp({ code: 400, msg: `unsupported ${method} ${url}` });
@@ -440,5 +475,92 @@ describe("管理台账 GET /api/erp/reimburse/manage", () => {
 
     expect(byId.get("BX-2026-0013")!.lines).toBe(0);
     expect(byId.get("BX-2026-0013")!.paid).toBe(0); // 已完成 → paid=total(损坏快照合计 0)
+  });
+});
+
+describe("审批状态回写 D1（onStatusChange → syncReimburseDocStatus）", () => {
+  async function submitOne(ctx: ReturnType<typeof createCtx>) {
+    const res = await handleErpReimburse(
+      req("/api/erp/reimburse/submit", "sid-member", "POST", {
+        lines: [GOOD_LINE], note: "", noinv: "",
+        payee: { method: "", account_name: "", account_no: "", bank: "" },
+        attachments: ["receipts/20261014/ok.jpg"],
+      }),
+      ctx.env, "/api/erp/reimburse/submit",
+    );
+    expect(res!.status).toBe(200);
+    return ((await res!.json()) as { application_id: string }).application_id;
+  }
+
+  it("队长 approve/pay 后 D1 快照状态对齐底表（审批中 → 已通过 → 已打款）", async () => {
+    const ctx = createCtx();
+    const appId = await submitOne(ctx);
+    expect(ctx.d1.docs.get(appId)!.status).toBe("审批中");
+
+    const approve = await handleApprovalAction(
+      req(`/api/approvals/reimburse/${appId}/approve`, "sid-captain", "POST", { comment: "同意" }),
+      ctx.env, "reimburse", appId, "approve",
+    );
+    expect(approve.status).toBe(200);
+    expect(ctx.d1.docs.get(appId)!.status).toBe("已通过");
+
+    const pay = await handleApprovalAction(
+      req(`/api/approvals/reimburse/${appId}/pay`, "sid-captain", "POST", {}),
+      ctx.env, "reimburse", appId, "pay",
+    );
+    expect(pay.status).toBe(200);
+    expect(ctx.d1.docs.get(appId)!.status).toBe("已打款");
+  });
+
+  it("reject 后 D1 状态=已驳回；底表无对应快照时静默 0 行更新", async () => {
+    const ctx = createCtx();
+    const appId = await submitOne(ctx);
+    const res = await handleApprovalAction(
+      req(`/api/approvals/reimburse/${appId}/reject`, "sid-captain", "POST", { comment: "票据不全" }),
+      ctx.env, "reimburse", appId, "reject",
+    );
+    expect(res.status).toBe(200);
+    expect(ctx.d1.docs.get(appId)!.status).toBe("已驳回");
+
+    // 底表有记录但 D1 无快照（如手工发起）：回写静默跳过，动作正常
+    ctx.tables[TBL_REIMBURSE].push({ record_id: "rec-manual", fields: { 申请单号: "BX-2026-0099", 状态: "审批中", 申请人: "王五" } });
+    const manual = await handleApprovalAction(
+      req("/api/approvals/reimburse/BX-2026-0099/approve", "sid-captain", "POST", {}),
+      ctx.env, "reimburse", "BX-2026-0099", "approve",
+    );
+    expect(manual.status).toBe(200);
+    expect(ctx.d1.docs.has("BX-2026-0099")).toBe(false);
+  });
+
+  it("D1 回写失败不阻断审批主流程（动作成功 + console.error 留痕）", async () => {
+    const ctx = createCtx();
+    const appId = await submitOne(ctx);
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const origPrepare = ctx.env.ERP_DB.prepare;
+    ctx.env.ERP_DB = {
+      prepare: (sql: string) => {
+        if (sql.includes("UPDATE reimburse_docs")) {
+          return { bind: () => ({ run: async () => { throw new Error("D1 down"); } }) };
+        }
+        return origPrepare(sql);
+      },
+    } as unknown as Env["ERP_DB"];
+
+    const res = await handleApprovalAction(
+      req(`/api/approvals/reimburse/${appId}/approve`, "sid-captain", "POST", {}),
+      ctx.env, "reimburse", appId, "approve",
+    );
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { status: string }).status).toBe("已通过");
+    expect(ctx.d1.docs.get(appId)!.status).toBe("审批中"); // 回写未生效
+    expect(spy.mock.calls.some((c) => String(c[0]).includes("onStatusChange"))).toBe(true);
+    spy.mockRestore();
+  });
+
+  it("非报销流程不回写（syncReimburseDocStatus 按 flow key 跳过）", async () => {
+    const ctx = createCtx();
+    const appId = await submitOne(ctx);
+    await syncReimburseDocStatus(ctx.env, { type: "drawing", appId, status: "已通过" });
+    expect(ctx.d1.docs.get(appId)!.status).toBe("审批中");
   });
 });

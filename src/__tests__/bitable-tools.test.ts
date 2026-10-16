@@ -4,8 +4,9 @@
  * mock 风格沿用 fe04-fe09.test.ts：内存 KV + fetch 路由（建表 / fields / batch_create）。
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DOCS_REGISTRY_KEY } from "../dashboard";
-import { toolAddRecords, toolRemoveDocs, toolSetupBitable } from "../mcp/implementations";
+import { DOCS_REGISTRY_KEY } from "../docs";
+import { toolAddRecords, toolSetupBitable } from "../mcp/tools/bitable";
+import { toolRemoveDocs } from "../mcp/tools/docs";
 
 const BASE = "appMockBaseX";
 

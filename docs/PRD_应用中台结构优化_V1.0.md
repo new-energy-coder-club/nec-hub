@@ -5,7 +5,7 @@
 | 文档编号 | PRD-STRUCT-1.0 |
 | 日期 | 2026-10-15 |
 | 状态 | 已评审通过（2026-10-15），**M1 已完成**：ST-08a ✅（CI 测试门禁 f5f79ca）、ST-02 ✅（`#/<tab>` 路由 + 深链门控重放）、ST-01 首批 ✅（home/dashboard/drawing-review 拆至 `public/portal/`，index.html 3309→676 行）；M2 待启动 |
-| 关联文档 | `docs/团队AI中台PRD_V2.0.md`（FE-01~FE-14 主 PRD）、`docs/页面与Tab状态现状.md`（现状盘点，本文档数据已刷新）、`docs/PRD_审批与通知中心_V1.1/V1.2.md` |
+| 关联文档 | `docs/团队AI中台PRD_V2.1.md`（FE-01~FE-14 主 PRD）、`docs/页面与Tab状态现状.md`（现状盘点，本文档数据已刷新）、`docs/PRD_审批与通知中心_V1.1/V1.2.md` |
 | 编号体系 | 本文档需求编号 **ST-01 ~ ST-10**（Structure），与主 PRD 的 FE-xx 并行；落地后同步 PRD 看板 |
 
 ---

@@ -7,9 +7,12 @@
 import {
   BitableRecord,
   createBitableRecord,
+  getBitableRecord,
   getTenantAccessToken,
   listBitableRecords,
+  queryBitableRecords,
   updateBitableRecord,
+  type BitableCondition,
 } from "../feishu/bitable";
 
 /** 通用表适配器接口（原 drawing-review/adapter.ts 定义；此处为唯一定义） */
@@ -49,6 +52,23 @@ export abstract class FeishuTableAdapter<
   async listRecords(table: TableName): Promise<BitableRecord[]> {
     const token = await this.token();
     return listBitableRecords(token, this.cfg.base, this.tableId(table));
+  }
+
+  /** 按 record_id 读单条（GET /records/:record_id）；不存在返回 null */
+  async getRecord(table: TableName, recordId: string): Promise<BitableRecord | null> {
+    const token = await this.token();
+    return getBitableRecord(token, this.cfg.base, this.tableId(table), recordId);
+  }
+
+  /** filter 下推查询（search 接口）；search 失败/查空可回退全表扫描 + match 内存过滤（见 queryBitableRecords） */
+  async queryRecords(
+    table: TableName,
+    conditions: BitableCondition[],
+    match: (record: BitableRecord, records: BitableRecord[]) => boolean,
+    opts?: { conjunction?: "and" | "or"; max?: number; scanMax?: number; fallbackOnEmpty?: boolean },
+  ): Promise<BitableRecord[]> {
+    const token = await this.token();
+    return queryBitableRecords(token, this.cfg.base, this.tableId(table), conditions, match, opts);
   }
 
   async createRecord(table: TableName, fields: Record<string, unknown>): Promise<BitableRecord> {

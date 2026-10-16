@@ -2,6 +2,7 @@
 // 端点 / 视图路由 / 驳回重提语义逐条对齐原 public/apps/drawing/index.html
 import { reactive } from 'vue'
 import { apiMod, type ApiModError } from '@shared/api'
+import { toast } from '@shared/ui/feedback'
 
 export interface ApprovalRecord {
   application_id: string
@@ -219,6 +220,6 @@ export async function doAction(appId: string, action: 'start' | 'archive') {
     })
     loadMine()
   } catch (e) {
-    alert(`${label}失败：` + (e as Error).message)
+    toast(`${label}失败：` + (e as Error).message)
   }
 }

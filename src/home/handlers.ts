@@ -7,9 +7,9 @@
  */
 
 import { validateUserToken } from "../auth/feishu-auth";
-import { resolveUserRole } from "../auth/role";
+import { ROLES, resolveUserRole } from "../auth/role";
 import { json } from "../shared/http";
-import { applyRenewedSession, resolveSession } from "../shared/session";
+import { resolveSession } from "../shared/session";
 import { HOME_WIDGET_META, parseHomeLayout, type HomeLayout } from "./layout";
 import { deleteHomeLayout, getResolvedHome, saveHomeLayout } from "./service";
 
@@ -29,8 +29,7 @@ export async function handleGetHome(request: Request, env: Env, ctx?: ExecutionC
   const session = await resolveSession(env, request, ctx);
   if (!session) return json({ error: "请先登录" }, 401);
   const role = await resolveUserRole(env, session.user, ctx);
-  const res = json(await homePayload(env, session.user.open_id, role.group));
-  return applyRenewedSession(res, session.renewed);
+  return json(await homePayload(env, session.user.open_id, role.group));
 }
 
 /** POST /api/home：写个人布局（body 为 { widgets: [...] } 或直接数组）。未登录 401；组件全非法 400 */
@@ -47,8 +46,7 @@ export async function handleSetHome(request: Request, env: Env, ctx?: ExecutionC
   }
   await saveHomeLayout(env, "user", session.user.open_id, layout);
   const role = await resolveUserRole(env, session.user, ctx);
-  const res = json(await homePayload(env, session.user.open_id, role.group));
-  return applyRenewedSession(res, session.renewed);
+  return json(await homePayload(env, session.user.open_id, role.group));
 }
 
 /** POST /api/home/reset：恢复默认（删个人配置，回落到组配置/全员默认）。未登录 401 */
@@ -57,14 +55,13 @@ export async function handleResetHome(request: Request, env: Env, ctx?: Executio
   if (!session) return json({ error: "请先登录" }, 401);
   await deleteHomeLayout(env, "user", session.user.open_id);
   const role = await resolveUserRole(env, session.user, ctx);
-  const res = json(await homePayload(env, session.user.open_id, role.group));
-  return applyRenewedSession(res, session.renewed);
+  return json(await homePayload(env, session.user.open_id, role.group));
 }
 
 // ---------- MCP 工具：set_home_layout ----------
 
 /** 组默认首页写权限（与 FE-05 全量校验同一判定口径） */
-const LEADER_ROLE_RE = /队长|组长/;
+const LEADER_ROLE_RE = ROLES.LEADER;
 
 function layoutSummary(prefix: string, layout: HomeLayout): string {
   const items = layout.widgets
@@ -104,7 +101,7 @@ export async function toolSetHomeLayout(args: Record<string, unknown>, env: Env,
     if (want) group = want;
     if (!group) throw new Error("未识别到所属组别（队员名单组别字段为空），请显式传 group 参数");
     // 组长只能配置本组；队长可跨组
-    if (!/队长/.test(role.role) && role.group && group !== role.group) {
+    if (!ROLES.CAPTAIN.test(role.role) && role.group && group !== role.group) {
       throw new Error(`权限不足：组长只能配置本组（${role.group}）的默认首页，收到的是「${group}」`);
     }
   }

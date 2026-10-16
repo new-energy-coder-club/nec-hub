@@ -2,7 +2,7 @@
  * 飞书多维表格 API 通用封装（供 nec-hub 各模块共用）
  */
 
-const FEISHU_API = "https://open.feishu.cn/open-apis";
+import { FEISHU_API, cachedToken, type CachedToken } from "./client";
 
 export interface BitableRecord {
   record_id: string;
@@ -14,29 +14,12 @@ export interface BitableFieldMeta {
   ui_type: string;
 }
 
-/** 实例内 token 缓存：命中时连 KV 都不用读 */
-let tenantTokenMem: { token: string; expireAt: number } | null = null;
-/** in-flight 去重：缓存过期瞬间的并发调用共享同一次飞书请求 */
-let tenantTokenInflight: Promise<string> | null = null;
-
 /** tenant_access_token 缓存（实例内存 + KV，均提前 5 分钟过期） */
 export async function getTenantAccessToken(env: Env): Promise<string> {
-  if (tenantTokenMem && tenantTokenMem.expireAt > Date.now()) return tenantTokenMem.token;
-  tenantTokenInflight ??= fetchTenantAccessToken(env).finally(() => {
-    tenantTokenInflight = null;
-  });
-  return tenantTokenInflight;
+  return cachedToken(env, "feishu:tenant_access_token", fetchTenantAccessToken);
 }
 
-async function fetchTenantAccessToken(env: Env): Promise<string> {
-  const cached = await env.REGISTRY.get("feishu:tenant_access_token", "json") as
-    | { token: string; expireAt: number }
-    | null;
-  if (cached && cached.expireAt > Date.now()) {
-    tenantTokenMem = cached;
-    return cached.token;
-  }
-
+async function fetchTenantAccessToken(env: Env): Promise<CachedToken> {
   if (!env.FEISHU_APP_ID || !env.FEISHU_APP_SECRET) {
     throw new Error("飞书自建应用未配置：请先配置 FEISHU_APP_ID / FEISHU_APP_SECRET");
   }
@@ -55,10 +38,7 @@ async function fetchTenantAccessToken(env: Env): Promise<string> {
   if (data.code !== 0 || !data.tenant_access_token) {
     throw new Error(`获取 tenant_access_token 失败：${data.msg ?? "unknown"}`);
   }
-  const expireAt = Date.now() + ((data.expire ?? 7200) - 300) * 1000;
-  tenantTokenMem = { token: data.tenant_access_token, expireAt };
-  await env.REGISTRY.put("feishu:tenant_access_token", JSON.stringify(tenantTokenMem));
-  return data.tenant_access_token;
+  return { token: data.tenant_access_token, expireAt: Date.now() + ((data.expire ?? 7200) - 300) * 1000 };
 }
 
 /** 分页读取一张多维表格（最多 max 条） */
@@ -87,6 +67,93 @@ export async function listBitableRecords(
     pageToken = data.data?.has_more ? (data.data?.page_token ?? "") : "";
   } while (pageToken && out.length < max);
   return out.slice(0, max);
+}
+
+/** search 接口结构化过滤条件（POST records/search 的 filter.conditions 元素） */
+export interface BitableCondition {
+  field_name: string;
+  operator: "is" | "isNot" | "contains" | "doesNotContain" | "isEmpty" | "isNotEmpty";
+  value?: string[];
+}
+
+/** 按条件搜索记录（POST /records/search，filter 下推；分页拉取，最多 max 条） */
+export async function searchBitableRecords(
+  token: string,
+  appToken: string,
+  tableId: string,
+  conditions: BitableCondition[],
+  opts: { conjunction?: "and" | "or"; max?: number } = {},
+): Promise<BitableRecord[]> {
+  const max = opts.max ?? 500;
+  const out: BitableRecord[] = [];
+  let pageToken = "";
+  do {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (conditions.length) body.filter = { conjunction: opts.conjunction ?? "and", conditions };
+    if (pageToken) body.page_token = pageToken;
+    const resp = await fetch(`${FEISHU_API}/bitable/v1/apps/${appToken}/tables/${tableId}/records/search`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = (await resp.json()) as {
+      code?: number;
+      msg?: string;
+      data?: { items?: BitableRecord[]; has_more?: boolean; page_token?: string };
+    };
+    if (data.code !== 0) {
+      throw new Error(`飞书多维表格搜索失败（${tableId}）：${data.msg ?? `code ${data.code}`}`);
+    }
+    out.push(...(data.data?.items ?? []));
+    pageToken = data.data?.has_more ? (data.data?.page_token ?? "") : "";
+  } while (pageToken && out.length < max);
+  return out.slice(0, max);
+}
+
+/** 按 record_id 读单条（GET /records/:record_id）；记录不存在返回 null，其它错误抛出 */
+export async function getBitableRecord(
+  token: string,
+  appToken: string,
+  tableId: string,
+  recordId: string,
+): Promise<BitableRecord | null> {
+  const resp = await fetch(`${FEISHU_API}/bitable/v1/apps/${appToken}/tables/${tableId}/records/${recordId}`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  const data = (await resp.json()) as { code?: number; msg?: string; data?: { record?: BitableRecord } };
+  if (data.code !== 0) {
+    if (data.code === 1254045 || /not[\s_-]*found/i.test(data.msg ?? "")) return null;
+    throw new Error(`飞书多维表格读取记录失败（${tableId}/${recordId}）：${data.msg ?? `code ${data.code}`}`);
+  }
+  return data.data?.record ?? null;
+}
+
+/**
+ * filter 下推 + 全表扫描兜底：
+ * 先走 search 接口把条件下推到服务端；search 失败（如条件字段名在表里不存在）时
+ * 回退 listBitableRecords 全量拉取 + match 内存过滤，行为与改造前完全一致。
+ * match 同时作用于 search 结果（二次确认，保证与原有内存过滤语义一致，防 contains 大小写等差异）；
+ * 第二个参数为当前批次记录（供 findFieldKey 类字段嗅探用）。
+ * fallbackOnEmpty=true 时 search 命中 0 条也回退全表扫描（模式匹配类查询的大小写/字段名兜底）。
+ */
+export async function queryBitableRecords(
+  token: string,
+  appToken: string,
+  tableId: string,
+  conditions: BitableCondition[],
+  match: (record: BitableRecord, records: BitableRecord[]) => boolean,
+  opts: { conjunction?: "and" | "or"; max?: number; scanMax?: number; fallbackOnEmpty?: boolean } = {},
+): Promise<BitableRecord[]> {
+  if (conditions.length) {
+    try {
+      const found = await searchBitableRecords(token, appToken, tableId, conditions, opts);
+      if (found.length || !opts.fallbackOnEmpty) return found.filter((r) => match(r, found));
+    } catch {
+      /* search 不可用（条件字段不存在/接口错误）→ 回退全表扫描 */
+    }
+  }
+  const all = await listBitableRecords(token, appToken, tableId, opts.scanMax ?? 1000);
+  return all.filter((r) => match(r, all));
 }
 
 /** 拉取表字段元数据（field_name + ui_type） */

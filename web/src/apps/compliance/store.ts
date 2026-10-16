@@ -2,6 +2,7 @@
 // 独立入口（/apps/compliance/）与门户 Tab 复用同一套；
 // fetch 端点 / sessionStorage 键 / 校验规则逐条对齐原 public/apps/compliance/index.html
 import { reactive, computed } from 'vue'
+import { toast } from '@shared/ui/feedback'
 
 /* ========== 驳回原因（标准化 5 个固定选项，便于统计复盘） ========== */
 
@@ -149,7 +150,7 @@ export async function loadMine() {
 export async function doPublish(appId: string) {
   const link = prompt('请输入发布链接（发布后回填留档）：', '')
   if (link === null) return
-  if (!link.trim()) { alert('发布链接不能为空'); return }
+  if (!link.trim()) { toast('发布链接不能为空'); return }
   try {
     const resp = await fetch('/api/approvals/compliance/' + encodeURIComponent(appId) + '/publish', {
       method: 'POST',
@@ -160,7 +161,7 @@ export async function doPublish(appId: string) {
     if (!resp.ok || data.error) throw new Error(data.error || ('HTTP ' + resp.status))
     loadMine()
   } catch (e: any) {
-    alert('回填发布链接失败：' + (e.message || e))
+    toast('回填发布链接失败：' + (e.message || e))
   }
 }
 
@@ -208,7 +209,7 @@ export async function doApprove(appId: string) {
     loadTodos()
     loadMine()
   } catch (e: any) {
-    alert('通过失败：' + (e.message || e))
+    toast('通过失败：' + (e.message || e))
   }
 }
 

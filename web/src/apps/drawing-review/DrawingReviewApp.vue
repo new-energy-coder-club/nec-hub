@@ -5,6 +5,7 @@ import { ref, onMounted } from 'vue'
 import { apiDr } from '@shared/api'
 import SubmitView from './components/SubmitView.vue'
 import ListView from './components/ListView.vue'
+import FlowBoard from './components/FlowBoard.vue'
 import DetailView from './components/DetailView.vue'
 import type { ViewName } from './types'
 
@@ -15,10 +16,11 @@ const detailId = ref('')
 const detailSeq = ref(0) // 每次进入详情都强制重取（原 router('detail') 总是 loadDetail）
 const notConfigured = ref(false)
 const listRef = ref<InstanceType<typeof ListView>>()
+const flowRef = ref<InstanceType<typeof FlowBoard>>()
 
 function router(v: ViewName, id = '') {
   view.value = v
-  if (v === 'list') listRef.value?.reload()
+  if (v === 'list') { listRef.value?.reload(); flowRef.value?.reload() }
   if (v === 'detail' && id) { detailId.value = id; detailSeq.value++ }
 }
 
@@ -96,6 +98,9 @@ onMounted(async () => {
 
       <!-- 提交视图 -->
       <SubmitView v-show="view === 'submit'" @submitted="router('list')" />
+
+      <!-- 流程看板（阻塞预警 + 甘特图，随列表视图显隐） -->
+      <FlowBoard v-show="view === 'list'" ref="flowRef" @open="id => router('detail', id)" />
 
       <!-- 评审单视图（列表 / 看板 一体） -->
       <ListView v-show="view === 'list'" ref="listRef" @open="id => router('detail', id)" />

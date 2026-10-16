@@ -21,6 +21,11 @@ export function dashStatusColor(name: string): string {
   return '#4FC3F7'
 }
 
+/** 文件大小统一格式：≥1MB 显示 MB（一位小数），否则 KB（最小 1KB） */
+export function fmtSize(n: number): string {
+  return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'
+}
+
 export function fmtDashDate(v: unknown): string {
   if (typeof v !== 'number' || !isFinite(v)) return '—'
   const d = new Date(v)

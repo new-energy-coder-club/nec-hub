@@ -1,5 +1,6 @@
 // 域名分发：共享状态与业务逻辑，fetch 端点 / 提示文案 / 权限门控逐条对齐原 public/apps/domains/index.html
 import { reactive } from 'vue'
+import { confirmDialog } from '@shared/ui/feedback'
 
 export interface DomainRow {
   fqdn: string
@@ -100,7 +101,7 @@ export async function boot() {
 /* ========== 释放 / 重试同步 ========== */
 
 export async function delDomain(sub: string) {
-  if (!confirm(`确定释放 ${sub} 域名？DNS 记录将一并删除。`)) return
+  if (!(await confirmDialog(`确定释放 ${sub} 域名？DNS 记录将一并删除。`))) return
   try {
     await api('/api/domains/delete', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subdomain: sub }) })
     toast('已释放')

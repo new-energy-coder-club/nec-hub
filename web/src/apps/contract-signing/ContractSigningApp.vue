@@ -21,9 +21,9 @@ function onSubmitted(approvalId: string) {
   store.listTick++
 }
 
-/** 遮罩 / × 关闭：表单有改动时确认（SubmitForm.confirmClose 暴露） */
-function onDrawerCloseRequest() {
-  const ok = submitFormRef.value?.confirmClose?.() ?? true
+/** 遮罩 / × 关闭：表单有改动时确认（SubmitForm.confirmClose 暴露，异步内联确认框） */
+async function onDrawerCloseRequest() {
+  const ok = submitFormRef.value ? await submitFormRef.value.confirmClose() : true
   if (ok) store.drawerOpen = false
 }
 

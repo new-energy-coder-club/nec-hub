@@ -9,6 +9,7 @@ import { auth } from '@shared/auth'
 import { HOME_PROMPT } from '@shared/prompts'
 import { copyText } from '@shared/api'
 import { todoBar, loadTodos } from '@portal/composables/useBanners'
+import { toast, confirmDialog } from '@shared/ui/feedback'
 import HomeWidgetApps from './home/HomeWidgetApps.vue'
 import HomeWidgetTasks from './home/HomeWidgetTasks.vue'
 import HomeWidgetReimburse from './home/HomeWidgetReimburse.vue'
@@ -93,13 +94,13 @@ async function loadHome() {
 }
 
 async function resetHome() {
-  if (!confirm('恢复默认首页？你的个人布局将被删除（回落到组默认/全员默认）。')) return
+  if (!(await confirmDialog('恢复默认首页？你的个人布局将被删除（回落到组默认/全员默认）。'))) return
   try {
     const resp = await fetch('/api/home/reset', { method: 'POST' })
     if (!resp.ok) throw new Error('HTTP ' + resp.status)
     await loadHome()
   } catch (e: any) {
-    alert('恢复默认失败：' + (e.message || e))
+    toast('恢复默认失败：' + (e.message || e))
   }
 }
 
@@ -108,7 +109,7 @@ async function removeHomeWidget(i: number) {
   const w = widgets.value[i]
   if (!w) return
   const rest = widgets.value.filter((_, j) => j !== i)
-  if (!rest.length) { alert('至少保留一个组件。'); return }
+  if (!rest.length) { toast('至少保留一个组件。'); return }
   try {
     const resp = await fetch('/api/home', {
       method: 'POST',
@@ -119,7 +120,7 @@ async function removeHomeWidget(i: number) {
     if (!resp.ok || data.error) throw new Error(data.error || ('HTTP ' + resp.status))
     await loadHome()
   } catch (e: any) {
-    alert('移除失败：' + (e.message || e))
+    toast('移除失败：' + (e.message || e))
   }
 }
 
@@ -169,7 +170,7 @@ async function saveHomeOrder() {
     const data = await resp.json().catch(() => ({}))
     if (!resp.ok || data.error) throw new Error(data.error || ('HTTP ' + resp.status))
   } catch (e: any) {
-    alert('排序保存失败：' + (e.message || e) + '，已恢复原顺序')
+    toast('排序保存失败：' + (e.message || e) + '，已恢复原顺序')
   }
   reordered = false
   await loadHome()

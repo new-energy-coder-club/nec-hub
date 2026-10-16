@@ -15,9 +15,26 @@ import { canSeeFinanceDetail, resolveUserRole } from "./auth/role";
 import { fetchFlowRecordsCached } from "./approvals/engine";
 import { APPROVAL_TYPES, getFlowsConfig, isApprover, type ApprovalType } from "./approvals/flows";
 import { fetchTableCached, getDashboardConfig } from "./dashboard";
-import { fieldNum, fieldText, fieldTs, findFieldKey, firstFieldText, getTenantAccessToken, type BitableRecord } from "./feishu/bitable";
+import { fieldNum, fieldText, fieldTs, firstFieldText, getTenantAccessToken, type BitableRecord } from "./feishu/bitable";
+import { FEISHU_API } from "./feishu/client";
+import {
+  APPROVAL_APPLICANT_PATTERNS,
+  APPROVAL_ID_PATTERNS,
+  APPROVAL_STATUS_PATTERNS,
+  COMPLIANCE_PUBLISH_AT_PATTERNS,
+  FINANCE_AMOUNT_PATTERNS,
+  FINANCE_APPLICANT_PATTERNS,
+  FINANCE_FLOW_STATUS_PATTERNS,
+  FINANCE_ITEM_PATTERNS,
+  OPEN_ID_PATTERNS,
+  TASK_DEADLINE_PATTERNS,
+  TASK_OWNER_PATTERNS,
+  TASK_STATUS_PATTERNS,
+  TASK_TITLE_PATTERNS,
+  findFieldKey,
+} from "./shared/bitable-fields";
 import { json } from "./shared/http";
-import { applyRenewedSession, resolveSession } from "./shared/session";
+import { resolveSession } from "./shared/session";
 import { buildRecordLink } from "./validation/service";
 import type { UserRole } from "./auth/role";
 
@@ -29,8 +46,6 @@ const TASK_DONE_RE = /完成|已完|完结|done|取消|cancel|关闭|close|drop/
 
 /** 报销待处理状态（待确认/进行中等） */
 const FINANCE_PENDING_RE = /待确认|待审核|待审批|待处理|进行中|审批中|提交/;
-
-const FEISHU_API = "https://open.feishu.cn/open-apis";
 
 export interface TodoTask {
   title: string;
@@ -92,12 +107,12 @@ async function buildLocalApprovalTodos(
     const res = await fetchFlowRecordsCached(env, type);
     if (!res) continue;
     const { records, base, tableId } = res;
-    const statusKey = findFieldKey(records, [/^状态$/, /状态/, /进度/]);
+    const statusKey = findFieldKey(records, APPROVAL_STATUS_PATTERNS);
     if (!statusKey) continue;
-    const idKey = findFieldKey(records, [/^申请单号$/, /申请单号/, /单号/]);
-    const openIdKey = findFieldKey(records, [/open_?id/i]);
-    const applicantKey = findFieldKey(records, [/^申请人$/, /申请人/, /报销人/]);
-    const deadlineKey = type === "compliance" ? findFieldKey(records, [/计划发布时间/, /发布时间/]) : null;
+    const idKey = findFieldKey(records, APPROVAL_ID_PATTERNS);
+    const openIdKey = findFieldKey(records, OPEN_ID_PATTERNS);
+    const applicantKey = findFieldKey(records, APPROVAL_APPLICANT_PATTERNS);
+    const deadlineKey = type === "compliance" ? findFieldKey(records, COMPLIANCE_PUBLISH_AT_PATTERNS) : null;
     const seeAll = isApprover(role, cfg[type].approvers);
     for (const r of records) {
       if (fieldText(r.fields[statusKey]) !== "审批中") continue;
@@ -137,10 +152,10 @@ function personMatches(raw: string, name: string): boolean {
 }
 
 function buildTodoTasks(records: BitableRecord[], userName: string, base: string, tableId: string): TodoTask[] {
-  const statusKey = findFieldKey(records, [/^状态/, /状态/, /进度/, /status/i]);
-  const ownerKey = findFieldKey(records, [/负责人/, /执行人/, /owner/i, /assignee/i]);
-  const titleKey = findFieldKey(records, [/^任务/, /任务/, /事项/, /标题/, /title/i]);
-  const deadlineKey = findFieldKey(records, [/截止/, /deadline/i, /完成时间/, /日期/]);
+  const statusKey = findFieldKey(records, TASK_STATUS_PATTERNS);
+  const ownerKey = findFieldKey(records, TASK_OWNER_PATTERNS);
+  const titleKey = findFieldKey(records, TASK_TITLE_PATTERNS);
+  const deadlineKey = findFieldKey(records, TASK_DEADLINE_PATTERNS);
   if (!ownerKey || !deadlineKey) return [];
   // 今天 00:00（本地时区）：截止 < 今天零点才算逾期（今天到期的还不算逾期）
   const today = new Date();
@@ -173,10 +188,10 @@ function buildTodoFinance(
   base: string,
   tableId: string,
 ): { count: number; items: TodoFinanceItem[] } {
-  const statusKey = findFieldKey(records, [/^状态/, /流程/, /进度/, /status/i]);
-  const itemKey = findFieldKey(records, [/^事项/, /事项/, /用途/, /摘要/]);
-  const amountKey = findFieldKey(records, [/报销金额/, /^金额/, /金额/, /费用/, /amount/i]);
-  const applicantKey = findFieldKey(records, [/^申请人$/, /申请人/, /报销人/, /经手人/, /提交人/]);
+  const statusKey = findFieldKey(records, FINANCE_FLOW_STATUS_PATTERNS);
+  const itemKey = findFieldKey(records, FINANCE_ITEM_PATTERNS);
+  const amountKey = findFieldKey(records, FINANCE_AMOUNT_PATTERNS);
+  const applicantKey = findFieldKey(records, FINANCE_APPLICANT_PATTERNS);
   if (!statusKey) return { count: 0, items: [] };
   const items: TodoFinanceItem[] = [];
   for (const r of records) {
@@ -300,10 +315,10 @@ export async function handleTodos(request: Request, env: Env, ctx?: ExecutionCon
   const session = await resolveSession(env, request, ctx);
   if (!session) return json({ error: "请先登录" }, 401);
   try {
-    return applyRenewedSession(json(await buildTodos(env, session.user, ctx)), session.renewed);
+    return json(await buildTodos(env, session.user, ctx));
   } catch (err) {
     // 聚合失败不 500：返回空待办 + 错误说明，门户待办条自动隐藏
-    return applyRenewedSession(json({
+    return json({
       generatedAt: new Date().toISOString(),
       cached: false,
       total: 0,
@@ -312,6 +327,6 @@ export async function handleTodos(request: Request, env: Env, ctx?: ExecutionCon
       approvals: { count: 0, items: [] },
       approvals_local: { count: 0, items: [] },
       warnings: [`待办聚合失败：${err instanceof Error ? err.message : String(err)}`],
-    } satisfies TodosPayload), session.renewed);
+    } satisfies TodosPayload);
   }
 }

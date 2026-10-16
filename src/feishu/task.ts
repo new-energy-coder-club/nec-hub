@@ -2,7 +2,7 @@
  * 飞书任务 Task v2 API 封装（user_access_token 身份，读取当前用户任务）
  */
 
-const FEISHU_API = "https://open.feishu.cn/open-apis";
+import { FEISHU_API } from "./client";
 
 export interface FeishuTask {
   guid: string;

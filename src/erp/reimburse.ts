@@ -6,18 +6,19 @@
  *   PUT  /api/erp/reimburse/payee       → 保存我的收款账户（D1 payees，按 open_id upsert）
  *   POST /api/erp/reimburse/submit      → 整单提交：SOP 校验 → 审批引擎写底表 → D1 单据快照
  *   GET  /api/erp/reimburse/docs/mine   → 我的单据列表（D1，降序 20 条）
- *   GET  /api/erp/reimburse/manage      → 报销单据台账（队长/财务，全量 + q 过滤/排序/分页）
+ *   GET  /api/erp/reimburse/manage      → 报销单据台账（队长/财务，SQL 层 q 过滤/排序/分页）
  *   GET  /api/erp/reimburse/docs/<单号> → 单据详情（本人或队长/财务），供查看/复制
  *
  * 分工：审批状态以飞书底表为准（引擎写）；D1 只存 ERP 整单快照（明细行/收款/附件 key），
+ * status 由审批引擎 onStatusChange 钩子回写对齐（syncReimburseDocStatus），
  * 附件二进制仍在 R2 receipts/ 前缀（/api/approvals/upload 上传）。
  */
 
-import { canSeeFinanceDetail, resolveUserRole } from "../auth/role";
-import { ApprovalError } from "../approvals/flows";
+import { canSeeFinanceDetail, ROLES, resolveUserRole } from "../auth/role";
+import { ApprovalError, type ApprovalType } from "../approvals/flows";
 import { submitApprovalCore } from "../approvals/engine";
 import { json } from "../shared/http";
-import { applyRenewedSession, resolveSession } from "../shared/session";
+import { resolveSession } from "../shared/session";
 
 export interface ErpLine {
   cat: string;
@@ -159,6 +160,20 @@ export async function handleErpReimburse(
   return null;
 }
 
+/**
+ * 审批状态回写 D1 快照（审批引擎 runApprovalAction 的 onStatusChange 钩子）：
+ * 仅报销流，把 reimburse_docs.status 对齐到底表最新状态；D1 无此单号时静默 0 行更新。
+ */
+export async function syncReimburseDocStatus(
+  env: Env,
+  change: { type: ApprovalType; appId: string; status: string },
+): Promise<void> {
+  if (change.type !== "reimburse") return;
+  await env.ERP_DB.prepare("UPDATE reimburse_docs SET status = ? WHERE application_id = ?")
+    .bind(change.status, change.appId)
+    .run();
+}
+
 /** 费用项目目录 + 我的收款账户 */
 async function handleMeta(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
   const session = await resolveSession(env, request, ctx);
@@ -169,7 +184,7 @@ async function handleMeta(request: Request, env: Env, ctx?: ExecutionContext): P
       .bind(session.user.open_id)
       .first<ErpPayee>(),
   ]);
-  return applyRenewedSession(json({ items: itemsRes.results ?? [], payee: payee ?? null }), session.renewed);
+  return json({ items: itemsRes.results ?? [], payee: payee ?? null });
 }
 
 /** 保存我的收款账户（下次自动带出） */
@@ -179,7 +194,7 @@ async function handlePutPayee(request: Request, env: Env, ctx?: ExecutionContext
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const p = payeeOf(body);
   if (p.account_no && !/^[\dA-Za-z -]{4,40}$/.test(p.account_no)) {
-    return applyRenewedSession(json({ error: "收款账号格式不正确（4-40 位数字/字母）" }, 400), session.renewed);
+    return json({ error: "收款账号格式不正确（4-40 位数字/字母）" }, 400);
   }
   await env.ERP_DB.prepare(
     "INSERT INTO payees (open_id, method, account_name, account_no, bank, updated_at) VALUES (?, ?, ?, ?, ?, ?) " +
@@ -187,7 +202,7 @@ async function handlePutPayee(request: Request, env: Env, ctx?: ExecutionContext
   )
     .bind(session.user.open_id, p.method, p.account_name, p.account_no, p.bank, Date.now())
     .run();
-  return applyRenewedSession(json({ ok: true, payee: p }), session.renewed);
+  return json({ ok: true, payee: p });
 }
 
 /** 整单提交：SOP 校验 → 审批引擎（写底表 + 群通知）→ D1 快照 */
@@ -195,7 +210,7 @@ async function handleSubmit(request: Request, env: Env, ctx?: ExecutionContext):
   const session = await resolveSession(env, request, ctx);
   if (!session) return json({ error: "unauthorized" }, 401);
   const role = await resolveUserRole(env, session.user, ctx);
-  if (role.role === "external") return applyRenewedSession(json({ error: "forbidden", role: role.role }, 403), session.renewed);
+  if (role.role === "external") return json({ error: "forbidden", role: role.role }, 403);
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const lines = (Array.isArray(body.lines) ? body.lines : []).map(lineOf).slice(0, 50);
@@ -208,7 +223,7 @@ async function handleSubmit(request: Request, env: Env, ctx?: ExecutionContext):
     .slice(0, 10);
 
   const errors = validateErpDoc(lines, noinv, attachments.length);
-  if (errors.length) return applyRenewedSession(json({ error: "SOP 校验未通过", detail: errors }, 400), session.renewed);
+  if (errors.length) return json({ error: "SOP 校验未通过", detail: errors }, 400);
 
   const fields = buildApprovalFields(lines, note, noinv, attachments);
   try {
@@ -219,9 +234,9 @@ async function handleSubmit(request: Request, env: Env, ctx?: ExecutionContext):
     )
       .bind(result.application_id, session.user.open_id, session.user.name, JSON.stringify(payload), result.status, Date.now())
       .run();
-    return applyRenewedSession(json(result), session.renewed);
+    return json(result);
   } catch (err) {
-    if (err instanceof ApprovalError) return applyRenewedSession(json({ error: err.message }, err.status), session.renewed);
+    if (err instanceof ApprovalError) return json({ error: err.message }, err.status);
     throw err;
   }
 }
@@ -241,11 +256,13 @@ async function handleDocsMine(request: Request, env: Env, ctx?: ExecutionContext
     created_at: r.created_at,
     ...parseDocSummary(r.payload_json),
   }));
-  return applyRenewedSession(json({ docs }), session.renewed);
+  return json({ docs });
 }
 
 /**
- * 报销单据台账（队长/财务）：只读全量快照，内存过滤（编号/明细事项）→ created_at 排序 → 分页。
+ * 报销单据台账（队长/财务）：SQL 层 WHERE/LIMIT/OFFSET（D1 下推），不再全表读出。
+ * q 下推为 application_id / payload_json 的 LIKE 子串匹配（明细事项序列化在 payload_json 里，
+ * 与原内存过滤的「编号或明细子串」语义最接近；可能额外命中备注/收款字段，属可接受的超集）。
  * 参数：page(默认1) / pageSize(默认20,上限50) / q(trim 后编号或明细子串) / sort(desc 默认|asc)。
  */
 async function handleManage(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
@@ -253,7 +270,7 @@ async function handleManage(request: Request, env: Env, ctx?: ExecutionContext):
   if (!session) return json({ error: "unauthorized" }, 401);
   const role = await resolveUserRole(env, session.user, ctx);
   if (!canSeeFinanceDetail(role)) {
-    return applyRenewedSession(json({ error: "forbidden", hint: "仅队长/财务可查看报销单据台账" }, 403), session.renewed);
+    return json({ error: "forbidden", hint: "仅队长/财务可查看报销单据台账" }, 403);
   }
 
   const url = new URL(request.url);
@@ -262,25 +279,26 @@ async function handleManage(request: Request, env: Env, ctx?: ExecutionContext):
   const q = (url.searchParams.get("q") ?? "").trim();
   const sort = url.searchParams.get("sort") === "asc" ? "asc" : "desc";
 
-  const res = await env.ERP_DB.prepare(
-    "SELECT application_id, open_id, applicant, payload_json, status, created_at FROM reimburse_docs",
-  ).all<DocRow>();
+  // LIKE 通配符转义（ESCAPE '\'），防止 q 里的 % _ 被当成通配符
+  const like = `%${q.replace(/[\\%_]/g, (c) => "\\" + c)}%`;
+  const where = q ? "WHERE application_id LIKE ? ESCAPE '\\' OR payload_json LIKE ? ESCAPE '\\'" : "";
+  const binds: unknown[] = q ? [like, like] : [];
 
-  const rows = (res.results ?? []).map((r) => {
+  const countRow = await env.ERP_DB.prepare(`SELECT COUNT(*) AS n FROM reimburse_docs ${where}`)
+    .bind(...binds)
+    .first<{ n: number }>();
+  const total = Number(countRow?.n ?? 0);
+
+  const res = await env.ERP_DB.prepare(
+    "SELECT application_id, open_id, applicant, payload_json, status, created_at FROM reimburse_docs " +
+      `${where} ORDER BY created_at ${sort === "asc" ? "ASC" : "DESC"} LIMIT ? OFFSET ?`,
+  )
+    .bind(...binds, pageSize, (page - 1) * pageSize)
+    .all<DocRow>();
+
+  // 每行 payload_json 只解析一次（parseDocSummary 内部单次 JSON.parse）
+  const docs = (res.results ?? []).map((r) => {
     const summary = parseDocSummary(r.payload_json);
-    const searchText =
-      r.application_id +
-      " " +
-      parsePayloadLines(r.payload_json)
-        .map((l) => `${l.cat} ${l.item}`)
-        .join(" ");
-    return { ...r, ...summary, searchText };
-  });
-  const filtered = q ? rows.filter((r) => r.searchText.includes(q)) : rows;
-  filtered.sort((a, b) => (sort === "asc" ? a.created_at - b.created_at : b.created_at - a.created_at));
-  const total = filtered.length;
-  const start = (page - 1) * pageSize;
-  const docs = filtered.slice(start, start + pageSize).map((r) => {
     const paidDone = r.status === "已打款" || r.status === "已完成";
     return {
       application_id: r.application_id,
@@ -288,14 +306,14 @@ async function handleManage(request: Request, env: Env, ctx?: ExecutionContext):
       status: r.status,
       created_at: r.created_at,
       submitted_at: r.created_at,
-      title: r.firstItem || "未填事项",
-      lines: r.lines,
-      total: r.total,
-      paid: paidDone ? r.total : null,
+      title: summary.firstItem || "未填事项",
+      lines: summary.lines,
+      total: summary.total,
+      paid: paidDone ? summary.total : null,
       handler: r.status === "审批中" ? "队长/财务审核" : r.applicant,
     };
   });
-  return applyRenewedSession(json({ docs, total, page, pageSize }), session.renewed);
+  return json({ docs, total, page, pageSize });
 }
 
 /** 单据详情：本人或队长/财务可查（复制为新单 / 查看附件用） */
@@ -307,18 +325,18 @@ async function handleDocDetail(request: Request, env: Env, appId: string, ctx?: 
   )
     .bind(appId)
     .first<DocRow>();
-  if (!row) return applyRenewedSession(json({ error: "单据不存在" }, 404), session.renewed);
+  if (!row) return json({ error: "单据不存在" }, 404);
   if (row.open_id !== session.user.open_id) {
     const role = await resolveUserRole(env, session.user, ctx);
-    if (!/队长|财务/.test(role.role)) {
-      return applyRenewedSession(json({ error: "forbidden", hint: "仅本人或队长/财务可查看单据详情" }, 403), session.renewed);
+    if (!ROLES.FINANCE_MANAGER.test(role.role)) {
+      return json({ error: "forbidden", hint: "仅本人或队长/财务可查看单据详情" }, 403);
     }
   }
-  return applyRenewedSession(json({
+  return json({
     application_id: row.application_id,
     applicant: row.applicant,
     status: row.status,
     created_at: row.created_at,
     payload: JSON.parse(row.payload_json),
-  }), session.renewed);
+  });
 }

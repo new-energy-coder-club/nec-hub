@@ -4,6 +4,7 @@
 import { vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
 import type { DrawingReviewConfig } from "../drawing-review/types";
+import { mockGetRecordResponse, mockSearchResponse } from "./bitable-search-mock";
 
 export const DR_TABLES = {
   reviews: "tblRev",
@@ -79,6 +80,12 @@ export function createDrMock(opts: DrMockOptions = {}): DrMockCtx {
     }
     const method = (init?.method ?? "GET").toUpperCase();
     const items = (tables[tableId] ??= []);
+    if (method === "POST" && recordId === "search") {
+      return mockSearchResponse(items, init?.body ?? "{}");
+    }
+    if (method === "GET" && recordId) {
+      return mockGetRecordResponse(items, recordId);
+    }
     if (method === "GET") {
       return jsonResp({ code: 0, data: { items, has_more: false } });
     }

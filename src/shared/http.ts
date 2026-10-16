@@ -9,3 +9,12 @@ export function json(data: unknown, status = 200): Response {
     headers: { "content-type": "application/json; charset=utf-8" },
   });
 }
+
+/** 解析 JSON 请求体；非法 JSON 返回 null（调用方统一回 400「请求体必须是 JSON」） */
+export async function readJson<T>(request: Request): Promise<T | null> {
+  try {
+    return (await request.json()) as T;
+  } catch {
+    return null;
+  }
+}

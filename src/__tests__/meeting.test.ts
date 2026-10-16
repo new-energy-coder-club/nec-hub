@@ -142,14 +142,6 @@ describe("schedule_meeting", () => {
     expect(res.content[0].text).toContain("路人甲");
   });
 
-  it("provider=tencent → 明确提示未接入", async () => {
-    const { env } = kvBackedEnv();
-    mockFeishu(ROUTES);
-    await expect(
-      toolScheduleMeeting({ title: "t", start: "2026-10-16 10:00", provider: "tencent", user_token: "u" }, env, false),
-    ).rejects.toThrow("腾讯会议");
-  });
-
   it("结束时间早于开始时间 → 报错", async () => {
     const { env } = kvBackedEnv();
     mockFeishu(ROUTES);

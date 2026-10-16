@@ -10,9 +10,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
 import { evalFlowFields, getFlowsConfig, DEFAULT_FLOWS } from "../approvals/flows";
+import { consumeNextSerial, serialKey, type SerialCounter } from "../approvals/core/serial";
 import { runApprovalAction, submitApprovalCore } from "../approvals/engine";
 import { handleApprovalMine, handleApprovalPending, handleApprovalSubmit, handleApprovalUpload, toolConfigFlows, toolSendNotice } from "../approvals/handlers";
 import { notifyFeishu } from "../feishu/bot";
+import { mockGetRecordResponse, mockSearchResponse } from "./bitable-search-mock";
 
 const BASE = "appMockBase";
 const TBL_REIMBURSE = "tblReimburse";
@@ -72,6 +74,8 @@ function createCtx(opts: { webhookFailTimes?: number; withWebhook?: boolean } = 
     const [, , tableId, recordId] = m;
     const method = (init?.method ?? "GET").toUpperCase();
     const items = (tables[tableId] ??= []);
+    if (method === "POST" && recordId === "search") return mockSearchResponse(items, init?.body ?? "{}");
+    if (method === "GET" && recordId) return mockGetRecordResponse(items, recordId);
     if (method === "GET") return jsonResp({ code: 0, data: { items, has_more: false } });
     if (method === "POST" && !recordId) {
       const fields = JSON.parse(init!.body!).fields;
@@ -126,6 +130,34 @@ function sessionReq(url: string, sid: string, body?: unknown): Request {
 
 beforeEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe("consumeNextSerial（KV 单号计数器）", () => {
+  function mapCounter() {
+    const m = new Map<string, string>();
+    const counter: SerialCounter = {
+      get: async (k) => m.get(k) ?? null,
+      put: async (k, v) => { m.set(k, v); },
+    };
+    return { m, counter };
+  }
+
+  it("首单 0001 逐次递增；格式 <prefix>-<年>-<4位序号> 且按 前缀+年 分桶", async () => {
+    const { m, counter } = mapCounter();
+    const year = new Date().getFullYear();
+    expect(await consumeNextSerial(counter, "BX")).toBe(`BX-${year}-0001`);
+    expect(await consumeNextSerial(counter, "BX")).toBe(`BX-${year}-0002`);
+    expect(m.get(serialKey("BX", year))).toBe("2");
+    // 不同前缀互不影响
+    expect(await consumeNextSerial(counter, "MECH")).toBe(`MECH-${year}-0001`);
+  });
+
+  it("计数器值损坏（非数字）时从 0001 重新计数", async () => {
+    const { m, counter } = mapCounter();
+    const year = new Date().getFullYear();
+    m.set(serialKey("BX", year), "oops");
+    expect(await consumeNextSerial(counter, "BX")).toBe(`BX-${year}-0001`);
+  });
 });
 
 describe("evalFlowFields（声明式字段校验）", () => {
@@ -184,12 +216,12 @@ describe("submitApprovalCore（发起审批）", () => {
     ).rejects.toThrow("字段校验未通过");
   });
 
-  it("MCP 代提交需 applicant_name；单号随已有记录递增", async () => {
+  it("MCP 代提交需 applicant_name；单号随 KV 计数器递增（不依赖表记录数）", async () => {
     const ctx = createCtx();
     await expect(
       submitApprovalCore(ctx.env, { type: "reimburse", fields: goodFields, user: null, role: null, source: "mcp" }),
     ).rejects.toThrow("申请人姓名为空");
-    ctx.seed(TBL_REIMBURSE, { 申请单号: "BX-2026-0001", 状态: "已通过" });
+    ctx.kv.set(`serial:BX:${new Date().getFullYear()}`, "1"); // BX-<年>-0001 已占用
     const res = await submitApprovalCore(ctx.env, { type: "reimburse", fields: goodFields, user: null, role: null, applicantName: "李四", source: "mcp" });
     expect(res.application_id).toMatch(/-0002$/);
   });
@@ -372,6 +404,31 @@ describe("runApprovalAction（状态机）", () => {
     await expect(
       runApprovalAction(ctx.env, { type: "reimburse", appId: "BX-2026-9999", action: "approve", user: CAPTAIN, role: CAPTAIN_ROLE }),
     ).rejects.toThrow("未找到申请单号");
+  });
+
+  it("onStatusChange：流转成功触发回调；幂等路径不触发；回调抛错不阻断动作", async () => {
+    const ctx = createCtx();
+    const { appId } = await seedPending(ctx);
+    const calls: string[] = [];
+    const onStatusChange = async (_env: Env, change: { status: string }) => { calls.push(change.status); };
+
+    const res = await runApprovalAction(ctx.env, { type: "reimburse", appId, action: "approve", user: CAPTAIN, role: CAPTAIN_ROLE, onStatusChange });
+    expect(res.status).toBe("已通过");
+    expect(calls).toEqual(["已通过"]);
+
+    // 幂等：目标状态=当前状态直接返回，不触发回调
+    const again = await runApprovalAction(ctx.env, { type: "reimburse", appId, action: "approve", user: CAPTAIN, role: CAPTAIN_ROLE, onStatusChange });
+    expect(again.status).toBe("已通过");
+    expect(calls).toEqual(["已通过"]);
+
+    // 回调抛错：动作照常成功，仅 console.error 留痕
+    ctx.seed(TBL_REIMBURSE, { 申请单号: "BX-2026-0002", 状态: "审批中", 申请人: "张三" });
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const boom = async () => { throw new Error("callback down"); };
+    const res2 = await runApprovalAction(ctx.env, { type: "reimburse", appId: "BX-2026-0002", action: "approve", user: CAPTAIN, role: CAPTAIN_ROLE, onStatusChange: boom });
+    expect(res2.status).toBe("已通过");
+    expect(spy.mock.calls.some((c) => String(c[0]).includes("onStatusChange"))).toBe(true);
+    spy.mockRestore();
   });
 });
 

@@ -1,34 +1,42 @@
 /**
- * 报销域：提交（上传单据/付款凭证 → R2；按字段类型写入财务报销表）
- *        + 审批动作（approve / reject / pay，角色门禁 + 状态机，对齐 main 引擎语义）
- *        + 我的报销列表（GET /api/reimburse/mine）
+ * 报销旧端点兼容壳：/api/reimburse 系列 → 委托 approvals 引擎（flow key "reimburse"）。
+ *
+ * 状态机/写表/通知全部由引擎承担（runApprovalAction / submitApprovalCore），本文件只保留：
+ *   - POST /api/reimburse                → 表单校验 + 凭证 R2 存档 + submitApprovalCore
+ *   - POST /api/reimburse/<单号>/<action> → 角色门禁 + runApprovalAction（approve/reject/pay）
+ *   - GET  /api/reimburse/mine           → 纯读列表（数据源 = 引擎 reimburse 底表）
+ * 对外请求/响应形状与旧实现一致，前端与脚本零改动。
  */
 
 import {
-  bitableRecordLink,
-  createBitableRecord,
   fieldText,
   fieldTs,
-  findFieldKey,
   getTenantAccessToken,
-  listBitableFields,
-  listBitableRecords,
-  matchField,
-  updateBitableRecord,
-  type BitableRecord,
+  queryBitableRecords,
 } from "./feishu/bitable";
-import { notifyFeishu } from "./feishu/notify";
-import { getDashboardConfig } from "./dashboard";
 import { canSeeFinanceDetail, resolveUserRole } from "./auth/role";
+import { ApprovalError, getFlowBase, getFlowsConfig } from "./approvals/flows";
+import { runApprovalAction, submitApprovalCore, type ApprovalAction } from "./approvals/engine";
+import { syncReimburseDocStatus } from "./erp/reimburse";
+import {
+  FINANCE_AMOUNT_PATTERNS,
+  FINANCE_ITEM_PATTERNS,
+  REIMBURSE_APPROVER_PATTERNS,
+  REIMBURSE_COMMENT_PATTERNS,
+  REIMBURSE_ID_PATTERNS,
+  REIMBURSE_OPEN_ID_PATTERNS,
+  REIMBURSE_STATUS_PATTERNS,
+  REIMBURSE_SUBMIT_TIME_PATTERNS,
+  findFieldKey,
+} from "./shared/bitable-fields";
 import { json } from "./shared/http";
 import { resolveSession } from "./shared/session";
 
 /**
  * POST /api/reimburse（multipart/form-data，需登录）
- * 字段：item / amount / date(YYYY-MM-DD) / note / receipt(单据文件) / payment(付款凭证文件)
- * 流程：文件 → R2 receipts/ 存档；再按字段名模糊匹配写入飞书「财务报销」表并清看板缓存。
- * 表的字段类型不同（日期 vs 文本），先读 fields 元数据按 ui_type 序列化。
- * 提交即进入"审批中"状态并生成申请单号 BX-<年>-<序号4位>。
+ * 字段：item / amount / date(YYYY-MM-DD) / note / invno / receipt(单据文件) / payment(付款凭证文件)
+ * 流程：文件 → R2 receipts/ 存档；再委托审批引擎写入 reimburse 底表（状态=审批中，
+ * 单号 BX-<年>-<序号4位> 走 core/serial.ts）。引擎侧失败不阻断已存档凭证，降级为 warning 返回。
  */
 export async function handleReimburse(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
   const session = await resolveSession(env, request, ctx);
@@ -68,91 +76,40 @@ export async function handleReimburse(request: Request, env: Env, ctx?: Executio
 
   const result: Record<string, unknown> = { ok: true, files };
 
-  // 2. 写入财务报销表（字段名模糊匹配；写失败不影响已存档的凭证）
-  const cfg = await getDashboardConfig(env);
-  if (cfg?.tables.finance && env.FEISHU_APP_ID && env.FEISHU_APP_SECRET) {
-    try {
-      const token = await getTenantAccessToken(env);
-      const metas = await listBitableFields(token, cfg.base, cfg.tables.finance);
-      const record: Record<string, unknown> = {};
-
-      const fItem = matchField(metas, [/^事项/, /事项/, /用途/, /摘要/], /Text/i);
-      const fInvno = invno ? matchField(metas, [/发票号/, /票号/, /invoice/i], /Text/i) : undefined;
-      if (fInvno) record[fInvno.field_name] = invno;
-      if (fItem) {
-        const suffix: string[] = [];
-        if (note) suffix.push(note);
-        if (invno && !fInvno) suffix.push("发票号 " + invno);
-        record[fItem.field_name] = suffix.length ? item + "（" + suffix.join("；") + "）" : item;
-      }
-      const fAmount = matchField(metas, [/报销金额/, /^金额/, /金额/, /费用/, /amount/i], /Number|Currency/i);
-      if (fAmount) record[fAmount.field_name] = amount;
-      const fDate = matchField(metas, [/报销时间/, /报销日期/, /^日期/, /日期/, /时间/, /^date/i]);
-      if (fDate) {
-        record[fDate.field_name] = /DateTime/i.test(fDate.ui_type)
-          ? Date.parse(dateStr + "T00:00:00+08:00")
-          : dateStr;
-      }
-      const fApplicant = matchField(metas, [/^申请人$/, /申请人/, /报销人/, /经手人/, /提交人/], /Text/i);
-      if (fApplicant) record[fApplicant.field_name] = session.user.name;
-      const fApplicantOid = matchField(metas, [/open[_ -]?id/i], /Text/i);
-      if (fApplicantOid) record[fApplicantOid.field_name] = session.user.open_id;
-      const fStatus = matchField(metas, [/^状态/, /状态/], /Text|Select/i);
-      if (fStatus) record[fStatus.field_name] = "审批中";
-      const fAppId = matchField(metas, [/^申请单号/, /申请单号/, /单号/], /Text/i);
-      if (fAppId) {
-        const existing = await listBitableRecords(token, cfg.base, cfg.tables.finance);
-        record[fAppId.field_name] = nextReimburseId(existing);
-      }
-      const fAttach = matchField(metas, [/凭证/, /单据/, /附件/, /票据/], /Text/i);
-      const keys = Object.values(files);
-      if (fAttach && keys.length) record[fAttach.field_name] = keys.join("\n");
-
-      if (Object.keys(record).length === 0) {
-        result.warning = "财务报销表未匹配到可写字段（事项/金额/报销时间），已仅存档凭证文件";
-      } else {
-        const created = await createBitableRecord(token, cfg.base, cfg.tables.finance, record);
-        result.recordId = created.record_id;
-        result.application_id = record[fAppId!.field_name];
-        result.status = "审批中";
-        await env.REGISTRY.delete("dashboard:cache:finance");
-        // 群通知（N-01）：webhook 未配置/发送失败均不阻断提交
-        if (result.application_id && result.recordId) {
-          await notifyFeishu(
-            env,
-            "reimburse",
-            `📋 新报销申请 ${result.application_id}（${session.user.name} ¥${amount}）`,
-            [`事项：${item}`, `金额：¥${amount}`, `报销时间：${dateStr}`, ...(note ? [`备注：${note}`] : [])].join("\n"),
-            bitableRecordLink(cfg.base, cfg.tables.finance, String(result.recordId)),
-          );
-        }
-      }
-    } catch (err) {
-      result.warning = "凭证已存档，但写入财务报销表失败：" + (err instanceof Error ? err.message : String(err));
-    }
-  } else {
-    result.warning = "未配置财务报销表或飞书应用，已仅存档凭证文件";
+  // 2. 委托审批引擎写 reimburse 底表（引擎失败降级 warning，与旧行为一致：凭证已存档）
+  try {
+    const role = await resolveUserRole(env, session.user, ctx);
+    // 报销时间折进事项文本：底表日期列类型不固定（DateTime/Text），文本最稳且信息不丢
+    const suffix = [`报销时间 ${dateStr}`, ...(note ? [note] : [])];
+    const fields: Record<string, unknown> = {
+      事项: `${item}（${suffix.join("；")}）`,
+      报销金额: amount,
+      发票号: invno,
+    };
+    const keys = Object.values(files);
+    if (keys.length) fields["发票照片"] = keys.join("\n");
+    const submitted = await submitApprovalCore(env, { type: "reimburse", fields, user: session.user, role, source: "portal" });
+    result.application_id = submitted.application_id;
+    result.status = submitted.status;
+    // 引擎已写 approval:map:<单号> → record_id，读回供旧前端提示「已写入财务报销表」
+    const map = (await env.REGISTRY.get(`approval:map:${submitted.application_id}`, "json")) as { record_id?: string } | null;
+    if (map?.record_id) result.recordId = map.record_id;
+    await env.REGISTRY.delete("dashboard:cache:finance");
+  } catch (err) {
+    result.warning =
+      err instanceof ApprovalError
+        ? err.message
+        : "凭证已存档，但写入财务报销表失败：" + (err instanceof Error ? err.message : String(err));
   }
   return json(result);
 }
 
-/** 申请单号：BX-<年>-<序号4位>（序号 = 现有记录数 + 1；并发下可能出现重号，由数据校验兜底） */
-function nextReimburseId(existing: BitableRecord[]): string {
-  const year = new Date().getFullYear();
-  const seq = String(existing.length + 1).padStart(4, "0");
-  return `BX-${year}-${seq}`;
-}
-
-/** 审批动作状态机：当前状态不符 → 409；已是目标状态 → 幂等返回 */
-const REIMBURSE_ACTIONS: Record<string, { from: string; to: string; needComment?: boolean }> = {
-  approve: { from: "审批中", to: "已通过" },
-  reject: { from: "审批中", to: "已驳回", needComment: true },
-  pay: { from: "已通过", to: "已打款" },
-};
+/** 旧端点支持的审批动作（引擎动作全集的子集） */
+const LEGACY_ACTIONS = ["approve", "reject", "pay"] as const;
 
 /**
  * POST /api/reimburse/<applicationId>/<action>，action ∈ approve | reject | pay
- * 仅队长/财务可执行；reject 必带 comment。
+ * 仅队长/财务可执行；reject 必带 comment。状态机委托 runApprovalAction（幂等 + 409 前置校验）。
  */
 export async function handleReimburseAction(
   request: Request,
@@ -163,8 +120,9 @@ export async function handleReimburseAction(
 ): Promise<Response> {
   const session = await resolveSession(env, request, ctx);
   if (!session) return json({ error: "请先登录" }, 401);
-  const spec = REIMBURSE_ACTIONS[action];
-  if (!spec) return json({ error: "未知动作：支持 approve | reject | pay" }, 400);
+  if (!(LEGACY_ACTIONS as readonly string[]).includes(action)) {
+    return json({ error: "未知动作：支持 approve | reject | pay" }, 400);
+  }
 
   const role = await resolveUserRole(env, session.user, ctx);
   if (!canSeeFinanceDetail(role)) {
@@ -172,80 +130,65 @@ export async function handleReimburseAction(
   }
 
   let comment = "";
-  if (spec.needComment) {
+  if (action === "reject") {
     const body = (await request.json().catch(() => ({}))) as { comment?: string };
     comment = String(body.comment ?? "").trim();
     if (!comment) return json({ error: "驳回必须填写审批意见（comment）" }, 400);
   }
 
-  const cfg = await getDashboardConfig(env);
-  if (!cfg?.tables.finance) return json({ error: "未配置财务报销表" }, 400);
-  const token = await getTenantAccessToken(env);
-  const records = await listBitableRecords(token, cfg.base, cfg.tables.finance);
-  const idKey = findFieldKey(records, [/^申请单号/, /申请单号/, /单号/]);
-  const rec = records.find(
-    (r) => idKey !== null && fieldText(r.fields[idKey]) === applicationId.trim(),
-  );
-  if (!rec) return json({ error: `找不到申请单 ${applicationId}` }, 404);
-
-  const statusKey = findFieldKey(records, [/^状态/, /状态/]);
-  if (!statusKey) return json({ error: "财务报销表缺少「状态」字段，无法执行审批动作" }, 500);
-  const current = fieldText(rec.fields[statusKey]);
-  if (current === spec.to) return json({ application_id: applicationId, status: spec.to }); // 幂等
-  if (current !== spec.from) {
-    return json({ application_id: applicationId, status: current, error: `状态不符：当前「${current}」，该动作要求「${spec.from}」` }, 409);
+  try {
+    const res = await runApprovalAction(env, {
+      type: "reimburse",
+      appId: applicationId.trim(),
+      action: action as ApprovalAction,
+      comment,
+      onStatusChange: syncReimburseDocStatus,
+      user: session.user,
+      role,
+    });
+    await env.REGISTRY.delete("dashboard:cache:finance");
+    return json({ application_id: applicationId, status: res.status });
+  } catch (err) {
+    if (err instanceof ApprovalError) {
+      // 409 冲突保留旧响应形状（application_id + 当前状态 + error）
+      if (err.status === 409) {
+        return json({ application_id: applicationId, status: err.info?.current, error: err.message }, 409);
+      }
+      return json({ error: err.message }, err.status);
+    }
+    throw err;
   }
-
-  const metas = await listBitableFields(token, cfg.base, cfg.tables.finance);
-  const updates: Record<string, unknown> = { [statusKey]: spec.to };
-  const fApprover = matchField(metas, [/^审批人$/, /审批人/, /审核人/], /Text/i);
-  if (fApprover) updates[fApprover.field_name] = session.user.name;
-  const fComment = matchField(metas, [/审批意见/, /^意见/, /意见/], /Text/i);
-  if (fComment && comment) updates[fComment.field_name] = comment;
-  const fDoneAt = matchField(metas, [/审批完成时间/, /完成时间/]);
-  if (fDoneAt) {
-    updates[fDoneAt.field_name] = /DateTime/i.test(fDoneAt.ui_type)
-      ? Date.now()
-      : new Date().toISOString();
-  }
-
-  await updateBitableRecord(token, cfg.base, cfg.tables.finance, rec.record_id, updates);
-  await env.REGISTRY.delete("dashboard:cache:finance");
-
-  // 群通知（N-01）：审批结果/状态变更推送；未配置 webhook 时静默降级
-  const link = bitableRecordLink(cfg.base, cfg.tables.finance, rec.record_id);
-  if (action === "approve" || action === "reject") {
-    await notifyFeishu(
-      env,
-      "reimburse",
-      action === "approve" ? `✅ 已通过 ${applicationId}` : `❌ 已驳回 ${applicationId}`,
-      `审批人：${session.user.name}${comment ? `\n审批意见：${comment}` : ""}`,
-      link,
-    );
-  } else {
-    await notifyFeishu(env, "reimburse", `📌 ${applicationId} 状态更新：${spec.to}`, `操作人：${session.user.name}`, link);
-  }
-  return json({ application_id: applicationId, status: spec.to });
 }
 
-/** GET /api/reimburse/mine：当前用户的报销申请（按提交时间倒序，最多 20 条） */
+/** GET /api/reimburse/mine：当前用户的报销申请（数据源 = 引擎 reimburse 底表，按提交时间倒序，最多 20 条） */
 export async function handleReimburseMine(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
   const session = await resolveSession(env, request, ctx);
   if (!session) return json({ error: "请先登录" }, 401);
-  const cfg = await getDashboardConfig(env);
-  if (!cfg?.tables.finance) return json({ records: [], hint: "未配置财务报销表" });
+  const flow = (await getFlowsConfig(env)).reimburse;
+  const base = flow.tableId ? await getFlowBase(env, flow) : "";
+  if (!flow.tableId || !base) return json({ records: [], hint: "未配置财务报销表" });
 
   const token = await getTenantAccessToken(env);
-  const records = await listBitableRecords(token, cfg.base, cfg.tables.finance);
-  const oidKey = findFieldKey(records, [/open[_ -]?id/i]);
+  // filter 下推按 open_id 只拉本人的单；search 失败回退全表扫描（match 保留字段名模糊匹配，语义不变）
+  const records = await queryBitableRecords(
+    token,
+    base,
+    flow.tableId,
+    [{ field_name: "申请人 open_id", operator: "is", value: [session.user.open_id] }],
+    (r, rs) => {
+      const k = findFieldKey(rs, REIMBURSE_OPEN_ID_PATTERNS);
+      return k !== null && fieldText(r.fields[k]) === session.user.open_id;
+    },
+  );
+  const oidKey = findFieldKey(records, REIMBURSE_OPEN_ID_PATTERNS);
   const mine = records.filter((r) => oidKey !== null && fieldText(r.fields[oidKey]) === session.user.open_id);
-  const idKey = findFieldKey(mine, [/^申请单号/, /申请单号/, /单号/]);
-  const statusKey = findFieldKey(mine, [/^状态/, /状态/]);
-  const timeKey = findFieldKey(mine, [/^提交时间/, /提交时间/]);
-  const itemKey = findFieldKey(mine, [/^事项/, /事项/, /用途/, /摘要/]);
-  const amountKey = findFieldKey(mine, [/报销金额/, /^金额/, /金额/, /费用/, /amount/i]);
-  const approverKey = findFieldKey(mine, [/^审批人$/, /审批人/, /审核人/]);
-  const commentKey = findFieldKey(mine, [/审批意见/, /^意见/, /意见/]);
+  const idKey = findFieldKey(mine, REIMBURSE_ID_PATTERNS);
+  const statusKey = findFieldKey(mine, REIMBURSE_STATUS_PATTERNS);
+  const timeKey = findFieldKey(mine, REIMBURSE_SUBMIT_TIME_PATTERNS);
+  const itemKey = findFieldKey(mine, FINANCE_ITEM_PATTERNS);
+  const amountKey = findFieldKey(mine, FINANCE_AMOUNT_PATTERNS);
+  const approverKey = findFieldKey(mine, REIMBURSE_APPROVER_PATTERNS);
+  const commentKey = findFieldKey(mine, REIMBURSE_COMMENT_PATTERNS);
 
   const sorted = [...mine].sort((a, b) => {
     const ta = timeKey ? (fieldTs(a.fields[timeKey]) ?? 0) : 0;

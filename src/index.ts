@@ -24,6 +24,7 @@
  *   GET  /api/my-tasks    → 我的任务（绑定飞书任务后 Task v2 同步拉取，KV my-tasks:<open_id> 5 分钟缓存，?refresh=1 强刷）
  *   POST /api/my-tasks/unbind → 解绑飞书任务（清授权 token 与缓存）
  *   GET  /api/validate    → 数据校验触发（FE-05，?scope=mine|all，登录门禁）
+ *   POST /api/reports/weekly/run → 团队周报手动触发（队长/组长；cron 每周一 00:16 UTC 自动推送飞书群）
  *   POST /auth/feishu     → 飞书 code 兑换用户信息 + 签发中台会话（MES 免登与本门户登录共用）
  *   POST /auth/logout     → 登出（销毁会话）
  *   GET  /api/repos       → NEC 开源仓库列表（GitHub org + KV 1 小时缓存）
@@ -64,6 +65,8 @@ declare global {
     GITHUB_TOKEN?: string;
     /** Gitee API（/api/repos 仓库列表用，可选；匿名 60 次/小时，配置后限额更高） */
     GITEE_TOKEN?: string;
+    /** Gitee 账号（/api/repos 数据源之一，可选；默认 darrenpig，wrangler.jsonc vars 覆盖） */
+    GITEE_USER?: string;
     /** GitHub Webhook secret（/api/hooks/github 验签用；未配置时拒绝接收推送） */
     GITHUB_WEBHOOK_SECRET?: string;
     /** 飞书群自定义机器人 webhook（FE-05 每周校验摘要推送 + 图纸评审流程通知/阻塞告警；未配置则跳过推送不报错） */
@@ -86,6 +89,9 @@ declare global {
     /** 域名分发系统申请/释放公示（可选；未配置回退 FEISHU_BOT_WEBHOOK） */
     FEISHU_BOT_WEBHOOK_DOMAINS?: string;
     FEISHU_BOT_WEBHOOK_DOMAINS_SECRET?: string;
+    /** 团队周报群机器人 webhook（可选，reports/weekly 用；未配置回退 FEISHU_BOT_WEBHOOK） */
+    FEISHU_BOT_WEBHOOK_WEEKLY_REPORT?: string;
+    FEISHU_BOT_WEBHOOK_WEEKLY_REPORT_SECRET?: string;
     /** 域名分发系统：Cloudflare API Token（需 Zone.DNS 编辑权限）与 Zone ID（newenergycoder.club），用 wrangler secret put 配置 */
     CF_API_TOKEN?: string;
     CF_ZONE_ID?: string;
@@ -97,7 +103,8 @@ declare global {
 
 import { handleFeishuAuth } from "./auth/feishu-auth";
 import { handleLogout, handleWhoami } from "./auth/handlers";
-import { buildDashboard, buildDocs, prewarmDashboard } from "./dashboard";
+import { buildDashboard, prewarmDashboard } from "./dashboard";
+import { buildDocs } from "./docs";
 import { handleGetHome, handleResetHome, handleSetHome } from "./home/handlers";
 import { readIndex, serveApp, serveSkill, visibleApps, type SkillEntry } from "./hosting";
 import { handleMcp } from "./mcp/handler";
@@ -190,6 +197,10 @@ export default {
       if (url.pathname === "/api/validate/run" && request.method === "POST") {
         return await handleValidateRun(request, env, ctx);
       }
+      if (url.pathname === "/api/reports/weekly/run" && (request.method === "POST" || request.method === "GET")) {
+        const rp = await import("./reports/weekly");
+        return await rp.handleWeeklyReportRun(request, env, ctx);
+      }
       if (url.pathname === "/api/home") {
         if (request.method === "GET") return await handleGetHome(request, env, ctx);
         if (request.method === "POST") return await handleSetHome(request, env, ctx);
@@ -278,7 +289,7 @@ export default {
    *  ② 免费档单次 cron 50 子请求上限：SLA（重）独占 :08 窗口，仓库预热/阻塞告警在 :24 窗口，看板预热 TTL 过期才写，互不叠加超限；
    *  ③ 多触发器可能并发命中同一窗口（新 8 分钟档 + 残留的 4 分钟档 / 23 *），每任务带 cron:guard:<name> 时间戳去重，防双重执行/重复推送；
    *  ④ 窗口选取：旧 4 分钟档与新 8 分钟档的共同 tick 必为 8 的倍数，宽 4 分钟的窗口恰含一个 tick——
-   *     :08 G-03 审批时效巡检 · :24 仓库缓存+图纸评审阻塞告警 · 周一 00:00–00:04 数据校验周报。
+   *     :08 G-03 审批时效巡检 · :24 仓库缓存+图纸评审阻塞告警 · 周一 00:00–00:04 数据校验周报 · 周一 00:16–00:20 团队周报。
    *  配额治理（2026-10-15）：快触发器 360→180 次/日；看板缓存 TTL 900→1800s（过期才重写，≤240 写/日），
    *  探针整点才落 KV，给登录会话等用户写入留出免费档 1,000 写/日的余量。 */
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
@@ -317,6 +328,13 @@ export default {
     if ((isWeeklyCron || isFastCron) && isWeeklyWindow && (await cronDue(env, "weekly", 12 * 3600))) {
       cronMark(env, ctx, "weekly");
       ctx.waitUntil(runWeeklyValidation(env));
+    }
+
+    // ⑤ 团队周报：周一 00:16–00:20（UTC）窗口（与 00:00 校验周报、00:08 SLA 错峰；实际由快触发器 00:16 tick 驱动，12 小时去重）
+    const isWeeklyReportWindow = t.getUTCDay() === 1 && t.getUTCHours() === 0 && minute >= 16 && minute < 20;
+    if ((isWeeklyCron || isFastCron) && isWeeklyReportWindow && (await cronDue(env, "weekly-report", 12 * 3600))) {
+      cronMark(env, ctx, "weekly-report");
+      ctx.waitUntil(import("./reports/weekly").then((m) => m.runWeeklyReport(env)));
     }
   },
 } satisfies ExportedHandler<Env>;

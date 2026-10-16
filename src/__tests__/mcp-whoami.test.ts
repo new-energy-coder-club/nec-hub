@@ -4,8 +4,8 @@
  * 名单外 external 提示、TOOLS 注册存在性。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { toolWhoami } from "../mcp/implementations";
-import { TOOLS } from "../mcp/tools";
+import { toolWhoami } from "../mcp/tools/whoami";
+import { TOOLS } from "../mcp/registry";
 
 function makeEnv(kv = new Map<string, string>()): Env {
   return {

@@ -1,0 +1,3067 @@
+<?xml version="1.0" encoding="UTF-8"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="hdr-bar"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="584200"/>
+            <a:ext cx="431800" cy="50800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:srgbClr val="2E7FC2"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="hdr-title"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="736600"/>
+            <a:ext cx="9144000" cy="431800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="2500" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="003A70"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>冰水制冷系统（30㎡）：全屋扩展架构与成本拆解</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="2500" b="1" noProof="1">
+              <a:solidFill>
+                <a:srgbClr val="003A70"/>
+              </a:solidFill>
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="4" name="hdr-sub"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="1219200"/>
+            <a:ext cx="10541000" cy="254000"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1250" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>在单间标准包上加装 30㎡ 扩展包 · 水罐蓄冷 + 盘管换热 + 水泵循环 · 核心件约 ¥1,800~3,100</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1250" noProof="1">
+              <a:solidFill>
+                <a:srgbClr val="5A6572"/>
+              </a:solidFill>
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="5" name="hdr-page"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="11176000" y="801370"/>
+            <a:ext cx="508000" cy="228600"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="t"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="r">
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1250" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>02 / 27</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1250" noProof="1">
+              <a:solidFill>
+                <a:srgbClr val="5A6572"/>
+              </a:solidFill>
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="6" name="d-src"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="1527810" y="1752600"/>
+            <a:ext cx="2540000" cy="660400"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:srgbClr val="FFFFFF"/>
+          </a:solidFill>
+          <a:ln w="19050">
+            <a:solidFill>
+              <a:srgbClr val="003A70"/>
+            </a:solidFill>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="7" name="d-src-t"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="1527810" y="1752600"/>
+            <a:ext cx="2540000" cy="660400"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="ctr"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1250" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="1F2933"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>光伏 + 制冰机</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1">
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1000" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>标准包沿用 · 白天 5h 制冰</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1">
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="8" name="a1"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="2772410" y="2463800"/>
+            <a:ext cx="76200" cy="279400"/>
+          </a:xfrm>
+          <a:custGeom>
+            <a:avLst/>
+            <a:gdLst/>
+            <a:ahLst/>
+            <a:cxnLst/>
+            <a:rect l="l" t="t" r="r" b="b"/>
+            <a:pathLst>
+              <a:path w="6" h="22">
+                <a:moveTo>
+                  <a:pt x="3" y="0"/>
+                </a:moveTo>
+                <a:lnTo>
+                  <a:pt x="3" y="22"/>
+                </a:lnTo>
+              </a:path>
+            </a:pathLst>
+          </a:custGeom>
+          <a:noFill/>
+          <a:ln w="19050">
+            <a:solidFill>
+              <a:srgbClr val="2E7FC2"/>
+            </a:solidFill>
+            <a:prstDash val="dash"/>
+            <a:tailEnd type="stealth"/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="9" name="a1-label"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="4245610" y="2489200"/>
+            <a:ext cx="1651000" cy="177800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="950" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="2E7FC2"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>冰块 / 冷水</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="950" noProof="1">
+              <a:solidFill>
+                <a:srgbClr val="2E7FC2"/>
+              </a:solidFill>
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="10" name="d-tank"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="1527810" y="2794000"/>
+            <a:ext cx="2540000" cy="711200"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:srgbClr val="003A70"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="11" name="d-tank-t"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="1527810" y="2794000"/>
+            <a:ext cx="2540000" cy="711200"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="ctr"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1250" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="FFFFFF"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>保温储冷水罐 1.5 吨</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1">
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1000" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="C9DCEE"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>约 ¥1,300 · 白天蓄冷 · 夜间释冷</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1">
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="12" name="a2"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="2772410" y="3556000"/>
+            <a:ext cx="76200" cy="279400"/>
+          </a:xfrm>
+          <a:custGeom>
+            <a:avLst/>
+            <a:gdLst/>
+            <a:ahLst/>
+            <a:cxnLst/>
+            <a:rect l="l" t="t" r="r" b="b"/>
+            <a:pathLst>
+              <a:path w="6" h="22">
+                <a:moveTo>
+                  <a:pt x="3" y="0"/>
+                </a:moveTo>
+                <a:lnTo>
+                  <a:pt x="3" y="22"/>
+                </a:lnTo>
+              </a:path>
+            </a:pathLst>
+          </a:custGeom>
+          <a:noFill/>
+          <a:ln w="19050">
+            <a:solidFill>
+              <a:srgbClr val="2E7FC2"/>
+            </a:solidFill>
+            <a:prstDash val="dash"/>
+            <a:tailEnd type="stealth"/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="13" name="a2-label"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="4245610" y="3581400"/>
+            <a:ext cx="1651000" cy="177800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="950" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="2E7FC2"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>冷水 5~12℃</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="950" noProof="1">
+              <a:solidFill>
+                <a:srgbClr val="2E7FC2"/>
+              </a:solidFill>
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="14" name="d-pump"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="1527810" y="3886200"/>
+            <a:ext cx="2540000" cy="660400"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:srgbClr val="FFFFFF"/>
+          </a:solidFill>
+          <a:ln w="19050">
+            <a:solidFill>
+              <a:srgbClr val="003A70"/>
+            </a:solidFill>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="15" name="d-pump-t"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="1527810" y="3886200"/>
+            <a:ext cx="2540000" cy="660400"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="ctr"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1250" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="1F2933"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>微型水泵 2.0~2.5m³/h</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1">
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1000" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>约 ¥500~1,500 · 夜间循环驱动</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1">
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="16" name="a3"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="2772410" y="4597400"/>
+            <a:ext cx="76200" cy="279400"/>
+          </a:xfrm>
+          <a:custGeom>
+            <a:avLst/>
+            <a:gdLst/>
+            <a:ahLst/>
+            <a:cxnLst/>
+            <a:rect l="l" t="t" r="r" b="b"/>
+            <a:pathLst>
+              <a:path w="6" h="22">
+                <a:moveTo>
+                  <a:pt x="3" y="0"/>
+                </a:moveTo>
+                <a:lnTo>
+                  <a:pt x="3" y="22"/>
+                </a:lnTo>
+              </a:path>
+            </a:pathLst>
+          </a:custGeom>
+          <a:noFill/>
+          <a:ln w="19050">
+            <a:solidFill>
+              <a:srgbClr val="2E7FC2"/>
+            </a:solidFill>
+            <a:prstDash val="dash"/>
+            <a:tailEnd type="stealth"/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="17" name="a3-label"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="4245610" y="4622800"/>
+            <a:ext cx="1651000" cy="177800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="950" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="2E7FC2"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>加压循环</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="950" noProof="1">
+              <a:solidFill>
+                <a:srgbClr val="2E7FC2"/>
+              </a:solidFill>
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="18" name="d-coil"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="1527810" y="4927600"/>
+            <a:ext cx="2540000" cy="660400"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:srgbClr val="FFFFFF"/>
+          </a:solidFill>
+          <a:ln w="19050">
+            <a:solidFill>
+              <a:srgbClr val="003A70"/>
+            </a:solidFill>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="19" name="d-coil-t"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="1527810" y="4927600"/>
+            <a:ext cx="2540000" cy="660400"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="ctr"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1250" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="1F2933"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>风机盘管 1.2㎡</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1">
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1000" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>铝管/铜管 · 约 ¥100~200</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1">
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="20" name="a4"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="2772410" y="5638800"/>
+            <a:ext cx="76200" cy="228600"/>
+          </a:xfrm>
+          <a:custGeom>
+            <a:avLst/>
+            <a:gdLst/>
+            <a:ahLst/>
+            <a:cxnLst/>
+            <a:rect l="l" t="t" r="r" b="b"/>
+            <a:pathLst>
+              <a:path w="6" h="18">
+                <a:moveTo>
+                  <a:pt x="3" y="0"/>
+                </a:moveTo>
+                <a:lnTo>
+                  <a:pt x="3" y="18"/>
+                </a:lnTo>
+              </a:path>
+            </a:pathLst>
+          </a:custGeom>
+          <a:noFill/>
+          <a:ln w="19050">
+            <a:solidFill>
+              <a:srgbClr val="2E7FC2"/>
+            </a:solidFill>
+            <a:prstDash val="dash"/>
+            <a:tailEnd type="stealth"/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="21" name="d-room"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="1527810" y="5892800"/>
+            <a:ext cx="2540000" cy="381000"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:srgbClr val="FFFFFF"/>
+          </a:solidFill>
+          <a:ln w="15240">
+            <a:solidFill>
+              <a:srgbClr val="2E7FC2"/>
+            </a:solidFill>
+            <a:prstDash val="dash"/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="22" name="d-room-t"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="1527810" y="5892800"/>
+            <a:ext cx="2540000" cy="381000"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="ctr"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1150" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="2E7FC2"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>70㎡ 全屋送冷 · 夜间 6~8h</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1150" b="1" noProof="1">
+              <a:solidFill>
+                <a:srgbClr val="2E7FC2"/>
+              </a:solidFill>
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="23" name="a-return"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="765810" y="3149600"/>
+            <a:ext cx="711200" cy="2057400"/>
+          </a:xfrm>
+          <a:custGeom>
+            <a:avLst/>
+            <a:gdLst/>
+            <a:ahLst/>
+            <a:cxnLst/>
+            <a:rect l="l" t="t" r="r" b="b"/>
+            <a:pathLst>
+              <a:path w="56" h="162">
+                <a:moveTo>
+                  <a:pt x="56" y="162"/>
+                </a:moveTo>
+                <a:lnTo>
+                  <a:pt x="0" y="162"/>
+                </a:lnTo>
+                <a:lnTo>
+                  <a:pt x="0" y="0"/>
+                </a:lnTo>
+                <a:lnTo>
+                  <a:pt x="56" y="0"/>
+                </a:lnTo>
+              </a:path>
+            </a:pathLst>
+          </a:custGeom>
+          <a:noFill/>
+          <a:ln w="15240">
+            <a:solidFill>
+              <a:srgbClr val="5A6572"/>
+            </a:solidFill>
+            <a:prstDash val="dash"/>
+            <a:tailEnd type="stealth"/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="24" name="a-return-label"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="-72390" y="4089400"/>
+            <a:ext cx="762000" cy="177800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="t"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="r">
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="950" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>回水</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="950" noProof="1"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="25" name="d-caption"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="6324600"/>
+            <a:ext cx="5969000" cy="177800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1000" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>虚线＝冷量流 · 水罐为全屋场景扩展核心件，标准包结构不变</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+              <a:solidFill>
+                <a:srgbClr val="5A6572"/>
+              </a:solidFill>
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="26" name="r-rule"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="4982845" y="1676400"/>
+            <a:ext cx="25400" cy="4673600"/>
+          </a:xfrm>
+          <a:custGeom>
+            <a:avLst/>
+            <a:gdLst/>
+            <a:ahLst/>
+            <a:cxnLst/>
+            <a:rect l="l" t="t" r="r" b="b"/>
+            <a:pathLst>
+              <a:path w="2" h="368">
+                <a:moveTo>
+                  <a:pt x="1" y="0"/>
+                </a:moveTo>
+                <a:lnTo>
+                  <a:pt x="1" y="368"/>
+                </a:lnTo>
+              </a:path>
+            </a:pathLst>
+          </a:custGeom>
+          <a:noFill/>
+          <a:ln w="12700">
+            <a:solidFill>
+              <a:srgbClr val="D9E1EA"/>
+            </a:solidFill>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="27" name="r-title1"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="5287645" y="1676400"/>
+            <a:ext cx="4572000" cy="254000"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1300" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="003A70"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>30㎡ 扩展包成本拆解</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1300" b="1" noProof="1">
+              <a:solidFill>
+                <a:srgbClr val="003A70"/>
+              </a:solidFill>
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:graphicFrame>
+        <p:nvGraphicFramePr>
+          <p:cNvPr id="28" name="r-cost"/>
+          <p:cNvGraphicFramePr>
+            <a:graphicFrameLocks noGrp="1"/>
+          </p:cNvGraphicFramePr>
+          <p:nvPr/>
+        </p:nvGraphicFramePr>
+        <p:xfrm>
+          <a:off x="5287645" y="2006600"/>
+          <a:ext cx="3940810" cy="1920240"/>
+        </p:xfrm>
+        <a:graphic>
+          <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table">
+            <a:tbl>
+              <a:tblPr/>
+              <a:tblGrid>
+                <a:gridCol w="1339850"/>
+                <a:gridCol w="1400810"/>
+                <a:gridCol w="1200150"/>
+              </a:tblGrid>
+              <a:tr h="381000">
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1100" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>部件</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1100" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1100" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>规格</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1100" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1100" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>参考价</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1100" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+              </a:tr>
+              <a:tr h="381000">
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>保温储冷水罐</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                          <a:cs typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>1.5 吨</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="333333"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                        <a:cs typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:noFill/>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                          <a:cs typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>约 ¥1,300</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="333333"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                        <a:cs typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:noFill/>
+                  </a:tcPr>
+                </a:tc>
+              </a:tr>
+              <a:tr h="381000">
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>微型水泵</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                          <a:cs typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>流量 2.0~2.5m³/h</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="333333"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                        <a:cs typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:noFill/>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                          <a:cs typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>约 ¥500~1,500</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="333333"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                        <a:cs typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:noFill/>
+                  </a:tcPr>
+                </a:tc>
+              </a:tr>
+              <a:tr h="381000">
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>风机盘管</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                          <a:cs typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>1.2㎡ 铝管/铜管</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="333333"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                        <a:cs typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:noFill/>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                          <a:cs typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>约 ¥100~200</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="333333"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                        <a:cs typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:noFill/>
+                  </a:tcPr>
+                </a:tc>
+              </a:tr>
+              <a:tr h="381000">
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>核心件合计</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="D6E4F0"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>不含安装与管路辅材</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="333333"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="D6E4F0"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>¥1,800~3,100</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="333333"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="D6E4F0"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+              </a:tr>
+            </a:tbl>
+          </a:graphicData>
+        </a:graphic>
+      </p:graphicFrame>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="29" name="r-title2"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="5287645" y="4191000"/>
+            <a:ext cx="4572000" cy="254000"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1300" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="003A70"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>单间 → 全屋 两级产品矩阵</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1300" b="1" noProof="1">
+              <a:solidFill>
+                <a:srgbClr val="003A70"/>
+              </a:solidFill>
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:graphicFrame>
+        <p:nvGraphicFramePr>
+          <p:cNvPr id="30" name="r-matrix"/>
+          <p:cNvGraphicFramePr>
+            <a:graphicFrameLocks noGrp="1"/>
+          </p:cNvGraphicFramePr>
+          <p:nvPr/>
+        </p:nvGraphicFramePr>
+        <p:xfrm>
+          <a:off x="5287645" y="4521200"/>
+          <a:ext cx="3940810" cy="1422400"/>
+        </p:xfrm>
+        <a:graphic>
+          <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table">
+            <a:tbl>
+              <a:tblPr/>
+              <a:tblGrid>
+                <a:gridCol w="828040"/>
+                <a:gridCol w="1024255"/>
+                <a:gridCol w="1064260"/>
+                <a:gridCol w="1024255"/>
+              </a:tblGrid>
+              <a:tr h="426720">
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1100" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>级别</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1100" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1100" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>场景</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1100" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1100" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>供冷方式</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1100" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1100" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>成本</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1100" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+              </a:tr>
+              <a:tr h="497840">
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>单间标准包</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                          <a:cs typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>15㎡ 卧室 · 1 人 1 台</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="333333"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                        <a:cs typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:noFill/>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>冰风扇</a:t>
+                      </a:r>
+                      <a:r>
+                        <a:rPr lang="zh-CN" altLang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>（验证</a:t>
+                      </a:r>
+                      <a:r>
+                        <a:rPr lang="zh-CN" altLang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>中）</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="zh-CN" altLang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="333333"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:noFill/>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>¥5,669</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="333333"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:noFill/>
+                  </a:tcPr>
+                </a:tc>
+              </a:tr>
+              <a:tr h="497840">
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>danshi扩展包</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                          <a:cs typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t xml:space="preserve">30㎡ </a:t>
+                      </a:r>
+                      <a:r>
+                        <a:rPr lang="zh-CN" altLang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                          <a:cs typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>双</a:t>
+                      </a:r>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                          <a:cs typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>屋</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="333333"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                        <a:cs typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:noFill/>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                          <a:cs typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>水罐 + 盘管 + 水泵循环</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="333333"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                        <a:cs typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:noFill/>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>+¥1,800</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="333333"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="1000" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="333333"/>
+                          </a:solidFill>
+                          <a:latin typeface="微软雅黑" charset="-122"/>
+                          <a:ea typeface="微软雅黑" charset="-122"/>
+                        </a:rPr>
+                        <a:t>~3,100</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="333333"/>
+                        </a:solidFill>
+                        <a:latin typeface="微软雅黑" charset="-122"/>
+                        <a:ea typeface="微软雅黑" charset="-122"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:noFill/>
+                  </a:tcPr>
+                </a:tc>
+              </a:tr>
+            </a:tbl>
+          </a:graphicData>
+        </a:graphic>
+      </p:graphicFrame>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="31" name="r-note"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="5287645" y="6045200"/>
+            <a:ext cx="4572000" cy="304800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1000" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>全屋冰水方案 = 标准包 + 扩展包，增量成本极低</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1000" noProof="1">
+              <a:solidFill>
+                <a:srgbClr val="5A6572"/>
+              </a:solidFill>
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="32" name="f-rule"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="6527800"/>
+            <a:ext cx="11074400" cy="25400"/>
+          </a:xfrm>
+          <a:custGeom>
+            <a:avLst/>
+            <a:gdLst/>
+            <a:ahLst/>
+            <a:cxnLst/>
+            <a:rect l="l" t="t" r="r" b="b"/>
+            <a:pathLst>
+              <a:path w="872" h="2">
+                <a:moveTo>
+                  <a:pt x="0" y="1"/>
+                </a:moveTo>
+                <a:lnTo>
+                  <a:pt x="872" y="1"/>
+                </a:lnTo>
+              </a:path>
+            </a:pathLst>
+          </a:custGeom>
+          <a:noFill/>
+          <a:ln w="12700">
+            <a:solidFill>
+              <a:srgbClr val="D9E1EA"/>
+            </a:solidFill>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="33" name="f-src"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="6604000"/>
+            <a:ext cx="11049000" cy="177800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="900" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>数据来源：水罐/盘管/水泵为 70㎡ 场景估算口径（水罐按 1~2 吨区间 1,200~1,400 元取中值）· 增量成本仅核心件口径，安装与管路辅材另计</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="900" noProof="1">
+              <a:solidFill>
+                <a:srgbClr val="5A6572"/>
+              </a:solidFill>
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="34" name="r-title"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="9426575" y="1676400"/>
+            <a:ext cx="2405380" cy="254000"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1300" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="003A70"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>核算结果与配置校核</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1300" b="1" noProof="1">
+              <a:solidFill>
+                <a:srgbClr val="003A70"/>
+              </a:solidFill>
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="35" name="r-item1"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="9426575" y="2032000"/>
+            <a:ext cx="2405380" cy="1117600"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="150000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1150" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="2E7FC2"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>用冰量</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1">
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="150000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1050" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>9.68 kg/(人·晚) · 0.65 kg/(㎡·晚)（15㎡）；面积 10~25㎡ 时单平米用冰 0.39~0.97 kg，随面积增大摊薄</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1">
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="36" name="r-item2"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="9426575" y="3200400"/>
+            <a:ext cx="2405380" cy="965200"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="150000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1150" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="2E7FC2"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>能耗</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1">
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="150000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1050" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>制冰 1.94 kWh/天（0.20 kWh/kg 实际口径）+ 风扇 0.17 kWh/晚 ＝ 系统日均 2.10 kWh；光伏侧需求 2.34 kWh/天</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1">
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="37" name="r-item3"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="9426575" y="4216400"/>
+            <a:ext cx="2405380" cy="1117600"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="150000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1150" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="2E7FC2"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>光伏校核</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1">
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="150000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1050" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>理论下限 624W（468W 平均 ÷ 出力系数 0.75），选 2×645W＝1,20W，日发 4.69 kWh，发电裕量约 100% 应对弱光阴天</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1">
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="38" name="r-item4"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="9426575" y="5384800"/>
+            <a:ext cx="2405380" cy="965200"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="150000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1150" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="2E7FC2"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>储能校核</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1">
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="150000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1050" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+                <a:cs typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>夜间需求仅 0.19 kWh，配 1.28 kWh（25.6V/50Ah），余量约 6.9 倍；MPPT 按 52A 核算选 60A</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1">
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+              <a:cs typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
+</p:sld>

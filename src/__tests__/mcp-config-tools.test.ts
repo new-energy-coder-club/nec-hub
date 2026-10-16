@@ -1,5 +1,5 @@
 /**
- * mcp/module-config-tools 工厂单元测试：三个模块配置工具的文案逐字等价（含硬件评审 get 文案结尾空格）、
+ * mcp/tools/module-config 工厂单元测试：三个模块配置工具的文案逐字等价（含硬件评审 get 文案结尾空格）、
  * base/table_id 校验、错误提示、动态 load 懒加载。
  */
 import { describe, expect, it } from "vitest";
@@ -8,7 +8,7 @@ import {
   toolConfigContractApproval,
   toolConfigDrawingReview,
   toolConfigHardwareReview,
-} from "../mcp/module-config-tools";
+} from "../mcp/tools/module-config";
 
 interface Cfg {
   base: string;
@@ -45,7 +45,7 @@ function textOf(result: { content: Array<{ type: string; text: string }> }): str
   return result.content[0].text;
 }
 
-describe("module-config-tools 工厂", () => {
+describe("tools/module-config 工厂", () => {
   it("get 未配置 → 统一提示文案", async () => {
     const kv = new Map<string, string>();
     const tool = createModuleConfigTool({

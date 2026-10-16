@@ -12,6 +12,7 @@ import {
 } from "../feishu/bitable";
 import { FeishuTableAdapter } from "../shared/feishu-table-adapter";
 import type {
+  Attachment,
   HardwareReview,
   HardwareReviewConfig,
   HardwareReviewTable,
@@ -36,14 +37,19 @@ export class HardwareReviewAdapter extends FeishuTableAdapter<HardwareReviewConf
   }
 
   async getReview(recordId: string): Promise<(HardwareReview & { recordId: string }) | null> {
-    const records = await this.listRecords("reviews");
-    const rec = records.find((r) => r.record_id === recordId);
+    // 按 record_id 直连 GET /records/:record_id，不再全表扫描
+    const rec = await this.getRecord("reviews", recordId);
     return rec ? this.recordToReview(rec) : null;
   }
 
   async findReviewById(reviewId: string): Promise<(HardwareReview & { recordId: string }) | null> {
-    const records = await this.listRecords("reviews");
-    const rec = records.find((r) => fieldText(r.fields["评审单号"]) === reviewId || fieldText(r.fields["reviewId"]) === reviewId);
+    // filter 下推按「评审单号」精确查；search 失败（表用英文别名等）回退全表扫描（match 与原逻辑一致）
+    const records = await this.queryRecords(
+      "reviews",
+      [{ field_name: "评审单号", operator: "is", value: [reviewId] }],
+      (r) => fieldText(r.fields["评审单号"]) === reviewId || fieldText(r.fields["reviewId"]) === reviewId,
+    );
+    const rec = records[0];
     return rec ? this.recordToReview(rec) : null;
   }
 
@@ -69,7 +75,7 @@ export class HardwareReviewAdapter extends FeishuTableAdapter<HardwareReviewConf
       hardwareType: (fieldText(f["硬件类型"] ?? f["hardwareType"]) as HardwareType) || "other",
       hardwareVersion: fieldText(f["硬件版本"] ?? f["hardwareVersion"]),
       designerId: fieldText(f["设计负责人"] ?? f["designerId"]),
-      hardwareFiles: [], // 附件字段需单独解析
+      hardwareFiles: parseAttachments(f["硬件资料"] ?? f["hardwareFiles"]),
       designNotes: fieldText(f["设计说明"] ?? f["designNotes"]),
       specification: fieldText(f["规格参数"] ?? f["specification"]),
       status: (fieldText(f["状态"] ?? f["status"]) as ReviewStatus) || "draft",
@@ -105,6 +111,9 @@ export class HardwareReviewAdapter extends FeishuTableAdapter<HardwareReviewConf
       const v = review[key];
       if (v !== undefined) fields[fieldName] = v;
     }
+    // 降级：Base 评审单表暂无原生附件列，且前端附件 token 实为 R2 key（非飞书 file_token），
+    // 附件数组序列化为 JSON 存入文本字段「硬件资料」；读取侧兼容原生附件数组，便于日后升级为附件列
+    if (review.hardwareFiles !== undefined) fields["硬件资料"] = JSON.stringify(review.hardwareFiles);
     if (!partial) {
       fields["创建时间"] = review.createdAt ?? new Date().toISOString();
       fields["更新时间"] = review.updatedAt ?? new Date().toISOString();
@@ -129,9 +138,13 @@ export class HardwareReviewAdapter extends FeishuTableAdapter<HardwareReviewConf
   }
 
   async getMinutesByReview(reviewId: string): Promise<Array<ReviewMinutes & { recordId: string }>> {
-    const records = await this.listRecords("minutes");
+    // filter 下推按「关联评审单」只拉本单纪要；search 失败回退全表扫描（match 与原逻辑一致）
+    const records = await this.queryRecords(
+      "minutes",
+      [{ field_name: "关联评审单", operator: "is", value: [reviewId] }],
+      (r) => fieldText(r.fields["关联评审单"]) === reviewId,
+    );
     return records
-      .filter((r) => fieldText(r.fields["关联评审单"]) === reviewId)
       .map((r) => ({
         minutesId: fieldText(r.fields["会议纪要ID"] ?? r.fields["minutesId"]) || r.record_id,
         reviewId: fieldText(r.fields["关联评审单"]),
@@ -164,8 +177,13 @@ export class HardwareReviewAdapter extends FeishuTableAdapter<HardwareReviewConf
   }
 
   async getReportByReview(reviewId: string): Promise<(ReviewReport & { recordId: string }) | null> {
-    const records = await this.listRecords("reports");
-    const rec = records.find((r) => fieldText(r.fields["关联评审单"]) === reviewId);
+    // filter 下推按「关联评审单」只拉本单报告；search 失败回退全表扫描（match 与原逻辑一致）
+    const records = await this.queryRecords(
+      "reports",
+      [{ field_name: "关联评审单", operator: "is", value: [reviewId] }],
+      (r) => fieldText(r.fields["关联评审单"]) === reviewId,
+    );
+    const rec = records[0];
     if (!rec) return null;
     let checklist: ReportChecklistItem[] = [];
     try {
@@ -186,4 +204,36 @@ export class HardwareReviewAdapter extends FeishuTableAdapter<HardwareReviewConf
       createdAt: fieldText(rec.fields["创建时间"] ?? rec.fields["createdAt"]) || new Date().toISOString(),
     };
   }
+}
+
+/**
+ * 附件字段解析：兼容两种存储形式
+ * 1. 文本字段中的 JSON 数组字符串（当前降级方案）；
+ * 2. 飞书原生附件列的 [{file_token, name, size, url, ...}] 结构。
+ */
+function parseAttachments(v: unknown): Attachment[] {
+  let arr: unknown = v;
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (!s) return [];
+    try {
+      arr = JSON.parse(s);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(arr)) return [];
+  const out: Attachment[] = [];
+  for (const item of arr) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const token = typeof o.token === "string" ? o.token : typeof o.file_token === "string" ? o.file_token : "";
+    const name = typeof o.name === "string" ? o.name : "";
+    if (!token && !name) continue;
+    const att: Attachment = { name, token };
+    if (typeof o.url === "string" && o.url) att.url = o.url;
+    if (typeof o.size === "number" && Number.isFinite(o.size)) att.size = o.size;
+    out.push(att);
+  }
+  return out;
 }

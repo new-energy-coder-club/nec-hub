@@ -10,6 +10,7 @@ import {
   stepBar, parseFileBatch, parseApproverBatch,
   type CsApproval, type CsComment,
 } from '../store'
+import { toast, confirmDialog } from '@shared/ui/feedback'
 
 const props = defineProps<{ approvalId: string }>()
 
@@ -67,13 +68,13 @@ async function startReview() {
     })
     loadDetail()
   } catch (err: any) {
-    alert('操作失败：' + err.message)
+    toast('操作失败：' + err.message)
   }
 }
 
 async function takeAction(action: 'approve' | 'reject' | 'revise') {
   const comment = actionComment.value.trim()
-  if ((action === 'reject' || action === 'revise') && !comment && !confirm('未填写审批意见，仍要继续吗？')) return
+  if ((action === 'reject' || action === 'revise') && !comment && !(await confirmDialog('未填写审批意见，仍要继续吗？'))) return
   try {
     await api(`/api/contract-approval/${encodeURIComponent(props.approvalId)}/action`, {
       method: 'POST',
@@ -83,7 +84,7 @@ async function takeAction(action: 'approve' | 'reject' | 'revise') {
     actionComment.value = ''
     loadDetail()
   } catch (err: any) {
-    alert('操作失败：' + err.message)
+    toast('操作失败：' + err.message)
   }
 }
 
@@ -96,7 +97,7 @@ async function archiveApproval() {
     })
     loadDetail()
   } catch (err: any) {
-    alert('操作失败：' + err.message)
+    toast('操作失败：' + err.message)
   }
 }
 

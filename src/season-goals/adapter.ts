@@ -1,7 +1,8 @@
 /**
  * 赛季目标管理 — 飞书 Base 数据适配器
  *
- * 读取侧按记录样本正则匹配字段名（findFieldKey，同 dashboard 风格）；
+ * 读取侧按记录样本正则匹配字段名（findFieldKey，同 dashboard 风格），字段 key 在每批记录
+ * 映射前一次性解析（resolveSeasonKeys），不再逐条记录重复嗅探；
  * 写入侧先拉字段元数据再按正则 + ui_type 匹配（matchField，同 reimburse 风格），
  * 日期字段为 DateTime 类型时转毫秒时间戳。字段名不做硬编码假设。
  */
@@ -12,24 +13,34 @@ import {
   fieldNum,
   fieldText,
   fieldTs,
-  findFieldKey,
   listBitableFields,
   matchField,
 } from "../feishu/bitable";
+import {
+  GOAL_DEADLINE_PATTERNS,
+  GOAL_GROUP_PATTERNS,
+  GOAL_KR_PATTERNS,
+  GOAL_NOTE_PATTERNS,
+  GOAL_PROGRESS_PATTERNS,
+  GOAL_SOURCE_PATTERNS,
+  GOAL_STATUS_PATTERNS,
+  GOAL_SUBMITTER_PATTERNS,
+  GOAL_TITLE_EXACT_PATTERNS,
+  TASK_TITLE_EXACT_PATTERNS,
+  findFieldKey,
+} from "../shared/bitable-fields";
 import { FeishuTableAdapter } from "../shared/feishu-table-adapter";
 import type { CollectRecord, GoalRecord, SeasonGoalsConfig, SeasonGoalsTable, TaskLite } from "./types";
 
-const TITLE_PATTERNS = [/^目标$/, /^目标/, /目标/, /^标题/, /标题/, /title/i];
-const KRS_PATTERNS = [/关键结果/, /^KR/i, /KR/];
-const GROUP_PATTERNS = [/负责组/, /组别/, /小组/, /group/i];
-const DEADLINE_PATTERNS = [/截止/, /deadline/i, /日期/];
-const PROGRESS_PATTERNS = [/完成度/, /进度/, /progress/i];
-const STATUS_PATTERNS = [/^状态/, /状态/, /status/i];
-const SOURCE_PATTERNS = [/来源/, /source/i];
-const NOTE_PATTERNS = [/备注/, /说明/, /note/i, /remark/i];
-const SUBMITTER_PATTERNS = [/提交人/, /提交者/, /submitter/i];
-
-const TASK_TITLE_PATTERNS = [/^任务/, /任务/, /事项/, /^标题/, /标题/, /title/i];
+const TITLE_PATTERNS = GOAL_TITLE_EXACT_PATTERNS;
+const KRS_PATTERNS = GOAL_KR_PATTERNS;
+const GROUP_PATTERNS = GOAL_GROUP_PATTERNS;
+const DEADLINE_PATTERNS = GOAL_DEADLINE_PATTERNS;
+const PROGRESS_PATTERNS = GOAL_PROGRESS_PATTERNS;
+const STATUS_PATTERNS = GOAL_STATUS_PATTERNS;
+const SOURCE_PATTERNS = GOAL_SOURCE_PATTERNS;
+const NOTE_PATTERNS = GOAL_NOTE_PATTERNS;
+const SUBMITTER_PATTERNS = GOAL_SUBMITTER_PATTERNS;
 
 /** 写入字段入参（目标表与收集单表共用形状） */
 export interface GoalWriteFields {
@@ -90,7 +101,8 @@ export class SeasonGoalsAdapter extends FeishuTableAdapter<SeasonGoalsConfig, Se
 
   async listGoals(): Promise<GoalRecord[]> {
     const records = await this.listRecords("goals");
-    return records.map((r) => recordToGoal(r)).filter((g) => g.title);
+    const keys = resolveSeasonKeys(records);
+    return records.map((r) => recordToGoal(r, keys)).filter((g) => g.title);
   }
 
   async createGoal(input: GoalWriteFields): Promise<BitableRecord> {
@@ -102,13 +114,16 @@ export class SeasonGoalsAdapter extends FeishuTableAdapter<SeasonGoalsConfig, Se
 
   async listSubmissions(): Promise<CollectRecord[]> {
     const records = await this.listRecords("collect");
-    return records.map((r) => recordToSubmission(r)).filter((s) => s.title);
+    const keys = resolveSeasonKeys(records);
+    return records.map((r) => recordToSubmission(r, keys)).filter((s) => s.title);
   }
 
   async getSubmission(recordId: string): Promise<CollectRecord | null> {
-    const records = await this.listRecords("collect");
-    const rec = records.find((r) => r.record_id === recordId);
-    return rec ? recordToSubmission(rec) : null;
+    // 按 record_id 直连 GET /records/:record_id，不再全表扫描；
+    // 单条记录可能缺空字段，字段 key 改从字段元数据（带缓存）解析，避免漏配字段被忽略
+    const rec = await this.getRecord("collect", recordId);
+    if (!rec) return null;
+    return recordToSubmission(rec, keysFromMetas(await this.metas("collect")));
   }
 
   async createSubmission(input: GoalWriteFields): Promise<BitableRecord> {
@@ -148,47 +163,84 @@ export function normalizeProgress(v: unknown): number {
   return Math.min(Math.max(Math.round(p), 0), 100);
 }
 
-function recordToGoal(r: BitableRecord): GoalRecord {
-  const f = r.fields;
-  const get = (patterns: RegExp[]) => {
-    const k = findFieldKey([r], patterns);
-    return k ? f[k] : undefined;
-  };
+/** 一批记录的字段 key 快照：映射前一次性解析，避免逐条记录重复 findFieldKey */
+interface SeasonFieldKeys {
+  title: string | null;
+  krs: string | null;
+  group: string | null;
+  deadline: string | null;
+  progress: string | null;
+  status: string | null;
+  source: string | null;
+  note: string | null;
+  submitter: string | null;
+}
+
+function resolveSeasonKeys(records: BitableRecord[]): SeasonFieldKeys {
   return {
-    recordId: r.record_id,
-    title: fieldText(get(TITLE_PATTERNS)),
-    krs: fieldText(get(KRS_PATTERNS)),
-    group: fieldText(get(GROUP_PATTERNS)) || "未分组",
-    deadline: deadlineText(get(DEADLINE_PATTERNS)),
-    progress: normalizeProgress(get(PROGRESS_PATTERNS)),
-    status: fieldText(get(STATUS_PATTERNS)),
-    source: fieldText(get(SOURCE_PATTERNS)),
-    note: fieldText(get(NOTE_PATTERNS)),
+    title: findFieldKey(records, TITLE_PATTERNS),
+    krs: findFieldKey(records, KRS_PATTERNS),
+    group: findFieldKey(records, GROUP_PATTERNS),
+    deadline: findFieldKey(records, DEADLINE_PATTERNS),
+    progress: findFieldKey(records, PROGRESS_PATTERNS),
+    status: findFieldKey(records, STATUS_PATTERNS),
+    source: findFieldKey(records, SOURCE_PATTERNS),
+    note: findFieldKey(records, NOTE_PATTERNS),
+    submitter: findFieldKey(records, SUBMITTER_PATTERNS),
   };
 }
 
-function recordToSubmission(r: BitableRecord): CollectRecord {
-  const f = r.fields;
-  const get = (patterns: RegExp[]) => {
-    const k = findFieldKey([r], patterns);
-    return k ? f[k] : undefined;
+/** 单条读取路径的 key 解析：从字段元数据匹配（覆盖值为空、记录 JSON 里不出现的字段） */
+function keysFromMetas(metas: BitableFieldMeta[]): SeasonFieldKeys {
+  const pick = (patterns: RegExp[]) => matchField(metas, patterns)?.field_name ?? null;
+  return {
+    title: pick(TITLE_PATTERNS),
+    krs: pick(KRS_PATTERNS),
+    group: pick(GROUP_PATTERNS),
+    deadline: pick(DEADLINE_PATTERNS),
+    progress: pick(PROGRESS_PATTERNS),
+    status: pick(STATUS_PATTERNS),
+    source: pick(SOURCE_PATTERNS),
+    note: pick(NOTE_PATTERNS),
+    submitter: pick(SUBMITTER_PATTERNS),
   };
+}
+
+function recordToGoal(r: BitableRecord, keys: SeasonFieldKeys): GoalRecord {
+  const f = r.fields;
+  const get = (k: string | null) => (k ? f[k] : undefined);
   return {
     recordId: r.record_id,
-    title: fieldText(get(TITLE_PATTERNS)),
-    krs: fieldText(get(KRS_PATTERNS)),
-    group: fieldText(get(GROUP_PATTERNS)) || "未分组",
-    deadline: deadlineText(get(DEADLINE_PATTERNS)),
-    note: fieldText(get(NOTE_PATTERNS)),
-    source: fieldText(get(SOURCE_PATTERNS)) || "手工",
-    submitter: fieldText(get(SUBMITTER_PATTERNS)),
-    status: fieldText(get(STATUS_PATTERNS)) || "待评审",
+    title: fieldText(get(keys.title)),
+    krs: fieldText(get(keys.krs)),
+    group: fieldText(get(keys.group)) || "未分组",
+    deadline: deadlineText(get(keys.deadline)),
+    progress: normalizeProgress(get(keys.progress)),
+    status: fieldText(get(keys.status)),
+    source: fieldText(get(keys.source)),
+    note: fieldText(get(keys.note)),
+  };
+}
+
+function recordToSubmission(r: BitableRecord, keys: SeasonFieldKeys): CollectRecord {
+  const f = r.fields;
+  const get = (k: string | null) => (k ? f[k] : undefined);
+  return {
+    recordId: r.record_id,
+    title: fieldText(get(keys.title)),
+    krs: fieldText(get(keys.krs)),
+    group: fieldText(get(keys.group)) || "未分组",
+    deadline: deadlineText(get(keys.deadline)),
+    note: fieldText(get(keys.note)),
+    source: fieldText(get(keys.source)) || "手工",
+    submitter: fieldText(get(keys.submitter)),
+    status: fieldText(get(keys.status)) || "待评审",
   };
 }
 
 /** 任务表记录 → TaskLite（模块 tasks 表与看板 tasks 表共用映射） */
 export function mapTaskRecords(records: BitableRecord[]): TaskLite[] {
-  const titleKey = findFieldKey(records, TASK_TITLE_PATTERNS);
+  const titleKey = findFieldKey(records, TASK_TITLE_EXACT_PATTERNS);
   const groupKey = findFieldKey(records, GROUP_PATTERNS);
   const deadlineKey = findFieldKey(records, DEADLINE_PATTERNS);
   const statusKey = findFieldKey(records, STATUS_PATTERNS);

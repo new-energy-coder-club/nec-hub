@@ -10,9 +10,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
 import { buildDashboard } from "../dashboard";
-import { toolUpdateProgress } from "../mcp/implementations";
+import { toolUpdateProgress } from "../mcp/tools/bitable";
 import { handleTodos } from "../todos";
 import { handleValidateQuery, toolValidateBitable } from "../validation/handlers";
+import { mockGetRecordResponse, mockSearchResponse } from "./bitable-search-mock";
 
 const BASE = "appMockBase";
 const T = { members: "tblM", tasks: "tblT", inventory: "tblI", finance: "tblF", goals: "tblG" } as const;
@@ -86,6 +87,8 @@ function createCtx(opts: { withGoals?: boolean } = {}): Ctx {
     const [, , tableId, recordId] = m;
     const method = (init?.method ?? "GET").toUpperCase();
     const items = (tables[tableId] ??= []);
+    if (method === "POST" && recordId === "search") return mockSearchResponse(items, init?.body ?? "{}");
+    if (method === "GET" && recordId) return mockGetRecordResponse(items, recordId);
     if (method === "GET") return jsonResp({ code: 0, data: { items, has_more: false } });
     if (method === "PUT" && recordId) {
       const rec = items.find((r) => r.record_id === recordId);

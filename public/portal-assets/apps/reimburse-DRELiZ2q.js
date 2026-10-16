@@ -1,1 +1,0 @@
-import{x as o}from"../runtime-dom.esm-bundler-C4hRs6Zd.js";import{_ as a}from"../ReimburseApp.vue_vue_type_script_setup_true_lang-DaAEa-Vj.js";import"../auth-BXQ8c5tq.js";const e=new URLSearchParams(location.search),r=e.get("embedded")==="1"||window.parent!==window;o(a,{embedded:r,onExit:()=>{location.href="/"}}).mount("#app");

@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { CollectService, UserInputError } from '../collect.service';
+import { handleSeasonGoals } from '../index';
 import { PlanService } from '../plan.service';
 import { SeasonGoalsConfig } from '../types';
+import { mockGetRecordResponse, mockSearchResponse } from '../../__tests__/bitable-search-mock';
 
 const mockEnv = {
   REGISTRY: {
@@ -258,5 +260,186 @@ describe('Season Goals - PlanService', () => {
         submitter: '系统自动规划',
       });
     }
+  });
+});
+
+/**
+ * 路由级权限测试：approve / reject / plan POST 需 队长/组长。
+ * 内存 KV + 内存多维表格 mock（含字段元数据），同 drawing-review dr-test-utils 思路。
+ */
+describe('Season Goals 路由权限（approve/reject/plan POST 需 队长/组长）', () => {
+  const SG_TABLES = { goals: 'tblGoals', collect: 'tblCollect', tasks: 'tblTasks' };
+
+  interface SgRecord { record_id: string; fields: Record<string, unknown> }
+  interface SgMock { env: Env; tables: Record<string, SgRecord[]> }
+
+  const FIELD_METAS = [
+    { field_name: '目标', ui_type: 'Text' },
+    { field_name: '关键结果', ui_type: 'Text' },
+    { field_name: '负责组', ui_type: 'Text' },
+    { field_name: '截止日期', ui_type: 'DateTime' },
+    { field_name: '完成度', ui_type: 'Number' },
+    { field_name: '状态', ui_type: 'SingleSelect' },
+    { field_name: '来源', ui_type: 'SingleSelect' },
+    { field_name: '备注', ui_type: 'Text' },
+    { field_name: '提交人', ui_type: 'Text' },
+    { field_name: '任务', ui_type: 'Text' },
+  ];
+
+  function createSgMock(session: { sid: string; openId: string; name: string }, role?: string): SgMock {
+    const kv = new Map<string, string>();
+    const tables: Record<string, SgRecord[]> = {};
+    let seq = 0;
+
+    kv.set('season-goals:config', JSON.stringify({ base: 'appMockBase', tables: { ...SG_TABLES }, updatedAt: '' }));
+    kv.set(`session:${session.sid}`, JSON.stringify({
+      name: session.name,
+      open_id: session.openId,
+      createdAt: new Date().toISOString(),
+      expiresAt: Date.now() + 3600e3,
+    }));
+    if (role !== undefined) {
+      kv.set('dashboard:config', JSON.stringify({ base: 'appMockBase', tables: { members: 'tblMembers' }, updatedAt: '' }));
+      (tables['tblMembers'] ??= []).push({ record_id: 'rec-member-1', fields: { open_id: session.openId, 姓名: session.name, 权限角色: role } });
+    }
+
+    const jsonResp = (data: unknown, status = 200) =>
+      new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
+
+    vi.stubGlobal('fetch', vi.fn(async (input: unknown, init?: { method?: string; body?: string }) => {
+      const url = String((input as { url?: string })?.url ?? input);
+      if (url.includes('/auth/v3/tenant_access_token/internal')) {
+        return jsonResp({ code: 0, tenant_access_token: 'mock-token', expire: 7200 });
+      }
+      if (/\/bitable\/v1\/apps\/[^/]+\/tables\/[^/?]+\/fields/.test(url)) {
+        return jsonResp({ code: 0, data: { items: FIELD_METAS, has_more: false } });
+      }
+      const m = url.match(/\/bitable\/v1\/apps\/([^/]+)\/tables\/([^/?]+)\/records(?:\/([^/?]+))?/);
+      if (!m) return jsonResp({ code: 404, msg: `not mocked: ${url}` });
+      const [, , tableId, recordId] = m;
+      const method = (init?.method ?? 'GET').toUpperCase();
+      const items = (tables[tableId] ??= []);
+      if (method === 'POST' && recordId === 'search') return mockSearchResponse(items, init?.body ?? '{}');
+      if (method === 'GET' && recordId) return mockGetRecordResponse(items, recordId);
+      if (method === 'GET') return jsonResp({ code: 0, data: { items, has_more: false } });
+      if (method === 'POST' && !recordId) {
+        const rec: SgRecord = { record_id: `rec-${++seq}`, fields: JSON.parse(init!.body!).fields };
+        items.push(rec);
+        return jsonResp({ code: 0, data: { record: rec } });
+      }
+      if (method === 'PUT' && recordId) {
+        const rec = items.find((r) => r.record_id === recordId);
+        if (!rec) return jsonResp({ code: 1254045, msg: 'record not found' });
+        Object.assign(rec.fields, JSON.parse(init!.body!).fields);
+        return jsonResp({ code: 0, data: { record: rec } });
+      }
+      return jsonResp({ code: 400, msg: `unsupported ${method}` });
+    }));
+
+    const env = {
+      REGISTRY: {
+        get: vi.fn(async (key: string, type?: string) => {
+          if (key === 'feishu:tenant_access_token') return { token: 'mock-token', expireAt: Date.now() + 3600e3 };
+          const v = kv.get(key);
+          if (v == null) return null;
+          return type === 'json' ? JSON.parse(v) : v;
+        }),
+        put: vi.fn(async (key: string, value: string) => { kv.set(key, value); }),
+        delete: vi.fn(async (key: string) => { kv.delete(key); }),
+      },
+      FEISHU_APP_ID: 'mock-app-id',
+      FEISHU_APP_SECRET: 'mock-app-secret',
+    } as unknown as Env;
+
+    return { env, tables };
+  }
+
+  function seedPendingSubmission(mock: SgMock) {
+    (mock.tables[SG_TABLES.collect] ??= []).push({
+      record_id: 'rec-c1',
+      fields: { 目标: '完成底盘迭代', 关键结果: 'KR1 通过评审', 负责组: '硬件组', 截止日期: '2026-12-31', 状态: '待评审', 来源: '手工', 提交人: '张三' },
+    });
+  }
+
+  function post(pathname: string, body: unknown, sid: string) {
+    return new Request(`http://localhost${pathname}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: `nec_session=${sid}` },
+      body: JSON.stringify(body),
+    });
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('普通队员 approve 被 403 拒绝，且收集单未被修改', async () => {
+    const mock = createSgMock({ sid: 'sid-member', openId: 'ou-member', name: '测试用户' }, '队员');
+    seedPendingSubmission(mock);
+
+    const res = await handleSeasonGoals(post('/api/season-goals/collect/approve', { recordId: 'rec-c1' }, 'sid-member'), mock.env, '/api/season-goals/collect/approve');
+    expect(res).not.toBeNull();
+    expect(res!.status).toBe(403);
+    expect(mock.tables[SG_TABLES.collect][0].fields['状态']).toBe('待评审');
+    expect(mock.tables[SG_TABLES.goals] ?? []).toHaveLength(0);
+  });
+
+  it('普通队员 reject 被 403 拒绝', async () => {
+    const mock = createSgMock({ sid: 'sid-member', openId: 'ou-member', name: '测试用户' }, '队员');
+    seedPendingSubmission(mock);
+
+    const res = await handleSeasonGoals(post('/api/season-goals/collect/reject', { recordId: 'rec-c1' }, 'sid-member'), mock.env, '/api/season-goals/collect/reject');
+    expect(res!.status).toBe(403);
+    expect(mock.tables[SG_TABLES.collect][0].fields['状态']).toBe('待评审');
+  });
+
+  it('名单表未配置时 approve 同样 403（不做降级）', async () => {
+    const mock = createSgMock({ sid: 'sid-any', openId: 'ou-any', name: '任意用户' });
+    seedPendingSubmission(mock);
+
+    const res = await handleSeasonGoals(post('/api/season-goals/collect/approve', { recordId: 'rec-c1' }, 'sid-any'), mock.env, '/api/season-goals/collect/approve');
+    expect(res!.status).toBe(403);
+    expect(mock.tables[SG_TABLES.collect][0].fields['状态']).toBe('待评审');
+  });
+
+  it('队长 approve 成功：写目标表并把收集单标记为已采纳', async () => {
+    const mock = createSgMock({ sid: 'sid-lead', openId: 'ou-lead', name: '队长用户' }, '队长');
+    seedPendingSubmission(mock);
+
+    const res = await handleSeasonGoals(post('/api/season-goals/collect/approve', { recordId: 'rec-c1' }, 'sid-lead'), mock.env, '/api/season-goals/collect/approve');
+    expect(res!.status).toBe(200);
+    const body = (await res!.json()) as { goalRecordId: string };
+    expect(body.goalRecordId).toBeTruthy();
+    expect(mock.tables[SG_TABLES.collect][0].fields['状态']).toBe('已采纳');
+    expect(mock.tables[SG_TABLES.goals]).toHaveLength(1);
+    expect(mock.tables[SG_TABLES.goals][0].fields['状态']).toBe('进行中');
+  });
+
+  it('普通队员 plan POST 被 403 拒绝，不写收集单', async () => {
+    const mock = createSgMock({ sid: 'sid-member', openId: 'ou-member', name: '测试用户' }, '队员');
+    (mock.tables[SG_TABLES.tasks] ??= []).push({
+      record_id: 'rec-t1',
+      fields: { 任务: '设计图纸', 负责组: '硬件组', 截止日期: '2026-11-01', 状态: '进行中' },
+    });
+
+    const res = await handleSeasonGoals(post('/api/season-goals/plan', {}, 'sid-member'), mock.env, '/api/season-goals/plan');
+    expect(res!.status).toBe(403);
+    expect(mock.tables[SG_TABLES.collect] ?? []).toHaveLength(0);
+  });
+
+  it('组长 plan POST 成功：按任务生成收集单草稿', async () => {
+    const mock = createSgMock({ sid: 'sid-lead', openId: 'ou-lead', name: '组长用户' }, '组长');
+    (mock.tables[SG_TABLES.tasks] ??= []).push({
+      record_id: 'rec-t1',
+      fields: { 任务: '设计图纸', 负责组: '硬件组', 截止日期: '2026-11-01', 状态: '进行中' },
+    });
+
+    const res = await handleSeasonGoals(post('/api/season-goals/plan', {}, 'sid-lead'), mock.env, '/api/season-goals/plan');
+    expect(res!.status).toBe(200);
+    const body = (await res!.json()) as { created: number };
+    expect(body.created).toBe(1);
+    expect(mock.tables[SG_TABLES.collect]).toHaveLength(1);
+    expect(mock.tables[SG_TABLES.collect][0].fields['来源']).toBe('自动规划');
+    expect(mock.tables[SG_TABLES.collect][0].fields['状态']).toBe('待评审');
   });
 });

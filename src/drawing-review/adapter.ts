@@ -12,9 +12,11 @@ import {
   fieldNum,
   fieldText,
   fieldTs,
+  type BitableCondition,
 } from "../feishu/bitable";
 import { FeishuTableAdapter } from "../shared/feishu-table-adapter";
 import type {
+  Attachment,
   BOM,
   BOMItem,
   DrawingReview,
@@ -44,14 +46,19 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
   }
 
   async getReview(recordId: string): Promise<(DrawingReview & { recordId: string }) | null> {
-    const records = await this.listRecords("reviews");
-    const rec = records.find((r) => r.record_id === recordId);
+    // 按 record_id 直连 GET /records/:record_id，不再全表扫描
+    const rec = await this.getRecord("reviews", recordId);
     return rec ? this.recordToReview(rec) : null;
   }
 
   async findReviewById(reviewId: string): Promise<(DrawingReview & { recordId: string }) | null> {
-    const records = await this.listRecords("reviews");
-    const rec = records.find((r) => fieldText(r.fields["评审单号"]) === reviewId || fieldText(r.fields["reviewId"]) === reviewId);
+    // filter 下推按「评审单号」精确查；search 失败（表用英文别名等）回退全表扫描（match 与原逻辑一致）
+    const records = await this.queryRecords(
+      "reviews",
+      [{ field_name: "评审单号", operator: "is", value: [reviewId] }],
+      (r) => fieldText(r.fields["评审单号"]) === reviewId || fieldText(r.fields["reviewId"]) === reviewId,
+    );
+    const rec = records[0];
     return rec ? this.recordToReview(rec) : null;
   }
 
@@ -65,25 +72,36 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
     status?: string;
     limit?: number;
   }): Promise<Array<DrawingReview & { recordId: string }>> {
-    const records = await this.listRecords("reviews");
     const limit = pattern.limit || 10;
+    // filter 下推：等值条件用 is，子串条件用 contains（飞书 contains 大小写行为未明确，
+    // 故 match 保留原内存谓词二次确认，且 fallbackOnEmpty 在查空时回退全表扫描兜底）；
+    // 无任何条件时保持全表扫描
+    const conditions: BitableCondition[] = [];
+    if (pattern.projectId) conditions.push({ field_name: "项目编号", operator: "contains", value: [pattern.projectId] });
+    if (pattern.machineName) conditions.push({ field_name: "机型名称", operator: "contains", value: [pattern.machineName] });
+    if (pattern.designerId) conditions.push({ field_name: "设计负责人", operator: "is", value: [pattern.designerId] });
+    if (pattern.status) conditions.push({ field_name: "状态", operator: "is", value: [pattern.status] });
+    const match = (r: BitableRecord): boolean => {
+      if (pattern.projectId && !fieldText(r.fields["项目编号"]).toLowerCase().includes(pattern.projectId.toLowerCase())) {
+        return false;
+      }
+      if (pattern.machineName && !fieldText(r.fields["机型名称"]).toLowerCase().includes(pattern.machineName.toLowerCase())) {
+        return false;
+      }
+      if (pattern.designerId && fieldText(r.fields["设计负责人"]) !== pattern.designerId) {
+        return false;
+      }
+      if (pattern.status && fieldText(r.fields["状态"]) !== pattern.status) {
+        return false;
+      }
+      return true;
+    };
+    const records = conditions.length
+      ? await this.queryRecords("reviews", conditions, match, { fallbackOnEmpty: true })
+      : await this.listRecords("reviews");
 
     return records
-      .filter(r => {
-        if (pattern.projectId && !fieldText(r.fields["项目编号"]).toLowerCase().includes(pattern.projectId.toLowerCase())) {
-          return false;
-        }
-        if (pattern.machineName && !fieldText(r.fields["机型名称"]).toLowerCase().includes(pattern.machineName.toLowerCase())) {
-          return false;
-        }
-        if (pattern.designerId && fieldText(r.fields["设计负责人"]) !== pattern.designerId) {
-          return false;
-        }
-        if (pattern.status && fieldText(r.fields["状态"]) !== pattern.status) {
-          return false;
-        }
-        return true;
-      })
+      .filter(match)
       .map(r => this.recordToReview(r))
       .slice(0, limit);
   }
@@ -92,12 +110,22 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
    * 获取项目编号联想列表（去重）
    */
   async getProjectSuggestions(query: string, limit: number = 5): Promise<string[]> {
-    const records = await this.listRecords("reviews");
+    // filter 下推 contains 子串；空查询 / 查空 / search 失败时回退全表扫描（大小写兜底）
+    const match = (r: BitableRecord): boolean =>
+      fieldText(r.fields["项目编号"]).toLowerCase().includes(query.toLowerCase());
+    const records = query
+      ? await this.queryRecords(
+          "reviews",
+          [{ field_name: "项目编号", operator: "contains", value: [query] }],
+          match,
+          { fallbackOnEmpty: true },
+        )
+      : await this.listRecords("reviews");
     const projects = new Set<string>();
 
     records.forEach(r => {
       const projectId = fieldText(r.fields["项目编号"]);
-      if (projectId && projectId.toLowerCase().includes(query.toLowerCase())) {
+      if (projectId && match(r)) {
         projects.add(projectId);
       }
     });
@@ -109,12 +137,22 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
    * 获取机型名称联想列表（去重）
    */
   async getMachineSuggestions(query: string, limit: number = 5): Promise<string[]> {
-    const records = await this.listRecords("reviews");
+    // filter 下推 contains 子串；空查询 / 查空 / search 失败时回退全表扫描（大小写兜底）
+    const match = (r: BitableRecord): boolean =>
+      fieldText(r.fields["机型名称"]).toLowerCase().includes(query.toLowerCase());
+    const records = query
+      ? await this.queryRecords(
+          "reviews",
+          [{ field_name: "机型名称", operator: "contains", value: [query] }],
+          match,
+          { fallbackOnEmpty: true },
+        )
+      : await this.listRecords("reviews");
     const machines = new Set<string>();
 
     records.forEach(r => {
       const machineName = fieldText(r.fields["机型名称"]);
-      if (machineName && machineName.toLowerCase().includes(query.toLowerCase())) {
+      if (machineName && match(r)) {
         machines.add(machineName);
       }
     });
@@ -143,7 +181,7 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
       machineName: fieldText(f["机型名称"] ?? f["machineName"]),
       drawingVersion: fieldText(f["图纸版本"] ?? f["drawingVersion"]),
       designerId: fieldText(f["设计负责人"] ?? f["designerId"]),
-      drawingFiles: [], // 附件字段需单独解析
+      drawingFiles: parseAttachments(f["图纸文件"] ?? f["drawingFiles"]),
       designNotes: fieldText(f["设计说明"] ?? f["designNotes"]),
       status: (fieldText(f["状态"] ?? f["status"]) as ReviewStatus) || "draft",
       meetingId: fieldText(f["会议ID"] ?? f["meetingId"]) || undefined,
@@ -177,6 +215,9 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
       const v = review[key as keyof DrawingReview];
       if (v !== undefined) fields[fieldName] = v;
     }
+    // 降级：Base 评审单表暂无原生附件列，且前端附件 token 实为 R2 key（非飞书 file_token），
+    // 附件数组序列化为 JSON 存入文本字段「图纸文件」；读取侧兼容原生附件数组，便于日后升级为附件列
+    if (review.drawingFiles !== undefined) fields["图纸文件"] = JSON.stringify(review.drawingFiles);
     if (!partial) {
       fields["创建时间"] = review.createdAt ?? new Date().toISOString();
       fields["更新时间"] = review.updatedAt ?? new Date().toISOString();
@@ -201,9 +242,13 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
   }
 
   async getMinutesByReview(reviewId: string): Promise<Array<ReviewMinutes & { recordId: string }>> {
-    const records = await this.listRecords("minutes");
+    // filter 下推按「关联评审单」只拉本单纪要；search 失败回退全表扫描（match 与原逻辑一致）
+    const records = await this.queryRecords(
+      "minutes",
+      [{ field_name: "关联评审单", operator: "is", value: [reviewId] }],
+      (r) => fieldText(r.fields["关联评审单"]) === reviewId,
+    );
     return records
-      .filter((r) => fieldText(r.fields["关联评审单"]) === reviewId)
       .map((r) => ({
         minutesId: fieldText(r.fields["会议纪要ID"] ?? r.fields["minutesId"]) || r.record_id,
         reviewId: fieldText(r.fields["关联评审单"]),
@@ -246,8 +291,13 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
   }
 
   async getBOMByReview(reviewId: string): Promise<{ bom: BOM & { recordId: string }; items: Array<BOMItem & { recordId: string }> } | null> {
-    const records = await this.listRecords("bom");
-    const rec = records.find((r) => fieldText(r.fields["关联评审单"]) === reviewId);
+    // filter 下推：先按「关联评审单」找 BOM 头，再按「关联BOM」找物料行（均为 search 失败回退全表扫描）
+    const heads = await this.queryRecords(
+      "bom",
+      [{ field_name: "关联评审单", operator: "is", value: [reviewId] }],
+      (r) => fieldText(r.fields["关联评审单"]) === reviewId,
+    );
+    const rec = heads[0];
     if (!rec) return null;
     const bom: BOM & { recordId: string } = {
       bomId: fieldText(rec.fields["BOM编号"] ?? rec.fields["bomId"]) || rec.record_id,
@@ -257,19 +307,19 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
       status: (fieldText(rec.fields["状态"] ?? rec.fields["status"]) as "draft" | "confirmed") || "draft",
       recordId: rec.record_id,
     };
-    // BOM 头与物料同表，直接复用已拉取的 records 过滤物料行，不再二次拉表
-    const items = records
-      .filter((r) => fieldText(r.fields["关联BOM"] ?? r.fields["bomId"]) === bom.bomId)
-      .map((r) => this.recordToBOMItem(r, bom.bomId));
+    const items = await this.listBOMItems(bom.bomId);
     return { bom, items };
   }
 
   /** 读取某 BOM 下的全部物料行（BOM 头与物料同表，以「关联BOM」区分） */
   async listBOMItems(bomId: string): Promise<Array<BOMItem & { recordId: string }>> {
-    const records = await this.listRecords("bom");
-    return records
-      .filter((r) => fieldText(r.fields["关联BOM"] ?? r.fields["bomId"]) === bomId)
-      .map((r) => this.recordToBOMItem(r, bomId));
+    // filter 下推按「关联BOM」只拉本 BOM 的物料行；search 失败回退全表扫描（match 与原逻辑一致）
+    const records = await this.queryRecords(
+      "bom",
+      [{ field_name: "关联BOM", operator: "is", value: [bomId] }],
+      (r) => fieldText(r.fields["关联BOM"] ?? r.fields["bomId"]) === bomId,
+    );
+    return records.map((r) => this.recordToBOMItem(r, bomId));
   }
 
   private recordToBOMItem(r: BitableRecord, bomId: string): BOMItem & { recordId: string } {
@@ -297,15 +347,27 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
   // ---------- 询价单 ----------
 
   async listInquiries(reviewId?: string): Promise<Array<Inquiry & { recordId: string }>> {
-    const records = await this.listRecords("inquiries");
+    // 带 reviewId 时 filter 下推按「关联评审单」只拉本单询价；不带条件（看板聚合）保持全表扫描
+    const records = reviewId
+      ? await this.queryRecords(
+          "inquiries",
+          [{ field_name: "关联评审单", operator: "is", value: [reviewId] }],
+          (r) => fieldText(r.fields["关联评审单"] ?? r.fields["reviewId"]) === reviewId,
+        )
+      : await this.listRecords("inquiries");
     return records
       .map((r) => this.recordToInquiry(r))
       .filter((i) => !reviewId || i.reviewId === reviewId);
   }
 
   async findInquiryById(inquiryId: string): Promise<(Inquiry & { recordId: string }) | null> {
-    const records = await this.listRecords("inquiries");
-    const rec = records.find((r) => fieldText(r.fields["询价单号"] ?? r.fields["inquiryId"]) === inquiryId);
+    // filter 下推按「询价单号」精确查；search 失败回退全表扫描（match 与原逻辑一致）
+    const records = await this.queryRecords(
+      "inquiries",
+      [{ field_name: "询价单号", operator: "is", value: [inquiryId] }],
+      (r) => fieldText(r.fields["询价单号"] ?? r.fields["inquiryId"]) === inquiryId,
+    );
+    const rec = records[0];
     return rec ? this.recordToInquiry(rec) : null;
   }
 
@@ -363,7 +425,12 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
 
   /** 按评审单查询库存行（字段口径与 board.service 读取一致：关联评审单/物料编码/物料名称） */
   async listInventoryByReview(reviewId: string): Promise<Array<InventoryRecord & { recordId: string }>> {
-    const records = await this.listRecords("inventory");
+    // filter 下推按「关联评审单」只拉本单库存行；search 失败回退全表扫描（match 与原逻辑一致）
+    const records = await this.queryRecords(
+      "inventory",
+      [{ field_name: "关联评审单", operator: "is", value: [reviewId] }],
+      (r) => fieldText(r.fields["关联评审单"] ?? r.fields["reviewId"]) === reviewId,
+    );
     return records
       .map((r) => this.recordToInventory(r))
       .filter((i) => i.reviewId === reviewId);
@@ -416,7 +483,14 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
   // ---------- 流程事件 ----------
 
   async listEvents(reviewId?: string): Promise<ProcessEvent[]> {
-    const records = await this.listRecords("events");
+    // 带 reviewId 时 filter 下推按「关联评审单」只拉本单事件；不带条件（看板聚合）保持全表扫描
+    const records = reviewId
+      ? await this.queryRecords(
+          "events",
+          [{ field_name: "关联评审单", operator: "is", value: [reviewId] }],
+          (r) => fieldText(r.fields["关联评审单"] ?? r.fields["reviewId"]) === reviewId,
+        )
+      : await this.listRecords("events");
     return records
       .map((r) => {
         const f = r.fields;
@@ -443,6 +517,38 @@ export class DrawingReviewAdapter extends FeishuTableAdapter<DrawingReviewConfig
       })
       .filter((e) => !reviewId || e.reviewId === reviewId);
   }
+}
+
+/**
+ * 附件字段解析：兼容两种存储形式
+ * 1. 文本字段中的 JSON 数组字符串（当前降级方案）；
+ * 2. 飞书原生附件列的 [{file_token, name, size, url, ...}] 结构。
+ */
+function parseAttachments(v: unknown): Attachment[] {
+  let arr: unknown = v;
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (!s) return [];
+    try {
+      arr = JSON.parse(s);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(arr)) return [];
+  const out: Attachment[] = [];
+  for (const item of arr) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const token = typeof o.token === "string" ? o.token : typeof o.file_token === "string" ? o.file_token : "";
+    const name = typeof o.name === "string" ? o.name : "";
+    if (!token && !name) continue;
+    const att: Attachment = { name, token };
+    if (typeof o.url === "string" && o.url) att.url = o.url;
+    if (typeof o.size === "number" && Number.isFinite(o.size)) att.size = o.size;
+    out.push(att);
+  }
+  return out;
 }
 
 /** 时间字段解析：优先 Date.parse（ISO），失败回退 fieldTs 的中文/斜杠格式归一化 */

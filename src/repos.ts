@@ -27,20 +27,21 @@ interface RepoEntry {
 /** NEC 开源仓库的 GitHub 组织名（/api/repos 数据源之一） */
 const GITHUB_ORG = "new-energy-coder-club";
 
-/** NEC 开源仓库的 Gitee 账号（组织无 Gitee 版，用队长账号兜底；/api/repos 数据源之一） */
-const GITEE_USER = "darrenpig";
+/** NEC 开源仓库的 Gitee 默认账号（组织无 Gitee 版，用队长账号兜底；可用 wrangler vars GITEE_USER 覆盖） */
+const GITEE_USER_DEFAULT = "darrenpig";
 
 /** 仓库列表缓存 TTL（秒）。两源合计单次刷新约 40+ 次请求（GitHub/Gitee 匿名均 60 次/小时），建议配置 GITHUB_TOKEN / GITEE_TOKEN */
 const REPOS_CACHE_TTL_SEC = 3600;
 
 export async function buildRepos(env: Env, ctx?: ExecutionContext): Promise<unknown> {
+  const giteeUser = env.GITEE_USER ?? GITEE_USER_DEFAULT;
   const cacheKey = "repos:cache:v2";
   const legacyKey = "repos:cache";
   const cached = await env.REGISTRY.get(cacheKey, "json") as
     | { data: RepoEntry[]; cachedAt: number }
     | null;
   if (cached && cached.cachedAt > Date.now() - REPOS_CACHE_TTL_SEC * 1000) {
-    return { github: GITHUB_ORG, gitee: GITEE_USER, cachedAt: new Date(cached.cachedAt).toISOString(), repos: cached.data };
+    return { github: GITHUB_ORG, gitee: giteeUser, cachedAt: new Date(cached.cachedAt).toISOString(), repos: cached.data };
   }
   try {
     const repos = await fetchAllRepos(env);
@@ -48,20 +49,20 @@ export async function buildRepos(env: Env, ctx?: ExecutionContext): Promise<unkn
       .then(() => env.REGISTRY.delete(legacyKey)); // 清理单源时代的旧缓存
     if (ctx) ctx.waitUntil(write);
     else await write;
-    return { github: GITHUB_ORG, gitee: GITEE_USER, cachedAt: new Date().toISOString(), repos };
+    return { github: GITHUB_ORG, gitee: giteeUser, cachedAt: new Date().toISOString(), repos };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (cached) {
       return {
         github: GITHUB_ORG,
-        gitee: GITEE_USER,
+        gitee: giteeUser,
         cachedAt: new Date(cached.cachedAt).toISOString(),
         stale: true,
         error: `${msg}（展示缓存快照）`,
         repos: cached.data,
       };
     }
-    return { github: GITHUB_ORG, gitee: GITEE_USER, repos: [], error: msg };
+    return { github: GITHUB_ORG, gitee: giteeUser, repos: [], error: msg };
   }
 }
 
@@ -173,7 +174,7 @@ async function fetchGiteeRepos(env: Env): Promise<RepoEntry[]> {
   const token = env.GITEE_TOKEN;
   const list: GiteeRepoApi[] = [];
   for (let page = 1; page <= 5; page++) {
-    const u = new URL(`https://gitee.com/api/v5/users/${GITEE_USER}/repos`);
+    const u = new URL(`https://gitee.com/api/v5/users/${env.GITEE_USER ?? GITEE_USER_DEFAULT}/repos`);
     u.searchParams.set("per_page", "100");
     u.searchParams.set("page", String(page));
     if (token) u.searchParams.set("access_token", token);

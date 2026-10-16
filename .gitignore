@@ -9,3 +9,9 @@ worker-configuration.d.ts
 worker-configuration.d.ts
 .kimi-code/
 .DS_Store
+
+# 门户前端构建产物（web/vite build 直出到 public/，勿手改；brand/ docs/ assets/ 为手写资源保持跟踪）
+public/portal-assets/
+public/index.html
+public/apps/*/index.html
+public/apps/task-schedule/animated.html

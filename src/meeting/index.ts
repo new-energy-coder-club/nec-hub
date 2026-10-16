@@ -8,10 +8,10 @@
  */
 
 import { validateUserToken } from "../auth/feishu-auth";
+import { FEISHU_API } from "../feishu/client";
 import { resolveOpenIds } from "../feishu/member-directory";
 import { getUserAccessToken } from "../feishu/user-token";
 
-const FEISHU_API = "https://open.feishu.cn/open-apis";
 const DEFAULT_DURATION_MIN = 60;
 
 /** 解析开始/结束时间为 epoch 毫秒；无时区按 +08:00 */
@@ -60,13 +60,6 @@ export async function toolScheduleMeeting(
   env: Env,
   hasMcpToken: boolean,
 ) {
-  const provider = String(args.provider ?? "feishu").toLowerCase();
-  if (provider !== "feishu") {
-    throw new Error(
-      `暂不支持 provider=${provider}：腾讯会议需要企业 API 凭证（SecretId/SecretKey），尚未接入；当前请用默认的飞书（provider=feishu）`,
-    );
-  }
-
   const title = String(args.title ?? "").trim();
   if (!title) throw new Error("title（会议主题）不能为空");
   const startMs = parseMeetingTime(args.start, "开始时间 start");

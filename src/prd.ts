@@ -2,7 +2,7 @@
  * 动态 PRD 看板 + GitHub push webhook
  *
  * GET /api/prd：M1/M2/M3 需求状态 + 总进度 + 最近 git 提交。
- *   初始状态为 PRD V2.0 §5 盘点基线（DEFAULT_PRD_ITEMS），之后由 Agent 调 MCP update_prd 维护（覆盖存 KV prd:status）。
+ *   初始状态为 PRD V2.1 §5 盘点基线（DEFAULT_PRD_ITEMS），之后由 Agent 调 MCP update_prd 维护（覆盖存 KV prd:status）。
  * POST /api/hooks/github：GitHub push webhook（HMAC-SHA256 验签 → 最近提交写 KV prd:last_commit + 列表 prd:recent_commits（最多 10 条）→ 推飞书群）。
  */
 
@@ -19,7 +19,7 @@ export interface PrdItem {
   note?: string;
 }
 
-/** 初始看板 = PRD V2.0 §5 盘点基线（2026-10-12）；后续用 update_prd 维护，KV prd:status 覆盖本默认值 */
+/** 初始看板 = PRD V2.1 §5 盘点基线（2026-10-12）；后续用 update_prd 维护，KV prd:status 覆盖本默认值 */
 export const DEFAULT_PRD_ITEMS: Record<string, PrdItem> = {
   "FE-01": { title: "飞书 OAuth 登录态与权限角色", priority: "P0", status: "done", note: "真实队长登录已验证" },
   "FE-02": { title: "数据基建落地与看板接入", priority: "P0", status: "partial", note: "4 表建成读真实数据；待团队录数据过验收" },
@@ -76,7 +76,7 @@ export async function buildPrdBoard(env: Env): Promise<unknown> {
   }));
   const all = Object.values(items);
   return {
-    doc: "docs/团队AI中台PRD_V2.0.md",
+    doc: "docs/团队AI中台PRD_V2.1.md",
     updatedAt,
     progress: { done: all.filter((i) => i.status === "done").length, total: all.length },
     milestones,

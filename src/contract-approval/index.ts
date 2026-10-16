@@ -14,8 +14,8 @@ import {
   type SubmitApprovalInput,
 } from "./flow.service";
 import { loadMemberDirectory } from "../feishu/member-directory";
-import { json } from "../shared/http";
-import { withModuleGate, type ModuleRouteContext } from "../shared/module-gateway";
+import { json, readJson } from "../shared/http";
+import { withModuleGate, CONFIG_ADMIN_ROLES, type ModuleRouteContext } from "../shared/module-gateway";
 import type { Attachment, ContractApprovalConfig, ContractType } from "./types";
 
 interface SubmitBody {
@@ -45,6 +45,7 @@ export async function handleContractApproval(
       getConfig: getContractApprovalConfig,
       handleConfig,
       handler: handleAuthed,
+      configRoles: CONFIG_ADMIN_ROLES,
     },
     request,
     env,
@@ -59,7 +60,8 @@ async function handleAuthed(ctx: ModuleRouteContext<ContractApprovalConfig>): Pr
 
   // 提交审批单
   if (pathname === "/api/contract-approval/submit" && request.method === "POST") {
-    const body = (await request.json()) as SubmitBody;
+    const body = await readJson<SubmitBody>(request);
+    if (!body) return json({ error: "请求体必须是 JSON" }, 400);
     const input: SubmitApprovalInput = {
       contractName: body.contractName ?? "",
       contractNumber: body.contractNumber,
@@ -157,14 +159,16 @@ async function handleAuthed(ctx: ModuleRouteContext<ContractApprovalConfig>): Pr
   // 审批操作（approve / reject / revise）
   const actionMatch = pathname.match(/^\/api\/contract-approval\/([^/]+)\/action$/);
   if (actionMatch && request.method === "POST") {
-    const body = (await request.json()) as ApprovalActionInput;
+    const body = await readJson<ApprovalActionInput>(request);
+    if (!body) return json({ error: "请求体必须是 JSON" }, 400);
     return json(await flow.takeAction(actionMatch[1], body, session.open_id));
   }
 
   // 重新提交（仅提交人，从 revised 状态）
   const resubmitMatch = pathname.match(/^\/api\/contract-approval\/([^/]+)\/resubmit$/);
   if (resubmitMatch && request.method === "POST") {
-    const body = (await request.json()) as ResubmitInput;
+    const body = await readJson<ResubmitInput>(request);
+    if (!body) return json({ error: "请求体必须是 JSON" }, 400);
     return json(await flow.resubmit(resubmitMatch[1], body, session.open_id));
   }
 
@@ -184,7 +188,7 @@ async function handleAuthed(ctx: ModuleRouteContext<ContractApprovalConfig>): Pr
 }
 
 async function handleConfig(request: Request, env: Env): Promise<Response> {
-  const body = (await request.json()) as { action?: string; base?: string; tables?: Record<string, string> };
+  const body = (await readJson<{ action?: string; base?: string; tables?: Record<string, string> }>(request)) ?? {};
   if (body.action === "get" || !body.action) {
     const cfg = await getContractApprovalConfig(env);
     return json({ configured: !!cfg, base: cfg?.base ?? null, tables: cfg?.tables ?? {} });

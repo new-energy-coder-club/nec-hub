@@ -19,7 +19,7 @@ const loadFailed = ref(false)
 
 // PRD 文档库：docs/ 下全部 PRD 在线阅读（原文同步自 docs/*.md → public/docs/prd/）
 const PRD_DOCS = [
-  { slug: 'team-ai-platform-v2.0',       title: '团队 AI 中台 PRD',              version: 'V2.0', date: '2026-10-14', desc: '中台总纲：M1 地基 / M2 资产与智能 / M3 个性化与自动化，FE-01 ~ FE-14 需求全景（上方看板的数据来源）' },
+  { slug: 'team-ai-platform-v2.1',       title: '团队 AI 中台 PRD',              version: 'V2.1', date: '2026-10-16', desc: '中台总纲：M1 地基 / M2 资产与智能 / M3 个性化与自动化，FE-01 ~ FE-14 需求全景（上方看板的数据来源）' },
   { slug: 'approval-notification-v1.1',  title: '审批与通知中心 PRD',            version: 'V1.1', date: '2026-10-12', desc: '报销 / 机械图纸 / 硬件采购领用 / 合规四条流程，流程即配置的 Plan B 审批引擎' },
   { slug: 'approval-notification-v1.2',  title: '审批与通知中心 PRD（缺口补齐）', version: 'V1.2', date: '2026-10-14', desc: '台账联动、合规申请页、审批时效治理、待办 T-1 标红、邮件通道（飞书邮箱）' },
   { slug: 'contract-signing-oa-v1.0',    title: '协议签署 OA 审批 PRD',          version: 'V1.0', date: '2026-10-14', desc: '合作协议 / 保密协议（NDA）走飞书原生 OA 审批：法务 → 运营 → 合规三级串行审核，全部通过方可签署用章' },

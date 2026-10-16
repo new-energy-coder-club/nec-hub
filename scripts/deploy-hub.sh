@@ -33,10 +33,13 @@ open(p, "w", encoding="utf-8").write(s)
 print("wrangler.jsonc 已回填 KV id")
 EOF
 
-echo "== 4. 部署 Worker（自动绑定自定义域名 hub.newenergycoder.club）=="
+echo "== 4. 构建门户前端（产物直出 public/，构建前自动清空 portal-assets）=="
+(cd web && npm run build)
+
+echo "== 5. 部署 Worker（自动绑定自定义域名 hub.newenergycoder.club）=="
 wrangler deploy
 
-echo "== 5. 等待 DNS/证书生效并验证 =="
+echo "== 6. 等待 DNS/证书生效并验证 =="
 for i in 1 2 3 4 5 6; do
   sleep 10
   CODE=$(curl -s -o /dev/null -w "%{http_code}" -m 10 https://hub.newenergycoder.club/api/health || true)

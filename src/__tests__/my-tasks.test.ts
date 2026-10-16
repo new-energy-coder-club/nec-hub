@@ -102,6 +102,18 @@ describe("GET /api/my-tasks", () => {
     expect(data.authorizeUrl).toContain("task%3Atasklist%3Aread");
   });
 
+  it("未绑定生成 authorizeUrl 时：state 落 KV（oauth:state:<state>，TTL 600 秒）", async () => {
+    const { env, store, raw } = kvBackedEnv();
+    const res = await handleGetMyTasks(authedRequest(store), env);
+    const data = (await res.json()) as { authorizeUrl: string };
+    const state = new URL(data.authorizeUrl).searchParams.get("state");
+    expect(state).toBeTruthy();
+    expect(store.has(`oauth:state:${state}`)).toBe(true);
+    expect(JSON.parse(store.get(`oauth:state:${state}`)!)).toMatchObject({ openId: "ou_test" });
+    const putCall = raw.REGISTRY.put.mock.calls.find((c) => c[0] === `oauth:state:${state}`);
+    expect(putCall?.[2]).toMatchObject({ expirationTtl: 600 });
+  });
+
   it("已绑定：同步拉取 Task v2 并缓存", async () => {
     const { env, store } = kvBackedEnv();
     seedUserToken(store);

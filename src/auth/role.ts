@@ -20,8 +20,29 @@ export interface UserRole {
   matched: boolean;
 }
 
+/** 角色判定正则注册表：全后端角色口径集中在此，各调用点引用而不是各自写字面量。
+ *  注意：各常量保持既有调用点的原有语义，仅做集中管理，不代表统一授权口径（口径变更是产品决策）。 */
+export const ROLES = {
+  /** 队长/组长：全量校验、周报手动触发、组默认首页、赛季目标管理操作 */
+  LEADER: /队长|组长/,
+  /** 财务明细可见（含指导）：看板财务区与 MCP finance 表查询 */
+  FINANCE: /队长|财务|指导/i,
+  /** 报销审批/打款与单据台账查看：队长/财务 */
+  FINANCE_MANAGER: /队长|财务/,
+  /** 队长硬编码放行（限组流程提交、审批人兜底） */
+  CAPTAIN: /队长/,
+  /** 配置写权限管理员：模块 config 接口、域名申请 */
+  CONFIG_ADMIN: /队长|指导|管理员|admin/i,
+  /** 询价管理：报价回填、选定供应商 */
+  INQUIRY_MANAGER: /队长|采购|项目经理/,
+} as const;
+
+export function hasRole(role: string, re: RegExp): boolean {
+  return re.test(role);
+}
+
 /** 财务明细可见角色（看板明细与 MCP finance 表查询共用） */
-const FINANCE_ROLE_RE = /队长|财务|指导/i;
+const FINANCE_ROLE_RE = ROLES.FINANCE;
 
 export async function resolveUserRole(env: Env, user: HubUser, ctx?: ExecutionContext): Promise<UserRole> {
   const cacheKey = `role:${user.open_id}`;
@@ -97,5 +118,5 @@ function matchMemberRecord(records: BitableRecord[], user: HubUser): BitableReco
 }
 
 export function canSeeFinanceDetail(role: UserRole): boolean {
-  return FINANCE_ROLE_RE.test(role.role);
+  return hasRole(role.role, FINANCE_ROLE_RE);
 }

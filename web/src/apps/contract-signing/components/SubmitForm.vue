@@ -3,6 +3,8 @@
 // FilePicker 三模式、防丢（关闭确认 + 800ms 节流自动草稿）、到期<生效即时红字校验
 import { reactive, ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { store, api, typeMap, parseParties, formatAmount, MAX_AMOUNT } from '../store'
+import { useDraft } from '@shared/composables/useDraft'
+import { confirmDialog } from '@shared/ui/feedback'
 import MembersPicker, { type ApproverChip } from './MembersPicker.vue'
 import FilePicker, { type FileDraft } from './FilePicker.vue'
 
@@ -172,9 +174,8 @@ function resetForm() {
   draftSnapshot = draftPayload()
 }
 
-/* ---------- 防丢：自动草稿（800ms 节流） + 关闭确认 ---------- */
+/* ---------- 防丢：自动草稿（800ms 节流走 shared useDraft） + 关闭确认 ---------- */
 const DRAFT_KEY = 'nec-contract-draft'
-let draftTimer: ReturnType<typeof setTimeout> | null = null
 let draftSnapshot = ''
 
 function draftPayload(): string {
@@ -182,50 +183,39 @@ function draftPayload(): string {
 }
 const dirty = computed(() => draftPayload() !== draftSnapshot)
 
-function saveDraftNow() {
-  try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ form: { ...form }, chips: chips.value, files: files.value }))
-  } catch { /* ignore */ }
-}
-function saveDraftThrottled() {
-  if (draftTimer) clearTimeout(draftTimer)
-  draftTimer = setTimeout(saveDraftNow, 800)
-}
+interface CsDraft { form: Record<string, string>; chips: ApproverChip[]; files: FileDraft[] }
+const draftStore = useDraft<CsDraft>(DRAFT_KEY, {
+  delay: 800,
+  collect: () => ({ form: { ...form }, chips: chips.value, files: files.value }),
+})
+const saveDraftThrottled = draftStore.schedule
 
 function loadDraft(): boolean {
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY)
-    if (!raw) return false
-    const d = JSON.parse(raw)
-    if (!d || typeof d !== 'object' || !d.form) return false
-    const f = d.form
-    Object.assign(form, {
-      contractName: typeof f.contractName === 'string' ? f.contractName : '',
-      contractNumber: typeof f.contractNumber === 'string' ? f.contractNumber : '',
-      contractType: typeof f.contractType === 'string' ? f.contractType : 'service',
-      parties: typeof f.parties === 'string' ? f.parties : '',
-      amountRaw: typeof f.amountRaw === 'string' ? f.amountRaw : '',
-      currency: typeof f.currency === 'string' ? f.currency : 'CNY',
-      effectiveDate: typeof f.effectiveDate === 'string' ? f.effectiveDate : '',
-      expirationDate: typeof f.expirationDate === 'string' ? f.expirationDate : '',
-      summary: typeof f.summary === 'string' ? f.summary : '',
-    })
-    chips.value = Array.isArray(d.chips)
-      ? d.chips.filter((c: any) => c && typeof c.approverId === 'string' && typeof c.level === 'string')
-          .map((c: any) => ({ level: c.level, approverId: c.approverId, name: typeof c.name === 'string' ? c.name : '' }))
-      : []
-    files.value = Array.isArray(d.files)
-      ? d.files.filter((x: any) => x && typeof x.name === 'string' && (x.kind === 'upload' ? typeof x.key === 'string' : typeof x.url === 'string'))
-      : []
-    return true
-  } catch {
-    return false
-  }
+  const d = draftStore.read()
+  if (!d || typeof d !== 'object' || !d.form) return false
+  const f = d.form
+  Object.assign(form, {
+    contractName: typeof f.contractName === 'string' ? f.contractName : '',
+    contractNumber: typeof f.contractNumber === 'string' ? f.contractNumber : '',
+    contractType: typeof f.contractType === 'string' ? f.contractType : 'service',
+    parties: typeof f.parties === 'string' ? f.parties : '',
+    amountRaw: typeof f.amountRaw === 'string' ? f.amountRaw : '',
+    currency: typeof f.currency === 'string' ? f.currency : 'CNY',
+    effectiveDate: typeof f.effectiveDate === 'string' ? f.effectiveDate : '',
+    expirationDate: typeof f.expirationDate === 'string' ? f.expirationDate : '',
+    summary: typeof f.summary === 'string' ? f.summary : '',
+  })
+  chips.value = Array.isArray(d.chips)
+    ? d.chips.filter((c: any) => c && typeof c.approverId === 'string' && typeof c.level === 'string')
+        .map((c: any) => ({ level: c.level, approverId: c.approverId, name: typeof c.name === 'string' ? c.name : '' }))
+    : []
+  files.value = Array.isArray(d.files)
+    ? d.files.filter((x: any) => x && typeof x.name === 'string' && (x.kind === 'upload' ? typeof x.key === 'string' : typeof x.url === 'string'))
+    : []
+  return true
 }
 
-function clearDraft() {
-  try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
-}
+const clearDraft = draftStore.clear
 
 function onClearDraft() {
   clearDraft()
@@ -233,9 +223,9 @@ function onClearDraft() {
 }
 
 // 关闭前确认（父组件通过 defineExpose 调用）
-function confirmClose(): boolean {
+async function confirmClose(): Promise<boolean> {
   if (!dirty.value) return true
-  return window.confirm('放弃本次填写？')
+  return confirmDialog('放弃本次填写？')
 }
 defineExpose({ confirmClose })
 
@@ -255,7 +245,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  if (draftTimer) clearTimeout(draftTimer)
+  draftStore.cancel()
 })
 </script>
 

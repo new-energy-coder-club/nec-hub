@@ -6,8 +6,7 @@
  */
 
 import { getAppAccessToken } from "../auth/feishu-auth";
-
-const FEISHU_API = "https://open.feishu.cn/open-apis";
+import { FEISHU_API } from "./client";
 
 /** user_access_token 临期阈值：剩余不足 5 分钟就走 refresh 续期 */
 const REFRESH_AHEAD_MS = 5 * 60 * 1000;

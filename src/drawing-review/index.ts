@@ -4,10 +4,10 @@
  * 入口骨架（配置接口 / 503 / 会话 / 401 / 500 兜底）统一由 shared/module-gateway 提供。
  */
 
-import { resolveUserRole } from "../auth/role";
-import { json } from "../shared/http";
+import { ROLES, resolveUserRole } from "../auth/role";
+import { json, readJson } from "../shared/http";
 import { handleScheduleMeeting } from "../shared/meeting.service";
-import { withModuleGate, type ModuleRouteContext } from "../shared/module-gateway";
+import { withModuleGate, CONFIG_ADMIN_ROLES, type ModuleRouteContext } from "../shared/module-gateway";
 import { DrawingReviewAdapter } from "./adapter";
 import { BoardService } from "./board.service";
 import { BOMService } from "./bom.service";
@@ -18,6 +18,9 @@ import { InventoryService } from "./inventory.service";
 import { SuggestionService } from "./suggestion.service";
 import type { DrawingReviewConfig } from "./types";
 
+/** 询价管理角色口径：报价回填与选定供应商共用 */
+const INQUIRY_MANAGER_ROLE_RE = ROLES.INQUIRY_MANAGER;
+
 export async function handleDrawingReview(request: Request, env: Env, pathname: string): Promise<Response | null> {
   return withModuleGate(
     {
@@ -27,6 +30,7 @@ export async function handleDrawingReview(request: Request, env: Env, pathname: 
       getConfig: getDrawingReviewConfig,
       handleConfig,
       handler: handleAuthed,
+      configRoles: CONFIG_ADMIN_ROLES,
     },
     request,
     env,
@@ -41,7 +45,8 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
 
   // 评审单
   if (pathname === "/api/drawing-review/submit" && request.method === "POST") {
-    const body = (await request.json()) as Partial<SubmitReviewInput>;
+    const body = await readJson<Partial<SubmitReviewInput>>(request);
+    if (!body) return json({ error: "请求体必须是 JSON" }, 400);
     // Apply automatic default filling for missing fields
     const input: SubmitReviewInput = {
       projectId: body.projectId,
@@ -81,18 +86,22 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
     const svc = new InquiryService(env, adapter);
     if (body.selections && Object.keys(body.selections).length > 0) {
       const role = await resolveUserRole(env, session);
-      // 名单表未配置/未匹配时降级为仅登录校验，操作人已记入事件日志
-      if (role.matched && !/队长|采购|项目经理/.test(role.role)) {
+      if (!INQUIRY_MANAGER_ROLE_RE.test(role.role)) {
         return json({ error: `权限不足：选定供应商仅队长/采购/项目经理可执行（当前角色：${role.role}）` }, 403);
       }
     }
     return json(await svc.compare(inqCmpMatch[1], body.selections, session.open_id));
   }
 
-  // 询价单：供应商报价回填（任何登录用户，模拟供应商）
+  // 询价单：供应商报价回填（需管理角色；报价模拟供应商提交，故收口到队长/采购/项目经理）
   const inqQuoteMatch = pathname.match(/^\/api\/drawing-review\/inquiries\/([^/]+)\/quote$/);
   if (inqQuoteMatch && request.method === "POST") {
-    const body = (await request.json()) as import("./inquiry.service").QuoteInput;
+    const role = await resolveUserRole(env, session);
+    if (!INQUIRY_MANAGER_ROLE_RE.test(role.role)) {
+      return json({ error: `权限不足：报价回填仅队长/采购/项目经理可执行（当前角色：${role.role}）` }, 403);
+    }
+    const body = await readJson<import("./inquiry.service").QuoteInput>(request);
+    if (!body) return json({ error: "请求体必须是 JSON" }, 400);
     const svc = new InquiryService(env, adapter);
     return json(await svc.quote(inqQuoteMatch[1], body, session.open_id));
   }
@@ -148,7 +157,8 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
   // 会议纪要
   const minutesMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/minutes$/);
   if (minutesMatch && request.method === "POST") {
-    const body = await request.json() as Parameters<ReviewFlowService["saveMinutes"]>[1];
+    const body = await readJson<Parameters<ReviewFlowService["saveMinutes"]>[1]>(request);
+    if (!body) return json({ error: "请求体必须是 JSON" }, 400);
     const minutes = await flow.saveMinutes(minutesMatch[1], body, session.open_id);
     return json(minutes);
   }
@@ -156,7 +166,8 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
   // 评审结论
   const conclusionMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/conclusion$/);
   if (conclusionMatch && request.method === "POST") {
-    const body = await request.json() as import("./flow.service").ConclusionInput;
+    const body = await readJson<import("./flow.service").ConclusionInput>(request);
+    if (!body) return json({ error: "请求体必须是 JSON" }, 400);
     const review = await flow.conclude(conclusionMatch[1], body, session.open_id);
     return json(review);
   }
@@ -171,8 +182,9 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
   // BOM 生成（幂等：已有 BOM 直接返回；仅当状态机允许时才流转 assessing）
   const bomMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/bom\/generate$/);
   if (bomMatch && request.method === "POST") {
-    const body = await request.json() as import("./bom.service").GenerateBOMInput;
-    if (!Array.isArray(body?.items) || body.items.length === 0) {
+    const body = await readJson<import("./bom.service").GenerateBOMInput>(request);
+    if (!body) return json({ error: "请求体必须是 JSON" }, 400);
+    if (!Array.isArray(body.items) || body.items.length === 0) {
       return json({ error: "BOM 物料清单不能为空：items 至少包含一项物料" }, 400);
     }
     const existing = await adapter.getBOMByReview(bomMatch[1]);
@@ -272,7 +284,7 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
 }
 
 async function handleConfig(request: Request, env: Env): Promise<Response> {
-  const body = (await request.json()) as { action?: string; base?: string; tables?: Record<string, string> };
+  const body = (await readJson<{ action?: string; base?: string; tables?: Record<string, string> }>(request)) ?? {};
   if (body.action === "get" || !body.action) {
     const cfg = await getDrawingReviewConfig(env);
     return json({ configured: !!cfg, base: cfg?.base ?? null, tables: cfg?.tables ?? {} });

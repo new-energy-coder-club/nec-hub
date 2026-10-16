@@ -83,3 +83,6 @@ export const DR_INQ_STATUS: Record<string, { label: string; color: string }> = {
 export function drInqStatus(status: string) {
   return DR_INQ_STATUS[status] || DR_INQ_STATUS.sent
 }
+
+// 甘特图节点（流程看板）
+export const DR_GANTT_MS: Record<string, string> = { submit: '提交', meeting: '会议', conclusion: '结论', bom: 'BOM', archived: '归档' }

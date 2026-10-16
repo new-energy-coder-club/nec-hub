@@ -10,9 +10,7 @@ export async function handleWhoami(request: Request, env: Env, ctx?: ExecutionCo
   const s = await resolveSession(env, request, ctx);
   if (!s) return json({ authenticated: false, user: null });
   const role = await resolveUserRole(env, s.user, ctx);
-  const res = json({ authenticated: true, user: { ...s.user, ...role } });
-  if (s.renewed) res.headers.set("set-cookie", sessionCookie(s.renewed));
-  return res;
+  return json({ authenticated: true, user: { ...s.user, ...role } });
 }
 
 export async function handleLogout(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {

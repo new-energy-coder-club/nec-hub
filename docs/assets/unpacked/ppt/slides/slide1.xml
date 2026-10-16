@@ -1,0 +1,3789 @@
+<?xml version="1.0" encoding="UTF-8"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:bg>
+      <p:bgPr>
+        <a:solidFill>
+          <a:srgbClr val="FBFCFE"/>
+        </a:solidFill>
+        <a:effectLst/>
+      </p:bgPr>
+    </p:bg>
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="hdr-bar"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="584200"/>
+            <a:ext cx="431800" cy="50800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:srgbClr val="2E7FC2"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="hdr-title"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="736600"/>
+            <a:ext cx="9144000" cy="431800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="2500" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="003A70"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>户用综合能源：光伏 + 制冰蓄冷 + 蒸发/</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-CN" altLang="en-US" sz="2500" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="003A70"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>空调</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" altLang="zh-CN" sz="2500" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="003A70"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>/</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="zh-CN" altLang="en-US" sz="2500" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="003A70"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>冰箱</a:t>
+            </a:r>
+            <a:endParaRPr lang="zh-CN" altLang="en-US" sz="2500" b="1" noProof="1">
+              <a:solidFill>
+                <a:srgbClr val="003A70"/>
+              </a:solidFill>
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="4" name="hdr-sub"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="1219200"/>
+            <a:ext cx="10160000" cy="254000"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1250" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>单间卧室（15㎡ · 1 人 1 台）落地方案 · 白天 5h 光伏制冰 · 夜间 4h 冰风联合供冷 · 体感降温路线</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1250" noProof="1"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="5" name="hdr-page"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="11176000" y="836930"/>
+            <a:ext cx="508000" cy="228600"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="t"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="r">
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1250" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>01 / 27</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1250" noProof="1"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="21" name="p-cold"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="6811645" y="1569720"/>
+            <a:ext cx="2336800" cy="3810000"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:srgbClr val="FFFFFF"/>
+          </a:solidFill>
+          <a:ln w="15240">
+            <a:solidFill>
+              <a:srgbClr val="2E7FC2"/>
+            </a:solidFill>
+            <a:prstDash val="dash"/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="22" name="p-cold-title"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="6964045" y="1671320"/>
+            <a:ext cx="2032000" cy="203200"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1100" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="2E7FC2"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>冷量链路（实物选型）</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:pic>
+        <p:nvPicPr>
+          <p:cNvPr id="23" name="img-tray"/>
+          <p:cNvPicPr/>
+          <p:nvPr/>
+        </p:nvPicPr>
+        <p:blipFill>
+          <a:blip r:embed="rId2"/>
+          <a:srcRect l="195" r="195"/>
+          <a:stretch>
+            <a:fillRect/>
+          </a:stretch>
+        </p:blipFill>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="6964045" y="1976120"/>
+            <a:ext cx="711200" cy="482600"/>
+          </a:xfrm>
+          <a:prstGeom prst="roundRect">
+            <a:avLst>
+              <a:gd name="adj" fmla="val 8000"/>
+            </a:avLst>
+          </a:prstGeom>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+      </p:pic>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="24" name="img-tray-border"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="6964045" y="1976120"/>
+            <a:ext cx="711200" cy="482600"/>
+          </a:xfrm>
+          <a:prstGeom prst="roundRect">
+            <a:avLst>
+              <a:gd name="adj" fmla="val 8000"/>
+            </a:avLst>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln w="12700">
+            <a:solidFill>
+              <a:srgbClr val="D9E1EA"/>
+            </a:solidFill>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="25" name="t-tray"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="7776845" y="1950720"/>
+            <a:ext cx="1320800" cy="533400"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="130000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1000" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="1F2933"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>冰格盒</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+          </a:p>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="130000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="950" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>160 格 + 7.5L 储冰</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="26" name="a-i1"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="7929245" y="2509520"/>
+            <a:ext cx="127000" cy="152400"/>
+          </a:xfrm>
+          <a:custGeom>
+            <a:avLst/>
+            <a:gdLst/>
+            <a:ahLst/>
+            <a:cxnLst/>
+            <a:rect l="l" t="t" r="r" b="b"/>
+            <a:pathLst>
+              <a:path w="10" h="12">
+                <a:moveTo>
+                  <a:pt x="5" y="0"/>
+                </a:moveTo>
+                <a:lnTo>
+                  <a:pt x="5" y="12"/>
+                </a:lnTo>
+              </a:path>
+            </a:pathLst>
+          </a:custGeom>
+          <a:noFill/>
+          <a:ln w="15240">
+            <a:solidFill>
+              <a:srgbClr val="2E7FC2"/>
+            </a:solidFill>
+            <a:prstDash val="dash"/>
+            <a:tailEnd type="stealth"/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:pic>
+        <p:nvPicPr>
+          <p:cNvPr id="27" name="img-pack"/>
+          <p:cNvPicPr/>
+          <p:nvPr/>
+        </p:nvPicPr>
+        <p:blipFill>
+          <a:blip r:embed="rId3"/>
+          <a:srcRect t="5357" b="5357"/>
+          <a:stretch>
+            <a:fillRect/>
+          </a:stretch>
+        </p:blipFill>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="7141845" y="2712720"/>
+            <a:ext cx="355600" cy="635000"/>
+          </a:xfrm>
+          <a:prstGeom prst="roundRect">
+            <a:avLst>
+              <a:gd name="adj" fmla="val 8000"/>
+            </a:avLst>
+          </a:prstGeom>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+      </p:pic>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="28" name="img-pack-border"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="7141845" y="2712720"/>
+            <a:ext cx="355600" cy="635000"/>
+          </a:xfrm>
+          <a:prstGeom prst="roundRect">
+            <a:avLst>
+              <a:gd name="adj" fmla="val 8000"/>
+            </a:avLst>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln w="12700">
+            <a:solidFill>
+              <a:srgbClr val="D9E1EA"/>
+            </a:solidFill>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="29" name="t-pack"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="7776845" y="2712720"/>
+            <a:ext cx="1320800" cy="635000"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="130000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1000" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="1F2933"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>蓝冰冰晶盒</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+          </a:p>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="130000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="950" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>高分子冷凝胶 · 循环 5~10 年</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="30" name="a-i2"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="7929245" y="3398520"/>
+            <a:ext cx="127000" cy="152400"/>
+          </a:xfrm>
+          <a:custGeom>
+            <a:avLst/>
+            <a:gdLst/>
+            <a:ahLst/>
+            <a:cxnLst/>
+            <a:rect l="l" t="t" r="r" b="b"/>
+            <a:pathLst>
+              <a:path w="10" h="12">
+                <a:moveTo>
+                  <a:pt x="5" y="0"/>
+                </a:moveTo>
+                <a:lnTo>
+                  <a:pt x="5" y="12"/>
+                </a:lnTo>
+              </a:path>
+            </a:pathLst>
+          </a:custGeom>
+          <a:noFill/>
+          <a:ln w="15240">
+            <a:solidFill>
+              <a:srgbClr val="2E7FC2"/>
+            </a:solidFill>
+            <a:prstDash val="dash"/>
+            <a:tailEnd type="stealth"/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:pic>
+        <p:nvPicPr>
+          <p:cNvPr id="31" name="img-cooler"/>
+          <p:cNvPicPr/>
+          <p:nvPr/>
+        </p:nvPicPr>
+        <p:blipFill>
+          <a:blip r:embed="rId4"/>
+          <a:srcRect t="3962" b="3962"/>
+          <a:stretch>
+            <a:fillRect/>
+          </a:stretch>
+        </p:blipFill>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="7116445" y="3601720"/>
+            <a:ext cx="406400" cy="635000"/>
+          </a:xfrm>
+          <a:prstGeom prst="roundRect">
+            <a:avLst>
+              <a:gd name="adj" fmla="val 8000"/>
+            </a:avLst>
+          </a:prstGeom>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+      </p:pic>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="32" name="img-cooler-border"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="7116445" y="3601720"/>
+            <a:ext cx="406400" cy="635000"/>
+          </a:xfrm>
+          <a:prstGeom prst="roundRect">
+            <a:avLst>
+              <a:gd name="adj" fmla="val 8000"/>
+            </a:avLst>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln w="12700">
+            <a:solidFill>
+              <a:srgbClr val="D9E1EA"/>
+            </a:solidFill>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="33" name="t-cooler"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="7776845" y="3601720"/>
+            <a:ext cx="1320800" cy="635000"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="130000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1000" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="1F2933"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>EPS 保温箱 6L</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+          </a:p>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="130000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="950" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>储冰周转 12~24h</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="34" name="a-i3"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="7929245" y="4287520"/>
+            <a:ext cx="127000" cy="152400"/>
+          </a:xfrm>
+          <a:custGeom>
+            <a:avLst/>
+            <a:gdLst/>
+            <a:ahLst/>
+            <a:cxnLst/>
+            <a:rect l="l" t="t" r="r" b="b"/>
+            <a:pathLst>
+              <a:path w="10" h="12">
+                <a:moveTo>
+                  <a:pt x="5" y="0"/>
+                </a:moveTo>
+                <a:lnTo>
+                  <a:pt x="5" y="12"/>
+                </a:lnTo>
+              </a:path>
+            </a:pathLst>
+          </a:custGeom>
+          <a:noFill/>
+          <a:ln w="15240">
+            <a:solidFill>
+              <a:srgbClr val="2E7FC2"/>
+            </a:solidFill>
+            <a:prstDash val="dash"/>
+            <a:tailEnd type="stealth"/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="35" name="n-fan"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="6964045" y="4490720"/>
+            <a:ext cx="2032000" cy="736600"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:srgbClr val="2E7FC2"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="36" name="n-fan-t"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="6964045" y="4490720"/>
+            <a:ext cx="2032000" cy="736600"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="ctr"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1150" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="FFFFFF"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>蒸发式冷风扇 210W</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+          </a:p>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1000" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="D6E8F5"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>美的 ACA10TFC · 夜间 4h</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+          </a:p>
+          <a:p>
+            <a:pPr algn="ctr">
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1000" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="D6E8F5"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>出风 28.2℃ · 体感降温</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="37" name="a-ice-box"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="6481445" y="2179320"/>
+            <a:ext cx="330200" cy="76200"/>
+          </a:xfrm>
+          <a:custGeom>
+            <a:avLst/>
+            <a:gdLst/>
+            <a:ahLst/>
+            <a:cxnLst/>
+            <a:rect l="l" t="t" r="r" b="b"/>
+            <a:pathLst>
+              <a:path w="26" h="6">
+                <a:moveTo>
+                  <a:pt x="0" y="3"/>
+                </a:moveTo>
+                <a:lnTo>
+                  <a:pt x="26" y="3"/>
+                </a:lnTo>
+              </a:path>
+            </a:pathLst>
+          </a:custGeom>
+          <a:noFill/>
+          <a:ln w="19050">
+            <a:solidFill>
+              <a:srgbClr val="2E7FC2"/>
+            </a:solidFill>
+            <a:prstDash val="dash"/>
+            <a:tailEnd type="stealth"/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="38" name="a-ice-box-label"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="6481445" y="2439670"/>
+            <a:ext cx="1143000" cy="177800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="950" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="2E7FC2"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>9.7 kg 冰/晚</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="39" name="a-bat-fan"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="6481445" y="4338320"/>
+            <a:ext cx="482600" cy="508000"/>
+          </a:xfrm>
+          <a:custGeom>
+            <a:avLst/>
+            <a:gdLst/>
+            <a:ahLst/>
+            <a:cxnLst/>
+            <a:rect l="l" t="t" r="r" b="b"/>
+            <a:pathLst>
+              <a:path w="38" h="40">
+                <a:moveTo>
+                  <a:pt x="0" y="0"/>
+                </a:moveTo>
+                <a:lnTo>
+                  <a:pt x="19" y="0"/>
+                </a:lnTo>
+                <a:lnTo>
+                  <a:pt x="19" y="40"/>
+                </a:lnTo>
+                <a:lnTo>
+                  <a:pt x="38" y="40"/>
+                </a:lnTo>
+              </a:path>
+            </a:pathLst>
+          </a:custGeom>
+          <a:noFill/>
+          <a:ln w="19050">
+            <a:solidFill>
+              <a:srgbClr val="003A70"/>
+            </a:solidFill>
+            <a:tailEnd type="stealth"/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="40" name="a-bat-fan-label"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="4576445" y="4846320"/>
+            <a:ext cx="2286000" cy="177800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="950" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>夜间 0.85 kWh（210W × 4h）</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="46" name="b-rule"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="5511800"/>
+            <a:ext cx="11074400" cy="25400"/>
+          </a:xfrm>
+          <a:custGeom>
+            <a:avLst/>
+            <a:gdLst/>
+            <a:ahLst/>
+            <a:cxnLst/>
+            <a:rect l="l" t="t" r="r" b="b"/>
+            <a:pathLst>
+              <a:path w="872" h="2">
+                <a:moveTo>
+                  <a:pt x="0" y="1"/>
+                </a:moveTo>
+                <a:lnTo>
+                  <a:pt x="872" y="1"/>
+                </a:lnTo>
+              </a:path>
+            </a:pathLst>
+          </a:custGeom>
+          <a:noFill/>
+          <a:ln w="12700">
+            <a:solidFill>
+              <a:srgbClr val="D9E1EA"/>
+            </a:solidFill>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="47" name="m-title"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="5600700"/>
+            <a:ext cx="10922000" cy="177800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1050" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="003A70"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>核心维度与建议测算模型</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" sz="950" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>　设计工况：干球 39℃ · 湿度 35% · 湿球 25.5℃ · 典型制冷日 · 估算值均待实验台标定</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:graphicFrame>
+        <p:nvGraphicFramePr>
+          <p:cNvPr id="48" name="tbl-metrics"/>
+          <p:cNvGraphicFramePr>
+            <a:graphicFrameLocks noGrp="1"/>
+          </p:cNvGraphicFramePr>
+          <p:nvPr/>
+        </p:nvGraphicFramePr>
+        <p:xfrm>
+          <a:off x="609600" y="5829300"/>
+          <a:ext cx="11074400" cy="558800"/>
+        </p:xfrm>
+        <a:graphic>
+          <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table">
+            <a:tbl>
+              <a:tblPr/>
+              <a:tblGrid>
+                <a:gridCol w="1439672"/>
+                <a:gridCol w="2547112"/>
+                <a:gridCol w="2436368"/>
+                <a:gridCol w="2214880"/>
+                <a:gridCol w="2436368"/>
+              </a:tblGrid>
+              <a:tr h="139700">
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>测算维度</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>融冰速度</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>出冰 / 出冷时长</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>蓄能时长</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>放冷端温度 / 流量</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+              </a:tr>
+              <a:tr h="139700">
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="003A70"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>建议测算模型</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="003A70"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>冰量 × 397 kJ/kg ÷ 放冷功率</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>蓄冰量 ÷ 小时用冰量</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>储能 1Wh ÷ 0.17 kWh/晚</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>干球 −（干球−湿球）× 80%</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+              </a:tr>
+              <a:tr h="139700">
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="003A70"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>当前估算（口径）</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="003A70"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="EEF4FA"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>2.42 kg/h（夜间 4h 均摊）</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="EEF4FA"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>4 h（9.7 kg ÷ 2.42 kg/h）</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="EEF4FA"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t xml:space="preserve">≈ 6 晚（风扇侧续航） </a:t>
+                      </a:r>
+                      <a:r>
+                        <a:rPr lang="zh-CN" altLang="en-US" sz="850" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>单天循环</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="zh-CN" altLang="en-US" sz="850" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="EEF4FA"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>出风 28.2℃ · 风量待标定</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="EEF4FA"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+              </a:tr>
+              <a:tr h="139700">
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="003A70"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>验证方式</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="003A70"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>实验台称重计时</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>实验台标定</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>充放电实测</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="850" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>风洞 ＋ 温湿度计</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="850" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+              </a:tr>
+            </a:tbl>
+          </a:graphicData>
+        </a:graphic>
+      </p:graphicFrame>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="49" name="b-src"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="8102600" y="6680200"/>
+            <a:ext cx="3556000" cy="177800"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="t"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="r">
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="900" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>数据来源：光伏冰风扇容量设计计算书（0808 口径）</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="50" name="Kv7w9I"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="5655945" y="3688080"/>
+            <a:ext cx="2540000" cy="889000"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="t"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr algn="l">
+              <a:lnSpc>
+                <a:spcPct val="150000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:endParaRPr lang="en-US" sz="1200" noProof="1"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:pic>
+        <p:nvPicPr>
+          <p:cNvPr id="51" name="图片 50" descr="F:\zsy\天合富家\新logo蓝.png新logo蓝"/>
+          <p:cNvPicPr>
+            <a:picLocks noChangeAspect="1"/>
+          </p:cNvPicPr>
+          <p:nvPr userDrawn="1"/>
+        </p:nvPicPr>
+        <p:blipFill>
+          <a:blip r:embed="rId5"/>
+          <a:srcRect/>
+          <a:stretch>
+            <a:fillRect/>
+          </a:stretch>
+        </p:blipFill>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="10355580" y="336550"/>
+            <a:ext cx="1514475" cy="500380"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+        </p:spPr>
+      </p:pic>
+      <p:grpSp>
+        <p:nvGrpSpPr>
+          <p:cNvPr id="54" name="组合 53"/>
+          <p:cNvGrpSpPr/>
+          <p:nvPr/>
+        </p:nvGrpSpPr>
+        <p:grpSpPr>
+          <a:xfrm>
+            <a:off x="711200" y="1628775"/>
+            <a:ext cx="5757545" cy="3809365"/>
+            <a:chOff x="1120" y="3200"/>
+            <a:chExt cx="13080" cy="5240"/>
+          </a:xfrm>
+        </p:grpSpPr>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="6" name="n-pv"/>
+            <p:cNvSpPr/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="1120" y="3360"/>
+              <a:ext cx="3120" cy="1200"/>
+            </a:xfrm>
+            <a:prstGeom prst="rect">
+              <a:avLst/>
+            </a:prstGeom>
+            <a:solidFill>
+              <a:srgbClr val="FFFFFF"/>
+            </a:solidFill>
+            <a:ln w="19050">
+              <a:solidFill>
+                <a:srgbClr val="003A70"/>
+              </a:solidFill>
+            </a:ln>
+          </p:spPr>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="7" name="n-pv-t"/>
+            <p:cNvSpPr txBox="1"/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="1120" y="3360"/>
+              <a:ext cx="3120" cy="1200"/>
+            </a:xfrm>
+            <a:prstGeom prst="rect">
+              <a:avLst/>
+            </a:prstGeom>
+            <a:noFill/>
+            <a:ln>
+              <a:noFill/>
+            </a:ln>
+          </p:spPr>
+          <p:txBody>
+            <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="ctr"/>
+            <a:lstStyle/>
+            <a:p>
+              <a:pPr algn="ctr">
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="en-US" sz="1300" b="1" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="1F2933"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>光伏组件 1,290W</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+            <a:p>
+              <a:pPr algn="ctr">
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="en-US" sz="1050" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="5A6572"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>天合 645W × 2 · 日发 4.69 kWh</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+          </p:txBody>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="8" name="n-grid"/>
+            <p:cNvSpPr/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="1120" y="6320"/>
+              <a:ext cx="3120" cy="1200"/>
+            </a:xfrm>
+            <a:prstGeom prst="rect">
+              <a:avLst/>
+            </a:prstGeom>
+            <a:solidFill>
+              <a:srgbClr val="FFFFFF"/>
+            </a:solidFill>
+            <a:ln w="15240">
+              <a:solidFill>
+                <a:srgbClr val="5A6572"/>
+              </a:solidFill>
+              <a:prstDash val="dash"/>
+            </a:ln>
+          </p:spPr>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="9" name="n-grid-t"/>
+            <p:cNvSpPr txBox="1"/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="1120" y="6320"/>
+              <a:ext cx="3120" cy="1200"/>
+            </a:xfrm>
+            <a:prstGeom prst="rect">
+              <a:avLst/>
+            </a:prstGeom>
+            <a:noFill/>
+            <a:ln>
+              <a:noFill/>
+            </a:ln>
+          </p:spPr>
+          <p:txBody>
+            <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="ctr"/>
+            <a:lstStyle/>
+            <a:p>
+              <a:pPr algn="ctr">
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="en-US" sz="1300" b="1" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="1F2933"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>电网（备用）</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+            <a:p>
+              <a:pPr algn="ctr">
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="en-US" sz="1050" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="5A6572"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>市电互补充电器 24V/10A（选配）</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+          </p:txBody>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="10" name="n-inv"/>
+            <p:cNvSpPr/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="5920" y="4680"/>
+              <a:ext cx="3200" cy="1520"/>
+            </a:xfrm>
+            <a:prstGeom prst="rect">
+              <a:avLst/>
+            </a:prstGeom>
+            <a:solidFill>
+              <a:srgbClr val="003A70"/>
+            </a:solidFill>
+            <a:ln>
+              <a:noFill/>
+            </a:ln>
+          </p:spPr>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="11" name="n-inv-t"/>
+            <p:cNvSpPr txBox="1"/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="5920" y="4680"/>
+              <a:ext cx="3215" cy="1520"/>
+            </a:xfrm>
+            <a:prstGeom prst="rect">
+              <a:avLst/>
+            </a:prstGeom>
+            <a:noFill/>
+            <a:ln>
+              <a:noFill/>
+            </a:ln>
+          </p:spPr>
+          <p:txBody>
+            <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="ctr"/>
+            <a:lstStyle/>
+            <a:p>
+              <a:pPr algn="ctr">
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="en-US" sz="1300" b="1" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="FFFFFF"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>MPPT + 逆变器</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+            <a:p>
+              <a:pPr algn="ctr">
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="en-US" sz="1050" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="C9DCEE"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>60A 控制器 · 1,500W 纯正弦</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+            <a:p>
+              <a:pPr algn="ctr">
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="en-US" sz="1050" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="C9DCEE"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>覆盖制冰机压缩机</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+          </p:txBody>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="12" name="a-pv-inv"/>
+            <p:cNvSpPr/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="4240" y="3960"/>
+              <a:ext cx="1680" cy="1000"/>
+            </a:xfrm>
+            <a:custGeom>
+              <a:avLst/>
+              <a:gdLst/>
+              <a:ahLst/>
+              <a:cxnLst/>
+              <a:rect l="l" t="t" r="r" b="b"/>
+              <a:pathLst>
+                <a:path w="84" h="50">
+                  <a:moveTo>
+                    <a:pt x="0" y="0"/>
+                  </a:moveTo>
+                  <a:lnTo>
+                    <a:pt x="42" y="0"/>
+                  </a:lnTo>
+                  <a:lnTo>
+                    <a:pt x="42" y="50"/>
+                  </a:lnTo>
+                  <a:lnTo>
+                    <a:pt x="84" y="50"/>
+                  </a:lnTo>
+                </a:path>
+              </a:pathLst>
+            </a:custGeom>
+            <a:noFill/>
+            <a:ln w="25400">
+              <a:solidFill>
+                <a:srgbClr val="003A70"/>
+              </a:solidFill>
+              <a:tailEnd type="stealth"/>
+            </a:ln>
+          </p:spPr>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="13" name="a-grid-inv"/>
+            <p:cNvSpPr/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="4240" y="5920"/>
+              <a:ext cx="1680" cy="1000"/>
+            </a:xfrm>
+            <a:custGeom>
+              <a:avLst/>
+              <a:gdLst/>
+              <a:ahLst/>
+              <a:cxnLst/>
+              <a:rect l="l" t="t" r="r" b="b"/>
+              <a:pathLst>
+                <a:path w="84" h="50">
+                  <a:moveTo>
+                    <a:pt x="0" y="50"/>
+                  </a:moveTo>
+                  <a:lnTo>
+                    <a:pt x="42" y="50"/>
+                  </a:lnTo>
+                  <a:lnTo>
+                    <a:pt x="42" y="0"/>
+                  </a:lnTo>
+                  <a:lnTo>
+                    <a:pt x="84" y="0"/>
+                  </a:lnTo>
+                </a:path>
+              </a:pathLst>
+            </a:custGeom>
+            <a:noFill/>
+            <a:ln w="15240">
+              <a:solidFill>
+                <a:srgbClr val="5A6572"/>
+              </a:solidFill>
+              <a:prstDash val="dash"/>
+              <a:headEnd type="stealth"/>
+              <a:tailEnd type="stealth"/>
+            </a:ln>
+          </p:spPr>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="14" name="n-ice"/>
+            <p:cNvSpPr/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="10800" y="3200"/>
+              <a:ext cx="3400" cy="1200"/>
+            </a:xfrm>
+            <a:prstGeom prst="rect">
+              <a:avLst/>
+            </a:prstGeom>
+            <a:solidFill>
+              <a:srgbClr val="FFFFFF"/>
+            </a:solidFill>
+            <a:ln w="19050">
+              <a:solidFill>
+                <a:srgbClr val="2E7FC2"/>
+              </a:solidFill>
+            </a:ln>
+          </p:spPr>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="15" name="n-ice-t"/>
+            <p:cNvSpPr txBox="1"/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="10800" y="3200"/>
+              <a:ext cx="3400" cy="1200"/>
+            </a:xfrm>
+            <a:prstGeom prst="rect">
+              <a:avLst/>
+            </a:prstGeom>
+            <a:noFill/>
+            <a:ln>
+              <a:noFill/>
+            </a:ln>
+          </p:spPr>
+          <p:txBody>
+            <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="ctr"/>
+            <a:lstStyle/>
+            <a:p>
+              <a:pPr algn="ctr">
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="en-US" sz="1250" b="1" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="1F2933"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>制冰机 48kg/24h</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+            <a:p>
+              <a:pPr algn="ctr">
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="en-US" sz="1050" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="5A6572"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>400W · 白天 10h 制冰 ≥ 19.4 kg</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+          </p:txBody>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="16" name="n-bat"/>
+            <p:cNvSpPr/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="10800" y="6320"/>
+              <a:ext cx="3400" cy="1200"/>
+            </a:xfrm>
+            <a:prstGeom prst="rect">
+              <a:avLst/>
+            </a:prstGeom>
+            <a:solidFill>
+              <a:srgbClr val="FFFFFF"/>
+            </a:solidFill>
+            <a:ln w="19050">
+              <a:solidFill>
+                <a:srgbClr val="003A70"/>
+              </a:solidFill>
+            </a:ln>
+          </p:spPr>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="17" name="n-bat-t"/>
+            <p:cNvSpPr txBox="1"/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="10800" y="6320"/>
+              <a:ext cx="3400" cy="1200"/>
+            </a:xfrm>
+            <a:prstGeom prst="rect">
+              <a:avLst/>
+            </a:prstGeom>
+            <a:noFill/>
+            <a:ln>
+              <a:noFill/>
+            </a:ln>
+          </p:spPr>
+          <p:txBody>
+            <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="ctr"/>
+            <a:lstStyle/>
+            <a:p>
+              <a:pPr algn="ctr">
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="en-US" sz="1250" b="1" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="1F2933"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>储能 1/2 kWh</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+            <a:p>
+              <a:pPr algn="ctr">
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="en-US" sz="1050" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="5A6572"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>25.6V/50Ah 磷酸铁锂 · 约 6 晚续航</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+          </p:txBody>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="18" name="a-inv-ice"/>
+            <p:cNvSpPr/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="9120" y="3800"/>
+              <a:ext cx="1680" cy="1160"/>
+            </a:xfrm>
+            <a:custGeom>
+              <a:avLst/>
+              <a:gdLst/>
+              <a:ahLst/>
+              <a:cxnLst/>
+              <a:rect l="l" t="t" r="r" b="b"/>
+              <a:pathLst>
+                <a:path w="84" h="58">
+                  <a:moveTo>
+                    <a:pt x="0" y="58"/>
+                  </a:moveTo>
+                  <a:lnTo>
+                    <a:pt x="42" y="58"/>
+                  </a:lnTo>
+                  <a:lnTo>
+                    <a:pt x="42" y="0"/>
+                  </a:lnTo>
+                  <a:lnTo>
+                    <a:pt x="84" y="0"/>
+                  </a:lnTo>
+                </a:path>
+              </a:pathLst>
+            </a:custGeom>
+            <a:noFill/>
+            <a:ln w="25400">
+              <a:solidFill>
+                <a:srgbClr val="003A70"/>
+              </a:solidFill>
+              <a:tailEnd type="stealth"/>
+            </a:ln>
+          </p:spPr>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="19" name="a-inv-ice-label"/>
+            <p:cNvSpPr txBox="1"/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="8369" y="3474"/>
+              <a:ext cx="1920" cy="280"/>
+            </a:xfrm>
+            <a:prstGeom prst="rect">
+              <a:avLst/>
+            </a:prstGeom>
+            <a:noFill/>
+            <a:ln>
+              <a:noFill/>
+            </a:ln>
+          </p:spPr>
+          <p:txBody>
+            <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+            <a:lstStyle/>
+            <a:p>
+              <a:pPr>
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="en-US" sz="950" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="2E7FC2"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>白天 5h · 1.94 kWh</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+          </p:txBody>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="20" name="a-inv-bat"/>
+            <p:cNvSpPr/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="9120" y="5920"/>
+              <a:ext cx="1680" cy="1000"/>
+            </a:xfrm>
+            <a:custGeom>
+              <a:avLst/>
+              <a:gdLst/>
+              <a:ahLst/>
+              <a:cxnLst/>
+              <a:rect l="l" t="t" r="r" b="b"/>
+              <a:pathLst>
+                <a:path w="84" h="50">
+                  <a:moveTo>
+                    <a:pt x="0" y="0"/>
+                  </a:moveTo>
+                  <a:lnTo>
+                    <a:pt x="42" y="0"/>
+                  </a:lnTo>
+                  <a:lnTo>
+                    <a:pt x="42" y="50"/>
+                  </a:lnTo>
+                  <a:lnTo>
+                    <a:pt x="84" y="50"/>
+                  </a:lnTo>
+                </a:path>
+              </a:pathLst>
+            </a:custGeom>
+            <a:noFill/>
+            <a:ln w="25400">
+              <a:solidFill>
+                <a:srgbClr val="003A70"/>
+              </a:solidFill>
+              <a:headEnd type="stealth"/>
+              <a:tailEnd type="stealth"/>
+            </a:ln>
+          </p:spPr>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="41" name="lg-line1"/>
+            <p:cNvSpPr/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="1120" y="8240"/>
+              <a:ext cx="520" cy="120"/>
+            </a:xfrm>
+            <a:custGeom>
+              <a:avLst/>
+              <a:gdLst/>
+              <a:ahLst/>
+              <a:cxnLst/>
+              <a:rect l="l" t="t" r="r" b="b"/>
+              <a:pathLst>
+                <a:path w="26" h="6">
+                  <a:moveTo>
+                    <a:pt x="0" y="3"/>
+                  </a:moveTo>
+                  <a:lnTo>
+                    <a:pt x="26" y="3"/>
+                  </a:lnTo>
+                </a:path>
+              </a:pathLst>
+            </a:custGeom>
+            <a:noFill/>
+            <a:ln w="25400">
+              <a:solidFill>
+                <a:srgbClr val="003A70"/>
+              </a:solidFill>
+              <a:tailEnd type="stealth"/>
+            </a:ln>
+          </p:spPr>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="42" name="lg-t1"/>
+            <p:cNvSpPr txBox="1"/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="1760" y="8160"/>
+              <a:ext cx="1400" cy="280"/>
+            </a:xfrm>
+            <a:prstGeom prst="rect">
+              <a:avLst/>
+            </a:prstGeom>
+            <a:noFill/>
+            <a:ln>
+              <a:noFill/>
+            </a:ln>
+          </p:spPr>
+          <p:txBody>
+            <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+            <a:lstStyle/>
+            <a:p>
+              <a:pPr>
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="en-US" sz="1000" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="5A6572"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>电力流</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+          </p:txBody>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="43" name="lg-line2"/>
+            <p:cNvSpPr/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="2920" y="8240"/>
+              <a:ext cx="520" cy="120"/>
+            </a:xfrm>
+            <a:custGeom>
+              <a:avLst/>
+              <a:gdLst/>
+              <a:ahLst/>
+              <a:cxnLst/>
+              <a:rect l="l" t="t" r="r" b="b"/>
+              <a:pathLst>
+                <a:path w="26" h="6">
+                  <a:moveTo>
+                    <a:pt x="0" y="3"/>
+                  </a:moveTo>
+                  <a:lnTo>
+                    <a:pt x="26" y="3"/>
+                  </a:lnTo>
+                </a:path>
+              </a:pathLst>
+            </a:custGeom>
+            <a:noFill/>
+            <a:ln w="19050">
+              <a:solidFill>
+                <a:srgbClr val="2E7FC2"/>
+              </a:solidFill>
+              <a:prstDash val="dash"/>
+              <a:tailEnd type="stealth"/>
+            </a:ln>
+          </p:spPr>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="44" name="lg-t2"/>
+            <p:cNvSpPr txBox="1"/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="3560" y="8160"/>
+              <a:ext cx="1400" cy="280"/>
+            </a:xfrm>
+            <a:prstGeom prst="rect">
+              <a:avLst/>
+            </a:prstGeom>
+            <a:noFill/>
+            <a:ln>
+              <a:noFill/>
+            </a:ln>
+          </p:spPr>
+          <p:txBody>
+            <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+            <a:lstStyle/>
+            <a:p>
+              <a:pPr>
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="en-US" sz="1000" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="5A6572"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>冷量流</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+          </p:txBody>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="45" name="lg-t3"/>
+            <p:cNvSpPr txBox="1"/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="4960" y="8160"/>
+              <a:ext cx="9200" cy="280"/>
+            </a:xfrm>
+            <a:prstGeom prst="rect">
+              <a:avLst/>
+            </a:prstGeom>
+            <a:noFill/>
+            <a:ln>
+              <a:noFill/>
+            </a:ln>
+          </p:spPr>
+          <p:txBody>
+            <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+            <a:lstStyle/>
+            <a:p>
+              <a:pPr>
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="en-US" sz="1000" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="5A6572"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>虚线框＝冷量链路 · 制冰白天由光伏直供，风扇夜间由储能供电</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+          </p:txBody>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="52" name="n-ice"/>
+            <p:cNvSpPr/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="10800" y="4480"/>
+              <a:ext cx="3400" cy="1200"/>
+            </a:xfrm>
+            <a:prstGeom prst="rect">
+              <a:avLst/>
+            </a:prstGeom>
+            <a:solidFill>
+              <a:srgbClr val="FFFFFF"/>
+            </a:solidFill>
+            <a:ln w="19050">
+              <a:solidFill>
+                <a:srgbClr val="2E7FC2"/>
+              </a:solidFill>
+            </a:ln>
+          </p:spPr>
+        </p:sp>
+        <p:sp>
+          <p:nvSpPr>
+            <p:cNvPr id="53" name="n-ice-t"/>
+            <p:cNvSpPr txBox="1"/>
+            <p:nvPr/>
+          </p:nvSpPr>
+          <p:spPr>
+            <a:xfrm>
+              <a:off x="10800" y="4480"/>
+              <a:ext cx="3400" cy="1200"/>
+            </a:xfrm>
+            <a:prstGeom prst="rect">
+              <a:avLst/>
+            </a:prstGeom>
+            <a:noFill/>
+            <a:ln>
+              <a:noFill/>
+            </a:ln>
+          </p:spPr>
+          <p:txBody>
+            <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0" anchor="ctr"/>
+            <a:lstStyle/>
+            <a:p>
+              <a:pPr algn="ctr">
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="zh-CN" altLang="en-US" sz="1250" b="1" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="1F2933"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>冰柜</a:t>
+              </a:r>
+              <a:r>
+                <a:rPr lang="en-US" sz="1250" b="1" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="1F2933"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t xml:space="preserve"> 50kg/24h</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+            <a:p>
+              <a:pPr algn="ctr">
+                <a:lnSpc>
+                  <a:spcPct val="120000"/>
+                </a:lnSpc>
+              </a:pPr>
+              <a:r>
+                <a:rPr lang="en-US" sz="1050" noProof="1">
+                  <a:solidFill>
+                    <a:srgbClr val="5A6572"/>
+                  </a:solidFill>
+                  <a:latin typeface="微软雅黑" charset="-122"/>
+                  <a:ea typeface="微软雅黑" charset="-122"/>
+                </a:rPr>
+                <a:t>430W · 白天 1h 制冰 ≥ 2kg</a:t>
+              </a:r>
+              <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+            </a:p>
+          </p:txBody>
+        </p:sp>
+      </p:grpSp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="55" name="l-title"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="9237345" y="1645920"/>
+            <a:ext cx="2496820" cy="228600"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1250" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="003A70"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>夜间冷量平衡（19,220 kJ / 晚）</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1600" noProof="1"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:graphicFrame>
+        <p:nvGraphicFramePr>
+          <p:cNvPr id="56" name="chart-cold"/>
+          <p:cNvGraphicFramePr/>
+          <p:nvPr/>
+        </p:nvGraphicFramePr>
+        <p:xfrm>
+          <a:off x="9215120" y="1899920"/>
+          <a:ext cx="2628265" cy="2540000"/>
+        </p:xfrm>
+        <a:graphic>
+          <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart">
+            <c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rId1"/>
+          </a:graphicData>
+        </a:graphic>
+      </p:graphicFrame>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="57" name="l-note"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="9284970" y="4490720"/>
+            <a:ext cx="2575560" cy="762000"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="145000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="1050" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t xml:space="preserve">冰块补足冷量 3,844 kJ ÷ 每公斤有效冷量 397 kJ（潜热 334 + 显热 63）＝ </a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" sz="1050" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="003A70"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>9.68 kg/晚</a:t>
+            </a:r>
+            <a:r>
+              <a:rPr lang="en-US" sz="1050" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="5A6572"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>，即 2.42 kg/h；蒸发水箱需求 6.3 L ＞ 机带 4.7 L，需中途补水或外接 10L 水箱。</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="1050" noProof="1"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="59" name="l-title2"/>
+          <p:cNvSpPr txBox="1"/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="2252980" y="3956685"/>
+            <a:ext cx="1578610" cy="203200"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="0"/>
+          <a:lstStyle/>
+          <a:p>
+            <a:pPr>
+              <a:lnSpc>
+                <a:spcPct val="120000"/>
+              </a:lnSpc>
+            </a:pPr>
+            <a:r>
+              <a:rPr lang="en-US" sz="800" b="1" noProof="1">
+                <a:solidFill>
+                  <a:srgbClr val="003A70"/>
+                </a:solidFill>
+                <a:latin typeface="微软雅黑" charset="-122"/>
+                <a:ea typeface="微软雅黑" charset="-122"/>
+              </a:rPr>
+              <a:t>多台扩展核算（同工况）</a:t>
+            </a:r>
+            <a:endParaRPr lang="en-US" sz="800" b="1" noProof="1">
+              <a:solidFill>
+                <a:srgbClr val="003A70"/>
+              </a:solidFill>
+              <a:latin typeface="微软雅黑" charset="-122"/>
+              <a:ea typeface="微软雅黑" charset="-122"/>
+            </a:endParaRPr>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:graphicFrame>
+        <p:nvGraphicFramePr>
+          <p:cNvPr id="60" name="tbl-scale"/>
+          <p:cNvGraphicFramePr>
+            <a:graphicFrameLocks noGrp="1"/>
+          </p:cNvGraphicFramePr>
+          <p:nvPr/>
+        </p:nvGraphicFramePr>
+        <p:xfrm>
+          <a:off x="2252980" y="4210685"/>
+          <a:ext cx="2327275" cy="1356360"/>
+        </p:xfrm>
+        <a:graphic>
+          <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table">
+            <a:tbl>
+              <a:tblPr/>
+              <a:tblGrid>
+                <a:gridCol w="465455"/>
+                <a:gridCol w="465455"/>
+                <a:gridCol w="465455"/>
+                <a:gridCol w="465455"/>
+                <a:gridCol w="465455"/>
+              </a:tblGrid>
+              <a:tr h="342900">
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="800" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>台数</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="800" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="800" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>用冰量</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="800" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="800" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>日均能耗</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="800" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="800" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>制冰机</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="800" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="800" b="1" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="FFFFFF"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>组件下限</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="800" b="1" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="FFFFFF"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="003A70"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+              </a:tr>
+              <a:tr h="342900">
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="800" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>1 → 4 台</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="800" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="800" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>9.7 → 38.7 kg/晚</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="800" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="800" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>2.1 → 8.4 kWh</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="800" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="800" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>1 → 4 台</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="800" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+                <a:tc>
+                  <a:txBody>
+                    <a:bodyPr wrap="square" rtlCol="0"/>
+                    <a:lstStyle/>
+                    <a:p>
+                      <a:pPr algn="l"/>
+                      <a:r>
+                        <a:rPr lang="en-US" sz="800" noProof="1">
+                          <a:solidFill>
+                            <a:srgbClr val="1F2933"/>
+                          </a:solidFill>
+                          <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                          <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                        </a:rPr>
+                        <a:t>625 → 2,500 W</a:t>
+                      </a:r>
+                      <a:endParaRPr lang="en-US" sz="800" noProof="1">
+                        <a:solidFill>
+                          <a:srgbClr val="1F2933"/>
+                        </a:solidFill>
+                        <a:latin typeface="Times New Roman" panose="02020603050405020304"/>
+                        <a:ea typeface="Times New Roman" panose="02020603050405020304"/>
+                      </a:endParaRPr>
+                    </a:p>
+                  </a:txBody>
+                  <a:tcPr anchor="ctr">
+                    <a:lnL>
+                      <a:noFill/>
+                    </a:lnL>
+                    <a:lnR>
+                      <a:noFill/>
+                    </a:lnR>
+                    <a:lnT>
+                      <a:noFill/>
+                    </a:lnT>
+                    <a:lnB w="12700">
+                      <a:solidFill>
+                        <a:srgbClr val="D9E1EA"/>
+                      </a:solidFill>
+                    </a:lnB>
+                    <a:solidFill>
+                      <a:srgbClr val="FFFFFF"/>
+                    </a:solidFill>
+                  </a:tcPr>
+                </a:tc>
+              </a:tr>
+            </a:tbl>
+          </a:graphicData>
+        </a:graphic>
+      </p:graphicFrame>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
+</p:sld>

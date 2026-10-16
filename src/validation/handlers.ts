@@ -7,10 +7,10 @@
  */
 
 import { validateUserToken } from "../auth/feishu-auth";
-import { resolveUserRole } from "../auth/role";
+import { ROLES, resolveUserRole } from "../auth/role";
 import { fetchTableCached, getDashboardConfig, refreshTableCache } from "../dashboard";
 import { json } from "../shared/http";
-import { resolveSession, applyRenewedSession, type HubUser } from "../shared/session";
+import { resolveSession, type HubUser } from "../shared/session";
 import { DEFAULT_RULES, VALIDATE_TABLES, type ValidateTable } from "./rules";
 import {
   VALIDATE_REPORT_KEY,
@@ -27,7 +27,7 @@ import {
 } from "./service";
 
 /** 全量校验允许的角色（队员只能 scope=mine） */
-const LEADER_ROLE_RE = /队长|组长/;
+const LEADER_ROLE_RE = ROLES.LEADER;
 
 /** 跑一次校验并（all 时）覆盖门户展示的最新报告；scope=mine 按 user 过滤归属记录 */
 async function runValidateNow(
@@ -131,8 +131,8 @@ export async function handleValidateReport(request: Request, env: Env, ctx?: Exe
   const session = await resolveSession(env, request, ctx);
   if (!session) return json({ error: "请先登录" }, 401);
   const report = (await env.REGISTRY.get(VALIDATE_REPORT_KEY, "json")) as ValidateReport | null;
-  if (!report) return applyRenewedSession(json({ empty: true, hint: "暂无校验报告：点「立即校验」或等每周一自动巡检" }), session.renewed);
-  return applyRenewedSession(json(report), session.renewed);
+  if (!report) return json({ empty: true, hint: "暂无校验报告：点「立即校验」或等每周一自动巡检" });
+  return json(report);
 }
 
 /** POST /api/validate/run：门户触发校验。未登录 401；scope=all 仅队长/组长，越权 403 */
@@ -144,12 +144,12 @@ export async function handleValidateRun(request: Request, env: Env, ctx?: Execut
   if (scope === "all") {
     const role = await resolveUserRole(env, session.user, ctx);
     if (!LEADER_ROLE_RE.test(role.role)) {
-      return applyRenewedSession(json({ error: `全量校验仅队长/组长可操作（当前角色：${role.role}）` }, 403), session.renewed);
+      return json({ error: `全量校验仅队长/组长可操作（当前角色：${role.role}）` }, 403);
     }
   }
   const report = await runValidateNow(env, scope, session.user, parseValidateTables(body.tables));
   if (scope === "all") await env.REGISTRY.put(VALIDATE_REPORT_KEY, JSON.stringify(report));
-  return applyRenewedSession(json(report), session.renewed);
+  return json(report);
 }
 
 /** GET /api/validate?scope=mine|all&tables=members,tasks：查询参数版触发入口（登录门禁同上） */
@@ -161,13 +161,13 @@ export async function handleValidateQuery(request: Request, env: Env, ctx?: Exec
   if (scope === "all") {
     const role = await resolveUserRole(env, session.user, ctx);
     if (!LEADER_ROLE_RE.test(role.role)) {
-      return applyRenewedSession(json({ error: `全量校验仅队长/组长可操作（当前角色：${role.role}）` }, 403), session.renewed);
+      return json({ error: `全量校验仅队长/组长可操作（当前角色：${role.role}）` }, 403);
     }
   }
   const tables = url.searchParams.get("tables")?.split(",").map((s) => s.trim()).filter(Boolean);
   const report = await runValidateNow(env, scope, session.user, parseValidateTables(tables));
   if (scope === "all") await env.REGISTRY.put(VALIDATE_REPORT_KEY, JSON.stringify(report));
-  return applyRenewedSession(json(report), session.renewed);
+  return json(report);
 }
 
 /** 每周一 08:00（UTC+8，cron 0 0 * * 1 UTC）：全量校验 → 报告落 KV → 与上周 diff → 推飞书群机器人 */

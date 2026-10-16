@@ -3,6 +3,7 @@
 import { ref, watch, onMounted } from 'vue'
 import { auth } from '@shared/auth'
 import { tabs } from '@portal/composables/useTabs'
+import { confirmDialog } from '@shared/ui/feedback'
 
 const state = ref<'loading' | 'unauthenticated' | 'expired' | 'unbound' | 'list' | 'error'>('loading')
 const errorMsg = ref('')
@@ -42,7 +43,7 @@ function bindMyTasks() {
 }
 
 async function unbindMyTasks() {
-  if (!confirm('解绑后将停止同步你的飞书任务，确定解绑？')) return
+  if (!(await confirmDialog('解绑后将停止同步你的飞书任务，确定解绑？'))) return
   await fetch('/api/my-tasks/unbind', { method: 'POST' }).catch(() => {})
   loadMyTasks()
 }

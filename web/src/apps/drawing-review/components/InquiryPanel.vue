@@ -4,6 +4,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { apiDr } from '@shared/api'
 import { drInqStatus, type Inquiry, type CompareResult } from '../types'
+import { confirmDialog } from '@shared/ui/feedback'
 
 const props = defineProps<{ reviewId: string }>()
 
@@ -86,7 +87,7 @@ async function runCompare() {
 
 async function selectSupplier(q: Inquiry) {
   const materialKey = q.materialCode || q.bomItemId
-  if (!confirm(`确认选定询价单 ${q.inquiryId} 的供应商？同物料其他报价将置为未中选`)) return
+  if (!(await confirmDialog(`确认选定询价单 ${q.inquiryId} 的供应商？同物料其他报价将置为未中选`))) return
   try {
     await apiDr(`/${props.reviewId}/inquiries/compare`, {
       method: 'POST',

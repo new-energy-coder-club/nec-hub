@@ -120,7 +120,7 @@ function goDashboard() {
             <span class="chip mono px-3 py-2 rounded-sm bg-white"><i class="not-italic mr-1">01</i>找物品</span>
             <span class="chip mono px-3 py-2 rounded-sm bg-white"><i class="not-italic mr-1">02</i>扫标签</span>
             <span class="chip mono px-3 py-2 rounded-sm bg-white"><i class="not-italic mr-1">03</i>办工单</span>
-            <a href="https://mes.newenergycoder.club/home.html#label" target="_blank"
+            <a href="https://mes.newenergycoder.club/home.html" target="_blank"
                class="mono px-4 py-2 rounded-sm text-white inline-block" style="background:var(--nec-cyan)">→ NEC 仓库作业台</a>
           </div>
         </div>

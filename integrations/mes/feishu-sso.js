@@ -20,6 +20,7 @@
  */
 (function () {
   const STORAGE_KEY = "nec_feishu_user";
+  const STATE_KEY = "nec_feishu_oauth_state";
 
   function inFeishu() {
     return /Lark|Feishu/i.test(navigator.userAgent) || "tt" in window;
@@ -58,10 +59,18 @@
 
   function buildAuthorizeUrl(cfg) {
     const redirect = location.origin + location.pathname;
+    const state = crypto.randomUUID
+      ? crypto.randomUUID()
+      : String(Date.now()) + Math.random().toString(36).slice(2);
+    try {
+      sessionStorage.setItem(STATE_KEY, state);
+    } catch {
+      // sessionStorage 不可用（隐私模式等）时仍发起授权，回调端会因无 state 可比对而拒绝登录
+    }
     const params = new URLSearchParams({
       app_id: cfg.appId,
       redirect_uri: redirect,
-      state: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+      state,
     });
     return `https://open.feishu.cn/open-apis/authen/v1/authorize?${params}`;
   }
@@ -90,9 +99,23 @@
       this._cfg = cfg;
       const code = new URLSearchParams(location.search).get("code");
 
-      // 情况1：授权回调带 code → 兑换用户信息
+      // 情况1：授权回调带 code → 先比对 state 再兑换用户信息
       if (code) {
+        const state = new URLSearchParams(location.search).get("state");
+        let saved = null;
+        try {
+          saved = sessionStorage.getItem(STATE_KEY);
+          sessionStorage.removeItem(STATE_KEY);
+        } catch {
+          // 读取失败按"无已存 state"处理，下方比对必然不通过
+        }
         cleanCodeFromUrl();
+        if (!saved || state !== saved) {
+          const err = new Error("登录校验失败（state 不匹配），请重新登录");
+          cfg.onError && cfg.onError(err);
+          console.warn("[FeishuSSO] 登录失败：", err);
+          return;
+        }
         try {
           this.user = await exchangeCode(cfg, code);
           store(this.user);

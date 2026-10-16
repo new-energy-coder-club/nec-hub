@@ -4,6 +4,7 @@
 // 纯本地应用：数据存 localStorage「nec-taskto-v1」，UI 偏好（白底/左侧视图）存「nec-taskto-ui-v1」
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { store, save, saveUi, uid, lineOf, fmtDate, visibleTasks, resetToDefault } from './store'
+import { confirmDialog } from '@shared/ui/feedback'
 import TaskRow from './components/TaskRow.vue'
 import MetroMap from './components/MetroMap.vue'
 import GitFlowPanel from './components/GitFlowPanel.vue'
@@ -47,10 +48,10 @@ function toggleDone(id: string) {
 function toggleExpand(id: string) {
   store.expandedId = store.expandedId === id ? null : id
 }
-function deleteTask(id: string) {
+async function deleteTask(id: string) {
   const t = store.tasks.find(x => x.id === id)
   if (!t) return
-  if (!confirm(`删除任务「${t.title}」？`)) return
+  if (!(await confirmDialog(`删除任务「${t.title}」？`))) return
   store.tasks = store.tasks.filter(x => x.id !== id)
   if (store.expandedId === id) store.expandedId = null
   save()
@@ -98,8 +99,8 @@ function addLine(p: { name: string; color: string }) {
   store.lines.push({ id: 'line-' + uid(), name: p.name, color: p.color })
   save()
 }
-function clearDone() {
-  if (!confirm('清除所有已完成任务？')) return
+async function clearDone() {
+  if (!(await confirmDialog('清除所有已完成任务？'))) return
   store.tasks = store.tasks.filter(t => !t.done)
   save()
 }
@@ -111,8 +112,8 @@ function exportData() {
   a.click()
   URL.revokeObjectURL(a.href)
 }
-function resetData() {
-  if (!confirm('恢复示例数据？当前数据将被覆盖。')) return
+async function resetData() {
+  if (!(await confirmDialog('恢复示例数据？当前数据将被覆盖。'))) return
   resetToDefault()
   save()
 }

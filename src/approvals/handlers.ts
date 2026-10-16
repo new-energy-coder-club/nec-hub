@@ -7,12 +7,13 @@
  *   GET  /api/approvals/mine?type=             → 我的申请列表（按 open_id 过滤，提交时间降序 20 条）
  */
 
-import { resolveUserRole } from "../auth/role";
-import { fieldNum, fieldText, findFieldKey, firstFieldText, getTenantAccessToken, listBitableRecords } from "../feishu/bitable";
+import { ROLES, resolveUserRole } from "../auth/role";
+import { syncReimburseDocStatus } from "../erp/reimburse";
+import { fieldNum, fieldText, findFieldKey, firstFieldText, getTenantAccessToken, queryBitableRecords } from "../feishu/bitable";
 import { notifyFeishu } from "../feishu/bot";
 import { approvalResultMailHtml, defaultMailRecipients, sendFeishuMail } from "../feishu/mail";
 import { json } from "../shared/http";
-import { applyRenewedSession, resolveSession } from "../shared/session";
+import { resolveSession } from "../shared/session";
 import { buildRecordLink } from "../validation/service";
 import {
   APPROVAL_TYPES,
@@ -35,24 +36,24 @@ export async function handleApprovalSubmit(request: Request, env: Env, ctx?: Exe
   const session = await resolveSession(env, request, ctx);
   if (!session) return json({ error: "unauthorized" }, 401);
   const role = await resolveUserRole(env, session.user, ctx);
-  if (role.role === "external") return applyRenewedSession(json({ error: "forbidden", role: role.role }, 403), session.renewed);
+  if (role.role === "external") return json({ error: "forbidden", role: role.role }, 403);
   const body = (await request.json().catch(() => ({}))) as { type?: string; fields?: Record<string, unknown> };
   const type = String(body.type ?? "") as ApprovalType;
   if (!APPROVAL_TYPES.includes(type)) {
-    return applyRenewedSession(json({ error: `type 必须是：${APPROVAL_TYPES.join(" | ")}` }, 400), session.renewed);
+    return json({ error: `type 必须是：${APPROVAL_TYPES.join(" | ")}` }, 400);
   }
   const cfg = await getFlowsConfig(env);
   const flow = cfg[type];
   if (!flow.tableId) {
-    return applyRenewedSession(json({ error: `流程未配置：先用 MCP config_flows 配置 ${type} 的 tableId` }, 400), session.renewed);
+    return json({ error: `流程未配置：先用 MCP config_flows 配置 ${type} 的 tableId` }, 400);
   }
-  if (flow.group && role.group !== flow.group && !/队长/.test(role.role)) {
-    return applyRenewedSession(json({ error: "forbidden", role: role.role, hint: `该流程仅限 ${flow.group} 提交` }, 403), session.renewed);
+  if (flow.group && role.group !== flow.group && !ROLES.CAPTAIN.test(role.role)) {
+    return json({ error: "forbidden", role: role.role, hint: `该流程仅限 ${flow.group} 提交` }, 403);
   }
   try {
-    return applyRenewedSession(json(await submitApprovalCore(env, { type, fields: body.fields ?? {}, user: session.user, role, source: "portal" })), session.renewed);
+    return json(await submitApprovalCore(env, { type, fields: body.fields ?? {}, user: session.user, role, source: "portal" }));
   } catch (err) {
-    if (err instanceof ApprovalError) return applyRenewedSession(json({ error: err.message }, err.status), session.renewed);
+    if (err instanceof ApprovalError) return json({ error: err.message }, err.status);
     throw err;
   }
 }
@@ -67,11 +68,11 @@ export async function handleApprovalAction(
 ): Promise<Response> {
   const session = await resolveSession(env, request, ctx);
   if (!session) return json({ error: "unauthorized" }, 401);
-  if (!APPROVAL_TYPES.includes(type as ApprovalType)) return applyRenewedSession(json({ error: `未知流程 type：${type}` }, 400), session.renewed);
-  if (!APPROVAL_ACTIONS.includes(action as ApprovalAction)) return applyRenewedSession(json({ error: `未知动作：${action}` }, 400), session.renewed);
+  if (!APPROVAL_TYPES.includes(type as ApprovalType)) return json({ error: `未知流程 type：${type}` }, 400);
+  if (!APPROVAL_ACTIONS.includes(action as ApprovalAction)) return json({ error: `未知动作：${action}` }, 400);
   const body = (await request.json().catch(() => ({}))) as { comment?: string; link?: string; reason?: string };
   try {
-    return applyRenewedSession(json(
+    return json(
       await runApprovalAction(env, {
         type: type as ApprovalType,
         appId,
@@ -79,12 +80,13 @@ export async function handleApprovalAction(
         comment: body.comment,
         link: body.link,
         reason: body.reason,
+        onStatusChange: syncReimburseDocStatus,
         user: session.user,
         role: await resolveUserRole(env, session.user, ctx),
       }),
-    ), session.renewed);
+    );
   } catch (err) {
-    if (err instanceof ApprovalError) return applyRenewedSession(json({ error: err.message }, err.status), session.renewed);
+    if (err instanceof ApprovalError) return json({ error: err.message }, err.status);
     throw err;
   }
 }
@@ -109,7 +111,7 @@ export async function handleApprovalUpload(request: Request, env: Env, ctx?: Exe
   for (const [field, value] of form.entries()) {
     if (!(value instanceof File) || value.size === 0) continue;
     if (value.size > 10 * 1024 * 1024) {
-      return applyRenewedSession(json({ error: `文件超过 10MB 上限（${value.name || field}）` }, 400), session.renewed);
+      return json({ error: `文件超过 10MB 上限（${value.name || field}）` }, 400);
     }
     const safe = (value.name || field).replace(/[^\w.\-一-龥]+/g, "_").slice(-60);
     const key = `receipts/${day}/${crypto.randomUUID()}-${safe}`;
@@ -118,8 +120,8 @@ export async function handleApprovalUpload(request: Request, env: Env, ctx?: Exe
     });
     files.push({ field, key, name: value.name || field, size: value.size });
   }
-  if (!files.length) return applyRenewedSession(json({ error: "未收到文件" }, 400), session.renewed);
-  return applyRenewedSession(json({ ok: true, files }), session.renewed);
+  if (!files.length) return json({ error: "未收到文件" }, 400);
+  return json({ ok: true, files });
 }
 
 /**
@@ -132,24 +134,34 @@ export async function handleApprovalPending(request: Request, env: Env, ctx?: Ex
   const url = new URL(request.url);
   const type = (url.searchParams.get("type") ?? "") as ApprovalType;
   if (!APPROVAL_TYPES.includes(type)) {
-    return applyRenewedSession(json({ error: `type 必须是：${APPROVAL_TYPES.join(" | ")}` }, 400), session.renewed);
+    return json({ error: `type 必须是：${APPROVAL_TYPES.join(" | ")}` }, 400);
   }
   const role = await resolveUserRole(env, session.user, ctx);
   const cfg = await getFlowsConfig(env);
   const flow = cfg[type];
   if (!flow.tableId || !isApprover(role, flow.approvers)) {
-    return applyRenewedSession(json({ records: [] }), session.renewed);
+    return json({ records: [] });
   }
   const base = await getFlowBase(env, flow);
-  if (!base) return applyRenewedSession(json({ records: [] }), session.renewed);
+  if (!base) return json({ records: [] });
   const token = await getTenantAccessToken(env);
-  const records = await listBitableRecords(token, base, flow.tableId);
+  // filter 下推只拉「审批中」行；search 失败回退全表扫描（match 保留字段名模糊匹配，语义不变）
+  const records = await queryBitableRecords(
+    token,
+    base,
+    flow.tableId,
+    [{ field_name: "状态", operator: "is", value: ["审批中"] }],
+    (r, rs) => {
+      const k = findFieldKey(rs, [/^状态$/, /状态/, /进度/]) ?? "状态";
+      return fieldText(r.fields[k]) === "审批中";
+    },
+  );
   const statusKey = findFieldKey(records, [/^状态$/, /状态/, /进度/]) ?? "状态";
   const pending = records
     .filter((r) => fieldText(r.fields[statusKey]) === "审批中")
     .sort((a, b) => (fieldNum(a.fields["提交时间"]) ?? 0) - (fieldNum(b.fields["提交时间"]) ?? 0))
     .slice(0, 20);
-  return applyRenewedSession(json({
+  return json({
     records: pending.map((r) => ({
       application_id: fieldText(r.fields["申请单号"]),
       title: firstFieldText(r),
@@ -158,7 +170,7 @@ export async function handleApprovalPending(request: Request, env: Env, ctx?: Ex
       url: buildRecordLink(base, flow.tableId, r.record_id),
       submitted_at: fieldNum(r.fields["提交时间"]) ?? null,
     })),
-  }), session.renewed);
+  });
 }
 
 /** 我的申请列表（各流程申请页「我的申请」数据源）：按 open_id 过滤 → 提交时间降序 → 前 20 条 */
@@ -168,20 +180,27 @@ export async function handleApprovalMine(request: Request, env: Env, ctx?: Execu
   const url = new URL(request.url);
   const type = (url.searchParams.get("type") ?? "reimburse") as ApprovalType;
   if (!APPROVAL_TYPES.includes(type)) {
-    return applyRenewedSession(json({ error: `type 必须是：${APPROVAL_TYPES.join(" | ")}` }, 400), session.renewed);
+    return json({ error: `type 必须是：${APPROVAL_TYPES.join(" | ")}` }, 400);
   }
   const cfg = await getFlowsConfig(env);
   const flow = cfg[type];
-  if (!flow.tableId) return applyRenewedSession(json({ records: [], hint: "流程未配置" }), session.renewed);
+  if (!flow.tableId) return json({ records: [], hint: "流程未配置" });
   const base = await getFlowBase(env, flow);
-  if (!base) return applyRenewedSession(json({ records: [], hint: "流程未配置" }), session.renewed);
+  if (!base) return json({ records: [], hint: "流程未配置" });
   const token = await getTenantAccessToken(env);
-  const records = await listBitableRecords(token, base, flow.tableId);
+  // filter 下推按 open_id 只拉本人的单；search 失败回退全表扫描 + 内存过滤（match 与原逻辑一致）
+  const records = await queryBitableRecords(
+    token,
+    base,
+    flow.tableId,
+    [{ field_name: "申请人 open_id", operator: "is", value: [session.user.open_id] }],
+    (r) => fieldText(r.fields["申请人 open_id"]) === session.user.open_id,
+  );
   const mine = records
     .filter((r) => fieldText(r.fields["申请人 open_id"]) === session.user.open_id)
     .sort((a, b) => (fieldNum(b.fields["提交时间"]) ?? 0) - (fieldNum(a.fields["提交时间"]) ?? 0))
     .slice(0, 20);
-  return applyRenewedSession(json({
+  return json({
     records: mine.map((r) => {
       const f = r.fields;
       // 全量字段透传（数字保持 number，其余转文本），各流程申请页按各自字段名取用
@@ -197,7 +216,7 @@ export async function handleApprovalMine(request: Request, env: Env, ctx?: Execu
         fields,
       };
     }),
-  }), session.renewed);
+  });
 }
 
 // ---------- 审批相关 MCP 工具实现 ----------

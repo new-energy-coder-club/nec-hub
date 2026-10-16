@@ -3,7 +3,7 @@
  * 加签向量、未配置降级、消息体形状与按流程分流、失败重试后写 notify:failed
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { feishuBotSign, notifyFeishu } from "../feishu/notify";
+import { feishuBotSign, notifyFeishu } from "../feishu/bot";
 import { createMockEnv } from "./mock-env";
 
 function makeEnv(extra: Record<string, string> = {}): Env {

@@ -45,6 +45,9 @@ describe("图纸评审全链路 e2e", () => {
   beforeEach(() => {
     currentSid = SID;
     ctx = createDrMock({ session: { sid: SID, openId: "ou-e2e", name: "链路测试" } });
+    // 报价回填与选定供应商需管理角色：把 e2e 用户登记为队长
+    ctx.kv.set("dashboard:config", JSON.stringify({ base: "appMockBase", tables: { members: "tblMembers" }, updatedAt: "" }));
+    ctx.seed("tblMembers", { open_id: "ou-e2e", 姓名: "链路测试", 权限角色: "队长" }, "rec-member-e2e");
   });
 
   afterEach(() => {
@@ -64,6 +67,11 @@ describe("图纸评审全链路 e2e", () => {
     const reviewId: string = submit.data.reviewId;
     expect(reviewId).toMatch(/^DR-\d{8}-\d{3}$/);
     expect(submit.data.status).toBe("pending_review");
+    // 附件落库：写入「图纸文件」文本字段（JSON 序列化），提交响应即读回
+    expect(submit.data.drawingFiles).toEqual([{ name: "drawing.pdf", token: "tok" }]);
+    const stored = (ctx.tables[DR_TABLES.reviews] ?? [])[0];
+    expect(typeof stored.fields["图纸文件"]).toBe("string");
+    expect(JSON.parse(stored.fields["图纸文件"] as string)).toEqual([{ name: "drawing.pdf", token: "tok" }]);
 
     // 2. 无 BOM 时生成询价单 → 明确报错（修复前用户即卡在这一步）
     const earlyGen = await apiJson(`/api/drawing-review/${reviewId}/inquiries/generate`, "POST", {});
@@ -92,6 +100,8 @@ describe("图纸评审全链路 e2e", () => {
     expect(bom.data.items).toHaveLength(3);
     const afterBom = await apiJson(`/api/drawing-review/${reviewId}`);
     expect(afterBom.data.status).toBe("assessing");
+    // 详情读回：附件从「图纸文件」文本字段反序列化
+    expect(afterBom.data.drawingFiles).toEqual([{ name: "drawing.pdf", token: "tok" }]);
 
     // 5b. 重复生成 BOM → 幂等返回 existed，不产生重复数据
     const bomAgain = await apiJson(`/api/drawing-review/${reviewId}/bom/generate`, "POST", { items: bomItems });

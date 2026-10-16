@@ -122,3 +122,24 @@ describe("数据校验周报（周一 00:00 窗口）", () => {
     expect(h.kv.has("cron:guard:weekly")).toBe(false);
   });
 });
+
+describe("团队周报（周一 00:16–00:20 窗口）", () => {
+  it("周一 00:16 快触发器命中；00:08 与非周一同时刻不命中", async () => {
+    const h = makeHarness();
+    await h.run(FAST, `${FRI}T00:16:00Z`); // 非周一
+    expect(h.kv.has("cron:guard:weekly-report")).toBe(false);
+    await h.run(FAST, `${MON}T00:08:00Z`); // 周一但属于校验周报/SLA 窗口
+    expect(h.kv.has("cron:guard:weekly-report")).toBe(false);
+    await h.run(FAST, `${MON}T00:16:00Z`);
+    expect(h.kv.has("cron:guard:weekly-report")).toBe(true);
+  });
+
+  it("12 小时去重：窗口内重复触发只执行一次", async () => {
+    const h = makeHarness();
+    await h.run(FAST, `${MON}T00:16:00Z`);
+    const first = h.kv.get("cron:guard:weekly-report");
+    expect(first).toBeTruthy();
+    await h.run(FAST, `${MON}T00:16:00Z`); // 并发命中同一窗口
+    expect(h.kv.get("cron:guard:weekly-report")).toBe(first);
+  });
+});

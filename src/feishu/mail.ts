@@ -21,14 +21,7 @@
 
 import { getUserAccessToken } from "./user-token";
 import { recordNotifyFailure } from "./bot";
-
-const FEISHU_API = "https://open.feishu.cn/open-apis";
-
-/** 动态读 Env 字符串变量（与 bot.ts envSecret 同思路，避免 Env 类型硬编码） */
-function envVar(env: Env, key: string): string | undefined {
-  const v = (env as unknown as Record<string, string | undefined>)[key];
-  return v?.trim() || undefined;
-}
+import { FEISHU_API, envVar } from "./client";
 
 export interface MailSendInput {
   to: string[];
@@ -67,17 +60,9 @@ export function utf8ToB64(s: string): string {
   return btoa(bin);
 }
 
-function base64Utf8(text: string): string {
-  return utf8ToB64(text);
-}
-
 /** 标准 Base64 → base64url（raw 字段用） */
 export function toBase64Url(s: string): string {
   return s.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function base64url(text: string): string {
-  return toBase64Url(base64Utf8(text));
 }
 
 /** RFC 2047 encoded-word（Subject / 显示名等含非 ASCII 的邮件头） */
@@ -147,7 +132,7 @@ export function buildEml(env: Env, input: MailSendInput): string {
   const from = envVar(env, "MAIL_FROM");
   if (from) headers.unshift(`From: ${from}`);
   // base64 正文按 76 列折行（RFC 2045）
-  const bodyB64 = base64Utf8(input.html).replace(/.{1,76}/g, "$&\r\n");
+  const bodyB64 = utf8ToB64(input.html).replace(/.{1,76}/g, "$&\r\n");
   return headers.join("\r\n") + "\r\n\r\n" + bodyB64;
 }
 
@@ -292,7 +277,7 @@ export async function sendFeishuMail(
     const draftResp = await fetch(`${FEISHU_API}/mail/v1/user_mailboxes/${encodeURIComponent(mailbox)}/drafts`, {
       method: "POST",
       headers: authHeaders,
-      body: JSON.stringify({ raw: base64url(buildEml(env, input)) }),
+      body: JSON.stringify({ raw: toBase64Url(utf8ToB64(buildEml(env, input))) }),
     });
     const draftData = (await draftResp.json()) as {
       code?: number;

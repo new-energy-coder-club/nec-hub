@@ -4,6 +4,7 @@ import { ref, onMounted } from 'vue'
 import { apiDr } from '@shared/api'
 import { drStatus, type Review } from '../types'
 import InquiryPanel from './InquiryPanel.vue'
+import { toast } from '@shared/ui/feedback'
 
 const props = defineProps<{ reviewId: string }>()
 
@@ -35,13 +36,13 @@ async function scheduleMeeting() {
       body: JSON.stringify({}),
     })
     if (data.meeting?.mock) {
-      alert(`会议 API 未打通（${data.meeting.mockReason || '权限/网络'}），已生成占位会议号 ${data.meeting.meetingId}\n请人工建会后把真实会议链接补录进评审单，流程不受影响`)
+      toast(`会议 API 未打通（${data.meeting.mockReason || '权限/网络'}），已生成占位会议号 ${data.meeting.meetingId}\n请人工建会后把真实会议链接补录进评审单，流程不受影响`)
     } else {
-      alert(`会议已创建：${data.meeting?.meetingLink}`)
+      toast(`会议已创建：${data.meeting?.meetingLink}`)
     }
     load()
   } catch (err) {
-    alert('预约失败：' + (err as Error).message)
+    toast('预约失败：' + (err as Error).message)
   }
 }
 
@@ -54,7 +55,7 @@ async function completeRectify() {
     })
     load()
   } catch (err) {
-    alert('操作失败：' + (err as Error).message)
+    toast('操作失败：' + (err as Error).message)
   }
 }
 

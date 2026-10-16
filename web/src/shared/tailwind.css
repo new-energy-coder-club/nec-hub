@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+/* VI 规范：NEC 品牌 tokens 映射进 Tailwind 主题（替代原 14 份内联 tailwind.config），不使用默认蓝/青色系 */
+@theme {
+  --color-nec-royal: #1a2fa0;
+  --color-nec-royal-light: #3449b9;
+  --color-nec-royal-dark: #10277e;
+  --color-nec-royal-100: #e8ecfb;
+  --color-nec-navy: #141b5e;
+  --color-nec-ink: #0b1033;
+  --color-nec-cyan: #1fa9e8;
+  --color-nec-sky: #4fc3f7;
+  --color-nec-fog: #f4f6fb;
+  --color-nec-gray: #5a6472;
+  --color-nec-line: #d9dff0;
+
+  --font-sans: "Source Han Sans SC", "思源黑体 CN", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}

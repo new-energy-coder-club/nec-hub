@@ -14,16 +14,40 @@ import type {
   ContractApprovalStatus,
   ContractType,
 } from "./types";
+import { StateMachine, type TransitionRule } from "../approvals/core/state-machine";
 
-export const TRANSITIONS: Record<ContractApprovalStatus, Partial<Record<string, ContractApprovalStatus>>> = {
-  draft: { submit: "pending_approval" },
-  pending_approval: { start_review: "in_review" },
-  in_review: { approve: "approved", reject: "rejected", revise: "revised" },
-  revised: { resubmit: "pending_approval" },
-  approved: { archive: "archived" },
-  rejected: { archive: "archived" },
-  archived: {},
-};
+/** 合同审批事件（动作名） */
+type ContractEvent = "submit" | "start_review" | "approve" | "reject" | "revise" | "resubmit" | "archive";
+
+const CONTRACT_STATUSES: readonly ContractApprovalStatus[] = [
+  "draft",
+  "pending_approval",
+  "in_review",
+  "revised",
+  "approved",
+  "rejected",
+  "archived",
+];
+
+/** 合同审批流转规则（统一状态机核心；archive 双前置用 from 数组表达） */
+const CONTRACT_TRANSITIONS: ReadonlyArray<TransitionRule<ContractEvent, ContractApprovalStatus>> = [
+  { action: "submit", from: "draft", to: "pending_approval" },
+  { action: "start_review", from: "pending_approval", to: "in_review" },
+  { action: "approve", from: "in_review", to: "approved" },
+  { action: "reject", from: "in_review", to: "rejected" },
+  { action: "revise", from: "in_review", to: "revised" },
+  { action: "resubmit", from: "revised", to: "pending_approval" },
+  { action: "archive", from: ["approved", "rejected"], to: "archived" },
+];
+
+/** 合同审批状态机实例（与 approvals 引擎共享核心） */
+export const CONTRACT_STATE_MACHINE = new StateMachine<ContractEvent, ContractApprovalStatus>(
+  CONTRACT_TRANSITIONS,
+  CONTRACT_STATUSES,
+);
+
+export const TRANSITIONS: Record<ContractApprovalStatus, Partial<Record<string, ContractApprovalStatus>>> =
+  CONTRACT_STATE_MACHINE.toTransitionMap();
 
 export function nextStatus(current: ContractApprovalStatus, event: string): ContractApprovalStatus | null {
   return TRANSITIONS[current]?.[event] ?? null;

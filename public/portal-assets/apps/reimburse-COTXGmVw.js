@@ -1,1 +1,0 @@
-import{c as a,_ as e}from"../ReimburseApp.vue_vue_type_script_setup_true_lang-BfozYRxU.js";const o=new URLSearchParams(location.search),n=o.get("embedded")==="1"||window.parent!==window;a(e,{embedded:n,onExit:()=>{location.href="/"}}).mount("#app");

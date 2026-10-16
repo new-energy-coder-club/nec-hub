@@ -14,27 +14,27 @@ import {
   firstFieldText,
   getTenantAccessToken,
   listBitableFields,
-  listBitableRecords,
   matchField,
+  queryBitableRecords,
   updateBitableRecord,
   type BitableRecord,
 } from "../feishu/bitable";
 import { notifyFeishu } from "../feishu/bot";
 import { notifyApprovalResult } from "../notify";
 import type { HubUser } from "../shared/session";
-import type { UserRole } from "../auth/role";
+import { ROLES, type UserRole } from "../auth/role";
 import { buildRecordLink } from "../validation/service";
 import {
   APPROVAL_TYPES,
   ApprovalError,
   evalFlowFields,
-  findRecordByAppId,
   getFlowBase,
   getFlowsConfig,
   isApprover,
-  nextAppId,
   type ApprovalType,
 } from "./flows";
+import { consumeNextSerial } from "./core/serial";
+import { StateMachine, type GuardFn, type TransitionRule } from "./core/state-machine";
 import { applyInventoryDelta } from "./inventory";
 
 export const APPROVAL_LABELS: Record<ApprovalType, string> = {
@@ -101,8 +101,7 @@ export async function submitApprovalCore(env: Env, input: ApprovalSubmitInput): 
     throw new ApprovalError("流程未配置 base：先用 config_flows 配置 base（或 config_dashboard 配置看板 base）");
   }
   const token = await getTenantAccessToken(env);
-  const existing = await listBitableRecords(token, base, flow.tableId);
-  const applicationId = nextAppId(flow.prefix, existing.length);
+  const applicationId = await consumeNextSerial(env.REGISTRY, flow.prefix);
   // "@appId" 占位符：写表前替换为本次分配的申请单号（如图纸流程的"图号"自动绑定 MECH 单号）
   const fields: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(input.fields)) {
@@ -145,17 +144,36 @@ export async function submitApprovalCore(env: Env, input: ApprovalSubmitInput): 
 export const APPROVAL_ACTIONS = ["approve", "reject", "pay", "start", "archive", "arrive", "issue", "publish"] as const;
 export type ApprovalAction = (typeof APPROVAL_ACTIONS)[number];
 
-/** 动作 → 目标状态与前置状态（幂等：目标状态=当前状态直接返回成功） */
-export const ACTION_TARGET: Record<ApprovalAction, { from: RegExp; to: string }> = {
-  approve: { from: /^审批中$/, to: "已通过" },
-  reject: { from: /^审批中$/, to: "已驳回" },
-  pay: { from: /^已通过$/, to: "已打款" },
-  start: { from: /^已通过$/, to: "加工中" },
-  archive: { from: /^加工中$/, to: "已归档" },
-  arrive: { from: /^已通过$/, to: "已到货" },
-  issue: { from: /^已通过$/, to: "已领用" },
-  publish: { from: /^已通过$/, to: "已发布" },
-};
+/**
+ * 引擎流转规则表（统一状态机核心）：动作 → 前置状态/目标状态 + 权限钩子名。
+ * guard 实现见 runApprovalAction：approver=流程审批人、finance=财务/队长、owner=申请人本人。
+ */
+const APPROVAL_TRANSITIONS: ReadonlyArray<TransitionRule<ApprovalAction>> = [
+  { action: "approve", from: /^审批中$/, to: "已通过", guard: "approver" },
+  { action: "reject", from: /^审批中$/, to: "已驳回", guard: "approver" },
+  { action: "pay", from: /^已通过$/, to: "已打款", guard: "finance" },
+  { action: "start", from: /^已通过$/, to: "加工中", guard: "owner" },
+  { action: "archive", from: /^加工中$/, to: "已归档", guard: "owner" },
+  { action: "arrive", from: /^已通过$/, to: "已到货", guard: "approver" },
+  { action: "issue", from: /^已通过$/, to: "已领用", guard: "approver" },
+  { action: "publish", from: /^已通过$/, to: "已发布", guard: "owner" },
+];
+
+/** 引擎状态机实例（共享核心定义） */
+export const APPROVAL_STATE_MACHINE = new StateMachine<ApprovalAction>(APPROVAL_TRANSITIONS);
+
+/** 动作 → 目标状态与前置状态（由统一状态机核心派生；幂等：目标状态=当前状态直接返回成功） */
+export const ACTION_TARGET: Record<ApprovalAction, { from: RegExp; to: string }> = Object.fromEntries(
+  APPROVAL_TRANSITIONS.map((r) => [r.action, { from: r.from as RegExp, to: r.to }]),
+) as Record<ApprovalAction, { from: RegExp; to: string }>;
+
+/** 状态流转成功事件（onStatusChange 回调入参） */
+export interface ApprovalStatusChange {
+  type: ApprovalType;
+  appId: string;
+  action: ApprovalAction;
+  status: string;
+}
 
 export interface ApprovalActionInput {
   type: ApprovalType;
@@ -165,6 +183,8 @@ export interface ApprovalActionInput {
   link?: string;
   /** G-02 驳回原因标准化：reject 时可带标准化原因（合规流程 5 个固定选项），写入底表「驳回原因」字段 */
   reason?: string;
+  /** 状态流转成功后的可选回调（如 ERP 快照状态回写）；抛错只记日志，不阻断动作 */
+  onStatusChange?: (env: Env, change: ApprovalStatusChange) => Promise<void>;
   user: HubUser;
   role: UserRole;
 }
@@ -178,37 +198,54 @@ export async function runApprovalAction(env: Env, input: ApprovalActionInput): P
   const base = await getFlowBase(env, flow);
   if (!base) throw new ApprovalError("流程未配置 base");
   const token = await getTenantAccessToken(env);
-  const records = await listBitableRecords(token, base, flow.tableId);
-  const record = findRecordByAppId(records, input.appId);
+  // filter 下推按「申请单号」精确查单条；字段名模糊匹配（findFieldKey）留在 match 里，
+  // search 失败（底表用别名等）时 queryBitableRecords 自动回退全表扫描，语义不变
+  const records = await queryBitableRecords(
+    token,
+    base,
+    flow.tableId,
+    [{ field_name: "申请单号", operator: "is", value: [input.appId] }],
+    (r, rs) => {
+      const key = findFieldKey(rs, [/^申请单号$/, /申请单号/, /单号/]);
+      return key !== null && fieldText(r.fields[key]) === input.appId;
+    },
+  );
+  const record = records[0] ?? null;
   if (!record) throw new ApprovalError(`底表中未找到申请单号 ${input.appId}`, 404);
 
   const statusKey = findFieldKey(records, [/^状态$/, /状态/, /进度/]) ?? "状态";
   const current = fieldText(record.fields[statusKey]);
-  const target = ACTION_TARGET[input.action].to;
+  const target = APPROVAL_STATE_MACHINE.targetOf(input.action)!;
 
-  // 角色前置校验
-  if (input.action === "approve" || input.action === "reject" || input.action === "arrive" || input.action === "issue") {
-    if (!isApprover(input.role, flow.approvers)) {
-      throw new ApprovalError(`当前角色（${input.role.role}）无权执行 ${input.action}`, 403);
-    }
-  } else if (input.action === "pay") {
-    if (!/财务|队长/.test(input.role.role)) {
-      throw new ApprovalError("已打款仅财务/队长可标记", 403);
-    }
-  } else {
-    // start / archive / publish：仅申请人本人
-    const applicantKey = findFieldKey(records, [/^申请人$/, /申请人/, /报销人/]);
-    const openIdKey = findFieldKey(records, [/open_?id|飞书/i]);
-    const isOwner =
-      (openIdKey && fieldText(record.fields[openIdKey]) === input.user.open_id) ||
-      (applicantKey && fieldText(record.fields[applicantKey]) === input.user.name);
-    if (!isOwner) throw new ApprovalError("仅申请人本人可执行该动作", 403);
-  }
+  // 角色前置校验（权限钩子名见 APPROVAL_TRANSITIONS.guard；拒绝原因即对外错误消息）
+  const guardCtx = { records, record, input };
+  const guards: Record<string, GuardFn<typeof guardCtx>> = {
+    approver: ({ input: i }) =>
+      isApprover(i.role, flow.approvers) || `当前角色（${i.role.role}）无权执行 ${i.action}`,
+    finance: ({ input: i }) => ROLES.FINANCE_MANAGER.test(i.role.role) || "已打款仅财务/队长可标记",
+    owner: ({ records: rs, record: r, input: i }) => {
+      // start / archive / publish：仅申请人本人
+      const applicantKey = findFieldKey(rs, [/^申请人$/, /申请人/, /报销人/]);
+      const openIdKey = findFieldKey(rs, [/open_?id|飞书/i]);
+      return (
+        (openIdKey !== null && fieldText(r.fields[openIdKey]) === i.user.open_id) ||
+        (applicantKey !== null && fieldText(r.fields[applicantKey]) === i.user.name) ||
+        "仅申请人本人可执行该动作"
+      );
+    },
+  };
+  const denied = APPROVAL_STATE_MACHINE.checkGuard(input.action, guards, guardCtx);
+  if (denied !== true) throw new ApprovalError(denied, 403);
 
   // 幂等：目标状态=当前状态 → 直接返回当前状态
-  if (current === target) return { application_id: input.appId, status: current };
-  if (!ACTION_TARGET[input.action].from.test(current)) {
-    throw new ApprovalError(`当前状态为「${current || "空"}」，不能执行 ${input.action} →「${target}」`, 409);
+  const verdict = APPROVAL_STATE_MACHINE.resolve(input.action, current)!;
+  if (verdict.kind === "already") return { application_id: input.appId, status: current };
+  if (verdict.kind === "invalid") {
+    throw new ApprovalError(
+      `当前状态为「${current || "空"}」，不能执行 ${input.action} →「${target}」`,
+      409,
+      { current, target, action: input.action },
+    );
   }
   if (input.action === "reject" && !(input.comment ?? "").trim()) {
     throw new ApprovalError("驳回必须填写审批意见（comment）");
@@ -257,6 +294,13 @@ export async function runApprovalAction(env: Env, input: ApprovalActionInput): P
   }
   // G-01 台账联动：状态写底表成功且通知发出后追加，失败不阻断动作本身
   await linkInventory(env, input, record, token, base, flow.tableId);
+  if (input.onStatusChange) {
+    try {
+      await input.onStatusChange(env, { type: input.type, appId: input.appId, action: input.action, status: target });
+    } catch (err) {
+      console.error(`[approvals] onStatusChange 回调失败 ${input.appId} → ${target}:`, err);
+    }
+  }
   return { application_id: input.appId, status: target };
 }
 
@@ -350,7 +394,9 @@ const TASK_DONE_RE = /完成|已完|完结|done|取消|cancel|关闭|close|drop/
 
 /**
  * 读单条流程底表（带 todo:tbl:<type> 5 分钟缓存）。aggregateTodos 与 G-04 门户待办条
- * （src/todos.ts approvals_local）共用：缓存存全量列表（不带用户过滤，过滤在内存做）。
+ * （src/todos.ts approvals_local）共用：两个消费方都只取 状态="审批中" 的行，
+ * 故缓存存 search 下推后的待审批子集（不带用户过滤，角色过滤仍在内存做）。
+ * search 失败（状态字段名不符等）时回退全表扫描，缓存全量，下游内存过滤语义不变。
  * 返回 null = 流程未配置 tableId / 无 base 可用。
  */
 export async function fetchFlowRecordsCached(
@@ -372,7 +418,17 @@ export async function fetchFlowRecordsCached(
   const token = await getTenantAccessToken(env).catch(() => "");
   if (token) {
     try {
-      const records = await listBitableRecords(token, base, flow.tableId);
+      // filter 下推：只拉 状态="审批中" 的行；失败回退全表扫描（下游 findFieldKey 模糊定位状态字段，语义不变）
+      const records = await queryBitableRecords(
+        token,
+        base,
+        flow.tableId,
+        [{ field_name: "状态", operator: "is", value: ["审批中"] }],
+        (r, rs) => {
+          const k = findFieldKey(rs, [/^状态$/, /状态/, /进度/]) ?? "状态";
+          return fieldText(r.fields[k]) === "审批中";
+        },
+      );
       await env.REGISTRY.put(cacheKey, JSON.stringify({ data: records, cachedAt: Date.now() }), { expirationTtl: TODO_CACHE_TTL_SEC });
       return { records, base, tableId: flow.tableId, cachedAt: new Date().toISOString() };
     } catch {
@@ -389,7 +445,7 @@ export async function fetchFlowRecordsCached(
 
 /**
  * 待办聚合：4 张流程底表中 状态="审批中" 且当前角色可审的行（按 type 分组）+ 逾期任务前 8 条。
- * 缓存键 todo:tbl:<type> 存全量列表（不带用户过滤，过滤在内存做，保证各角色角标一致）。
+ * 缓存键 todo:tbl:<type> 存 search 下推后的待审批子集（不带用户过滤，角色过滤在内存做，保证各角色角标一致）。
  */
 export async function aggregateTodos(env: Env, role: UserRole): Promise<unknown> {
   const cfg = await getFlowsConfig(env);

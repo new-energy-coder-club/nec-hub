@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { inferSkillCategory, normalizeSkillCategory, normalizeSkillTags } from "../hosting";
-import { toolImportSkills, toolPublishSkill } from "../mcp/implementations";
+import { toolImportSkills, toolPublishSkill } from "../mcp/tools/skills";
 import { createMockEnv } from "./mock-env";
 
 vi.stubGlobal("caches", { default: { delete: vi.fn().mockResolvedValue(true) } });

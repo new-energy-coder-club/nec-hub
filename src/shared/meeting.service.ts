@@ -6,7 +6,7 @@
  */
 
 import { getTenantAccessToken } from "../feishu/bitable";
-import { json } from "./http";
+import { json, readJson } from "./http";
 
 const FEISHU_MEETING_API = "https://open.feishu.cn/open-apis/vc/v1";
 
@@ -151,7 +151,7 @@ export async function handleScheduleMeeting<R extends { recordId: string; design
   const review = await deps.flow.getReview(reviewId);
   if (!review) return json({ error: "评审单不存在" }, 404);
 
-  const body = (await request.json()) as { startTime?: string; durationMinutes?: number; attendeeOpenIds?: string[] };
+  const body = (await readJson<{ startTime?: string; durationMinutes?: number; attendeeOpenIds?: string[] }>(request)) ?? {};
   const attendeeOpenIds = body.attendeeOpenIds ?? [review.designerId];
   const meetingInput = defaultMeetingInput(review, deps.topic(review), attendeeOpenIds);
   if (body.startTime) meetingInput.startTime = body.startTime;

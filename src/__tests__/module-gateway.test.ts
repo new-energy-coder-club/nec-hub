@@ -34,8 +34,8 @@ function seedSession(kv: Map<string, string>, sid: string, expiresInMs = 6 * 24 
 
 const CFG: TestCfg = { base: "appTestBase00", tables: { reviews: "tblTest" }, updatedAt: "2026-01-01" };
 
-function makeSpec(kv: Map<string, string>, opts: { withCfg?: boolean; roles?: RegExp; handler?: (ctx: ModuleRouteContext<TestCfg>) => Promise<Response | null> } = {}) {
-  const { withCfg = true, roles, handler } = opts;
+function makeSpec(kv: Map<string, string>, opts: { withCfg?: boolean; roles?: RegExp; configRoles?: RegExp; handler?: (ctx: ModuleRouteContext<TestCfg>) => Promise<Response | null> } = {}) {
+  const { withCfg = true, roles, configRoles, handler } = opts;
   if (withCfg) kv.set("test:config", JSON.stringify(CFG));
   return {
     configPath: "/api/test/config",
@@ -48,10 +48,11 @@ function makeSpec(kv: Map<string, string>, opts: { withCfg?: boolean; roles?: Re
     handleConfig: async () => json({ ok: true, from: "handleConfig" }),
     handler: handler ?? (async () => json({ ok: true, from: "handler" })),
     ...(roles ? { roles } : {}),
+    ...(configRoles ? { configRoles } : {}),
   };
 }
 
-describe("module-gateway：配置接口（免登录）", () => {
+describe("module-gateway：配置接口（GET 免登录 / POST 按 configRoles 门禁）", () => {
   it("GET 未配置 → configured:false", async () => {
     const kv = new Map<string, string>();
     const res = await withModuleGate(makeSpec(kv, { withCfg: false }), new Request("http://x/api/test/config"), makeEnv(kv), "/api/test/config");
@@ -59,20 +60,56 @@ describe("module-gateway：配置接口（免登录）", () => {
     expect(await res!.json()).toEqual({ configured: false, base: null, tables: {} });
   });
 
-  it("GET 已配置 → configured:true + base/tables", async () => {
+  it("GET 已配置 → configured:true + base/tables（配置 configRoles 后仍免登录）", async () => {
     const kv = new Map<string, string>();
-    const res = await withModuleGate(makeSpec(kv), new Request("http://x/api/test/config"), makeEnv(kv), "/api/test/config");
+    const res = await withModuleGate(makeSpec(kv, { configRoles: /队长/ }), new Request("http://x/api/test/config"), makeEnv(kv), "/api/test/config");
     const body = (await res!.json()) as { configured: boolean; base: string };
     expect(body.configured).toBe(true);
     expect(body.base).toBe("appTestBase00");
   });
 
-  it("POST 委托 handleConfig；PUT → 405", async () => {
+  it("POST 未配置 configRoles → 免登录委托 handleConfig；PUT → 405", async () => {
     const kv = new Map<string, string>();
     const post = await withModuleGate(makeSpec(kv), new Request("http://x/api/test/config", { method: "POST" }), makeEnv(kv), "/api/test/config");
     expect(((await post!.json()) as { from: string }).from).toBe("handleConfig");
     const put = await withModuleGate(makeSpec(kv), new Request("http://x/api/test/config", { method: "PUT" }), makeEnv(kv), "/api/test/config");
     expect(put!.status).toBe(405);
+  });
+
+  it("POST 配置 configRoles：未登录 → 401", async () => {
+    const kv = new Map<string, string>();
+    const res = await withModuleGate(makeSpec(kv, { configRoles: /队长/ }), new Request("http://x/api/test/config", { method: "POST" }), makeEnv(kv), "/api/test/config");
+    expect(res!.status).toBe(401);
+    expect(await res!.json()).toEqual({ error: "请先登录" });
+  });
+
+  it("POST 配置 configRoles：已登录非管理员 → 403（未配置看板时降级「队员」）", async () => {
+    const kv = new Map<string, string>();
+    seedSession(kv, "sid-1");
+    const res = await withModuleGate(
+      makeSpec(kv, { configRoles: /队长/ }),
+      new Request("http://x/api/test/config", { method: "POST", headers: { cookie: "nec_session=sid-1" } }),
+      makeEnv(kv),
+      "/api/test/config",
+    );
+    expect(res!.status).toBe(403);
+    const body = (await res!.json()) as { error: string };
+    expect(body.error).toContain("权限不足");
+    expect(body.error).toContain("当前角色：队员");
+  });
+
+  it("POST 配置 configRoles：管理员（队长）→ 委托 handleConfig", async () => {
+    const kv = new Map<string, string>();
+    seedSession(kv, "sid-1");
+    kv.set("role:ou-test", JSON.stringify({ role: "队长", group: "", matched: true }));
+    const res = await withModuleGate(
+      makeSpec(kv, { configRoles: /队长/ }),
+      new Request("http://x/api/test/config", { method: "POST", headers: { cookie: "nec_session=sid-1" } }),
+      makeEnv(kv),
+      "/api/test/config",
+    );
+    expect(res!.status).toBe(200);
+    expect(((await res!.json()) as { from: string }).from).toBe("handleConfig");
   });
 });
 

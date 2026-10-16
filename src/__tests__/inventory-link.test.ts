@@ -9,7 +9,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
 import { runApprovalAction } from "../approvals/engine";
-import { toolUpdateInventory } from "../mcp/implementations";
+import { toolUpdateInventory } from "../mcp/tools/bitable";
+import { mockGetRecordResponse, mockSearchResponse } from "./bitable-search-mock";
 
 const BASE = "appMockBase";
 const TBL_HW = "tblHw";
@@ -64,6 +65,8 @@ function createCtx(opts: { withWebhook?: boolean; inventoryTableId?: string } = 
     if (tableId === "tblBroken") return jsonResp({ code: 1254040, msg: "table not found" });
     const method = (init?.method ?? "GET").toUpperCase();
     const items = (tables[tableId] ??= []);
+    if (method === "POST" && recordId === "search") return mockSearchResponse(items, init?.body ?? "{}");
+    if (method === "GET" && recordId) return mockGetRecordResponse(items, recordId);
     if (method === "GET") return jsonResp({ code: 0, data: { items, has_more: false } });
     if (method === "POST" && !recordId) {
       const fields = JSON.parse(init!.body!).fields;

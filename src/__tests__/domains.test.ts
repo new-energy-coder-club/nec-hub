@@ -20,6 +20,7 @@ interface Ctx {
   meta: Map<string, unknown>;
   cfCalls: Array<{ method: string; url: string; body?: Record<string, unknown> }>;
   cfFailNext: boolean;
+  cfExisting: Record<string, unknown> | null;
 }
 
 function createCtx(opts: { withCf?: boolean } = {}): Ctx {
@@ -34,7 +35,7 @@ function createCtx(opts: { withCf?: boolean } = {}): Ctx {
     JSON.stringify({ name: "小红", open_id: "ou-b", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }),
   );
 
-  const ctx: Ctx = { env: {} as Env, kv, meta, cfCalls: [], cfFailNext: false };
+  const ctx: Ctx = { env: {} as Env, kv, meta, cfCalls: [], cfFailNext: false, cfExisting: null };
   ctx.env = {
     REGISTRY: {
       get: async (key: string) => kv.get(key) ?? null,
@@ -70,7 +71,7 @@ function createCtx(opts: { withCf?: boolean } = {}): Ctx {
       if (init?.method === "DELETE") {
         return jsonResp({ success: true, errors: [], result: { id: "rec-1" } });
       }
-      return jsonResp({ success: true, errors: [], result: [] });
+      return jsonResp({ success: true, errors: [], result: ctx.cfExisting ? [ctx.cfExisting] : [] });
     }
     throw new Error(`unexpected fetch: ${url}`);
   });
@@ -252,6 +253,37 @@ describe("handleDomains", () => {
     expect(entry.error).toContain("81057");
   });
 
+  it("retry 创建冲突时按 fqdn 找回已存在记录并恢复 active", async () => {
+    const ctx = createCtx();
+    await handleDomains(req("/api/domains", { method: "POST", sid: "sid-a", body: { subdomain: "demo", target: "demo.pages.dev" } }), ctx.env, "/api/domains");
+    expect(readRecs(ctx)[0].status).toBe("pending");
+
+    ctx.env.CF_API_TOKEN = "cf-token";
+    ctx.env.CF_ZONE_ID = "zone-1";
+    ctx.cfFailNext = true; // POST 报 81057 已存在
+    ctx.cfExisting = { id: "rec-9", name: "demo.newenergycoder.club", type: "CNAME", content: "demo.pages.dev" };
+    const res = await handleDomains(req("/api/domains/retry", { method: "POST", sid: "sid-a", body: { subdomain: "demo" } }), ctx.env, "/api/domains/retry");
+    expect(res?.status).toBe(200);
+    const entry = readRecs(ctx)[0];
+    expect(entry.status).toBe("active");
+    expect(entry.cfRecordId).toBe("rec-9");
+    expect(ctx.cfCalls.some((c) => c.method === "GET" && c.url.includes("name=demo.newenergycoder.club"))).toBe(true);
+  });
+
+  it("retry 创建失败且按 fqdn 找不回记录 → failed 并返回 502", async () => {
+    const ctx = createCtx();
+    await handleDomains(req("/api/domains", { method: "POST", sid: "sid-a", body: { subdomain: "demo", target: "demo.pages.dev" } }), ctx.env, "/api/domains");
+
+    ctx.env.CF_API_TOKEN = "cf-token";
+    ctx.env.CF_ZONE_ID = "zone-1";
+    ctx.cfFailNext = true;
+    const res = await handleDomains(req("/api/domains/retry", { method: "POST", sid: "sid-a", body: { subdomain: "demo" } }), ctx.env, "/api/domains/retry");
+    expect(res?.status).toBe(502);
+    const entry = readRecs(ctx)[0];
+    expect(entry.status).toBe("failed");
+    expect(entry.error).toContain("81057");
+  });
+
   it("四级域名：申请成功且强制仅 DNS（proxied=false），hint 给出证书提示", async () => {
     const ctx = createCtx();
     const res = await handleDomains(
@@ -293,13 +325,13 @@ describe("存储迁移与每域名单 key", () => {
 
 describe("MCP 工具 apply_domain / release_domain", () => {
   it("非管理端 token 被拒绝", async () => {
-    const { toolApplyDomain } = await import("../mcp/implementations");
+    const { toolApplyDomain } = await import("../mcp/tools/domains");
     const ctx = createCtx();
     await expect(toolApplyDomain({ subdomain: "demo", target: "x.pages.dev" }, ctx.env, false)).rejects.toThrow(/MCP_TOKEN/);
   });
 
   it("管理端代申请成功并落 KV（未配置 webhook 时公示降级不报错）", async () => {
-    const { toolApplyDomain, toolReleaseDomain } = await import("../mcp/implementations");
+    const { toolApplyDomain, toolReleaseDomain } = await import("../mcp/tools/domains");
     const ctx = createCtx();
     const res = await toolApplyDomain({ subdomain: "demo", target: "demo.pages.dev", applicant_name: "张三" }, ctx.env, true);
     expect(res.content[0].text).toContain("demo.newenergycoder.club");

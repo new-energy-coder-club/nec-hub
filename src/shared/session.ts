@@ -2,8 +2,7 @@
  * 门户会话（nec_session Cookie）— index.ts 与各 /api 子模块共用
  *
  * 7 天有效期，剩余不足一半时**同 sid 原地滑动续期**（不轮换 sid，旧 Cookie 继续有效；
- * 轮换方案会导致续期发生在未回写 Cookie 的接口时把用户踢下线）。renewed 字段保留以兼容
- * 现有调用方，但恒为 undefined，applyRenewedSession 自然空转。
+ * 轮换方案会导致续期发生在未回写 Cookie 的接口时把用户踢下线）。
  */
 
 export const SESSION_COOKIE = "nec_session";
@@ -45,12 +44,12 @@ export async function createSession(env: Env, user: HubUser): Promise<string> {
   return sid;
 }
 
-/** 解析会话；剩余有效期不足一半时同 sid 原地滑动续期（Cookie 无需回写，renewed 恒空） */
+/** 解析会话；剩余有效期不足一半时同 sid 原地滑动续期（Cookie 无需回写） */
 export async function resolveSession(
   env: Env,
   request: Request,
   ctx?: ExecutionContext,
-): Promise<{ user: HubUser; renewed?: string } | null> {
+): Promise<{ user: HubUser } | null> {
   const sid = parseCookies(request)[SESSION_COOKIE];
   if (!sid) return null;
   const raw = await env.REGISTRY.get(`session:${sid}`);
@@ -76,12 +75,6 @@ export async function resolveSession(
     else await write;
   }
   return { user };
-}
-
-/** 滑动续期时把新 sid 写回响应 Cookie（子模块路由在出口统一调用） */
-export function applyRenewedSession<T extends Response | null>(res: T, renewed?: string): T {
-  if (res && renewed) res.headers.set("set-cookie", sessionCookie(renewed));
-  return res;
 }
 
 export async function destroySession(env: Env, request: Request, ctx?: ExecutionContext): Promise<void> {

@@ -3,6 +3,7 @@
 import { ref } from 'vue'
 import { ORIGIN, copyText } from '@shared/api'
 import { JOIN_PROMPT } from '@shared/prompts'
+import { toast } from '@shared/ui/feedback'
 
 const mcpEndpoint = ORIGIN + '/mcp'
 
@@ -28,7 +29,7 @@ async function testConnection() {
     }
   } catch (e: any) {
     testLabel.value = '❌ 连接失败'
-    alert('NEC-MCP 连接测试失败：' + (e.message || e))
+    toast('NEC-MCP 连接测试失败：' + (e.message || e))
   }
   setTimeout(() => { testLabel.value = orig }, 3000)
 }

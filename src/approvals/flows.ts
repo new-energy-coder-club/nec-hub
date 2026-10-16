@@ -7,7 +7,7 @@
 
 import { getDashboardConfig } from "../dashboard";
 import { fieldNum, fieldText, findFieldKey, type BitableRecord } from "../feishu/bitable";
-import type { UserRole } from "../auth/role";
+import { ROLES, type UserRole } from "../auth/role";
 
 /** 审批流程类型（四条业务线） */
 export const APPROVAL_TYPES = ["reimburse", "drawing", "hardware", "compliance"] as const;
@@ -118,7 +118,7 @@ export async function getFlowBase(env: Env, flow: FlowConfig): Promise<string> {
 
 /** 审批权限判定：角色正则命中，或（组长 ∧ 组在 groupLeaders 名单）；队长硬编码放行（兜底，PRD §3 代理人） */
 export function isApprover(role: UserRole, approvers: FlowConfig["approvers"]): boolean {
-  if (/队长/.test(role.role)) return true;
+  if (ROLES.CAPTAIN.test(role.role)) return true;
   if (new RegExp(approvers.roles).test(role.role)) return true;
   return role.role === "组长" && !!role.group && (approvers.groupLeaders ?? []).includes(role.group);
 }
@@ -150,17 +150,14 @@ export function findRecordByAppId(records: BitableRecord[], appId: string): Bita
   return records.find((r) => fieldText(r.fields[key]) === appId) ?? null;
 }
 
-/** 申请单号：<prefix>-<年>-<序号4位>（序号 = 现有记录数 + 1） */
-export function nextAppId(prefix: string, existingCount: number): string {
-  return `${prefix}-${new Date().getFullYear()}-${String(existingCount + 1).padStart(4, "0")}`;
-}
-
-/** 审批域错误：带 HTTP 状态码，REST 层直接映射 */
+/** 审批域错误：带 HTTP 状态码，REST 层直接映射；info 携带结构化细节（如 409 的当前/目标状态） */
 export class ApprovalError extends Error {
   status: number;
-  constructor(message: string, status = 400) {
+  info?: Record<string, unknown>;
+  constructor(message: string, status = 400, info?: Record<string, unknown>) {
     super(message);
     this.name = "ApprovalError";
     this.status = status;
+    this.info = info;
   }
 }
