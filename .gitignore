@@ -15,3 +15,4 @@ public/portal-assets/
 public/index.html
 public/apps/*/index.html
 public/apps/task-schedule/animated.html
+__pycache__/
