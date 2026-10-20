@@ -15,18 +15,28 @@ export async function extractPdfTextLayer(file: File, maxPages = 3): Promise<str
   for (let p = 1; p <= pages; p++) {
     const page = await pdf.getPage(p)
     const tc = await page.getTextContent()
-    const rows: { y: number; items: { x: number; s: string }[] }[] = []
+    const rows: { y: number; items: { x: number; w: number; s: string }[] }[] = []
     for (const it of tc.items || []) {
       const s = (it && it.str) || ''
       if (!s.trim()) continue
       const x = it.transform ? it.transform[4] : 0
       const y = it.transform ? it.transform[5] : 0
+      const w = it.width || 0
       const row = rows.find(r => Math.abs(r.y - y) < 2.5)
-      if (row) row.items.push({ x, s })
-      else rows.push({ y, items: [{ x, s }] })
+      if (row) row.items.push({ x, w, s })
+      else rows.push({ y, items: [{ x, w, s }] })
     }
     rows.sort((a, b) => b.y - a.y) // PDF 用户空间 y 向上：降序 = 视觉从上到下
-    text += '\n' + rows.map(r => r.items.sort((a, b) => a.x - b.x).map(i => i.s).join(' ')).join('\n')
+    // 行内按间隙拼接：逐字 item（部分票版式）间隙≈0 直接连，列分隔(>2pt)补空格
+    text += '\n' + rows.map(r => {
+      let line = '', prevEnd = -1
+      for (const it of r.items.sort((a, b) => a.x - b.x)) {
+        if (line && prevEnd >= 0 && it.x - prevEnd > 2) line += ' '
+        line += it.s
+        prevEnd = it.x + it.w
+      }
+      return line
+    }).join('\n')
   }
   return text
 }

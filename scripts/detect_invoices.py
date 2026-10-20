@@ -107,7 +107,7 @@ def infer_invoice_category(text, catalog):
 
 # ===== 批量提取 =====
 def extract_text_layer(path):
-    """坐标重组视觉行（与线上 pdf.js transform 聚行同逻辑）：y 容差聚类，行内 x 排序"""
+    """坐标重组视觉行（与线上 pdf.js transform 聚行同逻辑）：y 容差聚类，行内 x 排序 + 间隙感知拼接"""
     try:
         doc = fitz.open(path)
         txt = ''
@@ -118,12 +118,21 @@ def extract_text_layer(path):
                     continue
                 for row in rows:
                     if abs(row[0] - y0) < 3:
-                        row[1].append((x0, w))
+                        row[1].append((x0, x1, w))
                         break
                 else:
-                    rows.append([y0, [(x0, w)]])
+                    rows.append([y0, [(x0, x1, w)]])
             rows.sort(key=lambda r: r[0])  # pymupdf y 向下（顶为0）：升序 = 视觉从上到下
-            txt += '\n' + '\n'.join(' '.join(w for x, w in sorted(r[1])) for r in rows)
+            lines = []
+            for r in rows:
+                line, prev_end = '', -1.0
+                for x0, x1, w in sorted(r[1]):
+                    if line and prev_end >= 0 and x0 - prev_end > 2:
+                        line += ' '
+                    line += w
+                    prev_end = x1
+                lines.append(line)
+            txt += '\n' + '\n'.join(lines)
         doc.close()
         return txt
     except Exception:
