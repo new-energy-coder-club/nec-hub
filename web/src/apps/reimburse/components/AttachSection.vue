@@ -10,7 +10,7 @@ function onPick(kind: 1 | 2, ev: Event) {
 
 <template>
   <details class="erp-section" open>
-    <summary>附件（发票 / 付款凭证 · 本地 OCR 识别回填选中行 · 支持 Ctrl+V 粘贴）</summary>
+    <summary>附件（发票 / 付款凭证 · 识别回填金额/日期/发票号/费用项目 · 支持 Ctrl+V 粘贴）</summary>
     <div class="body">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -18,7 +18,7 @@ function onPick(kind: 1 | 2, ev: Event) {
             <input :key="'r' + store.fileGen" ref="receiptInput" id="f-receipt" type="file" accept="image/*,application/pdf" class="hidden" @change="onPick(1, $event)" />
             <div class="text-2xl mb-1">🧾</div>
             <div class="text-sm font-semibold text-nec-navy">发票 / 单据</div>
-            <div class="text-xs text-nec-gray mt-1">点击上传，自动识别金额、日期与发票号（≤10MB）</div>
+            <div class="text-xs text-nec-gray mt-1">点击上传，自动识别金额、日期、发票号与费用项目（≤10MB）</div>
           </div>
           <div id="f-receipt-status" aria-live="polite" class="text-xs text-nec-gray mt-2 min-h-4">{{ store.receiptStatus }}</div>
         </div>
