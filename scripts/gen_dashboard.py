@@ -1,9 +1,9 @@
-# 生成发票识别总体看板 HTML（读 detect_result.json + 内嵌人工对照基准）
-# 用法: python scripts/gen_dashboard.py <detect_result.json> <输出html>
+# 生成发票识别总体看板 HTML（读 detect_result.json + 可选人工对照基准 JSON）
+# 用法: python scripts/gen_dashboard.py <detect_result.json> <输出html> [--manual manual_map.json]
 import json, sys
 from collections import defaultdict
 
-# 人工分类基准（来自 本次发票三方向分类建议.xlsx 逐票明细，按发票号索引）
+# 内置示例基准（本次发票三方向分类建议.xlsx 逐票明细）；--manual 传入外部 JSON 时覆盖
 MANUAL = {
     '26332000008805244126': {'dir': '方向一·硬件实验台', 'proj': 'TCN-RD2026009', 'patent': 'XMLXSQ202608140172', 'use': '冰蓄冷终端实验台组装粘接工具（热胶枪+胶棒）', 'ledger': '硬件·五金工具'},
     '26952000004400424781': {'dir': '方向一·硬件实验台', 'proj': 'TCN-RD2026009', 'patent': 'XMLXSQ202608140172', 'use': '实验台数据采集存储（存储卡）', 'ledger': '硬件·网络/存储设备'},
@@ -33,8 +33,12 @@ MANUAL = {
 DIR_COLORS = {'方向一': '#1FA9E8', '方向二': '#141B5E', '方向三': '#16A34A'}
 
 def main():
+    global MANUAL
     src = sys.argv[1] if len(sys.argv) > 1 else 'detect_result.json'
     out = sys.argv[2] if len(sys.argv) > 2 else '发票识别总体看板.html'
+    if '--manual' in sys.argv:
+        mp = sys.argv[sys.argv.index('--manual') + 1]
+        MANUAL = json.load(open(mp, encoding='utf-8'))
     rows = json.load(open(src, encoding='utf-8'))
 
     # 按发票号分组（去重 + 重复清单）
@@ -56,16 +60,17 @@ def main():
     n_date = sum(1 for r in rows if r['date'])
     n_cat = sum(1 for r in rows if r['cat'])
 
-    # 方向汇总（自动金额 vs 人工金额）
+    # 方向汇总（有人工对照按人工方向，无对照按自动类目分组）
     dir_sum = defaultdict(lambda: {'n': 0, 'amt': 0.0, 'cats': defaultdict(float)})
     cat_sum = defaultdict(lambda: {'n': 0, 'amt': 0.0})
+    has_manual = any(r['invno'] in MANUAL for r in uniq)
     for r in uniq:
         m = MANUAL.get(r['invno'], {})
-        d = m.get('dir', '未对照')
         amt = float(r['amount'] or 0)
+        c = r['cat'] or '未识别'
+        d = m.get('dir') or (('未对照' if has_manual else '') + c)
         dir_sum[d]['n'] += 1
         dir_sum[d]['amt'] += amt
-        c = r['cat'] or '未识别'
         dir_sum[d]['cats'][c] += amt
         cat_sum[c]['n'] += 1
         cat_sum[c]['amt'] += amt
@@ -154,7 +159,7 @@ footer {{ text-align:center; color:#8A93A6; font-size:12px; padding:14px }}
 <div class="card"><div class="v">¥{total_amt:,.2f}</div><div class="k">独立发票合计金额</div></div>
 </div>
 
-<div class="panel"><h2>📊 三方向汇总（人工口径 × 自动识别金额）</h2><div class="dirs">{dir_cards}</div></div>
+<div class="panel"><h2>📊 {'三方向汇总（人工口径 × 自动识别金额）' if has_manual else '自动类目汇总（未提供人工对照基准）'}</h2><div class="dirs">{dir_cards}</div></div>
 
 <div class="panel"><h2>🏷️ 自动类目分布（金额）</h2>{cat_bars}
 <p style="font-size:12px;color:#8A93A6;margin-top:10px">说明：目录无「图书资料」项时按候选链落「研发费用支出.材料费」；硬件采购类落「办公用品/工具耗材/元器件」。类目为辅助建议，提交前可在报销单中改选，识别不覆盖手改。</p></div>
