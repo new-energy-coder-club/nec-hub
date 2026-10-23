@@ -1,13 +1,10 @@
 <script setup lang="ts">
 // 合同审批 Tab：薄壳嵌入 @apps/contract-signing（登录门控 Tab，登出时跳回首页）
-import { computed, watch } from 'vue'
-import { auth } from '@shared/auth'
-import { tabs, switchTab } from '@portal/composables/useTabs'
+import { useAuthGate } from '@portal/composables/useAuthGate'
 import ContractSigningApp from '@apps/contract-signing/ContractSigningApp.vue'
 import EmptyState from '@shared/ui/EmptyState.vue'
 
-const authed = computed(() => !!(auth.me.authenticated && auth.me.user))
-watch(authed, now => { if (!now && tabs.active === 'contract-approval') switchTab('home') })
+const { authed } = useAuthGate('contract-approval')
 </script>
 
 <template>

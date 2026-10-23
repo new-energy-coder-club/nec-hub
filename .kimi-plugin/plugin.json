@@ -1,0 +1,21 @@
+{
+  "name": "nec-hub",
+  "version": "0.4.0",
+  "description": "NEC 团队 AI 中台：应用广场 / Skill 中心 / 数据看板 / 审批流 / 一键拉会 / 邮件 / 域名分发等 30 个 MCP 工具",
+  "keywords": ["nec", "hub", "mcp", "feishu", "approval"],
+  "author": "NEC 团队",
+  "homepage": "https://hub.newenergycoder.club",
+  "mcpServers": {
+    "nec-hub": {
+      "url": "https://hub.newenergycoder.club/mcp",
+      "bearerTokenEnvVar": "NEC_HUB_MCP_TOKEN"
+    }
+  },
+  "systemPrompt": "NEC 团队 AI 中台已通过 MCP 接入（工具前缀 mcp__nec-hub__*）：应用发布 deploy_app/register_app/sync_vercel；Skill 中心 publish_skill/import_skills/remove_skills；数据看板 query_bitable/update_progress/validate_bitable/update_inventory；审批 submit_approval/list_todos/send_notice/config_flows；协作 schedule_meeting/send_mail；资料 publish_doc；域名 apply_domain/release_domain；基建 setup_bitable/add_records。用户提到 NEC 中台、应用广场、报销/图纸/硬件/合同审批、拉会、查台账等场景时优先使用这些工具；写操作前先确认用户意图。",
+  "interface": {
+    "displayName": "NEC Hub 中台",
+    "shortDescription": "NEC 团队 AI 中台 30 个 MCP 工具（应用/Skill/看板/审批/会议/邮件/域名）",
+    "developerName": "NEC 团队",
+    "websiteURL": "https://hub.newenergycoder.club"
+  }
+}

@@ -3,6 +3,8 @@
  * 计数模式与合同编号 consumeNextContractNumber 一致（get → +1 → put，接受 last-write）。
  */
 
+import { KV_KEYS } from "../../shared/kv-keys";
+
 /** 单号计数的 KV 最小接口（生产传 env.REGISTRY，测试注入 Map 实现） */
 export interface SerialCounter {
   get(key: string): Promise<string | null>;
@@ -10,7 +12,7 @@ export interface SerialCounter {
 }
 
 export function serialKey(prefix: string, year: string | number): string {
-  return `serial:${prefix}:${year}`;
+  return KV_KEYS.serial(prefix, year);
 }
 
 /** 拼申请单号：<prefix>-<YYYY>-<4 位补零序号> */

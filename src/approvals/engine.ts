@@ -21,6 +21,7 @@ import {
 } from "../feishu/bitable";
 import { notifyFeishu } from "../feishu/bot";
 import { notifyApprovalResult } from "../notify";
+import { KV_KEYS } from "../shared/kv-keys";
 import type { HubUser } from "../shared/session";
 import { ROLES, type UserRole } from "../auth/role";
 import { buildRecordLink } from "../validation/service";
@@ -119,7 +120,7 @@ export async function submitApprovalCore(env: Env, input: ApprovalSubmitInput): 
   const created = await createBitableRecord(token, base, flow.tableId, row);
   const recordId = created.record_id;
   await env.REGISTRY.put(
-    `approval:map:${applicationId}`,
+    KV_KEYS.approvalMap(applicationId),
     JSON.stringify({ type: input.type, record_id: recordId }),
     { expirationTtl: 90 * 24 * 3600 },
   );
@@ -344,7 +345,7 @@ async function linkInventory(
     return;
   }
 
-  const markKey = `approval:inv:${input.appId}:${input.action}`;
+  const markKey = KV_KEYS.approvalInventoryMark(input.appId, input.action);
   if (await env.REGISTRY.get(markKey)) return;
 
   const applicant = fieldText(record.fields["申请人"]).trim() || input.user.name;
@@ -408,7 +409,7 @@ export async function fetchFlowRecordsCached(
   if (!flow.tableId) return null;
   const base = flow.base || (await getDashboardConfig(env))?.base || "";
   if (!base) return null;
-  const cacheKey = `todo:tbl:${type}`;
+  const cacheKey = KV_KEYS.todoTable(type);
   const cached = (await env.REGISTRY.get(cacheKey, "json")) as
     | { data: BitableRecord[]; cachedAt: number }
     | null;

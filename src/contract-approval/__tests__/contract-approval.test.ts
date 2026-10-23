@@ -11,6 +11,7 @@ import { handleContractApproval } from "../index";
 import { loadMemberDirectory } from "../../feishu/member-directory";
 import type { ApprovalStore } from "../adapter";
 import type { ApprovalComment, ContractApproval } from "../types";
+import { KV_KEYS } from "../../shared/kv-keys";
 
 vi.mock("../../feishu/member-directory", () => ({ loadMemberDirectory: vi.fn() }));
 
@@ -313,14 +314,14 @@ describe("contract-approval 合同编号生成", () => {
       const second = await flow.submit(validInput(), SUBMITTER);
       expect(first.contractNumber).toBe("HT-2026-001");
       expect(second.contractNumber).toBe("HT-2026-002");
-      expect(counter.map.get("contract-no:2026")).toBe("2");
+      expect(counter.map.get(KV_KEYS.contractNumber(2026))).toBe("2");
     } finally {
       vi.useRealTimers();
     }
   });
 
   it("计数缺失或损坏时从 HT-2026-001 开始", async () => {
-    counter.map.set("contract-no:2026", "abc");
+    counter.map.set(KV_KEYS.contractNumber(2026), "abc");
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-05T04:00:00Z"));
     try {
@@ -336,19 +337,19 @@ describe("contract-approval 合同编号生成", () => {
     await expect(
       flow.submit(validInput({ contractNumber: "HT-2026-001" }), SUBMITTER),
     ).rejects.toThrow("合同编号已存在（HT-2026-001）");
-    expect(counter.map.has("contract-no:2026")).toBe(false);
+    expect(counter.map.has(KV_KEYS.contractNumber(2026))).toBe(false);
   });
 
   it("手动编号唯一时直接采用，不占用 KV 计数", async () => {
     const created = await flow.submit(validInput({ contractNumber: "CT-USR-9" }), SUBMITTER);
     expect(created.contractNumber).toBe("CT-USR-9");
-    expect(counter.map.has("contract-no:2026")).toBe(false);
+    expect(counter.map.has(KV_KEYS.contractNumber(2026))).toBe(false);
   });
 
   it("预览编号 helper：HT-2026-042 且不写入计数", async () => {
-    counter.map.set("contract-no:2026", "41");
+    counter.map.set(KV_KEYS.contractNumber(2026), "41");
     expect(await peekNextContractNumber(counter, 2026)).toBe("HT-2026-042");
-    expect(counter.map.get("contract-no:2026")).toBe("41");
+    expect(counter.map.get(KV_KEYS.contractNumber(2026))).toBe("41");
     expect(formatContractNumber(2026, 7)).toBe("HT-2026-007");
   });
 });
@@ -364,7 +365,7 @@ interface HttpCtx {
 function createHttpCtx(): HttpCtx {
   const kv = new Map<string, string>();
   kv.set(
-    "contract-approval:config",
+    KV_KEYS.contractApprovalConfig,
     JSON.stringify({
       base: "neuBase0123456789",
       tables: { approvals: "tblApprovals1", comments: "tblComments1", events: "tblEvents1" },
@@ -372,7 +373,7 @@ function createHttpCtx(): HttpCtx {
     }),
   );
   kv.set(
-    "session:sid-1",
+    KV_KEYS.session("sid-1"),
     JSON.stringify({
       name: "提交人",
       open_id: "ou_submitter",
@@ -422,11 +423,11 @@ describe("contract-approval HTTP 端点", () => {
 
   it("GET /next-number：预览不占用计数", async () => {
     const year = new Date().getFullYear();
-    ctx.kv.set(`contract-no:${year}`, "41");
+    ctx.kv.set(KV_KEYS.contractNumber(year), "41");
     const res = await httpGet(ctx, "/api/contract-approval/next-number");
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ number: `HT-${year}-042` });
-    expect(ctx.kv.get(`contract-no:${year}`)).toBe("41");
+    expect(ctx.kv.get(KV_KEYS.contractNumber(year))).toBe("41");
   });
 
   it("GET /next-number：计数为空时预览 001 且不创建键", async () => {
@@ -434,7 +435,7 @@ describe("contract-approval HTTP 端点", () => {
     const res = await httpGet(ctx, "/api/contract-approval/next-number");
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ number: `HT-${year}-001` });
-    expect(ctx.kv.has(`contract-no:${year}`)).toBe(false);
+    expect(ctx.kv.has(KV_KEYS.contractNumber(year))).toBe(false);
   });
 
   it("GET /members：q 命中姓名与 ou_ 子串；无匹配返回空数组", async () => {

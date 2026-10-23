@@ -11,6 +11,7 @@ import {
   getTenantAccessToken,
   listBitableRecords,
 } from "../feishu/bitable";
+import { KV_KEYS } from "../shared/kv-keys";
 import { resolveSession } from "../shared/session";
 // 注意：auth/role 反向 import 本模块（getDashboardConfig / fetchTableCached），
 // 两侧均为运行时调用，无模块加载期循环求值。
@@ -48,7 +49,7 @@ export interface TableFetchResult {
 const DASH_CACHE_TTL_SEC = 1800;
 
 export async function getDashboardConfig(env: Env): Promise<DashboardConfig | null> {
-  const raw = await env.REGISTRY.get("dashboard:config");
+  const raw = await env.REGISTRY.get(KV_KEYS.dashboardConfig);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as DashboardConfig;
@@ -61,7 +62,7 @@ export async function getDashboardConfig(env: Env): Promise<DashboardConfig | nu
 export async function fetchTableCached(env: Env, cfg: DashboardConfig, key: DashTable, ctx?: ExecutionContext): Promise<TableFetchResult> {
   const tableId = cfg.tables[key];
   if (!tableId) return { records: [], cachedAt: "", error: "未配置 table_id" };
-  const cacheKey = `dashboard:cache:${key}`;
+  const cacheKey = KV_KEYS.dashboardCache(key);
   const cached = await env.REGISTRY.get(cacheKey, "json") as
     | { data: BitableRecord[]; cachedAt: number }
     | null;
@@ -90,7 +91,7 @@ export async function refreshTableCache(env: Env, cfg: DashboardConfig, key: Das
   if (!tableId) return { records: [], cachedAt: "", error: "未配置 table_id" };
   const token = await getTenantAccessToken(env);
   const records = await listBitableRecords(token, cfg.base, tableId);
-  const write = env.REGISTRY.put(`dashboard:cache:${key}`, JSON.stringify({ data: records, cachedAt: Date.now() }));
+  const write = env.REGISTRY.put(KV_KEYS.dashboardCache(key), JSON.stringify({ data: records, cachedAt: Date.now() }));
   if (ctx) ctx.waitUntil(write);
   else await write;
   return { records, cachedAt: new Date().toISOString() };

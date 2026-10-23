@@ -9,7 +9,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
 import { runApprovalAction } from "../approvals/engine";
-import { toolUpdateInventory } from "../mcp/tools/bitable";
+import { toolUpdateInventory } from "../mcp/tools/bitable-inventory";
+import { KV_KEYS } from "../shared/kv-keys";
 import { mockGetRecordResponse, mockSearchResponse } from "./bitable-search-mock";
 
 const BASE = "appMockBase";
@@ -34,12 +35,12 @@ function createCtx(opts: { withWebhook?: boolean; inventoryTableId?: string } = 
   const webhookCalls: Ctx["webhookCalls"] = [];
   let seq = 0;
 
-  kv.set("flows:config", JSON.stringify({ hardware: { tableId: TBL_HW, base: BASE } }));
+  kv.set(KV_KEYS.flowsConfig, JSON.stringify({ hardware: { tableId: TBL_HW, base: BASE } }));
   const dashTables: Record<string, string> = { members: "tblM" };
   // inventoryTableId 缺省 = tblInv；传 "" 表示不配置台账（降级路径）
   const invId = opts.inventoryTableId === undefined ? TBL_INV : opts.inventoryTableId;
   if (invId) dashTables.inventory = invId;
-  kv.set("dashboard:config", JSON.stringify({ base: BASE, tables: dashTables, updatedAt: new Date().toISOString() }));
+  kv.set(KV_KEYS.dashboardConfig, JSON.stringify({ base: BASE, tables: dashTables, updatedAt: new Date().toISOString() }));
 
   const ctx: Ctx = {
     kv,
@@ -84,7 +85,7 @@ function createCtx(opts: { withWebhook?: boolean; inventoryTableId?: string } = 
   ctx.env = {
     REGISTRY: {
       get: vi.fn(async (key: string, type?: string) => {
-        if (key === "feishu:tenant_access_token") return { token: "mock-token", expireAt: Date.now() + 3600e3 };
+        if (key === KV_KEYS.feishuTenantAccessToken) return { token: "mock-token", expireAt: Date.now() + 3600e3 };
         const v = kv.get(key);
         return v == null ? null : type === "json" ? JSON.parse(v) : v;
       }),
@@ -139,7 +140,7 @@ describe("arrive 新购 → 入库联动", () => {
     expect(inv[0].fields["位置"]).toBe("未登记");
     expect(inv[0].fields["领用人"]).toBe("");
     expect(String(rec.fields["台账联动"])).toMatch(/^已入库 \d{4}-\d{2}-\d{2}$/);
-    expect(ctx.kv.has("approval:inv:HW-2026-0001:arrive")).toBe(true);
+    expect(ctx.kv.has(KV_KEYS.approvalInventoryMark("HW-2026-0001", "arrive"))).toBe(true);
   });
 
   it("台账已有匹配行则数量 += 申请数量；重复 arrive 幂等不重复加", async () => {
@@ -262,7 +263,7 @@ describe("降级与不联动", () => {
     expect(String(rec.fields["台账联动"])).toContain("失败：");
     expect(notifyTexts(ctx).some((t) => t.includes("⚠️ 台账联动失败 HW-2026-0001") && t.includes("update_inventory 手工补录"))).toBe(true);
     // 失败不写幂等标记（允许人工补录后状态自洽）
-    expect(ctx.kv.has("approval:inv:HW-2026-0001:arrive")).toBe(false);
+    expect(ctx.kv.has(KV_KEYS.approvalInventoryMark("HW-2026-0001", "arrive"))).toBe(false);
   });
 });
 

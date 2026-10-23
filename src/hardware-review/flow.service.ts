@@ -6,6 +6,8 @@
  */
 
 import type { HardwareReviewAdapter } from "./adapter";
+import { notifyFeishuGroup } from "./notify";
+import { KV_KEYS } from "../shared/kv-keys";
 import type {
   HardwareReview,
   HardwareType,
@@ -127,7 +129,7 @@ export class ReviewFlowService {
 
   private async getUserPreferences(actorId: string): Promise<Record<string, unknown>> {
     try {
-      const prefs = await this.env.REGISTRY.get(`user-prefs:hw:${actorId}`);
+      const prefs = await this.env.REGISTRY.get(KV_KEYS.userPrefs("hw", actorId));
       if (prefs) return JSON.parse(prefs) as Record<string, unknown>;
     } catch (err) {
       console.warn("[hardware-review] failed to get user preferences:", err);
@@ -137,7 +139,7 @@ export class ReviewFlowService {
 
   private async saveUserPreferences(actorId: string, prefs: Record<string, unknown>): Promise<void> {
     try {
-      await this.env.REGISTRY.put(`user-prefs:hw:${actorId}`, JSON.stringify(prefs));
+      await this.env.REGISTRY.put(KV_KEYS.userPrefs("hw", actorId), JSON.stringify(prefs));
     } catch (err) {
       console.warn("[hardware-review] failed to save user preferences:", err);
     }
@@ -169,6 +171,10 @@ export class ReviewFlowService {
 
     const saved = await this.adapter.createReview(review);
     await this.logEvent(saved.reviewId, actorId, "submit", "draft", "pending_review", { recordId: saved.recordId });
+    await notifyFeishuGroup(
+      this.env,
+      `🔧 新硬件评审单提交\n评审单 ${saved.reviewId}（${saved.hardwareName}，${saved.hardwareVersion}）\n设计负责人：${saved.designerId}\n请及时安排评审会议`,
+    );
 
     try {
       if (input.projectId) prefs.defaultProjectId = input.projectId;
@@ -264,6 +270,10 @@ export class ReviewFlowService {
     if (!next) throw new Error(`当前状态 ${review.status} 不允许事件 ${event}`);
     const updated = await this.adapter.updateReview(review.recordId, { status: next, updatedAt: new Date().toISOString() });
     await this.logEvent(reviewId, actorId, event, review.status, next, payload);
+    await notifyFeishuGroup(
+      this.env,
+      `🔧 硬件评审状态变更\n评审单 ${reviewId}（${review.hardwareName}）\n${review.status} → ${next}\n操作人：${actorId}`,
+    );
     return updated;
   }
 

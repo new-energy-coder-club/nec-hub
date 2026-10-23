@@ -5,8 +5,9 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DOCS_REGISTRY_KEY } from "../docs";
-import { toolAddRecords, toolSetupBitable } from "../mcp/tools/bitable";
+import { toolAddRecords, toolSetupBitable } from "../mcp/tools/bitable-setup";
 import { toolRemoveDocs } from "../mcp/tools/docs";
+import { KV_KEYS } from "../shared/kv-keys";
 
 const BASE = "appMockBaseX";
 
@@ -50,7 +51,7 @@ function createCtx(): Ctx {
   const env = {
     REGISTRY: {
       get: vi.fn(async (key: string, type?: string) => {
-        if (key === "feishu:tenant_access_token") return { token: "mock-token", expireAt: Date.now() + 3600e3 };
+        if (key === KV_KEYS.feishuTenantAccessToken) return { token: "mock-token", expireAt: Date.now() + 3600e3 };
         const v = kv.get(key);
         return v == null ? null : type === "json" ? JSON.parse(v) : v;
       }),
@@ -88,26 +89,26 @@ describe("setup_bitable", () => {
     await expect(toolSetupBitable({ base: BASE }, ctx.env, false)).rejects.toThrow("MCP_TOKEN");
     await expect(toolSetupBitable({ base: "短" }, ctx.env, true)).rejects.toThrow("base 不合法");
 
-    ctx.kv.set("dashboard:cache:tasks", "stale");
+    ctx.kv.set(KV_KEYS.dashboardCache("tasks"), "stale");
     const res = await toolSetupBitable({ base: BASE }, ctx.env, true);
     expect(res.content[0].text).toContain("新建 4 张");
     expect(ctx.createdTables.map((t) => t.name)).toEqual(["队员名单", "任务进度", "物资台账", "财务报销"]);
-    const cfg = JSON.parse(ctx.kv.get("dashboard:config")!);
+    const cfg = JSON.parse(ctx.kv.get(KV_KEYS.dashboardConfig)!);
     expect(cfg.base).toBe(BASE);
     expect(Object.keys(cfg.tables)).toHaveLength(4);
-    expect(ctx.kv.has("dashboard:cache:tasks")).toBe(false);
+    expect(ctx.kv.has(KV_KEYS.dashboardCache("tasks"))).toBe(false);
   });
 
   it("已存在的表跳过（force=true 强制重建）；tables 子集过滤", async () => {
     const ctx = createCtx();
-    ctx.kv.set("dashboard:config", JSON.stringify({ base: BASE, tables: { members: "tblOld" }, updatedAt: "" }));
+    ctx.kv.set(KV_KEYS.dashboardConfig, JSON.stringify({ base: BASE, tables: { members: "tblOld" }, updatedAt: "" }));
     const res = await toolSetupBitable({ base: BASE, tables: ["members", "tasks", "unknown"] }, ctx.env, true);
     expect(res.content[0].text).toContain("已存在跳过 1 张");
     expect(ctx.createdTables).toHaveLength(1); // 只建 tasks
-    expect(JSON.parse(ctx.kv.get("dashboard:config")!).tables.members).toBe("tblOld");
+    expect(JSON.parse(ctx.kv.get(KV_KEYS.dashboardConfig)!).tables.members).toBe("tblOld");
 
     await toolSetupBitable({ base: BASE, tables: ["members"], force: true }, ctx.env, true);
-    expect(JSON.parse(ctx.kv.get("dashboard:config")!).tables.members).not.toBe("tblOld");
+    expect(JSON.parse(ctx.kv.get(KV_KEYS.dashboardConfig)!).tables.members).not.toBe("tblOld");
   });
 });
 
@@ -117,7 +118,7 @@ describe("add_records", () => {
     await expect(toolAddRecords({ table: "members", records: [{ 姓名: "张三" }] }, ctx.env, false)).rejects.toThrow("MCP_TOKEN");
     await expect(toolAddRecords({ table: "members", records: [{ 姓名: "张三" }] }, ctx.env, true)).rejects.toThrow("尚未配置");
 
-    ctx.kv.set("dashboard:config", JSON.stringify({ base: BASE, tables: { members: "tblM" }, updatedAt: "" }));
+    ctx.kv.set(KV_KEYS.dashboardConfig, JSON.stringify({ base: BASE, tables: { members: "tblM" }, updatedAt: "" }));
     await expect(
       toolAddRecords({ table: "members", records: [{ 姓名: "张三", 不存在字段: 1 }] }, ctx.env, true),
     ).rejects.toThrow("字段不存在：不存在字段");

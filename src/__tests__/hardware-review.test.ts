@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
 import { handleHardwareReview } from "../hardware-review";
 import type { HardwareReviewConfig } from "../hardware-review/types";
+import { KV_KEYS } from "../shared/kv-keys";
 import { mockGetRecordResponse, mockSearchResponse } from "./bitable-search-mock";
 
 const TABLES = {
@@ -39,9 +40,9 @@ function createHwMock(): HwMockCtx {
   let seq = 0;
 
   const cfg: HardwareReviewConfig = { base: "appHwBase", tables: { ...TABLES }, updatedAt: new Date().toISOString() };
-  kv.set("hardware-review:config", JSON.stringify(cfg));
+  kv.set(KV_KEYS.hardwareReviewConfig, JSON.stringify(cfg));
   kv.set(
-    `session:${SID}`,
+    KV_KEYS.session(SID),
     JSON.stringify({ name: "硬件测试", open_id: "ou-hw", createdAt: new Date().toISOString(), expiresAt: Date.now() + 3600e3 }),
   );
 
@@ -81,7 +82,7 @@ function createHwMock(): HwMockCtx {
 
   const REGISTRY = {
     get: vi.fn(async (key: string, type?: string) => {
-      if (key === "feishu:tenant_access_token") return { token: "mock-token", expireAt: Date.now() + 3600e3 };
+      if (key === KV_KEYS.feishuTenantAccessToken) return { token: "mock-token", expireAt: Date.now() + 3600e3 };
       const v = kv.get(key);
       if (v == null) return null;
       return type === "json" ? JSON.parse(v) : v;

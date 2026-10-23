@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toolWhoami } from "../mcp/tools/whoami";
 import { TOOLS } from "../mcp/registry";
+import { KV_KEYS } from "../shared/kv-keys";
 
 function makeEnv(kv = new Map<string, string>()): Env {
   return {
@@ -49,7 +50,7 @@ describe("toolWhoami", () => {
 
   it("user_token 有效：返回姓名/open_id/角色（含组别）", async () => {
     const kv = new Map<string, string>([
-      ["role:ou_zhangsan", JSON.stringify({ role: "队员", group: "机械", matched: true })],
+      [KV_KEYS.role("ou_zhangsan"), JSON.stringify({ role: "队员", group: "机械", matched: true })],
     ]);
     vi.stubGlobal(
       "fetch",
@@ -68,7 +69,7 @@ describe("toolWhoami", () => {
   });
 
   it("名单外用户：角色按 external 处理并给出提示", async () => {
-    const kv = new Map<string, string>([["role:ou_wai", JSON.stringify({ role: "external", group: "", matched: false })]]);
+    const kv = new Map<string, string>([[KV_KEYS.role("ou_wai"), JSON.stringify({ role: "external", group: "", matched: false })]]);
     vi.stubGlobal("fetch", jsonFetch({ code: 0, msg: "success", data: { open_id: "ou_wai", name: "校友甲" } }));
     const result = await toolWhoami({ user_token: "u-ext" }, makeEnv(kv), false);
     expect(textOf(result)).toContain("角色：external");

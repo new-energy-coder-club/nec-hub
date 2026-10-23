@@ -1,13 +1,10 @@
 <script setup lang="ts">
 // 图纸评审 Tab：薄壳嵌入 @apps/drawing-review（登录门控 Tab，登出时跳回应用广场）
-import { computed, watch } from 'vue'
-import { auth } from '@shared/auth'
-import { tabs, switchTab } from '@portal/composables/useTabs'
+import { useAuthGate } from '@portal/composables/useAuthGate'
 import DrawingReviewApp from '@apps/drawing-review/DrawingReviewApp.vue'
 import EmptyState from '@shared/ui/EmptyState.vue'
 
-const authed = computed(() => !!(auth.me.authenticated && auth.me.user))
-watch(authed, now => { if (!now && tabs.active === 'drawing-review') switchTab('apps') })
+const { authed } = useAuthGate('drawing-review', 'apps')
 </script>
 
 <template>

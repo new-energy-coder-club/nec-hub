@@ -13,6 +13,7 @@ import { fieldNum, fieldText, findFieldKey, firstFieldText, getTenantAccessToken
 import { notifyFeishu } from "../feishu/bot";
 import { approvalResultMailHtml, defaultMailRecipients, sendFeishuMail } from "../feishu/mail";
 import { json } from "../shared/http";
+import { KV_KEYS } from "../shared/kv-keys";
 import { resolveSession } from "../shared/session";
 import { buildRecordLink } from "../validation/service";
 import {
@@ -389,9 +390,9 @@ export async function toolConfigFlows(args: Record<string, unknown>, env: Env, h
     }
     current[t] = merged;
   }
-  await env.REGISTRY.put("flows:config", JSON.stringify(current));
+  await env.REGISTRY.put(KV_KEYS.flowsConfig, JSON.stringify(current));
   // 配置变更后清待办缓存，下一次拉取按新配置走
-  await Promise.all(APPROVAL_TYPES.map((t) => env.REGISTRY.delete(`todo:tbl:${t}`)));
+  await Promise.all(APPROVAL_TYPES.map((t) => env.REGISTRY.delete(KV_KEYS.todoTable(t))));
   return {
     content: [
       {

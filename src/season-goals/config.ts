@@ -2,11 +2,12 @@
  * 赛季目标管理 — 配置读取
  */
 
+import { KV_KEYS } from "../shared/kv-keys";
 import { createModuleConfig, validateModuleConfig } from "../shared/module-config";
 import type { SeasonGoalsConfig } from "./types";
 
 const moduleConfig = createModuleConfig<SeasonGoalsConfig>({
-  kvKey: "season-goals:config",
+  kvKey: KV_KEYS.seasonGoalsConfig,
   requireMessage: "赛季目标管理尚未配置：请先调用 POST /api/season-goals/config 设置 base 与 tables",
   validate: (cfg) => {
     validateModuleConfig(cfg);

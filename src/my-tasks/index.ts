@@ -14,13 +14,14 @@ import { resolveSession } from "../shared/session";
 /** 任务列表缓存 TTL（秒）：与待办聚合一致 5 分钟 */
 const MY_TASKS_CACHE_TTL_SEC = 300;
 
-/** 申请的最小 scope：task:task:read 读任务；task:tasklist:read 读清单；mail:user_mailbox.message:send 邮件通道发信（G-05，与门户登录 scope 保持一致，避免重绑任务时丢掉 mail 授权） */
+/** 绑定申请的 scope：task:task:read 读任务；task:tasklist:read 读清单；mail:user_mailbox.message:send 邮件通道发信（G-05）。
+ *  门户登录本身不带 scope（默认授权即可进门户），高级权限统一在本绑定流程按需申请 */
 const FEISHU_TASK_SCOPES = "task:task:read task:tasklist:read mail:user_mailbox.message:send";
 
 /** OAuth state 落地 KV 的有效期（秒）：回调由 /auth/feishu 校验并一次性消费 */
 const OAUTH_STATE_TTL_SEC = 600;
 
-/** 复用登录跳转的 authorize URL，追加任务 scope；scope 变化后重新授权一次即完成绑定。
+/** 构造带任务 scope 的 authorize URL（门户登录不带 scope，高级权限在此按需追加授权）。
  *  state 存 KV（oauth:state:<state>，TTL 10 分钟），回调端 /auth/feishu 比对并删除，防登录 CSRF */
 async function buildAuthorizeUrl(request: Request, env: Env, openId: string): Promise<string | null> {
   if (!env.FEISHU_APP_ID) return null;

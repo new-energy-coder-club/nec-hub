@@ -9,6 +9,7 @@ import { handleDomains } from "../domains";
 import { validateSubdomain, validateTarget, DOMAINS_INDEX_KEY, DOMAIN_REC_PREFIX } from "../domains/service";
 import { handleAppSubdomain } from "../domains/wildcard";
 import type { DomainEntry } from "../domains/types";
+import { KV_KEYS } from "../shared/kv-keys";
 
 function jsonResp(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } });
@@ -27,11 +28,11 @@ function createCtx(opts: { withCf?: boolean } = {}): Ctx {
   const kv = new Map<string, string>();
   const meta = new Map<string, unknown>();
   kv.set(
-    "session:sid-a",
+    KV_KEYS.session("sid-a"),
     JSON.stringify({ name: "小明", open_id: "ou-a", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }),
   );
   kv.set(
-    "session:sid-b",
+    KV_KEYS.session("sid-b"),
     JSON.stringify({ name: "小红", open_id: "ou-b", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }),
   );
 

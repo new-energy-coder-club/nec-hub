@@ -3,6 +3,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { visibleApps, type AppEntry } from "../hosting";
+import { KV_KEYS } from "../shared/kv-keys";
 import { createMockEnv, type MockEnv } from "./mock-env";
 
 const APPS: AppEntry[] = [
@@ -19,9 +20,9 @@ function envWith(appsKey: string | null, role: unknown = null, session: string |
   const env = createMockEnv() as MockEnv;
   (env.REGISTRY.get as KvGetMock).mockImplementation(async (key: unknown, type?: unknown) => {
     const k = String(key);
-    if (k === "apps:index") return appsKey;
-    if (k === "session:sid1") return session;
-    if (k === "role:ou_1") {
+    if (k === KV_KEYS.appsIndex) return appsKey;
+    if (k === KV_KEYS.session("sid1")) return session;
+    if (k === KV_KEYS.role("ou_1")) {
       if (role === null) return null;
       return type === "json" ? role : JSON.stringify(role);
     }

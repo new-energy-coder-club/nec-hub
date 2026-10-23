@@ -8,6 +8,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleDrawingReview } from "../drawing-review";
+import { KV_KEYS } from "../shared/kv-keys";
 import { createDrMock, DR_TABLES, type DrMockCtx } from "./dr-test-utils";
 
 const SID = "sid-e2e";
@@ -46,7 +47,7 @@ describe("图纸评审全链路 e2e", () => {
     currentSid = SID;
     ctx = createDrMock({ session: { sid: SID, openId: "ou-e2e", name: "链路测试" } });
     // 报价回填与选定供应商需管理角色：把 e2e 用户登记为队长
-    ctx.kv.set("dashboard:config", JSON.stringify({ base: "appMockBase", tables: { members: "tblMembers" }, updatedAt: "" }));
+    ctx.kv.set(KV_KEYS.dashboardConfig, JSON.stringify({ base: "appMockBase", tables: { members: "tblMembers" }, updatedAt: "" }));
     ctx.seed("tblMembers", { open_id: "ou-e2e", 姓名: "链路测试", 权限角色: "队长" }, "rec-member-e2e");
   });
 

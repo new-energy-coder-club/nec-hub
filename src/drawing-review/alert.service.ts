@@ -10,11 +10,13 @@ import { DrawingReviewAdapter } from "./adapter";
 import { BoardService } from "./board.service";
 import { getDrawingReviewConfig } from "./config";
 import { notifyFeishuGroup } from "./notify";
+import { resolveFlowWebhook } from "../feishu/bot";
+import { KV_KEYS } from "../shared/kv-keys";
 
-const ALERT_STATE_KEY = "drawing-review:alert:blockers";
+const ALERT_STATE_KEY = KV_KEYS.drawingReviewAlertBlockers;
 
 export async function pushBlockerAlerts(env: Env): Promise<void> {
-  if (!env.FEISHU_WEBHOOK_URL) return;
+  if (!resolveFlowWebhook(env, "drawing").url) return;
   try {
     const cfg = await getDrawingReviewConfig(env);
     if (!cfg) return;

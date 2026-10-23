@@ -6,6 +6,7 @@
  * config_dashboard 形状不同（写后清看板缓存、无动态 import），不在此合并。
  */
 
+import { BITABLE_BASE_RE, BITABLE_TABLE_ID_RE } from "../../shared/module-config";
 import type { McpToolDef } from "./shared";
 
 interface ModuleConfigLike {
@@ -50,7 +51,7 @@ export function createModuleConfigTool<Cfg extends ModuleConfigLike>(spec: Modul
     if (action !== "set") throw new Error("action 必须是 get | set");
 
     const base = String(args.base ?? "").trim();
-    if (!/^[A-Za-z0-9]{10,}$/.test(base)) {
+    if (!BITABLE_BASE_RE.test(base)) {
       throw new Error("base 不合法：应为飞书多维表格 URL 中 /base/ 后的 app_token（10 位以上字母数字串）");
     }
     const rawTables = (args.tables ?? {}) as Record<string, unknown>;
@@ -58,7 +59,7 @@ export function createModuleConfigTool<Cfg extends ModuleConfigLike>(spec: Modul
     for (const key of spec.tableKeys) {
       const v = String(rawTables[key] ?? "").trim();
       if (v) {
-        if (!/^tbl[A-Za-z0-9]+$/.test(v)) {
+        if (!BITABLE_TABLE_ID_RE.test(v)) {
           throw new Error(`table_id 不合法（${key}）：应以 tbl 开头，如 tblsH8aOxxx`);
         }
         tables[key] = v;
@@ -199,3 +200,5 @@ export const configContractApprovalTool: McpToolDef = {
   },
   impl: (args, env) => toolConfigContractApproval(args, env),
 };
+
+export const tools: McpToolDef[] = [configDrawingReviewTool, configHardwareReviewTool, configContractApprovalTool];

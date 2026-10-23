@@ -27,6 +27,10 @@
  *   POST /api/reports/weekly/run → 团队周报手动触发（队长/组长；cron 每周一 00:16 UTC 自动推送飞书群）
  *   POST /auth/feishu     → 飞书 code 兑换用户信息 + 签发中台会话（MES 免登与本门户登录共用）
  *   POST /auth/logout     → 登出（销毁会话）
+ *   POST /api/auth/logout-all → 退出所有设备（删除当前用户全部会话 key + 清本机 Cookie）
+ *   GET  /api/admin/overview  → 管理总览（队长/组长/管理员：租户接入状态、活跃会话数、成员名单聚合、模块配置状态）
+ *   GET  /api/admin/sessions  → 会话清单（按 open_id 分组聚合）；POST /api/admin/sessions/revoke → 强制下线
+ *   POST /api/admin/config/<dashboard|flows> → 模块配置 HTTP 写入口（复用 MCP 工具校验口径）
  *   GET  /api/repos       → NEC 开源仓库列表（GitHub org + KV 1 小时缓存）
  *   GET  /api/cla         → 开源社区贡献协议（CLA）元信息 + 公开签署名单（KV cla:signatures，脱敏）
  *   GET  /api/cla/status  → 当前会话或 ?github= 是否已签署
@@ -42,6 +46,7 @@
  *   repos（开源仓库聚合）· reimburse（报销提交）· mcp/（MCP 端点与工具）· validation/（FE-05 校验）
  *   home/（FE-06/07 首页布局）· todos.ts（FE-09 审批/待办聚合）· season-goals/（赛季目标）· my-tasks/（飞书任务绑定与同步）
  *   prd.ts（PRD 看板 + GitHub webhook）· approvals/（Plan B 审批引擎：状态机 + 群机器人通知 + G-03 时效巡检 cron）
+ *   admin/（管理总览：租户接入/会话计数/成员名单聚合/模块配置状态）
  *
  * 类型：运行 `npx wrangler types` 生成 worker-configuration.d.ts 后，下面的声明合并会把
  * secrets 补到 Cloudflare.Env 上。wrangler.jsonc 变更后请重新生成类型。
@@ -102,7 +107,7 @@ declare global {
 }
 
 import { handleFeishuAuth } from "./auth/feishu-auth";
-import { handleLogout, handleWhoami } from "./auth/handlers";
+import { handleLogout, handleLogoutAll, handleWhoami } from "./auth/handlers";
 import { buildDashboard, prewarmDashboard } from "./dashboard";
 import { buildDocs } from "./docs";
 import { handleGetHome, handleResetHome, handleSetHome } from "./home/handlers";
@@ -112,13 +117,14 @@ import { handleGetMyTasks, handleUnbindMyTasks } from "./my-tasks";
 import { handleReimburse, handleReimburseAction, handleReimburseMine } from "./reimburse";
 import { buildRepos, prewarmRepos } from "./repos";
 import { json } from "./shared/http";
+import { KV_KEYS } from "./shared/kv-keys";
 import { handleTodos } from "./todos";
 import { handleValidateQuery, handleValidateReport, handleValidateRun, runWeeklyValidation } from "./validation/handlers";
 
 /** cron 任务去重守卫：guardSec 秒内已执行过返回 false（多触发器并存/旧触发器残留时防双重执行与重复推送） */
 async function cronDue(env: Env, name: string, guardSec: number): Promise<boolean> {
   try {
-    const raw = await env.REGISTRY.get(`cron:guard:${name}`);
+    const raw = await env.REGISTRY.get(KV_KEYS.cronGuard(name));
     if (raw) {
       const at = (JSON.parse(raw) as { at?: number }).at ?? 0;
       if (Date.now() - at < guardSec * 1000) return false;
@@ -130,7 +136,7 @@ async function cronDue(env: Env, name: string, guardSec: number): Promise<boolea
 /** 标记 cron 任务已执行（30 天 TTL；写失败不影响本次执行） */
 function cronMark(env: Env, ctx: ExecutionContext, name: string): void {
   ctx.waitUntil(
-    env.REGISTRY.put(`cron:guard:${name}`, JSON.stringify({ at: Date.now() }), { expirationTtl: 30 * 86400 }).catch(() => {}),
+    env.REGISTRY.put(KV_KEYS.cronGuard(name), JSON.stringify({ at: Date.now() }), { expirationTtl: 30 * 86400 }).catch(() => {}),
   );
 }
 
@@ -151,8 +157,29 @@ export default {
       if (url.pathname === "/auth/logout") {
         return await handleLogout(request, env, ctx);
       }
+      if (url.pathname === "/api/auth/logout-all") {
+        return await handleLogoutAll(request, env, ctx);
+      }
       if (url.pathname === "/api/whoami") {
         return await handleWhoami(request, env, ctx);
+      }
+      if (url.pathname === "/api/admin/overview") {
+        const ad = await import("./admin");
+        return await ad.handleAdminOverview(request, env, ctx);
+      }
+      if (url.pathname === "/api/admin/sessions" && request.method === "GET") {
+        const ad = await import("./admin");
+        return await ad.handleAdminSessions(request, env, ctx);
+      }
+      if (url.pathname === "/api/admin/sessions/revoke") {
+        const ad = await import("./admin");
+        return await ad.handleAdminRevokeSessions(request, env, ctx);
+      }
+      if (url.pathname.startsWith("/api/admin/config/")) {
+        const ad = await import("./admin");
+        const module = decodeURIComponent(url.pathname.slice("/api/admin/config/".length));
+        if (!ad.isAdminConfigModule(module)) return json({ error: "not found" }, 404);
+        return await ad.handleAdminConfig(request, env, ctx, module);
       }
       if (url.pathname === "/api/config") {
         return json({
@@ -180,7 +207,7 @@ export default {
         return json(await visibleApps(env, request, ctx));
       }
       if (url.pathname === "/api/skills") {
-        return json(await readIndex<SkillEntry>(env, "skills:index"));
+        return json(await readIndex<SkillEntry>(env, KV_KEYS.skillsIndex));
       }
       if (url.pathname === "/api/docs") {
         return json(await buildDocs(env, request, ctx));
@@ -303,7 +330,7 @@ export default {
     // 快触发器每天 180–360 次，全量落 KV 会吃掉免费档写配额大头，故只在整点写一次。
     if (!isFastCron || minute === 0) {
       ctx.waitUntil(
-        env.REGISTRY.put("cron:last:" + controller.cron, JSON.stringify({ at: Date.now() }), { expirationTtl: 30 * 86400 }).catch(() => {}),
+        env.REGISTRY.put(KV_KEYS.cronLast(controller.cron), JSON.stringify({ at: Date.now() }), { expirationTtl: 30 * 86400 }).catch(() => {}),
       );
     }
 

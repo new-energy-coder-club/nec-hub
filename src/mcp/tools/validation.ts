@@ -38,3 +38,5 @@ export const configValidateRulesTool: McpToolDef = {
   },
   impl: (args, env) => toolConfigValidateRules(args, env),
 };
+
+export const tools: McpToolDef[] = [validateBitableTool, configValidateRulesTool];

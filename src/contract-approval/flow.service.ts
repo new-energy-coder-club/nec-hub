@@ -15,6 +15,7 @@ import type {
   ContractType,
 } from "./types";
 import { StateMachine, type TransitionRule } from "../approvals/core/state-machine";
+import { KV_KEYS } from "../shared/kv-keys";
 
 /** 合同审批事件（动作名） */
 type ContractEvent = "submit" | "start_review" | "approve" | "reject" | "revise" | "resubmit" | "archive";
@@ -113,7 +114,7 @@ export interface ContractNumberCounter {
 }
 
 export function contractNumberKey(year: string | number): string {
-  return `contract-no:${year}`;
+  return KV_KEYS.contractNumber(year);
 }
 
 /** 拼合同编号：HT-<YYYY>-<3 位补零序号> */

@@ -3,6 +3,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { handleFeishuAuth } from "../auth/feishu-auth";
+import { KV_KEYS } from "../shared/kv-keys";
 import { createMockEnv } from "./mock-env";
 
 function kvBackedEnv() {
@@ -107,17 +108,17 @@ describe("POST /auth/feishu state 校验", () => {
 
   it("带 state 且 KV 命中：放行兑换并用后删除 state", async () => {
     const { env, store } = kvBackedEnv();
-    store.set("oauth:state:s-1", JSON.stringify({ openId: "ou_test", createdAt: Date.now() }));
+    store.set(KV_KEYS.oauthState("s-1"), JSON.stringify({ openId: "ou_test", createdAt: Date.now() }));
     mockFeishu(FEISHU_OK);
     const res = await handleFeishuAuth(authRequest({ code: "c1", state: "s-1" }), env);
     expect(res.status).toBe(200);
     expect(((await res.json()) as { open_id: string }).open_id).toBe("ou_test");
-    expect(store.has("oauth:state:s-1")).toBe(false);
+    expect(store.has(KV_KEYS.oauthState("s-1"))).toBe(false);
   });
 
   it("state 已消费过一次：同一 state 重放返回 400", async () => {
     const { env, store } = kvBackedEnv();
-    store.set("oauth:state:s-2", JSON.stringify({ openId: "ou_test", createdAt: Date.now() }));
+    store.set(KV_KEYS.oauthState("s-2"), JSON.stringify({ openId: "ou_test", createdAt: Date.now() }));
     mockFeishu(FEISHU_OK);
     const first = await handleFeishuAuth(authRequest({ code: "c1", state: "s-2" }), env);
     expect(first.status).toBe(200);

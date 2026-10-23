@@ -17,6 +17,7 @@ import {
   type BitableRecord,
 } from "../feishu/bitable";
 import { notifyFeishu } from "../feishu/bot";
+import { KV_KEYS } from "../shared/kv-keys";
 import { buildRecordLink } from "../validation/service";
 import { APPROVAL_TYPES, getFlowBase, getFlowsConfig, type FlowConfig } from "./flows";
 
@@ -32,7 +33,7 @@ export interface SlaRunSummary {
 
 /** 读流程底表：先吃 todo:tbl:<type> 5 分钟缓存，miss 则拉飞书并回写；拉取失败回退过期缓存 */
 async function readFlowRecords(env: Env, token: string, base: string, type: string, flow: FlowConfig): Promise<BitableRecord[]> {
-  const cacheKey = `todo:tbl:${type}`;
+  const cacheKey = KV_KEYS.todoTable(type);
   const cached = (await env.REGISTRY.get(cacheKey, "json")) as { data: BitableRecord[]; cachedAt: number } | null;
   if (cached && cached.cachedAt > Date.now() - TABLE_CACHE_TTL_SEC * 1000) return cached.data;
   try {
@@ -107,10 +108,10 @@ export async function runApprovalSla(env: Env): Promise<SlaRunSummary> {
             `提交超 ${Math.round(cancelMs / 86400e3)} 天未审批，已自动取消${applicant ? `（申请人：${applicant}）` : ""}；如需继续请重新提交`,
             link,
           );
-          await env.REGISTRY.delete(`approval:esc:${appId}`);
+          await env.REGISTRY.delete(KV_KEYS.approvalEscalation(appId));
           summary.cancelled++;
         } else if (escalateMs > 0 && age > escalateMs) {
-          const escKey = `approval:esc:${appId}`;
+          const escKey = KV_KEYS.approvalEscalation(appId);
           if (await env.REGISTRY.get(escKey)) continue;
           const hours = Math.floor(age / 3600e3);
           const escalateTo = (sla.escalateTo ?? "").trim();
@@ -137,7 +138,7 @@ export async function runApprovalSla(env: Env): Promise<SlaRunSummary> {
     }
     // 有状态变更时回写缓存，避免 5 分钟缓存窗口内重复处理已取消的单
     if (tableDirty) {
-      await env.REGISTRY.put(`todo:tbl:${type}`, JSON.stringify({ data: records, cachedAt: Date.now() }), { expirationTtl: TABLE_CACHE_TTL_SEC }).catch(() => {});
+      await env.REGISTRY.put(KV_KEYS.todoTable(type), JSON.stringify({ data: records, cachedAt: Date.now() }), { expirationTtl: TABLE_CACHE_TTL_SEC }).catch(() => {});
     }
   }
 
@@ -145,7 +146,7 @@ export async function runApprovalSla(env: Env): Promise<SlaRunSummary> {
     await notifyFeishu(env, "default", "🕐 时效巡检", `升级提醒 ${summary.escalated} 条，自动取消 ${summary.cancelled} 条`);
   }
   // 巡检摘要落 KV（7 天）：cron 无日志可观测性弱，这是排障与验收的证据点
-  await env.REGISTRY.put("sla:lastRun", JSON.stringify({ at: now, ...summary }), { expirationTtl: 7 * 86400 }).catch(() => {});
+  await env.REGISTRY.put(KV_KEYS.slaLastRun, JSON.stringify({ at: now, ...summary }), { expirationTtl: 7 * 86400 }).catch(() => {});
   console.log(
     `[sla] 时效巡检完成：升级提醒 ${summary.escalated}，自动取消 ${summary.cancelled}，脏数据跳过 ${summary.skipped}，失败 ${summary.errors.length}`,
   );

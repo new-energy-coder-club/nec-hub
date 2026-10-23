@@ -74,3 +74,5 @@ export const releaseDomainTool: McpToolDef = {
   },
   impl: (args, env, ctx) => toolReleaseDomain(args, env, ctx.hasMcpToken),
 };
+
+export const tools: McpToolDef[] = [applyDomainTool, releaseDomainTool];

@@ -3,6 +3,7 @@
  */
 
 import { inferSkillCategory, normalizeSkillCategory, normalizeSkillTags, readIndex, upsertIndex, type SkillEntry } from "../../hosting";
+import { KV_KEYS } from "../../shared/kv-keys";
 import { NAME_RE, type McpToolDef } from "./shared";
 
 export async function toolImportSkills(args: Record<string, unknown>, env: Env) {
@@ -10,7 +11,7 @@ export async function toolImportSkills(args: Record<string, unknown>, env: Env) 
   if (!Array.isArray(skills) || skills.length === 0) throw new Error("skills 不能为空");
   if (skills.length > 200) throw new Error("单次最多导入 200 个");
   const source = String(args.source ?? "external");
-  const list = await readIndex<SkillEntry>(env, "skills:index");
+  const list = await readIndex<SkillEntry>(env, KV_KEYS.skillsIndex);
   const byName = new Map(list.map((s) => [s.name, s]));
   let added = 0, updated = 0, skipped = 0;
   for (const s of skills) {
@@ -31,7 +32,7 @@ export async function toolImportSkills(args: Record<string, unknown>, env: Env) 
     if (existing) { byName.set(name, entry); updated++; }
     else { byName.set(name, entry); added++; }
   }
-  await env.REGISTRY.put("skills:index", JSON.stringify([...byName.values()]));
+  await env.REGISTRY.put(KV_KEYS.skillsIndex, JSON.stringify([...byName.values()]));
   return {
     content: [
       {
@@ -45,7 +46,7 @@ export async function toolImportSkills(args: Record<string, unknown>, env: Env) 
 export async function toolRemoveSkills(args: Record<string, unknown>, env: Env) {
   const names = new Set(((args.names ?? []) as unknown[]).map((n) => String(n)));
   if (names.size === 0) throw new Error("names 不能为空");
-  const list = await readIndex<SkillEntry>(env, "skills:index");
+  const list = await readIndex<SkillEntry>(env, KV_KEYS.skillsIndex);
   const kept: SkillEntry[] = [];
   let removed = 0;
   const protectedNames: string[] = [];
@@ -55,7 +56,7 @@ export async function toolRemoveSkills(args: Record<string, unknown>, env: Env) 
       else removed++;
     } else kept.push(s);
   }
-  await env.REGISTRY.put("skills:index", JSON.stringify(kept));
+  await env.REGISTRY.put(KV_KEYS.skillsIndex, JSON.stringify(kept));
   return {
     content: [
       {
@@ -85,7 +86,7 @@ export async function toolPublishSkill(args: Record<string, unknown>, env: Env, 
     category: normalizeSkillCategory(args.category) ?? inferSkillCategory(skillName, description),
     tags: normalizeSkillTags(args.tags),
   };
-  const list = await upsertIndex(env, "skills:index", entry);
+  const list = await upsertIndex(env, KV_KEYS.skillsIndex, entry);
   return {
     content: [
       {
@@ -154,3 +155,5 @@ export const publishSkillTool: McpToolDef = {
   },
   impl: (args, env, ctx) => toolPublishSkill(args, env, ctx.request),
 };
+
+export const tools: McpToolDef[] = [importSkillsTool, removeSkillsTool, publishSkillTool];

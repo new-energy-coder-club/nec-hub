@@ -2,14 +2,15 @@
  * 硬件评审流程 — 配置读取
  */
 
+import { KV_KEYS } from "../shared/kv-keys";
 import { createModuleConfig, validateModuleConfig } from "../shared/module-config";
 import type { HardwareReviewConfig } from "./types";
 
 const moduleConfig = createModuleConfig<HardwareReviewConfig>({
-  kvKey: "hardware-review:config",
+  kvKey: KV_KEYS.hardwareReviewConfig,
   requireMessage: "硬件评审流程尚未配置：请先调用 config_hardware_review 设置 base 与 tables",
   // 配置变更后清掉相关缓存
-  invalidateKeys: ["hardware-review:cache:dashboard"],
+  invalidateKeys: [KV_KEYS.hardwareReviewDashboardCache],
 });
 
 export const getHardwareReviewConfig = moduleConfig.get;

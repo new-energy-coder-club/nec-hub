@@ -1,13 +1,10 @@
 <script setup lang="ts">
 // 硬件评审 Tab：薄壳嵌入 @apps/hardware-review（登录门控 Tab，登出时跳回首页）
-import { computed, watch } from 'vue'
-import { auth } from '@shared/auth'
-import { tabs, switchTab } from '@portal/composables/useTabs'
+import { useAuthGate } from '@portal/composables/useAuthGate'
 import HardwareReviewApp from '@apps/hardware-review/HardwareReviewApp.vue'
 import EmptyState from '@shared/ui/EmptyState.vue'
 
-const authed = computed(() => !!(auth.me.authenticated && auth.me.user))
-watch(authed, now => { if (!now && tabs.active === 'hardware-review') switchTab('home') })
+const { authed } = useAuthGate('hardware-review')
 </script>
 
 <template>

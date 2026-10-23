@@ -69,3 +69,5 @@ export const configFlowsTool: McpToolDef = {
   },
   impl: (args, env, ctx) => toolConfigFlows(args, env, ctx.hasMcpToken),
 };
+
+export const tools: McpToolDef[] = [submitApprovalTool, listTodosTool, sendNoticeTool, configFlowsTool];

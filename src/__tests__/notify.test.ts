@@ -4,6 +4,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { feishuBotSign, notifyFeishu } from "../feishu/bot";
+import { KV_KEYS } from "../shared/kv-keys";
 import { createMockEnv } from "./mock-env";
 
 function makeEnv(extra: Record<string, string> = {}): Env {
@@ -92,7 +93,7 @@ describe("notifyFeishu", () => {
       expect(r.detail).toContain("发送失败（重试 2 次）");
       expect(fetchMock).toHaveBeenCalledTimes(3);
       const putMock = (env as unknown as ReturnType<typeof createMockEnv>).REGISTRY.put;
-      const putCall = putMock.mock.calls.find((c) => c[0] === "notify:failed");
+      const putCall = putMock.mock.calls.find((c) => c[0] === KV_KEYS.notifyFailed);
       expect(putCall).toBeDefined();
       const list = JSON.parse(putCall![1]) as Array<{ flow: string; title: string; detail: string; at: string }>;
       expect(list).toHaveLength(1);
@@ -122,7 +123,7 @@ describe("notifyFeishu", () => {
       expect(r.ok).toBe(true);
       expect(fetchMock).toHaveBeenCalledTimes(2);
       const putMock = (env as unknown as ReturnType<typeof createMockEnv>).REGISTRY.put;
-      expect(putMock.mock.calls.some((c) => c[0] === "notify:failed")).toBe(false);
+      expect(putMock.mock.calls.some((c) => c[0] === KV_KEYS.notifyFailed)).toBe(false);
     } finally {
       vi.useRealTimers();
     }

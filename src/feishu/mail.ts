@@ -256,7 +256,7 @@ export async function sendFeishuMail(
     if (!opts) return { ok: false, detail: "缺少发信参数（to/subject 等）" };
     const token = await getUserAccessToken(env, openIdOrInput);
     if (!token) {
-      return { ok: false, detail: "发件账号未登录过中台或授权已过期——请其先在中台门户登录一次（scope 已含邮箱权限）" };
+      return { ok: false, detail: "发件账号未登录过中台或授权已过期——请其先在中台门户登录，并在「我的任务」完成一次授权（含邮箱权限）" };
     }
     return sendMailWithToken(token, opts);
   }

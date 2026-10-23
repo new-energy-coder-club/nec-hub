@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DrawingReviewAdapter } from "../drawing-review/adapter";
 import { handleDrawingReview } from "../drawing-review";
 import { COMPARE_RULES, InquiryService } from "../drawing-review/inquiry.service";
+import { KV_KEYS } from "../shared/kv-keys";
 import { createDrMock, DR_TABLES, type DrMockCtx } from "./dr-test-utils";
 
 const NOW = Date.parse("2026-10-14T08:00:00.000Z");
@@ -228,7 +229,7 @@ describe("询价路由权限（compare/select 需 队长/采购/项目经理）"
   }
 
   function seedMembers(ctx: DrMockCtx, openId: string, role: string) {
-    ctx.kv.set("dashboard:config", JSON.stringify({ base: "appMockBase", tables: { members: "tblMembers" }, updatedAt: "" }));
+    ctx.kv.set(KV_KEYS.dashboardConfig, JSON.stringify({ base: "appMockBase", tables: { members: "tblMembers" }, updatedAt: "" }));
     ctx.seed("tblMembers", { open_id: openId, 姓名: "测试用户", 权限角色: role }, "rec-member-1");
   }
 
@@ -299,7 +300,7 @@ describe("询价路由权限（quote 报价回填需 队长/采购/项目经理�
   }
 
   function seedMembers(ctx: DrMockCtx, openId: string, role: string) {
-    ctx.kv.set("dashboard:config", JSON.stringify({ base: "appMockBase", tables: { members: "tblMembers" }, updatedAt: "" }));
+    ctx.kv.set(KV_KEYS.dashboardConfig, JSON.stringify({ base: "appMockBase", tables: { members: "tblMembers" }, updatedAt: "" }));
     ctx.seed("tblMembers", { open_id: openId, 姓名: "测试用户", 权限角色: role }, "rec-member-1");
   }
 

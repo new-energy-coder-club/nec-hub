@@ -114,6 +114,35 @@ npm run build:web  # 门户前端构建（产物输出到 public/portal-assets/�
 
 打开 http://localhost:8787 即为门户。本地模式下 KV/R2/D1 走 Miniflare 本地模拟，无需 Cloudflare 账号。
 
+### 作为 Kimi Code 插件（本地 MCP）
+
+仓库自带项目级 MCP 配置 `.kimi-code/mcp.json`（已被 .gitignore 忽略，不入库），`npm run dev` 启动后新开 Kimi Code 会话即自动接入，工具以 `mcp__nec-hub__*` 出现。本地启用全部 30 个工具（含写操作）需配置本地 token：
+
+```bash
+openssl rand -hex 24 > .mcp-token                                   # 生成本地 token（gitignored）
+printf 'MCP_TOKEN=%s\n' "$(cat .mcp-token)" > .dev.vars             # Worker 侧（gitignored）
+# .kimi-code/mcp.json 的 nec-hub.headers.Authorization 写入 "Bearer <同一 token>"
+```
+
+不配 token 时插件仍可用，但 MCP 降级为只读模式（仅放行 readOnly 工具，写工具返回引导性错误）。生产环境写操作同理需 `Authorization: Bearer <MCP_TOKEN>`（secret 经 `wrangler secret put` 配置）。
+
+### 绑定 Kimi Code 的三层方式（按场景选）
+
+| 层 | 配置位置 | 指向 | 适用 |
+|---|---|---|---|
+| 用户级 | `~/.kimi-code/mcp.json` 加 `nec-hub` 条目（headers 带生产 token） | 生产 `https://hub.newenergycoder.club/mcp` | 日常使用，**所有项目**可用，无需本地起服务 |
+| 项目级 | 本仓库 `.kimi-code/mcp.json`（gitignored） | 本地 `http://localhost:8787/mcp` | 开发中台本身；**同名条目自动覆盖用户级**，进本仓库即走本地 |
+| 插件级 | 本仓库 `.kimi-plugin/plugin.json`（随仓库分发） | 生产（token 走环境变量 `NEC_HUB_MCP_TOKEN`，不落文件） | 团队成员一键安装：`/plugins install https://github.com/new-energy-coder-club/nec-hub` |
+| Pi 常驻 | `scripts/pi/`（install.sh + systemd，仓库分发） | 局域网树莓派 `http://<pi-ip>:8787/mcp` | 团队共享 staging：调试/联调走 Pi（Miniflare 模拟，与生产隔离），**不耗 CF 配额**；队员配 `nec-hub-dev` 条目与生产并存，详见 [`scripts/pi/README.md`](scripts/pi/README.md) |
+
+三条规则让体验「充分绑定」：① 用户级与项目级同名 `nec-hub`，Kimi Code 按项目级优先自动切换本地/生产，无需手工改配置；② `config.toml` 加 `[[permission.rules]]`（`decision = "allow"`, `pattern = "mcp__nec-hub__*"`）免逐次批准；③ 改动后 `/reload` 或新会话生效，`/mcp` 可查连接状态。
+
+### 升级路径
+
+- **工具增删改（最常见）**：只动服务端。push 到 `main` → CI 自动 `wrangler deploy`；客户端**零操作**，新会话 `tools/list` 自动拿到最新工具表。改工具时同步递增 `src/mcp/handler.ts` 的 `serverInfo.version`。
+- **插件清单变更**（systemPrompt / 元信息）：改 `.kimi-plugin/plugin.json` 并递增其 `version`，已安装的队员在 `/plugins` 面板按 Enter 即更新；工具变更**不需要**重装插件（工具表在会话启动时实时拉取）。
+- **本地开发环境**：`git pull && npm run dev` 即可，token 配置一次长期有效。
+
 ## 部署
 
 CI/CD（`.github/workflows/ci-cd.yml`）：PR 跑类型检查；push 到 `main` 先跑 vitest 门禁再自动 `wrangler deploy`（需仓库 secret `CLOUDFLARE_API_TOKEN`）。也可手动一键部署：

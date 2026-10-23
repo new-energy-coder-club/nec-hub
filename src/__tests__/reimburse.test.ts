@@ -10,6 +10,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
 import { handleReimburse, handleReimburseAction, handleReimburseMine } from "../reimburse";
+import { KV_KEYS } from "../shared/kv-keys";
 import { mockGetRecordResponse, mockSearchResponse } from "./bitable-search-mock";
 
 const BASE = "appMockBase";
@@ -27,11 +28,11 @@ function createCtx(opts: { withFlow?: boolean } = {}) {
   let seq = 0;
 
   if (opts.withFlow !== false) {
-    kv.set("flows:config", JSON.stringify({ reimburse: { tableId: TBL_REIMBURSE, base: BASE } }));
+    kv.set(KV_KEYS.flowsConfig, JSON.stringify({ reimburse: { tableId: TBL_REIMBURSE, base: BASE } }));
   }
-  kv.set("dashboard:config", JSON.stringify({ base: BASE, tables: { members: "tblM" }, updatedAt: new Date().toISOString() }));
-  kv.set("session:sid-member", JSON.stringify({ name: "张三", open_id: "ou-member", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
-  kv.set("session:sid-captain", JSON.stringify({ name: "张队", open_id: "ou-captain", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
+  kv.set(KV_KEYS.dashboardConfig, JSON.stringify({ base: BASE, tables: { members: "tblM" }, updatedAt: new Date().toISOString() }));
+  kv.set(KV_KEYS.session("sid-member"), JSON.stringify({ name: "张三", open_id: "ou-member", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
+  kv.set(KV_KEYS.session("sid-captain"), JSON.stringify({ name: "张队", open_id: "ou-captain", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
 
   vi.stubGlobal("fetch", vi.fn(async (input: unknown, init?: { method?: string; body?: string }) => {
     const url = String((input as { url?: string })?.url ?? input);
@@ -61,7 +62,7 @@ function createCtx(opts: { withFlow?: boolean } = {}) {
   const env = {
     REGISTRY: {
       get: vi.fn(async (key: string, type?: string) => {
-        if (key === "feishu:tenant_access_token") return { token: "mock-token", expireAt: Date.now() + 3600e3 };
+        if (key === KV_KEYS.feishuTenantAccessToken) return { token: "mock-token", expireAt: Date.now() + 3600e3 };
         const v = kv.get(key);
         return v == null ? null : type === "json" ? JSON.parse(v) : v;
       }),
@@ -169,7 +170,7 @@ describe("POST /api/reimburse（提交，委托引擎）", () => {
     expect(String(row.fields["事项"])).toContain("报销时间 2026-10-14");
     expect(String(row.fields["事项"])).toContain("关联底盘任务");
     // KV 映射由引擎写入；看板缓存被清理
-    expect(JSON.parse(ctx.kv.get(`approval:map:${data.application_id}`)!).record_id).toBe(data.recordId);
+    expect(JSON.parse(ctx.kv.get(KV_KEYS.approvalMap(data.application_id))!).record_id).toBe(data.recordId);
   });
 
   it("流程未配置 → 200 + warning 降级，凭证仍存档", async () => {

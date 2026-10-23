@@ -3,6 +3,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { toolScheduleMeeting } from "../meeting";
+import { KV_KEYS } from "../shared/kv-keys";
 import { createMockEnv } from "./mock-env";
 
 function kvBackedEnv() {
@@ -61,7 +62,7 @@ const ROUTES = {
 
 function seedDashboard(store: Map<string, string>) {
   store.set(
-    "dashboard:config",
+    KV_KEYS.dashboardConfig,
     JSON.stringify({ base: "basex", tables: { members: "tblmembers" }, updatedAt: "" }),
   );
 }
@@ -95,7 +96,7 @@ describe("schedule_meeting", () => {
     const { env, store } = kvBackedEnv();
     seedDashboard(store);
     store.set(
-      "feishu:user_token:ou_lisi",
+      KV_KEYS.feishuUserToken("ou_lisi"),
       JSON.stringify({
         user_access_token: "u-tok-lisi",
         refresh_token: "r-tok",

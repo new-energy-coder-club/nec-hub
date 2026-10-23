@@ -3,6 +3,7 @@ import { ReviewFlowService, SubmitReviewInput } from '../flow.service';
 import { InventoryService, MANUAL_IMPORT_SOURCE } from '../inventory.service';
 import { DrawingReviewAdapter } from '../adapter';
 import { DrawingReviewConfig } from '../types';
+import { KV_KEYS } from '../../shared/kv-keys';
 
 // Mock environment
 const mockEnv = {
@@ -147,8 +148,12 @@ describe('Drawing Review - Easy Filling Functionality', () => {
       await service.submit(input, 'user-123');
       
       expect(mockEnv.REGISTRY.put).toHaveBeenCalledWith(
-        'user-prefs:user-123',
+        KV_KEYS.userPrefs('dr', 'user-123'),
         expect.stringContaining('defaultProjectId')
+      );
+      expect(mockEnv.REGISTRY.put).not.toHaveBeenCalledWith(
+        KV_KEYS.legacyUserPrefs('user-123'),
+        expect.anything()
       );
     });
   });
@@ -190,6 +195,24 @@ describe('Drawing Review - Easy Filling Functionality', () => {
       expect(defaults.projectId).toBe('PRJ-001');
       expect(defaults.machineName).toBe('R1底盘');
       expect(defaults.drawingVersion).toBe('V2.0');
+    });
+
+    it('should read legacy preferences only when the module-scoped key misses', async () => {
+      mockEnv.REGISTRY.get.mockImplementation(async (key: string) =>
+        key === KV_KEYS.legacyUserPrefs('user-123')
+          ? JSON.stringify({ defaultProjectId: 'PRJ-LEGACY', defaultMachineName: ' legacy-machine ' })
+          : null
+      );
+
+      const defaults = await service.getDefaultSubmissionValues({
+        drawingFiles: [{ name: 'test.pdf', token: 'test-token' }],
+      }, 'user-123');
+
+      expect(defaults.projectId).toBe('PRJ-LEGACY');
+      expect(mockEnv.REGISTRY.get.mock.calls.map(([key]) => key)).toEqual([
+        KV_KEYS.userPrefs('dr', 'user-123'),
+        KV_KEYS.legacyUserPrefs('user-123'),
+      ]);
     });
   });
 

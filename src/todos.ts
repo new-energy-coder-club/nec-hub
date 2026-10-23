@@ -17,6 +17,7 @@ import { APPROVAL_TYPES, getFlowsConfig, isApprover, type ApprovalType } from ".
 import { fetchTableCached, getDashboardConfig } from "./dashboard";
 import { fieldNum, fieldText, fieldTs, firstFieldText, getTenantAccessToken, type BitableRecord } from "./feishu/bitable";
 import { FEISHU_API } from "./feishu/client";
+import { KV_KEYS } from "./shared/kv-keys";
 import {
   APPROVAL_APPLICANT_PATTERNS,
   APPROVAL_ID_PATTERNS,
@@ -235,7 +236,7 @@ async function fetchApprovalTodos(env: Env, openId: string): Promise<{ count: nu
 }
 
 export async function buildTodos(env: Env, user: { name: string; open_id: string }, ctx?: ExecutionContext): Promise<TodosPayload> {
-  const cacheKey = `todos:${user.open_id}`;
+  const cacheKey = KV_KEYS.todos(user.open_id);
   const cached = (await env.REGISTRY.get(cacheKey, "json")) as { data: TodosPayload; cachedAt: number } | null;
   if (cached && cached.cachedAt > Date.now() - TODOS_CACHE_TTL_SEC * 1000) {
     return { ...cached.data, cached: true };

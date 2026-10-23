@@ -2,11 +2,12 @@
  * 合同审批流程 — 配置读取
  */
 
+import { KV_KEYS } from "../shared/kv-keys";
 import { createModuleConfig, validateModuleConfig } from "../shared/module-config";
 import type { ContractApprovalConfig } from "./types";
 
 const moduleConfig = createModuleConfig<ContractApprovalConfig>({
-  kvKey: "contract-approval:config",
+  kvKey: KV_KEYS.contractApprovalConfig,
   requireMessage: "合同审批流程尚未配置：请先调用 config_contract_approval 设置 base 与 tables",
   // 合同审批在写入前做 schema 校验（其余两模块在 MCP 工具层校验）
   validate: validateConfig,

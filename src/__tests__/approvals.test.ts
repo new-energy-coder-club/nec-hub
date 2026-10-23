@@ -14,6 +14,7 @@ import { consumeNextSerial, serialKey, type SerialCounter } from "../approvals/c
 import { runApprovalAction, submitApprovalCore } from "../approvals/engine";
 import { handleApprovalMine, handleApprovalPending, handleApprovalSubmit, handleApprovalUpload, toolConfigFlows, toolSendNotice } from "../approvals/handlers";
 import { notifyFeishu } from "../feishu/bot";
+import { KV_KEYS } from "../shared/kv-keys";
 import { mockGetRecordResponse, mockSearchResponse } from "./bitable-search-mock";
 
 const BASE = "appMockBase";
@@ -40,10 +41,10 @@ function createCtx(opts: { webhookFailTimes?: number; withWebhook?: boolean } = 
   let webhookFailBudget = opts.webhookFailTimes ?? 0;
 
   // 流程配置：reimburse 底表挂到看板 base；其余流程保持未配置
-  kv.set("flows:config", JSON.stringify({ reimburse: { tableId: TBL_REIMBURSE, base: BASE } }));
-  kv.set("dashboard:config", JSON.stringify({ base: BASE, tables: { members: "tblM" }, updatedAt: new Date().toISOString() }));
-  kv.set("session:sid-member", JSON.stringify({ name: "张三", open_id: "ou-member", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
-  kv.set("session:sid-captain", JSON.stringify({ name: "张队", open_id: "ou-captain", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
+  kv.set(KV_KEYS.flowsConfig, JSON.stringify({ reimburse: { tableId: TBL_REIMBURSE, base: BASE } }));
+  kv.set(KV_KEYS.dashboardConfig, JSON.stringify({ base: BASE, tables: { members: "tblM" }, updatedAt: new Date().toISOString() }));
+  kv.set(KV_KEYS.session("sid-member"), JSON.stringify({ name: "张三", open_id: "ou-member", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
+  kv.set(KV_KEYS.session("sid-captain"), JSON.stringify({ name: "张队", open_id: "ou-captain", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
 
   const ctx: Ctx = {
     kv,
@@ -93,7 +94,7 @@ function createCtx(opts: { webhookFailTimes?: number; withWebhook?: boolean } = 
   ctx.env = {
     REGISTRY: {
       get: vi.fn(async (key: string, type?: string) => {
-        if (key === "feishu:tenant_access_token") return { token: "mock-token", expireAt: Date.now() + 3600e3 };
+        if (key === KV_KEYS.feishuTenantAccessToken) return { token: "mock-token", expireAt: Date.now() + 3600e3 };
         const v = kv.get(key);
         return v == null ? null : type === "json" ? JSON.parse(v) : v;
       }),
@@ -204,7 +205,7 @@ describe("submitApprovalCore（发起审批）", () => {
     expect(row.fields["申请人"]).toBe("张三");
     expect(row.fields["申请人 open_id"]).toBe("ou-member");
     expect(row.fields["申请单号"]).toBe(res.application_id);
-    expect(JSON.parse(ctx.kv.get(`approval:map:${res.application_id}`)!).record_id).toBe(row.record_id);
+    expect(JSON.parse(ctx.kv.get(KV_KEYS.approvalMap(res.application_id))!).record_id).toBe(row.record_id);
     expect(ctx.webhookCalls).toHaveLength(1);
     expect(String(ctx.webhookCalls[0].body.content && (ctx.webhookCalls[0].body.content as { text: string }).text)).toContain("新报销申请");
   });
@@ -221,14 +222,14 @@ describe("submitApprovalCore（发起审批）", () => {
     await expect(
       submitApprovalCore(ctx.env, { type: "reimburse", fields: goodFields, user: null, role: null, source: "mcp" }),
     ).rejects.toThrow("申请人姓名为空");
-    ctx.kv.set(`serial:BX:${new Date().getFullYear()}`, "1"); // BX-<年>-0001 已占用
+    ctx.kv.set(KV_KEYS.serial("BX", new Date().getFullYear()), "1"); // BX-<年>-0001 已占用
     const res = await submitApprovalCore(ctx.env, { type: "reimburse", fields: goodFields, user: null, role: null, applicantName: "李四", source: "mcp" });
     expect(res.application_id).toMatch(/-0002$/);
   });
 
   it("drawing：图号 @appId 占位符替换为分配单号；mine 透传图纸字段与 record 链接", async () => {
     const ctx = createCtx({ withWebhook: true });
-    ctx.kv.set("flows:config", JSON.stringify({
+    ctx.kv.set(KV_KEYS.flowsConfig, JSON.stringify({
       reimburse: { tableId: TBL_REIMBURSE, base: BASE },
       drawing: { tableId: "tblDrawing", base: BASE },
     }));
@@ -274,9 +275,9 @@ describe("POST /api/approvals（门户入口）", () => {
   it("限组流程：非本组且非队长 → 403；队长硬编码放行进入字段校验 → 400", async () => {
     const ctx = createCtx();
     // drawing 流程限机械组；配好 tableId 后走组别门禁
-    ctx.kv.set("flows:config", JSON.stringify({ drawing: { tableId: "tblD", base: BASE } }));
+    ctx.kv.set(KV_KEYS.flowsConfig, JSON.stringify({ drawing: { tableId: "tblD", base: BASE } }));
     ctx.seed("tblM", { 姓名: "李四", 飞书ID: "ou-other", 权限角色: "队员", 组别: "电控组" });
-    ctx.kv.set("session:sid-other", JSON.stringify({ name: "李四", open_id: "ou-other", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
+    ctx.kv.set(KV_KEYS.session("sid-other"), JSON.stringify({ name: "李四", open_id: "ou-other", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
     const res403 = await handleApprovalSubmit(sessionReq("https://hub.test/api/approvals", "sid-other", { type: "drawing", fields: {} }), ctx.env);
     expect(res403.status).toBe(403);
     expect(((await res403.json()) as { hint?: string }).hint).toContain("机械组");
@@ -512,7 +513,7 @@ describe("config_flows（MCP 工具）", () => {
 
   it("set 深合并 + 校验（tableId 须 tbl 开头 / roles 须合法正则）并清待办缓存", async () => {
     const ctx = createCtx();
-    ctx.kv.set("todo:tbl:reimburse", "x");
+    ctx.kv.set(KV_KEYS.todoTable("reimburse"), "x");
     await expect(
       toolConfigFlows({ action: "set", flows: { reimburse: { tableId: "bad" } } }, ctx.env, true),
     ).rejects.toThrow("table_id 不合法");
@@ -524,7 +525,7 @@ describe("config_flows（MCP 工具）", () => {
     const saved = (await getFlowsConfig(ctx.env)).reimburse;
     expect(saved.prefix).toBe("BX2");
     expect(saved.tableId).toBe(TBL_REIMBURSE); // 未传字段保留
-    expect(ctx.kv.has("todo:tbl:reimburse")).toBe(false);
+    expect(ctx.kv.has(KV_KEYS.todoTable("reimburse"))).toBe(false);
   });
 });
 
@@ -556,7 +557,7 @@ describe("notifyFeishu（群机器人通知）", () => {
       expect(res.ok).toBe(false);
       expect(res.detail).toContain("重试 2 次");
       expect(ctx.webhookFailTimes).toBe(3); // 首发 + 2 次重试
-      const failed = JSON.parse(ctx.kv.get("notify:failed")!);
+      const failed = JSON.parse(ctx.kv.get(KV_KEYS.notifyFailed)!);
       expect(failed[0].flow).toBe("hardware");
       expect(failed[0].detail).toContain("sign match fail");
     } finally {

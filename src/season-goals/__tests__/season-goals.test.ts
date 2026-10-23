@@ -4,6 +4,7 @@ import { handleSeasonGoals } from '../index';
 import { PlanService } from '../plan.service';
 import { SeasonGoalsConfig } from '../types';
 import { mockGetRecordResponse, mockSearchResponse } from '../../__tests__/bitable-search-mock';
+import { KV_KEYS } from '../../shared/kv-keys';
 
 const mockEnv = {
   REGISTRY: {
@@ -291,15 +292,15 @@ describe('Season Goals 路由权限（approve/reject/plan POST 需 队长/组长
     const tables: Record<string, SgRecord[]> = {};
     let seq = 0;
 
-    kv.set('season-goals:config', JSON.stringify({ base: 'appMockBase', tables: { ...SG_TABLES }, updatedAt: '' }));
-    kv.set(`session:${session.sid}`, JSON.stringify({
+    kv.set(KV_KEYS.seasonGoalsConfig, JSON.stringify({ base: 'appMockBase', tables: { ...SG_TABLES }, updatedAt: '' }));
+    kv.set(KV_KEYS.session(session.sid), JSON.stringify({
       name: session.name,
       open_id: session.openId,
       createdAt: new Date().toISOString(),
       expiresAt: Date.now() + 3600e3,
     }));
     if (role !== undefined) {
-      kv.set('dashboard:config', JSON.stringify({ base: 'appMockBase', tables: { members: 'tblMembers' }, updatedAt: '' }));
+      kv.set(KV_KEYS.dashboardConfig, JSON.stringify({ base: 'appMockBase', tables: { members: 'tblMembers' }, updatedAt: '' }));
       (tables['tblMembers'] ??= []).push({ record_id: 'rec-member-1', fields: { open_id: session.openId, 姓名: session.name, 权限角色: role } });
     }
 
@@ -339,7 +340,7 @@ describe('Season Goals 路由权限（approve/reject/plan POST 需 队长/组长
     const env = {
       REGISTRY: {
         get: vi.fn(async (key: string, type?: string) => {
-          if (key === 'feishu:tenant_access_token') return { token: 'mock-token', expireAt: Date.now() + 3600e3 };
+          if (key === KV_KEYS.feishuTenantAccessToken) return { token: 'mock-token', expireAt: Date.now() + 3600e3 };
           const v = kv.get(key);
           if (v == null) return null;
           return type === 'json' ? JSON.parse(v) : v;

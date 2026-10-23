@@ -6,6 +6,7 @@
  */
 
 import { json } from "./shared/http";
+import { KV_KEYS } from "./shared/kv-keys";
 import { resolveSession } from "./shared/session";
 import { resolveUserRole } from "./auth/role";
 
@@ -180,7 +181,7 @@ export async function readIndex<T>(env: Env, key: string): Promise<T[]> {
  * 未登录 / 名单外（external）仅 visibility=all；在册队员额外可见本组、本角色及本人 authored。
  */
 export async function visibleApps(env: Env, request: Request, ctx?: ExecutionContext): Promise<AppEntry[]> {
-  const apps = await readIndex<AppEntry>(env, "apps:index");
+  const apps = await readIndex<AppEntry>(env, KV_KEYS.appsIndex);
   const session = await resolveSession(env, request, ctx);
   if (!session) return apps.filter((a) => a.visibility === "all");
   const role = await resolveUserRole(env, session.user, ctx);

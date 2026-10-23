@@ -8,6 +8,7 @@
 import { getDashboardConfig } from "../dashboard";
 import { fieldNum, fieldText, findFieldKey, type BitableRecord } from "../feishu/bitable";
 import { ROLES, type UserRole } from "../auth/role";
+import { KV_KEYS } from "../shared/kv-keys";
 
 /** 审批流程类型（四条业务线） */
 export const APPROVAL_TYPES = ["reimburse", "drawing", "hardware", "compliance"] as const;
@@ -91,7 +92,7 @@ export const DEFAULT_FLOWS: FlowsConfig = {
 
 /** 读 flows:config；无配置/损坏返回默认值 deep copy；与默认值深合并保证向前兼容 */
 export async function getFlowsConfig(env: Env): Promise<FlowsConfig> {
-  const raw = await env.REGISTRY.get("flows:config");
+  const raw = await env.REGISTRY.get(KV_KEYS.flowsConfig);
   if (raw) {
     try {
       const parsed = JSON.parse(raw) as Partial<FlowsConfig>;

@@ -17,12 +17,13 @@ import { BitableRecord, fieldNum, fieldText, fieldTs, findFieldKey, firstFieldTe
 import { notifyFeishu } from "../feishu/bot";
 import { buildRepos } from "../repos";
 import { json } from "../shared/http";
+import { KV_KEYS } from "../shared/kv-keys";
 import { resolveSession } from "../shared/session";
 
 /** KV：上周聚合快照（周环比 diff 用） */
-export const WEEKLY_SNAPSHOT_KEY = "weekly:snapshot";
+export const WEEKLY_SNAPSHOT_KEY = KV_KEYS.weeklySnapshot;
 /** KV：最近一次周报文案与推送结果（手动触发端点回显用） */
-export const WEEKLY_LAST_KEY = "weekly:last";
+export const WEEKLY_LAST_KEY = KV_KEYS.weeklyLast;
 /** 本周有更新才查 commits 的仓库上限（配合 50 子请求预算） */
 const MAX_COMMIT_REPOS = 8;
 /** 逾期任务清单展示上限 */

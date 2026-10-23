@@ -2,6 +2,7 @@
  * 飞书多维表格 API 通用封装（供 nec-hub 各模块共用）
  */
 
+import { KV_KEYS } from "../shared/kv-keys";
 import { FEISHU_API, cachedToken, type CachedToken } from "./client";
 
 export interface BitableRecord {
@@ -16,7 +17,7 @@ export interface BitableFieldMeta {
 
 /** tenant_access_token 缓存（实例内存 + KV，均提前 5 分钟过期） */
 export async function getTenantAccessToken(env: Env): Promise<string> {
-  return cachedToken(env, "feishu:tenant_access_token", fetchTenantAccessToken);
+  return cachedToken(env, KV_KEYS.feishuTenantAccessToken, fetchTenantAccessToken);
 }
 
 async function fetchTenantAccessToken(env: Env): Promise<CachedToken> {

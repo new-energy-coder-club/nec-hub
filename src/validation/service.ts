@@ -4,7 +4,7 @@
  */
 
 import { BitableRecord, fieldText, findFieldKey } from "../feishu/bitable";
-import { sendFeishuBotText } from "../feishu/bot";
+import { KV_KEYS } from "../shared/kv-keys";
 import {
   DEFAULT_RULES,
   ValidateRule,
@@ -21,11 +21,11 @@ import {
 } from "./rules";
 
 /** KV：最新全量校验报告 */
-export const VALIDATE_REPORT_KEY = "validate:report:latest";
+export const VALIDATE_REPORT_KEY = KV_KEYS.validateReport;
 /** KV：声明式规则集（缺省/损坏时回退 DEFAULT_RULES） */
-export const VALIDATE_RULES_KEY = "validate:rules";
+export const VALIDATE_RULES_KEY = KV_KEYS.validateRules;
 /** KV：上周全量校验的异常键快照（周报 diff 用） */
-export const VALIDATE_WEEKLY_KEY = "validate:report:weekly-prev";
+export const VALIDATE_WEEKLY_KEY = KV_KEYS.validateWeeklySnapshot;
 
 export interface LinkedViolation extends Violation {
   link: string;
@@ -173,11 +173,6 @@ export async function snapshotAndDiff(env: Env, report: ValidateReport) {
   const diff = diffViolationKeys(prev?.keys ?? null, currKeys);
   await env.REGISTRY.put(VALIDATE_WEEKLY_KEY, JSON.stringify({ keys: currKeys, at: report.generatedAt }));
   return diff;
-}
-
-/** 推送飞书群自定义机器人（text 消息）；未配置 webhook 时调用方应跳过。secret 传 FEISHU_WEBHOOK_SECRET 时带加签（HMAC-SHA256(key=`${timestamp}\n${secret}`, data="") 后 base64） */
-export async function pushFeishuWebhook(webhookUrl: string, text: string, secret?: string): Promise<void> {
-  await sendFeishuBotText(webhookUrl, text, secret);
 }
 
 /** 周报摘要文案（本周新增 / 已清零 / 持续异常） */

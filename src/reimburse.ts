@@ -18,6 +18,7 @@ import { canSeeFinanceDetail, resolveUserRole } from "./auth/role";
 import { ApprovalError, getFlowBase, getFlowsConfig } from "./approvals/flows";
 import { runApprovalAction, submitApprovalCore, type ApprovalAction } from "./approvals/engine";
 import { syncReimburseDocStatus } from "./erp/reimburse";
+import { KV_KEYS } from "./shared/kv-keys";
 import {
   FINANCE_AMOUNT_PATTERNS,
   FINANCE_ITEM_PATTERNS,
@@ -92,9 +93,9 @@ export async function handleReimburse(request: Request, env: Env, ctx?: Executio
     result.application_id = submitted.application_id;
     result.status = submitted.status;
     // 引擎已写 approval:map:<单号> → record_id，读回供旧前端提示「已写入财务报销表」
-    const map = (await env.REGISTRY.get(`approval:map:${submitted.application_id}`, "json")) as { record_id?: string } | null;
+    const map = (await env.REGISTRY.get(KV_KEYS.approvalMap(submitted.application_id), "json")) as { record_id?: string } | null;
     if (map?.record_id) result.recordId = map.record_id;
-    await env.REGISTRY.delete("dashboard:cache:finance");
+    await env.REGISTRY.delete(KV_KEYS.dashboardCache("finance"));
   } catch (err) {
     result.warning =
       err instanceof ApprovalError
@@ -146,7 +147,7 @@ export async function handleReimburseAction(
       user: session.user,
       role,
     });
-    await env.REGISTRY.delete("dashboard:cache:finance");
+    await env.REGISTRY.delete(KV_KEYS.dashboardCache("finance"));
     return json({ application_id: applicationId, status: res.status });
   } catch (err) {
     if (err instanceof ApprovalError) {

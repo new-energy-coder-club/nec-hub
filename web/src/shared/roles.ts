@@ -9,4 +9,7 @@ export const LEADER_ROLE_RE = /队长|组长/
 /** 队长/财务：报销全员台账可见（对应后端 ROLES.FINANCE_MANAGER） */
 export const FINANCE_MANAGER_ROLE_RE = /队长|财务/
 
+/** 队长/指导/管理员：管理总览入口展示（对应后端 ROLES.CONFIG_ADMIN） */
+export const CONFIG_ADMIN_ROLE_RE = /队长|指导|管理员|admin/i
+
 export const hasRole = (role: string | null | undefined, re: RegExp): boolean => !!role && re.test(role)

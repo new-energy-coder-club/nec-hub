@@ -4,6 +4,7 @@
 
 import { domainZone } from "../../domains/service";
 import { readIndex, upsertIndex, type AppEntry } from "../../hosting";
+import { KV_KEYS } from "../../shared/kv-keys";
 import { NAME_RE, type McpToolDef } from "./shared";
 
 function base64ToBytes(b64: string): Uint8Array {
@@ -57,7 +58,7 @@ export async function toolDeployApp(args: Record<string, unknown>, env: Env, req
     url: `${origin}/apps/${appName}/`,
     description: args.description ? String(args.description) : undefined,
   };
-  const list = await upsertIndex(env, "apps:index", entry);
+  const list = await upsertIndex(env, KV_KEYS.appsIndex, entry);
   return {
     content: [
       {
@@ -86,7 +87,7 @@ export async function toolRegisterApp(args: Record<string, unknown>, env: Env) {
     external: true,
     description: args.description ? String(args.description) : undefined,
   };
-  const list = await upsertIndex(env, "apps:index", entry);
+  const list = await upsertIndex(env, KV_KEYS.appsIndex, entry);
   return {
     content: [
       {
@@ -117,7 +118,7 @@ export async function toolSyncVercel(args: Record<string, unknown>, env: Env) {
   const headers = { authorization: `Bearer ${env.VERCEL_TOKEN}` };
   // Vercel 项目列表与本地注册表互不依赖，并行拉取
   const listRespPromise = fetch(`https://api.vercel.com/v9/projects?slug=${encodeURIComponent(team)}&limit=100`, { headers });
-  const registry = await readIndex<AppEntry>(env, "apps:index");
+  const registry = await readIndex<AppEntry>(env, KV_KEYS.appsIndex);
   const listResp = await listRespPromise;
   const listData = (await listResp.json()) as { projects?: Array<{ name?: string }>; error?: { message?: string } };
   if (!listResp.ok || !listData.projects) {
@@ -162,7 +163,7 @@ export async function toolSyncVercel(args: Record<string, unknown>, env: Env) {
   if (confirm) {
     for (const p of plan) {
       if (p.action !== "registered") continue;
-      await upsertIndex(env, "apps:index", {
+      await upsertIndex(env, KV_KEYS.appsIndex, {
         name: p.name,
         title: p.name,
         author: "Vercel 同步",
@@ -258,3 +259,5 @@ export const syncVercelTool: McpToolDef = {
   },
   impl: (args, env) => toolSyncVercel(args, env),
 };
+
+export const tools: McpToolDef[] = [deployAppTool, registerAppTool, syncVercelTool];

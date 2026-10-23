@@ -8,14 +8,15 @@
  * 旧整表 domains:index 只读回退：listDomains 读到后自动迁移并删除。
  */
 
+import { KV_KEYS, KV_PREFIXES } from "../shared/kv-keys";
 import { cfConfigured, createDnsRecord, deleteDnsRecord } from "./cloudflare";
 import type { CreateDomainBody, DomainEntry } from "./types";
 
 /** 旧版整表索引 key（仅迁移用，勿再写入） */
-export const DOMAINS_INDEX_KEY = "domains:index";
+export const DOMAINS_INDEX_KEY = KV_KEYS.domainsIndex;
 
 /** 每域名一个记录 key 的前缀 */
-export const DOMAIN_REC_PREFIX = "domains:rec:";
+export const DOMAIN_REC_PREFIX = KV_PREFIXES.domainRecord;
 
 export const DOMAIN_ZONE_DEFAULT = "newenergycoder.club";
 

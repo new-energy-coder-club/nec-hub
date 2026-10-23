@@ -9,7 +9,9 @@
 import { validateUserToken } from "../auth/feishu-auth";
 import { ROLES, resolveUserRole } from "../auth/role";
 import { fetchTableCached, getDashboardConfig, refreshTableCache } from "../dashboard";
+import { resolveFlowWebhook } from "../feishu/bot";
 import { json } from "../shared/http";
+import { pushFeishuWebhook } from "../shared/notify-webhook";
 import { resolveSession, type HubUser } from "../shared/session";
 import { DEFAULT_RULES, VALIDATE_TABLES, type ValidateTable } from "./rules";
 import {
@@ -18,7 +20,6 @@ import {
   buildWeeklySummaryText,
   filterViolationsForUser,
   getValidateRules,
-  pushFeishuWebhook,
   resetValidateRules,
   runValidation,
   setValidateRules,
@@ -185,11 +186,12 @@ export async function runWeeklyValidation(env: Env): Promise<void> {
     const report = await runValidation(cfg, fresh, rules, "all");
     await env.REGISTRY.put(VALIDATE_REPORT_KEY, JSON.stringify(report));
     const diff = await snapshotAndDiff(env, report);
-    if (!env.FEISHU_WEBHOOK_URL) {
-      console.log("[nec-hub] weekly validate done；FEISHU_WEBHOOK_URL 未配置，跳过群推送");
+    const { url, secret } = resolveFlowWebhook(env, "default");
+    if (!url) {
+      console.log("[nec-hub] weekly validate done；webhook 未配置，跳过群推送");
       return;
     }
-    await pushFeishuWebhook(env.FEISHU_WEBHOOK_URL, buildWeeklySummaryText(report, diff), env.FEISHU_WEBHOOK_SECRET);
+    await pushFeishuWebhook(url, buildWeeklySummaryText(report, diff), secret);
   } catch (err) {
     console.error("[nec-hub] weekly validate failed:", err);
   }

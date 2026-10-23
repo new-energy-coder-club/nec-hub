@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// NEC 团队 AI 中台门户：Hero + TabNav + 15 个 Tab（所有面板常驻挂载、v-show 切换，保持原单文件版的 DOM 常驻行为）
+// NEC 团队 AI 中台门户：Hero + TabNav + 16 个 Tab（所有面板常驻挂载、v-show 切换，保持原单文件版的 DOM 常驻行为）
 import { onMounted, watch } from 'vue'
 import HeroHeader from './components/HeroHeader.vue'
 import TabNav from './components/TabNav.vue'
@@ -20,6 +20,7 @@ import ContractApprovalTab from './components/tabs/ContractApprovalTab.vue'
 import DashboardTab from './components/tabs/DashboardTab.vue'
 import PrdTab from './components/tabs/PrdTab.vue'
 import AgentTab from './components/tabs/AgentTab.vue'
+import AdminTab from './components/tabs/AdminTab.vue'
 import { tabs, initTabs, switchTab, applyHashRoute, replayLoginReturn } from './composables/useTabs'
 import { auth, bootAuth } from '@shared/auth'
 import { loadTodos } from './composables/useBanners'
@@ -60,6 +61,7 @@ watch(() => auth.tick, () => {
     <DashboardTab v-show="tabs.active === 'dashboard'" />
     <PrdTab v-show="tabs.active === 'prd'" />
     <AgentTab v-show="tabs.active === 'agent'" />
+    <AdminTab v-show="tabs.active === 'admin'" />
   </main>
 
   <footer class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 text-xs text-gray-400 leading-relaxed">

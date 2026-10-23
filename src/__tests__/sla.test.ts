@@ -11,6 +11,7 @@ import type { BitableRecord } from "../feishu/bitable";
 import { getFlowsConfig } from "../approvals/flows";
 import { runApprovalSla } from "../approvals/sla";
 import { toolConfigFlows } from "../approvals/handlers";
+import { KV_KEYS } from "../shared/kv-keys";
 
 const BASE = "appMockBase";
 const TBL = "tblReimburse";
@@ -34,7 +35,7 @@ function createCtx(flowsPatch?: Record<string, unknown>): Ctx {
   const webhookCalls: Ctx["webhookCalls"] = [];
   let seq = 0;
 
-  kv.set("flows:config", JSON.stringify({ reimburse: { tableId: TBL, base: BASE, ...(flowsPatch ?? {}) } }));
+  kv.set(KV_KEYS.flowsConfig, JSON.stringify({ reimburse: { tableId: TBL, base: BASE, ...(flowsPatch ?? {}) } }));
 
   const ctx: Ctx = {
     kv,
@@ -75,7 +76,7 @@ function createCtx(flowsPatch?: Record<string, unknown>): Ctx {
   ctx.env = {
     REGISTRY: {
       get: vi.fn(async (key: string, type?: string) => {
-        if (key === "feishu:tenant_access_token") return { token: "mock-token", expireAt: Date.now() + 3600e3 };
+        if (key === KV_KEYS.feishuTenantAccessToken) return { token: "mock-token", expireAt: Date.now() + 3600e3 };
         const v = kv.get(key);
         return v == null ? null : type === "json" ? JSON.parse(v) : v;
       }),
@@ -118,7 +119,7 @@ describe("G-03 时效巡检 runApprovalSla", () => {
     expect(texts.some((t) => t.includes("天后将自动取消"))).toBe(true);
     // 有动作 → 主群汇总
     expect(texts.some((t) => t.includes("时效巡检") && t.includes("升级提醒 1 条"))).toBe(true);
-    expect(ctx.kv.has("approval:esc:BX-2026-0001")).toBe(true);
+    expect(ctx.kv.has(KV_KEYS.approvalEscalation("BX-2026-0001"))).toBe(true);
 
     // 再触发：KV 标记在 → 不重复提醒
     const before = ctx.webhookCalls.length;
@@ -130,7 +131,7 @@ describe("G-03 时效巡检 runApprovalSla", () => {
   it("超 14 天审批中 → 状态改「已取消」+ 通知 + 清升级标记；再扫描不重复处理", async () => {
     const ctx = createCtx();
     const rec = ctx.seed(pendingRecord("BX-2026-0002", 15 * 86400e3));
-    ctx.kv.set("approval:esc:BX-2026-0002", "{}");
+    ctx.kv.set(KV_KEYS.approvalEscalation("BX-2026-0002"), "{}");
 
     const s1 = await runApprovalSla(ctx.env);
     expect(s1.cancelled).toBe(1);
@@ -138,7 +139,7 @@ describe("G-03 时效巡检 runApprovalSla", () => {
     const texts = ctx.webhookTexts();
     expect(texts.some((t) => t.includes("已自动取消 BX-2026-0002"))).toBe(true);
     expect(texts.some((t) => t.includes("申请人：张三"))).toBe(true);
-    expect(ctx.kv.has("approval:esc:BX-2026-0002")).toBe(false);
+    expect(ctx.kv.has(KV_KEYS.approvalEscalation("BX-2026-0002"))).toBe(false);
 
     // 再扫描：状态已变且缓存已回写 → 无任何动作
     const before = ctx.webhookCalls.length;
@@ -199,7 +200,7 @@ describe("G-03 sla 配置", () => {
       true,
     );
     expect(String(res.content[0].text)).toContain("已保存");
-    const saved = JSON.parse(ctx.kv.get("flows:config")!) as { reimburse: { sla: Record<string, unknown> } };
+    const saved = JSON.parse(ctx.kv.get(KV_KEYS.flowsConfig)!) as { reimburse: { sla: Record<string, unknown> } };
     expect(saved.reimburse.sla).toEqual({ escalateHours: 0, autoCancelDays: 7, escalateTo: "队长" });
   });
 });
