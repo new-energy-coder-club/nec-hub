@@ -9,7 +9,7 @@ import { store, previewPlan, applyPlan, fmtGeneratedAt } from '../store'
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-bold text-slate-800">自动规划</h2>
         <div class="flex gap-2">
-          <button class="text-white text-sm font-medium px-4 py-2 rounded-lg" style="background:var(--nec-royal)" @click="previewPlan()">预览规划</button>
+ <button class="text-white text-sm font-medium px-4 py-2 rounded-lg bg-nec-royal" @click="previewPlan()">预览规划</button>
           <button
             id="apply-btn"
             :disabled="store.applyDisabled"

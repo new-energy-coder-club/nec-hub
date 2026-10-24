@@ -1,7 +1,7 @@
 /**
- * G-03 审批时效治理（PRD V1.2 §5）：每小时 cron（"7 * * * *"）扫描四条流程底表
- *   - 审批中超 sla.escalateHours（默认 48h）→ 升级提醒（KV approval:esc:<appId> 幂等，TTL=距自动取消剩余秒数）
- *   - 审批中超 sla.autoCancelDays（默认 14 天）→ 状态直接改「已取消」（不走 ACTION_TARGET）+ 群通知 + 清升级标记
+ * G-03 审批时效治理（PRD V1.2 §5）：每小时 cron（"7 * * * *"）扫描各流程底表
+ *   - 待审批状态（flow.pendingStates，缺省 ["审批中"]）超 sla.escalateHours（默认 48h）→ 升级提醒（KV approval:esc:<appId> 幂等，TTL=距自动取消剩余秒数）
+ *   - 待审批状态超 sla.autoCancelDays（默认 14 天）→ 状态直接改「已取消」（不走 ACTION_TARGET）+ 群通知 + 清升级标记
  * sla 全关（均为 0）或未配 tableId 的流程跳过；提交时间为空的脏数据行跳过并记日志（不误伤）。
  * 底表读取复用 todo:tbl:<type> 5 分钟缓存（与 engine.aggregateTodos 同键同 TTL），整轮失败只记日志，
  * 有动作时向主群（flow=default）发一条汇总。
@@ -19,7 +19,7 @@ import {
 import { notifyFeishu } from "../feishu/bot";
 import { KV_KEYS } from "../shared/kv-keys";
 import { buildRecordLink } from "../validation/service";
-import { APPROVAL_TYPES, getFlowBase, getFlowsConfig, type FlowConfig } from "./flows";
+import { APPROVAL_TYPES, getFlowBase, getFlowsConfig, pendingStatesOf, statusFieldOf, statusFieldPatterns, type FlowConfig } from "./flows";
 
 /** 与 engine.aggregateTodos 一致的底表缓存 TTL（秒） */
 const TABLE_CACHE_TTL_SEC = 300;
@@ -75,15 +75,16 @@ export async function runApprovalSla(env: Env): Promise<SlaRunSummary> {
       continue;
     }
 
-    const statusKey = findFieldKey(records, [/^状态$/, /状态/, /进度/]) ?? "状态";
+    const statusKey = findFieldKey(records, statusFieldPatterns(flow)) ?? statusFieldOf(flow);
+    const pendings = pendingStatesOf(flow);
     const idKey = findFieldKey(records, [/^申请单号$/, /申请单号/, /单号/]);
     const timeKey = findFieldKey(records, [/^提交时间$/, /提交时间/, /创建时间/]);
     const applicantKey = findFieldKey(records, [/^申请人$/, /申请人/, /报销人/]);
     let tableDirty = false;
 
     for (const r of records) {
-      // 只动「审批中」：已通过/已驳回/已取消等任何其他状态不触碰
-      if (fieldText(r.fields[statusKey]) !== "审批中") continue;
+      // 只动待审批状态（pendingStates）：已通过/已驳回/已取消等任何其他状态不触碰
+      if (!pendings.includes(fieldText(r.fields[statusKey]))) continue;
       const appId = (idKey ? fieldText(r.fields[idKey]) : "") || r.record_id;
       try {
         // 提交时间底表存 epoch ms；为空/非正数 = 历史脏数据，跳过不误伤

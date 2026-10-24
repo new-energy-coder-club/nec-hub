@@ -75,10 +75,10 @@ describe('Drawing Review - Easy Filling Functionality', () => {
         machineName: 'R1底盘',
         drawingFiles: [{ name: 'test.pdf', token: 'test-token' }],
       };
-      
-      const result = await service.submit(input, 'user-123');
-      
-      expect(result.designerId).toBe('user-123');
+
+      const defaults = await service.getDefaultSubmissionValues(input, 'user-123');
+
+      expect(defaults.designerId).toBe('user-123');
     });
 
     it('should generate default drawing version when not specified', async () => {
@@ -87,10 +87,10 @@ describe('Drawing Review - Easy Filling Functionality', () => {
         machineName: 'R1底盘',
         drawingFiles: [{ name: 'test.pdf', token: 'test-token' }],
       };
-      
-      const result = await service.submit(input, 'user-123');
-      
-      expect(result.drawingVersion).toBe('V1.0');
+
+      const defaults = await service.getDefaultSubmissionValues(input, 'user-123');
+
+      expect(defaults.drawingVersion).toBe('V1.0');
     });
 
     it('should use template for design notes when not specified', async () => {
@@ -99,13 +99,13 @@ describe('Drawing Review - Easy Filling Functionality', () => {
         machineName: 'R1底盘',
         drawingFiles: [{ name: 'test.pdf', token: 'test-token' }],
       };
-      
-      const result = await service.submit(input, 'user-123');
-      
+
+      const defaults = await service.getDefaultSubmissionValues(input, 'user-123');
+
       // The template should be used when designNotes is not provided
       // Since we're using the default template, it should contain the template text
-      expect(result.designNotes).toContain('【设计说明模板】');
-      expect(result.designNotes).toContain('设计背景与目标');
+      expect(defaults.designNotes).toContain('【设计说明模板】');
+      expect(defaults.designNotes).toContain('设计背景与目标');
     });
 
     it('should increment version for existing project/machine', async () => {
@@ -113,7 +113,7 @@ describe('Drawing Review - Easy Filling Functionality', () => {
       mockAdapter.listReviews.mockResolvedValue([
         {
           recordId: 'rec-1',
-          reviewId: 'DR-20261013-001',
+          reviewId: 'DR-2026-0001',
           projectId: 'PRJ-001',
           machineName: 'R1底盘',
           drawingVersion: 'V1.0',
@@ -125,16 +125,16 @@ describe('Drawing Review - Easy Filling Functionality', () => {
           updatedAt: '2026-10-13T00:00:00Z',
         }
       ]);
-      
+
       const input: SubmitReviewInput = {
         projectId: 'PRJ-001',
         machineName: 'R1底盘',
         drawingFiles: [{ name: 'test.pdf', token: 'test-token' }],
       };
-      
-      const result = await service.submit(input, 'user-123');
-      
-      expect(result.drawingVersion).toBe('V1.1');
+
+      const defaults = await service.getDefaultSubmissionValues(input, 'user-123');
+
+      expect(defaults.drawingVersion).toBe('V1.1');
     });
 
     it('should save user preferences after successful submission', async () => {
@@ -144,9 +144,9 @@ describe('Drawing Review - Easy Filling Functionality', () => {
         drawingFiles: [{ name: 'test.pdf', token: 'test-token' }],
         designNotes: 'Custom notes',
       };
-      
-      await service.submit(input, 'user-123');
-      
+
+      await service.saveSubmissionPreferences(input, 'user-123');
+
       expect(mockEnv.REGISTRY.put).toHaveBeenCalledWith(
         KV_KEYS.userPrefs('dr', 'user-123'),
         expect.stringContaining('defaultProjectId')
@@ -221,8 +221,9 @@ describe('Drawing Review - Easy Filling Functionality', () => {
       const input: SubmitReviewInput = {
         drawingFiles: [],
       };
-      
-      await expect(service.submit(input, 'user-123')).rejects.toThrow(
+
+      const defaults = await service.getDefaultSubmissionValues(input, 'user-123');
+      expect(() => service.assertSubmitReady(input, defaults)).toThrow(
         '项目编号、机型名称和图纸文件为必填项'
       );
     });
@@ -231,8 +232,9 @@ describe('Drawing Review - Easy Filling Functionality', () => {
       const input: SubmitReviewInput = {
         drawingFiles: [{ name: 'test.pdf', token: 'test-token' }],
       };
-      
-      await expect(service.submit(input, 'user-123')).rejects.toThrow(
+
+      const defaults = await service.getDefaultSubmissionValues(input, 'user-123');
+      expect(() => service.assertSubmitReady(input, defaults)).toThrow(
         '项目编号、机型名称和图纸文件为必填项'
       );
     });

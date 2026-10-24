@@ -8,14 +8,14 @@ const emit = defineEmits<{ (e: 'close'): void }>()
   <div v-if="open" class="ui-modal-mask" @click.self="emit('close')">
     <div class="ui-modal-box" :style="{ maxWidth }">
       <div class="ui-modal-head">
-        <h3 class="font-bold" style="color:var(--nec-ink)">{{ title }}</h3>
+ <h3 class="font-bold text-nec-ink">{{ title }}</h3>
         <slot name="head-extra" />
-        <button class="text-lg leading-none px-1" style="color:var(--nec-gray)" @click="emit('close')">✕</button>
+ <button class="text-lg leading-none px-1 text-nec-gray" @click="emit('close')">✕</button>
       </div>
       <div class="ui-modal-body" :class="bodyClass">
         <slot />
       </div>
-      <div v-if="$slots.footer" class="ui-modal-head" style="border-top:1px solid var(--nec-line);border-bottom:none">
+ <div v-if="$slots.footer" class="ui-modal-head border-t border-nec-line border-b-0">
         <slot name="footer" />
       </div>
     </div>

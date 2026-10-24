@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev --local --port 8787",
+    "predeploy": "npm run build:web",
     "deploy": "wrangler deploy",
     "types": "wrangler types --include-runtime=false",
     "check": "tsc --noEmit",
@@ -13,7 +14,9 @@
     "test:coverage": "vitest run --coverage",
     "reimburse:simulate": "node scripts/simulate-reimbursements.js",
     "build:web": "npm --prefix web run build",
-    "dev:web": "npm --prefix web run dev"
+    "dev:web": "npm --prefix web run dev",
+    "mcp:setup": "node scripts/setup-mcp.mjs",
+    "mcp:token": "node scripts/gen-mcp-token.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261013.1",

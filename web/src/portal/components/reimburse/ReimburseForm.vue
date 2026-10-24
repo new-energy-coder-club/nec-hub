@@ -206,7 +206,7 @@ async function submitReimburse() {
         <div id="r-payment-status" aria-live="polite" class="text-xs text-gray-400 mt-1">{{ paymentStatus }}</div>
       </div></label>
       <div class="md:col-span-2" style="display:flex;gap:12px;align-items:center">
-        <button id="r-submit-btn" :disabled="submitting" class="hover:opacity-90 disabled:opacity-50 transition-opacity" style="background:var(--nec-navy);color:#fff;padding:8px 16px;border-radius:6px">{{ submitting ? '提交中…' : '提交报销' }}</button>
+        <button id="r-submit-btn" :disabled="submitting" class="bg-nec-navy text-white hover:opacity-90 disabled:opacity-50 transition-opacity" style="padding:8px 16px;border-radius:6px">{{ submitting ? '提交中…' : '提交报销' }}</button>
         <span id="r-submit-status" aria-live="polite" class="text-xs text-gray-400">{{ submitStatus }}</span>
       </div>
     </form>

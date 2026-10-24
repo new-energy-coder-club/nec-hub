@@ -82,7 +82,7 @@ onMounted(async () => {
   <template v-else-if="!g || !g.configured">
     <p class="text-sm text-gray-500 mb-2">赛季目标未配置：把下面的 Prompt 发给已接入 NEC-MCP 的 Agent 完成接入。</p>
     <pre class="prompt text-xs bg-gray-900 text-green-300 rounded-lg p-3" id="home-goals-prompt">{{ GOALS_CONFIG_PROMPT }}</pre>
-    <button @click="copyText(GOALS_CONFIG_PROMPT)" class="mt-2 text-xs text-white px-3 py-1.5 rounded" style="background:var(--nec-navy)">复制 Prompt</button>
+ <button @click="copyText(GOALS_CONFIG_PROMPT)" class="mt-2 text-xs text-white px-3 py-1.5 rounded bg-nec-navy">复制 Prompt</button>
   </template>
   <p v-else-if="!items.length" class="text-sm text-gray-400">赛季目标表已配置但暂无数据：在飞书赛季目标表中添加第一条目标（含截止日期）后即可显示在这里。</p>
   <template v-else>

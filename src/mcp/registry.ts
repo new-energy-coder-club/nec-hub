@@ -25,7 +25,13 @@ import { tools as whoamiTools } from "./tools/whoami";
 
 export type { McpToolCtx, McpToolDef, McpToolResult } from "./tools/shared";
 
-// docs 与 approvals 的历史顺序被其他域隔开，分段展开以保持 tools/list 顺序不变。
+// docs 与 approvals 的历史顺序被其他域隔开，按工具名显式装配（不依赖数组位置），tools/list 顺序保持不变。
+function byName(tools: McpToolDef[], name: string): McpToolDef {
+  const tool = tools.find((t) => t.name === name);
+  if (!tool) throw new Error(`MCP 工具未定义：${name}`);
+  return tool;
+}
+
 export const TOOL_REGISTRY: McpToolDef[] = [
   ...appsTools,
   ...skillsTools,
@@ -33,18 +39,20 @@ export const TOOL_REGISTRY: McpToolDef[] = [
   ...bitableInventoryTools,
   ...bitableConfigTools,
   ...moduleConfigTools,
-  ...docsTools.slice(0, 1),
+  byName(docsTools, "publish_doc"),
   ...bitableProgressTools,
   ...validationTools,
   ...meetingTools,
   ...whoamiTools,
   ...homeTools,
-  ...docsTools.slice(1),
+  byName(docsTools, "remove_docs"),
   ...bitableSetupTools,
   ...prdTools,
-  ...approvalsTools.slice(0, 3),
+  byName(approvalsTools, "submit_approval"),
+  byName(approvalsTools, "list_todos"),
+  byName(approvalsTools, "send_notice"),
   ...mailTools,
-  ...approvalsTools.slice(3),
+  byName(approvalsTools, "config_flows"),
   ...domainsTools,
 ];
 

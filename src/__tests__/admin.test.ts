@@ -1,10 +1,11 @@
 /**
- * 管理总览（GET /api/admin/overview）与退出所有设备（POST /api/auth/logout-all）
+ * 管理后台：GET /api/admin/overview · POST /api/auth/logout-all · GET /api/admin/sessions
+ * POST /api/admin/sessions/revoke · POST /api/admin/config/<dashboard|flows>
  * mock 风格沿用 dr-test-utils.ts / role.test.ts：内存 KV（本文件补 list 实现）+ fetch 路由。
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
-import { handleAdminOverview } from "../admin";
+import { handleAdminConfig, handleAdminOverview, handleAdminRevokeSessions, handleAdminSessions } from "../admin";
 import { handleLogoutAll } from "../auth/handlers";
 import { KV_KEYS } from "../shared/kv-keys";
 
@@ -191,5 +192,186 @@ describe("POST /api/auth/logout-all", () => {
     const { env } = makeCtx();
     const res = await handleLogoutAll(new Request("https://hub.test/api/auth/logout-all"), env);
     expect(res.status).toBe(405);
+  });
+});
+
+/** 种一条指定时间的会话（聚合排序测试用） */
+function seedSessionAt(kv: Map<string, string>, sid: string, openId: string, name: string, createdAt: string, expiresAt: number) {
+  kv.set(KV_KEYS.session(sid), JSON.stringify({ name, open_id: openId, createdAt, expiresAt }));
+}
+
+/** 种管理员身份（角色缓存 + 会话），返回带 Cookie 的请求构造器 */
+function seedAdmin(ctx: Ctx, sid = "sid-admin", openId = "ou_admin", name = "管理员甲") {
+  ctx.kv.set(`role:${openId}`, JSON.stringify({ role: "队长", group: "运营", matched: true }));
+  seedSession(ctx.kv, sid, openId, name);
+  return (path: string, init?: { method?: string; body?: unknown }) =>
+    new Request(`https://hub.test${path}`, {
+      method: init?.method ?? "GET",
+      headers: { cookie: `nec_session=${sid}`, ...(init?.body ? { "content-type": "application/json" } : {}) },
+      ...(init?.body ? { body: JSON.stringify(init.body) } : {}),
+    });
+}
+
+describe("GET /api/admin/sessions", () => {
+  it("未登录 → 401；登录队员 → 403", async () => {
+    const { env } = makeCtx();
+    const res = await handleAdminSessions(new Request("https://hub.test/api/admin/sessions"), env);
+    expect(res.status).toBe(401);
+
+    const ctx = makeCtx({ dashboard: true });
+    ctx.members.push(member("李四", "ou_lisi", "队员"));
+    seedSession(ctx.kv, "sid-lisi", "ou_lisi", "李四");
+    const res2 = await handleAdminSessions(authedRequest("/api/admin/sessions", "sid-lisi"), ctx.env);
+    expect(res2.status).toBe(403);
+    expect(((await res2.json()) as { error: string }).error).toContain("当前角色：队员");
+  });
+
+  it("按 open_id 分组聚合、latestExpiresAt 倒序、坏记录跳过", async () => {
+    const ctx = makeCtx();
+    const req = seedAdmin(ctx);
+    const now = Date.now();
+    // 管理员自己的会话由 seedAdmin 种入（resolveSession 滑动续期后 expiresAt ≈ now+7d）；
+    // 以下种子会话到期时间设在 7 天之外，保证排序断言稳定
+    seedSessionAt(ctx.kv, "sid-a1", "ou_a", "用户A", "2026-10-20T08:00:00.000Z", now + 9 * 86400e3);
+    seedSessionAt(ctx.kv, "sid-a2", "ou_a", "用户A", "2026-10-23T09:00:00.000Z", now + 9 * 86400e3);
+    seedSessionAt(ctx.kv, "sid-b1", "ou_b", "用户B", "2026-10-22T10:00:00.000Z", now + 10 * 86400e3);
+    ctx.kv.set(KV_KEYS.session("sid-bad"), "{not-json"); // 坏记录
+    const res = await handleAdminSessions(req("/api/admin/sessions"), ctx.env);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { users: Array<any>; total: number };
+    expect(body.total).toBe(4); // admin 1 + A×2 + B×1
+    expect(body.users.map((u) => u.open_id)).toEqual(["ou_b", "ou_a", "ou_admin"]); // latestExpiresAt 倒序
+    const a = body.users.find((u) => u.open_id === "ou_a");
+    expect(a.sessions).toBe(2);
+    expect(a.latestCreatedAt).toBe("2026-10-23T09:00:00.000Z");
+    expect(a.latestExpiresAt).toBe(now + 9 * 86400e3);
+    expect(a.name).toBe("用户A");
+  });
+});
+
+describe("POST /api/admin/sessions/revoke", () => {
+  it("未登录 → 401；登录队员 → 403", async () => {
+    const { env } = makeCtx();
+    const res = await handleAdminRevokeSessions(
+      new Request("https://hub.test/api/admin/sessions/revoke", { method: "POST" }),
+      env,
+    );
+    expect(res.status).toBe(401);
+
+    const ctx = makeCtx({ dashboard: true });
+    ctx.members.push(member("李四", "ou_lisi", "队员"));
+    seedSession(ctx.kv, "sid-lisi", "ou_lisi", "李四");
+    const res2 = await handleAdminRevokeSessions(authedRequest("/api/admin/sessions/revoke", "sid-lisi", "POST"), ctx.env);
+    expect(res2.status).toBe(403);
+  });
+
+  it("缺 open_id → 400", async () => {
+    const ctx = makeCtx();
+    const req = seedAdmin(ctx);
+    const res = await handleAdminRevokeSessions(req("/api/admin/sessions/revoke", { method: "POST", body: {} }), ctx.env);
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toContain("open_id");
+  });
+
+  it("只删目标用户的全部会话，他人与管理员自己的保留", async () => {
+    const ctx = makeCtx();
+    const req = seedAdmin(ctx);
+    seedSession(ctx.kv, "sid-t1", "ou_target", "目标");
+    seedSession(ctx.kv, "sid-t2", "ou_target", "目标");
+    seedSession(ctx.kv, "sid-o", "ou_other", "别人");
+    const res = await handleAdminRevokeSessions(
+      req("/api/admin/sessions/revoke", { method: "POST", body: { open_id: "ou_target" } }),
+      ctx.env,
+    );
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { revoked: number }).revoked).toBe(2);
+    expect(ctx.kv.has(KV_KEYS.session("sid-t1"))).toBe(false);
+    expect(ctx.kv.has(KV_KEYS.session("sid-t2"))).toBe(false);
+    expect(ctx.kv.has(KV_KEYS.session("sid-o"))).toBe(true);
+    expect(ctx.kv.has(KV_KEYS.session("sid-admin"))).toBe(true); // 管理员踢别人不影响自己
+  });
+
+  it("允许踢自己：revoked 含当前会话", async () => {
+    const ctx = makeCtx();
+    const req = seedAdmin(ctx);
+    const res = await handleAdminRevokeSessions(
+      req("/api/admin/sessions/revoke", { method: "POST", body: { open_id: "ou_admin" } }),
+      ctx.env,
+    );
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { revoked: number }).revoked).toBe(1);
+    expect(ctx.kv.has(KV_KEYS.session("sid-admin"))).toBe(false);
+  });
+});
+
+describe("POST /api/admin/config/dashboard", () => {
+  it("base 不合法 → 400（复用 config_dashboard 校验口径）", async () => {
+    const ctx = makeCtx();
+    const req = seedAdmin(ctx);
+    const res = await handleAdminConfig(
+      req("/api/admin/config/dashboard", { method: "POST", body: { base: "short", tables: { members: "tblM1" } } }),
+      ctx.env,
+      undefined,
+      "dashboard",
+    );
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toContain("base 不合法");
+  });
+
+  it("合法配置 → 写入 dashboard:config 并清看板缓存", async () => {
+    const ctx = makeCtx();
+    const req = seedAdmin(ctx);
+    ctx.kv.set(KV_KEYS.dashboardCache("members"), JSON.stringify({ data: [], cachedAt: 1 }));
+    const res = await handleAdminConfig(
+      req("/api/admin/config/dashboard", { method: "POST", body: { base: "appBase123456", tables: { members: "tblMembers", tasks: "tblTasks" } } }),
+      ctx.env,
+      undefined,
+      "dashboard",
+    );
+    expect(res.status).toBe(200);
+    const cfg = JSON.parse(ctx.kv.get(KV_KEYS.dashboardConfig)!);
+    expect(cfg.base).toBe("appBase123456");
+    expect(cfg.tables).toEqual({ members: "tblMembers", tasks: "tblTasks" });
+    expect(ctx.kv.has(KV_KEYS.dashboardCache("members"))).toBe(false); // 缓存已失效
+  });
+
+  it("登录队员 → 403", async () => {
+    const ctx = makeCtx({ dashboard: true });
+    ctx.members.push(member("李四", "ou_lisi", "队员"));
+    seedSession(ctx.kv, "sid-lisi", "ou_lisi", "李四");
+    const res = await handleAdminConfig(authedRequest("/api/admin/config/dashboard", "sid-lisi", "POST"), ctx.env, undefined, "dashboard");
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("POST /api/admin/config/flows", () => {
+  it("部分流程补丁深合并写入 flows:config", async () => {
+    const ctx = makeCtx();
+    const req = seedAdmin(ctx);
+    const res = await handleAdminConfig(
+      req("/api/admin/config/flows", { method: "POST", body: { reimburse: { tableId: "tblReim1", base: "appBase123456" } } }),
+      ctx.env,
+      undefined,
+      "flows",
+    );
+    expect(res.status).toBe(200);
+    const cfg = JSON.parse(ctx.kv.get(KV_KEYS.flowsConfig)!);
+    expect(cfg.reimburse.tableId).toBe("tblReim1");
+    expect(cfg.reimburse.base).toBe("appBase123456");
+    expect(cfg.reimburse.approvers).toBeTruthy(); // 深合并保留了默认审批人配置
+    expect(cfg.hardware.tableId).toBeFalsy(); // 未触及的流程仍是默认空 tableId
+  });
+
+  it("tableId 不以 tbl 开头 → 400", async () => {
+    const ctx = makeCtx();
+    const req = seedAdmin(ctx);
+    const res = await handleAdminConfig(
+      req("/api/admin/config/flows", { method: "POST", body: { drawing: { tableId: "bad-id", base: "appBase123456" } } }),
+      ctx.env,
+      undefined,
+      "flows",
+    );
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toContain("tbl");
   });
 });

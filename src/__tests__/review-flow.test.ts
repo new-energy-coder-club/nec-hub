@@ -11,7 +11,6 @@ import {
   nextStatus as hardwareNextStatus,
 } from "../hardware-review/flow.service";
 import type { HardwareReview, ReviewStatus as HardwareReviewStatus } from "../hardware-review/types";
-import type { ReviewIssue } from "../shared/types";
 
 function expectTransitions<S extends string>(
   transitions: Record<S, Partial<Record<string, S>>>,
@@ -60,6 +59,7 @@ function makeHardwareReview(status: HardwareReviewStatus): HardwareReview {
 function makeAdapter<R extends { reviewId: string }>(review: R) {
   const stored = { ...review, recordId: `rec-${review.reviewId}` };
   return {
+    listReviews: vi.fn().mockResolvedValue([stored]),
     findReviewById: vi.fn().mockResolvedValue(stored),
     updateReview: vi.fn().mockImplementation(async (_recordId: string, patch: Partial<R>) => ({ ...stored, ...patch })),
     createRecord: vi.fn().mockResolvedValue({ record_id: "rec-event", fields: {} }),
@@ -74,12 +74,6 @@ function makeEnv(): Env {
       delete: vi.fn().mockResolvedValue(undefined),
     },
   } as unknown as Env;
-}
-
-function fieldsFor(adapter: ReturnType<typeof makeAdapter>, table: string): Record<string, unknown> {
-  const call = adapter.createRecord.mock.calls.find(([name]) => name === table);
-  expect(call).toBeDefined();
-  return call![1] as Record<string, unknown>;
 }
 
 describe("共享评审流程行为对比", () => {
@@ -131,94 +125,24 @@ describe("共享评审流程行为对比", () => {
     expect(machine.toTransitionMap()).toEqual({ a: { complete: "b" }, b: { complete: "c" }, c: {} });
   });
 
-  it("conclude 对同输入产生同构更新、整改项和事件字段", async () => {
-    const drawingAdapter = makeAdapter(makeDrawingReview("in_review"));
-    const hardwareAdapter = makeAdapter(makeHardwareReview("in_review"));
-    const drawing = new DrawingReviewFlowService(makeEnv(), drawingAdapter as any);
-    const hardware = new HardwareReviewFlowService(makeEnv(), hardwareAdapter as any);
-    const issue: ReviewIssue = {
-      issueId: "ISS-001",
-      description: "补充急停回路",
-      raisedBy: { open_id: "ou-raiser" },
-      owner: { open_id: "ou-owner" },
-      dueDate: "2026-11-01",
-      severity: "high",
-      status: "open",
-    };
-    const input = { conclusion: "conditional" as const, notes: "整改后通过", issues: [issue] };
-
-    const [drawingResult, hardwareResult] = await Promise.all([
-      drawing.conclude("DR-001", input, "ou-lead"),
-      hardware.conclude("HR-001", input, "ou-lead"),
-    ]);
-
-    expect(drawingResult.status).toBe("rectifying");
-    expect(hardwareResult.status).toBe("rectifying");
-    for (const [adapter, recordId] of [[drawingAdapter, "rec-DR-001"], [hardwareAdapter, "rec-HR-001"]] as const) {
-      expect(adapter.updateReview).toHaveBeenCalledWith(
-        recordId,
-        expect.objectContaining({ status: "rectifying", conclusion: "conditional", conclusionNotes: "整改后通过" }),
-      );
-    }
-
-    const commonRectification = {
-      问题描述: "补充急停回路",
-      提出人: "ou-raiser",
-      责任人: "ou-owner",
-      截止日期: "2026-11-01",
-      完成状态: "未完成",
-    };
-    expect(fieldsFor(drawingAdapter, "rectifications")).toEqual({ 关联评审单: "DR-001", ...commonRectification });
-    expect(fieldsFor(hardwareAdapter, "rectifications")).toEqual({ 关联评审单: "HR-001", ...commonRectification });
-
-    for (const [adapter, reviewId] of [[drawingAdapter, "DR-001"], [hardwareAdapter, "HR-001"]] as const) {
-      expect(fieldsFor(adapter, "events")).toEqual(
-        expect.objectContaining({
-          关联评审单: reviewId,
-          操作人: "ou-lead",
-          动作: "conclude",
-          原状态: "in_review",
-          新状态: "rectifying",
-          附加信息: JSON.stringify({ conclusion: "conditional" }),
-          操作时间: expect.any(String),
-        }),
-      );
-    }
-  });
-
-  it("completeRectification 保留各自目标状态与同构事件映射", async () => {
-    const drawingAdapter = makeAdapter(makeDrawingReview("rectifying"));
-    const hardwareAdapter = makeAdapter(makeHardwareReview("rectifying"));
+  it("历史版本全部非法时保留 drawing 的 V0.1 与 hardware 的 V1.0 回退差异", async () => {
+    const drawingAdapter = makeAdapter({ ...makeDrawingReview("archived"), drawingVersion: "invalid" });
+    const hardwareAdapter = makeAdapter({ ...makeHardwareReview("archived"), hardwareVersion: "invalid" });
     const drawing = new DrawingReviewFlowService(makeEnv(), drawingAdapter as any);
     const hardware = new HardwareReviewFlowService(makeEnv(), hardwareAdapter as any);
 
-    const [drawingResult, hardwareResult] = await Promise.all([
-      drawing.completeRectification("DR-001", "ou-lead"),
-      hardware.completeRectification("HR-001", "ou-lead"),
+    const [drawingDefaults, hardwareDefaults] = await Promise.all([
+      drawing.getDefaultSubmissionValues(
+        { projectId: "PRJ-001", machineName: "R1 底盘", drawingFiles: [] },
+        "ou-designer",
+      ),
+      hardware.getDefaultSubmissionValues(
+        { projectId: "PRJ-001", hardwareName: "主控板", hardwareFiles: [] },
+        "ou-designer",
+      ),
     ]);
 
-    expect(drawingResult.status).toBe("bom_generating");
-    expect(hardwareResult.status).toBe("report_generating");
-    for (const [adapter, reviewId, recordId, next] of [
-      [drawingAdapter, "DR-001", "rec-DR-001", "bom_generating"],
-      [hardwareAdapter, "HR-001", "rec-HR-001", "report_generating"],
-    ] as const) {
-      expect(adapter.updateReview).toHaveBeenCalledWith(
-        recordId,
-        expect.objectContaining({ status: next, updatedAt: expect.any(String) }),
-      );
-      expect(adapter.createRecord).toHaveBeenCalledTimes(1);
-      expect(fieldsFor(adapter, "events")).toEqual(
-        expect.objectContaining({
-          关联评审单: reviewId,
-          操作人: "ou-lead",
-          动作: "complete_rectification",
-          原状态: "rectifying",
-          新状态: next,
-          附加信息: "",
-          操作时间: expect.any(String),
-        }),
-      );
-    }
+    expect(drawingDefaults.drawingVersion).toBe("V0.1");
+    expect(hardwareDefaults.hardwareVersion).toBe("V1.0");
   });
 });

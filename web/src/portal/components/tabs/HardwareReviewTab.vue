@@ -11,7 +11,7 @@ const { authed } = useAuthGate('hardware-review')
   <section id="tab-hardware-review">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-bold">硬件评审</h2>
-      <a href="/apps/hardware-review/" target="_blank" class="text-xs hover:underline" style="color:var(--nec-cyan)">独立全屏版 /apps/hardware-review/ →</a>
+ <a href="/apps/hardware-review/" target="_blank" class="text-xs hover:underline text-nec-cyan">独立全屏版 /apps/hardware-review/ →</a>
     </div>
     <EmptyState v-if="!authed" text="登录后可使用硬件评审流程" />
     <div v-else class="rounded-xl border border-gray-200 overflow-hidden">

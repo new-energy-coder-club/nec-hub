@@ -67,7 +67,9 @@ export interface FlowWebhook {
   secret?: string;
 }
 
-/** 按流程解析 webhook：流程专属配置优先，其后依次回退 BOT 主群与旧版主群。 */
+/** 按流程解析 webhook：流程专属配置优先，其后依次回退 BOT 主群与旧版主群。
+ *  命名规则：FEISHU_BOT_WEBHOOK_<FLOW 大写>（drawing_review → FEISHU_BOT_WEBHOOK_DRAWING_REVIEW，
+ *  hardware_review → FEISHU_BOT_WEBHOOK_HARDWARE_REVIEW，contract → FEISHU_BOT_WEBHOOK_CONTRACT）。 */
 export function resolveFlowWebhook(env: Env, flow: string): FlowWebhook {
   const flowKey = flow.toUpperCase();
   const flowUrl = envSecret(env, `FEISHU_BOT_WEBHOOK_${flowKey}`);

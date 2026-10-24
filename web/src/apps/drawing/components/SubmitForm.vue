@@ -24,7 +24,7 @@ async function onSubmit() {
       <p class="mono text-xs text-nec-gray mb-4 tracking-wider">DRAWING APPROVAL SUBMISSION</p>
 
       <!-- 重提模式横幅 -->
-      <div v-if="store.resubmitFrom" id="resubmit-banner" class="rounded-lg p-3 mb-4 text-sm" style="background:#E8ECFB;border:1px solid var(--nec-royal)">
+      <div v-if="store.resubmitFrom" id="resubmit-banner" class="rounded-lg p-3 mb-4 text-sm bg-nec-royal-100 border border-nec-royal">
         <span class="font-medium text-nec-royal">驳回重提模式：</span>
         <span class="text-nec-navy">沿用图号 <span class="mono">{{ store.resubmitFrom.fields['图号'] || '' }}</span>，版本自动 +0.1。旧版本行保留只读，不会被覆盖。</span>
         <button type="button" class="link ml-2 text-xs hover:underline" @click="cancelResubmit">取消重提，改为新图</button>

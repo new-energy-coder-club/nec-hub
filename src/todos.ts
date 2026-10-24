@@ -5,15 +5,15 @@
  *   ① 任务表：负责人=当前用户 且 截止<今天 且 状态≠完成 的逾期任务（跳多维表格记录直链）；
  *   ② 财务报销表：状态为待确认/进行中的记录（队员只见自己，队长/财务见全部，复用看板角色判定）；
  *   ③ 飞书审批待办：尝试调飞书审批 API；权限不足/未开通时静默降级到 warnings，不报错；
- *   ④ 本地审批底表（G-04）：4 张流程底表中状态="审批中"的单——审批人见全部，队员只见自己
- *      提交的；compliance 流程带计划发布时间 deadline，距发布 ≤24h 标 urgent（门户 T-1 标红）。
+ *   ④ 本地审批底表（G-04）：各流程底表中状态属 pendingStates（缺省 ["审批中"]）的单——审批人见全部，
+ *      队员只见自己提交的；compliance 流程带计划发布时间 deadline，距发布 ≤24h 标 urgent（门户 T-1 标红）。
  *
  * 结果按用户缓存（KV todos:<open_id>，TTL 5 分钟），飞书免费版限流保护。
  */
 
 import { canSeeFinanceDetail, resolveUserRole } from "./auth/role";
 import { fetchFlowRecordsCached } from "./approvals/engine";
-import { APPROVAL_TYPES, getFlowsConfig, isApprover, type ApprovalType } from "./approvals/flows";
+import { APPROVAL_TYPES, getFlowsConfig, isApprover, pendingStatesOf, statusFieldOf, statusFieldPatterns, type ApprovalType } from "./approvals/flows";
 import { fetchTableCached, getDashboardConfig } from "./dashboard";
 import { fieldNum, fieldText, fieldTs, firstFieldText, getTenantAccessToken, type BitableRecord } from "./feishu/bitable";
 import { FEISHU_API } from "./feishu/client";
@@ -21,7 +21,6 @@ import { KV_KEYS } from "./shared/kv-keys";
 import {
   APPROVAL_APPLICANT_PATTERNS,
   APPROVAL_ID_PATTERNS,
-  APPROVAL_STATUS_PATTERNS,
   COMPLIANCE_PUBLISH_AT_PATTERNS,
   FINANCE_AMOUNT_PATTERNS,
   FINANCE_APPLICANT_PATTERNS,
@@ -70,11 +69,24 @@ export interface TodoApprovalLocalItem {
   title: string;
   url: string;
   type: ApprovalType;
+  /** 门户内可闭环处理的 Tab（drawing→drawing-review 等）；null=只能跳外部链接 */
+  internalTab: "reimburse" | "drawing-review" | "hardware-review" | null;
   /** 仅 compliance：计划发布时间（毫秒时间戳），其他流程为 null */
   deadline: number | null;
   /** compliance 且距计划发布 ≤24h（含已过点）且仍审批中 */
   urgent: boolean;
 }
+
+/** 本地审批流程 → 门户内处理 Tab（compliance/contract 无对应 Tab，保持外链） */
+const APPROVAL_INTERNAL_TAB: Record<ApprovalType, TodoApprovalLocalItem["internalTab"]> = {
+  reimburse: "reimburse",
+  drawing: "drawing-review",
+  hardware: "hardware-review",
+  compliance: null,
+  drawing_review: "drawing-review",
+  hardware_review: "hardware-review",
+  contract: null,
+};
 
 export interface TodosPayload {
   generatedAt: string;
@@ -92,7 +104,7 @@ export interface TodosPayload {
 const T1_URGENT_MS = 24 * 3600e3;
 
 /**
- * G-04 本地审批底表待办：状态="审批中"的单。
+ * G-04 本地审批底表待办：状态属 flow.pendingStates（缺省 ["审批中"]）的单。
  * 审批人（isApprover）见全部；普通队员只见自己提交的（申请人 open_id 匹配，兜底姓名匹配）。
  * 复用 aggregateTodos 的 todo:tbl:<type> 5 分钟缓存（fetchFlowRecordsCached）。
  */
@@ -108,15 +120,17 @@ async function buildLocalApprovalTodos(
     const res = await fetchFlowRecordsCached(env, type);
     if (!res) continue;
     const { records, base, tableId } = res;
-    const statusKey = findFieldKey(records, APPROVAL_STATUS_PATTERNS);
+    const flow = cfg[type];
+    const statusKey = findFieldKey(records, statusFieldPatterns(flow)) ?? statusFieldOf(flow);
     if (!statusKey) continue;
+    const pendings = pendingStatesOf(flow);
     const idKey = findFieldKey(records, APPROVAL_ID_PATTERNS);
     const openIdKey = findFieldKey(records, OPEN_ID_PATTERNS);
     const applicantKey = findFieldKey(records, APPROVAL_APPLICANT_PATTERNS);
     const deadlineKey = type === "compliance" ? findFieldKey(records, COMPLIANCE_PUBLISH_AT_PATTERNS) : null;
-    const seeAll = isApprover(role, cfg[type].approvers);
+    const seeAll = isApprover(role, flow.approvers);
     for (const r of records) {
-      if (fieldText(r.fields[statusKey]) !== "审批中") continue;
+      if (!pendings.includes(fieldText(r.fields[statusKey]))) continue;
       if (!seeAll) {
         const mine =
           (openIdKey && fieldText(r.fields[openIdKey]) === user.open_id) ||
@@ -130,6 +144,7 @@ async function buildLocalApprovalTodos(
         title: `${appId} ${firstFieldText(r)}`.trim(),
         url: buildRecordLink(base, tableId, r.record_id),
         type,
+        internalTab: APPROVAL_INTERNAL_TAB[type],
         deadline,
         urgent: type === "compliance" && deadline !== null && deadline - now <= T1_URGENT_MS,
       });
@@ -330,4 +345,12 @@ export async function handleTodos(request: Request, env: Env, ctx?: ExecutionCon
       warnings: [`待办聚合失败：${err instanceof Error ? err.message : String(err)}`],
     } satisfies TodosPayload);
   }
+}
+
+/** POST /api/todos/invalidate：清当前用户的待办缓存，门户内处理完待办后立即刷新（不再等 5 分钟 TTL） */
+export async function handleInvalidateTodos(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
+  const session = await resolveSession(env, request, ctx);
+  if (!session) return json({ error: "请先登录" }, 401);
+  await env.REGISTRY.delete(KV_KEYS.todos(session.user.open_id));
+  return json({ ok: true });
 }

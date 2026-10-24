@@ -10,7 +10,7 @@ defineProps<{ icon: string; title: string; description: string; prompt: string; 
     <p class="font-bold text-slate-800 mb-2">{{ icon }} {{ title }}</p>
     <p class="text-sm text-gray-500 mb-3">{{ description }}</p>
     <pre class="prompt text-xs bg-gray-900 text-green-300 rounded-lg p-4">{{ prompt }}</pre>
-    <button @click="copyText(prompt)" class="mt-3 text-xs text-white px-3 py-1.5 rounded" style="background:var(--nec-navy)">复制 Prompt</button>
+ <button @click="copyText(prompt)" class="mt-3 text-xs text-white px-3 py-1.5 rounded bg-nec-navy">复制 Prompt</button>
     <p class="text-xs text-gray-400 mt-3">{{ footnote }}</p>
   </div>
 </template>

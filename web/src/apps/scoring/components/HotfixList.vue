@@ -10,7 +10,7 @@ import { HOTFIXES } from '../data'
       <p class="mono text-xs text-nec-gray tracking-wider">HOTFIX PLAYBOOK · 每条必须含具体参数值</p>
     </div>
     <div class="space-y-4">
-      <div v-for="(h, i) in HOTFIXES" :key="h.title" class="rounded-lg p-4" style="border:1px solid var(--nec-line);background:var(--nec-fog)">
+ <div v-for="(h, i) in HOTFIXES" :key="h.title" class="rounded-lg p-4 border border-nec-line bg-nec-fog">
         <div class="flex items-center gap-2 mb-2">
           <span class="mono text-xs font-black text-nec-cyan">HOTFIX-{{ String(i + 1).padStart(2, '0') }}</span>
           <h3 class="text-sm font-bold text-nec-navy">{{ h.title }}</h3>

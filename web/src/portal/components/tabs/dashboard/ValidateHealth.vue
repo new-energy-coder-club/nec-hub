@@ -69,7 +69,7 @@ watch(() => auth.tick, loadValidateHealth)
         <h3 class="font-bold">数据健康</h3>
         <div class="flex gap-2">
           <button @click="runValidate('mine')" :disabled="!!running" id="vh-btn-mine" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 disabled:opacity-50">{{ running === 'mine' ? '校验中…' : '校验我的数据' }}</button>
-          <button v-if="isLeader()" @click="runValidate('all')" :disabled="!!running" id="vh-btn-all" class="text-xs px-3 py-1.5 rounded-lg text-white disabled:opacity-50" style="background:var(--nec-navy)">{{ running === 'all' ? '校验中…' : '全量校验' }}</button>
+ <button v-if="isLeader()" @click="runValidate('all')" :disabled="!!running" id="vh-btn-all" class="text-xs px-3 py-1.5 rounded-lg text-white disabled:opacity-50 bg-nec-navy">{{ running === 'all' ? '校验中…' : '全量校验' }}</button>
         </div>
       </div>
       <p v-if="!report" class="text-sm text-gray-400">暂无校验报告：点「校验我的数据」立即跑一次，或等每周一 08:00 自动巡检（摘要推送飞书群）。</p>
@@ -86,7 +86,7 @@ watch(() => auth.tick, loadValidateHealth)
               <div class="flex items-baseline gap-2 flex-wrap">
                 <span class="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{{ v.table }}</span>
                 <span class="text-gray-600">字段「{{ v.field }}」{{ v.value ? '=' + v.value : '为空' }}</span>
-                <a :href="v.link" target="_blank" class="text-xs hover:underline" style="color:var(--nec-cyan)">打开记录 →</a>
+ <a :href="v.link" target="_blank" class="text-xs hover:underline text-nec-cyan">打开记录 →</a>
               </div>
               <p class="text-xs text-gray-400 mt-0.5">建议：{{ v.suggestion }}</p>
             </li>

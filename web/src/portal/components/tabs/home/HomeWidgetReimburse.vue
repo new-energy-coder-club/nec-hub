@@ -24,7 +24,7 @@ onMounted(async () => {
   <p v-else-if="fin === undefined" class="text-sm text-gray-400">加载中…</p>
   <p v-else-if="!fin || fin.visibility === 'hidden'" class="text-sm text-gray-400">登录后可见报销汇总；明细仅队长/财务角色可见。</p>
   <template v-else>
-    <p class="text-sm text-gray-600">全队报销 {{ fin.records ?? 0 }} 笔 · 合计 <b style="color:var(--nec-navy)">¥{{ fin.totalAmount ?? '—' }}</b></p>
+    <p class="text-sm text-gray-600">全队报销 {{ fin.records ?? 0 }} 笔 · 合计 <b class="text-nec-navy">¥{{ fin.totalAmount ?? '—' }}</b></p>
     <ul v-if="fin.recent && mine.length" class="divide-y divide-gray-100 mt-2">
       <li v-for="(f, i) in mine" :key="i" class="py-1.5 flex items-baseline gap-2">
         <span class="text-xs text-gray-400 mono shrink-0">{{ fmtDashDate(f.date) }}</span>

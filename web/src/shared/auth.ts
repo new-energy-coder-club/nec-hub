@@ -166,8 +166,9 @@ export async function logoutAllDevices(): Promise<number> {
   return data.revoked ?? 0
 }
 
-/** 主动登出后的本地清理：本会话不再自动重登（避免"刚登出又被拉回登录"），清 me 并广播 tick */
-function clearLocalSession() {
+/** 主动登出后的本地清理：本会话不再自动重登（避免"刚登出又被拉回登录"），清 me 并广播 tick。
+ *  管理员「下线本人会话」等场景（服务端会话已删、本机 Cookie 未清）也需要同样的本地清理，故导出。 */
+export function clearLocalSession() {
   try { sessionStorage.setItem('nec_auto_login_off', '1') } catch { /* ignore */ }
   auth.me = { authenticated: false, user: null }
   auth.tick++

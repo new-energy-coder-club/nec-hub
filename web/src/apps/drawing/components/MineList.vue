@@ -18,7 +18,7 @@ import { store, statusStyle, fmtTime, loadMine, doAction, startResubmit } from '
         <p v-else-if="store.mineState === 'error'" class="text-sm" style="color:#C22E2E">加载失败：{{ store.mineError }}</p>
         <p v-else-if="!store.mineRecords.length" class="text-sm text-nec-gray">暂无申请记录，点右上角「提交图纸」发起第一张。</p>
         <template v-else>
-          <div v-for="rec in store.mineRecords" :key="rec.application_id" class="rounded-lg p-4" style="border:1px solid var(--nec-line);background:var(--nec-paper)">
+ <div v-for="rec in store.mineRecords" :key="rec.application_id" class="rounded-lg p-4 border border-nec-line bg-nec-paper">
             <div class="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <p class="font-bold text-nec-ink"><span class="mono text-nec-royal">{{ rec.application_id }}</span> · {{ rec.fields['图纸名称'] }}</p>

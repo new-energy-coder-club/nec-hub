@@ -76,7 +76,7 @@ function onAgain() {
       </label>
     </div>
 
-    <div class="mt-5 pt-4 flex flex-wrap items-center gap-3" style="border-top:1px solid var(--nec-line)">
+ <div class="mt-5 pt-4 flex flex-wrap items-center gap-3 border-t border-nec-line">
       <button id="submit-btn" class="btn-primary" :disabled="store.submitting || missingItems.length > 0" @click="onSubmit">{{ store.submitting ? '提交中…' : '提交合规申请' }}</button>
       <span id="submit-status" aria-live="polite" class="text-xs text-nec-gray">{{ submitStatus }}</span>
     </div>

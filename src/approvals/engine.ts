@@ -32,7 +32,11 @@ import {
   getFlowBase,
   getFlowsConfig,
   isApprover,
+  pendingStatesOf,
+  statusFieldOf,
+  statusFieldPatterns,
   type ApprovalType,
+  type FlowConfig,
 } from "./flows";
 import { consumeNextSerial } from "./core/serial";
 import { StateMachine, type GuardFn, type TransitionRule } from "./core/state-machine";
@@ -43,6 +47,9 @@ export const APPROVAL_LABELS: Record<ApprovalType, string> = {
   drawing: "图纸审批",
   hardware: "硬件申请",
   compliance: "合规申请",
+  drawing_review: "图纸评审",
+  hardware_review: "硬件评审",
+  contract: "合同审批",
 };
 
 /** 通知标题：📋 新报销申请 BX-2026-0001（张三 ¥120） */
@@ -80,7 +87,7 @@ export interface ApprovalSubmitInput {
   source: "portal" | "mcp";
 }
 
-/** 发起审批：校验 → 写底表（状态=审批中）→ 单号回填 → KV 映射 → 通知审批人群 */
+/** 发起审批：校验 → 写底表（状态=flow.machine?.initial ?? 审批中）→ 单号回填 → KV 映射 → 通知审批人群 */
 export async function submitApprovalCore(env: Env, input: ApprovalSubmitInput): Promise<{ application_id: string; status: string }> {
   const cfg = await getFlowsConfig(env);
   const flow = cfg[input.type];
@@ -102,7 +109,9 @@ export async function submitApprovalCore(env: Env, input: ApprovalSubmitInput): 
     throw new ApprovalError("流程未配置 base：先用 config_flows 配置 base（或 config_dashboard 配置看板 base）");
   }
   const token = await getTenantAccessToken(env);
-  const applicationId = await consumeNextSerial(env.REGISTRY, flow.prefix);
+  const applicationId = await consumeNextSerial(env.REGISTRY, flow.prefix, undefined, flow.serialDigits ?? 4);
+  const initialStatus = flow.machine?.initial ?? "审批中";
+  const statusField = statusFieldOf(flow);
   // "@appId" 占位符：写表前替换为本次分配的申请单号（如图纸流程的"图号"自动绑定 MECH 单号）
   const fields: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(input.fields)) {
@@ -113,7 +122,7 @@ export async function submitApprovalCore(env: Env, input: ApprovalSubmitInput): 
     申请人: applicant,
     "申请人 open_id": applicantOpenId,
     组别: input.role?.group ?? "",
-    状态: "审批中",
+    [statusField]: initialStatus,
     提交时间: Date.now(),
     申请单号: applicationId,
   };
@@ -139,7 +148,7 @@ export async function submitApprovalCore(env: Env, input: ApprovalSubmitInput): 
       link,
     );
   }
-  return { application_id: applicationId, status: "审批中" };
+  return { application_id: applicationId, status: initialStatus };
 }
 
 export const APPROVAL_ACTIONS = ["approve", "reject", "pay", "start", "archive", "arrive", "issue", "publish"] as const;
@@ -147,7 +156,9 @@ export type ApprovalAction = (typeof APPROVAL_ACTIONS)[number];
 
 /**
  * 引擎流转规则表（统一状态机核心）：动作 → 前置状态/目标状态 + 权限钩子名。
- * guard 实现见 runApprovalAction：approver=流程审批人、finance=财务/队长、owner=申请人本人。
+ * guard 实现见 runApprovalAction：approver=流程审批人、finance=财务/队长、owner=申请人本人、
+ * participant=申请人或会签名单成员、any=登录即可。
+ * flow.machine 流程不走本表（resolveFlowTransition 按其 transitions 精确匹配）。
  */
 const APPROVAL_TRANSITIONS: ReadonlyArray<TransitionRule<ApprovalAction>> = [
   { action: "approve", from: /^审批中$/, to: "已通过", guard: "approver" },
@@ -172,14 +183,83 @@ export const ACTION_TARGET: Record<ApprovalAction, { from: RegExp; to: string }>
 export interface ApprovalStatusChange {
   type: ApprovalType;
   appId: string;
-  action: ApprovalAction;
+  /** 动作名：全局状态机动作为 ApprovalAction；flow.machine 流程为各自机内动作名 */
+  action: string;
   status: string;
+}
+
+/** 会签审批人名单项（底表字段 JSON：[{approverId,name?,status,comment?,actedAt?}]） */
+export interface CountersignApprover {
+  approverId: string;
+  name?: string;
+  status: string;
+  comment?: string;
+  actedAt?: string;
+  level?: string;
+}
+
+/** 解析会签审批人名单字段（JSON 字符串或已解析数组）；非法/空返回 null */
+export function parseCountersignApprovers(raw: unknown): CountersignApprover[] | null {
+  let list: unknown = raw;
+  if (typeof raw === "string") {
+    const text = raw.trim();
+    if (!text) return null;
+    try {
+      list = JSON.parse(text);
+    } catch {
+      return null;
+    }
+  }
+  if (!Array.isArray(list) || !list.length) return null;
+  const out: CountersignApprover[] = [];
+  for (const item of list) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+    const o = item as Record<string, unknown>;
+    if (typeof o.approverId !== "string" || !o.approverId.trim()) return null;
+    out.push({
+      ...o,
+      approverId: o.approverId,
+      status: typeof o.status === "string" && o.status ? o.status : "pending",
+    } as CountersignApprover);
+  }
+  return out;
+}
+
+/** 流转裁决（runApprovalAction 用）：unknown = 该流程未定义此动作 */
+type FlowTransitionVerdict =
+  | { kind: "unknown" }
+  | { kind: "already"; to: string; guard?: string }
+  | { kind: "ok"; to: string; guard?: string }
+  | { kind: "invalid"; to: string; guard?: string };
+
+/**
+ * 按流程解析流转：flow.machine 存在时其 transitions 即状态机（from 精确状态字符串；
+ * 同一动作允许多条 from/to——共享 StateMachine 按 action 唯一建表，表达不了 complete 双分支），
+ * 否则用全局 APPROVAL_STATE_MACHINE（中文状态、正则前置）。幂等（already）优先于前置校验。
+ */
+function resolveFlowTransition(flow: FlowConfig, action: string, current: string): FlowTransitionVerdict {
+  if (flow.machine) {
+    const rules = flow.machine.transitions.filter((t) => t.action === action);
+    if (!rules.length) return { kind: "unknown" };
+    const already = rules.find((t) => t.to === current);
+    if (already) return { kind: "already", to: current, guard: already.guard };
+    const hit = rules.find((t) => t.from === current);
+    if (hit) return { kind: "ok", to: hit.to, guard: hit.guard };
+    return { kind: "invalid", to: rules[0].to, guard: rules[0].guard };
+  }
+  if (!APPROVAL_STATE_MACHINE.has(action)) return { kind: "unknown" };
+  const guard = APPROVAL_TRANSITIONS.find((r) => r.action === action)?.guard;
+  const v = APPROVAL_STATE_MACHINE.resolve(action as ApprovalAction, current)!;
+  if (v.kind === "already") return { kind: "already", to: v.to, guard };
+  if (v.kind === "ok") return { kind: "ok", to: v.to, guard };
+  return { kind: "invalid", to: v.to, guard };
 }
 
 export interface ApprovalActionInput {
   type: ApprovalType;
   appId: string;
-  action: ApprovalAction;
+  /** 动作名：flow.machine 流程用机内动作名（start_meeting/conclude_passed/…），其余用 APPROVAL_ACTIONS */
+  action: string;
   comment?: string;
   link?: string;
   /** G-02 驳回原因标准化：reject 时可带标准化原因（合规流程 5 个固定选项），写入底表「驳回原因」字段 */
@@ -199,8 +279,9 @@ export async function runApprovalAction(env: Env, input: ApprovalActionInput): P
   const base = await getFlowBase(env, flow);
   if (!base) throw new ApprovalError("流程未配置 base");
   const token = await getTenantAccessToken(env);
-  // filter 下推按「申请单号」精确查单条；字段名模糊匹配（findFieldKey）留在 match 里，
-  // search 失败（底表用别名等）时 queryBitableRecords 自动回退全表扫描，语义不变
+  // filter 下推按「申请单号」精确查单条；字段名模糊匹配（findFieldKey）留在 match 里。
+  // search 失败（底表用别名等）或查空时回退全表扫描：评审迁移的旧格式单号（DR-20261013-001）
+  // 只存在「评审单号/审批单号」字段，与「申请单号」并存时靠第二通道匹配命中，语义不变。
   const records = await queryBitableRecords(
     token,
     base,
@@ -208,38 +289,59 @@ export async function runApprovalAction(env: Env, input: ApprovalActionInput): P
     [{ field_name: "申请单号", operator: "is", value: [input.appId] }],
     (r, rs) => {
       const key = findFieldKey(rs, [/^申请单号$/, /申请单号/, /单号/]);
-      return key !== null && fieldText(r.fields[key]) === input.appId;
+      if (key !== null && fieldText(r.fields[key]) === input.appId) return true;
+      const legacyKey = findFieldKey(rs, [/^评审单号$/, /^审批单号$/]);
+      return legacyKey !== null && fieldText(r.fields[legacyKey]) === input.appId;
     },
+    { fallbackOnEmpty: true },
   );
   const record = records[0] ?? null;
   if (!record) throw new ApprovalError(`底表中未找到申请单号 ${input.appId}`, 404);
 
-  const statusKey = findFieldKey(records, [/^状态$/, /状态/, /进度/]) ?? "状态";
+  const statusKey = findFieldKey(records, statusFieldPatterns(flow)) ?? statusFieldOf(flow);
   const current = fieldText(record.fields[statusKey]);
-  const target = APPROVAL_STATE_MACHINE.targetOf(input.action)!;
 
-  // 角色前置校验（权限钩子名见 APPROVAL_TRANSITIONS.guard；拒绝原因即对外错误消息）
+  // 流转裁决：flow.machine 存在时按流程状态机（from 精确匹配，同动作允许多条 from/to，如 complete），
+  // 否则走全局 APPROVAL_STATE_MACHINE（中文状态、正则前置）
+  const verdict = resolveFlowTransition(flow, input.action, current);
+  if (verdict.kind === "unknown") {
+    throw new ApprovalError(`流程 ${input.type} 不支持动作 ${input.action}`, 400);
+  }
+  const target = verdict.kind === "already" ? current : verdict.to;
+
+  // 角色前置校验（权限钩子名见 APPROVAL_TRANSITIONS.guard / FlowMachineTransition.guard；拒绝原因即对外错误消息）
   const guardCtx = { records, record, input };
+  // owner 判定抽出复用：participant = 申请人本人 ∨ 会签名单成员
+  const isOwner = (rs: typeof records, r: BitableRecord, i: ApprovalActionInput): boolean => {
+    const applicantKey = findFieldKey(rs, [/^申请人$/, /申请人/, /报销人/, /^提交人$/]);
+    const openIdKey = findFieldKey(rs, [/open_?id|飞书/i]);
+    // 申请人字段通常存姓名；合同旧数据的「提交人」存 open_id，两种都比
+    const applicant = applicantKey !== null ? fieldText(r.fields[applicantKey]) : "";
+    return (
+      (openIdKey !== null && fieldText(r.fields[openIdKey]) === i.user.open_id) ||
+      (applicant !== "" && (applicant === i.user.name || applicant === i.user.open_id))
+    );
+  };
   const guards: Record<string, GuardFn<typeof guardCtx>> = {
     approver: ({ input: i }) =>
       isApprover(i.role, flow.approvers) || `当前角色（${i.role.role}）无权执行 ${i.action}`,
     finance: ({ input: i }) => ROLES.FINANCE_MANAGER.test(i.role.role) || "已打款仅财务/队长可标记",
-    owner: ({ records: rs, record: r, input: i }) => {
-      // start / archive / publish：仅申请人本人
-      const applicantKey = findFieldKey(rs, [/^申请人$/, /申请人/, /报销人/]);
-      const openIdKey = findFieldKey(rs, [/open_?id|飞书/i]);
-      return (
-        (openIdKey !== null && fieldText(r.fields[openIdKey]) === i.user.open_id) ||
-        (applicantKey !== null && fieldText(r.fields[applicantKey]) === i.user.name) ||
-        "仅申请人本人可执行该动作"
-      );
+    owner: ({ records: rs, record: r, input: i }) =>
+      isOwner(rs, r, i) || "仅申请人本人可执行该动作",
+    participant: ({ records: rs, record: r, input: i }) => {
+      if (isOwner(rs, r, i)) return true;
+      const field = flow.countersign?.approversField;
+      const list = field ? parseCountersignApprovers(r.fields[field]) : null;
+      if (list?.some((a) => a.approverId === i.user.open_id || (!!a.name && a.name === i.user.name))) return true;
+      return "仅该单参与人（提交人/会签审批人）可执行该动作";
     },
+    any: () => true,
   };
-  const denied = APPROVAL_STATE_MACHINE.checkGuard(input.action, guards, guardCtx);
+  const guardFn = verdict.guard ? guards[verdict.guard] : undefined;
+  const denied = guardFn ? guardFn(guardCtx) : true;
   if (denied !== true) throw new ApprovalError(denied, 403);
 
   // 幂等：目标状态=当前状态 → 直接返回当前状态
-  const verdict = APPROVAL_STATE_MACHINE.resolve(input.action, current)!;
   if (verdict.kind === "already") return { application_id: input.appId, status: current };
   if (verdict.kind === "invalid") {
     throw new ApprovalError(
@@ -256,7 +358,36 @@ export async function runApprovalAction(env: Env, input: ApprovalActionInput): P
   }
 
   const patch: Record<string, unknown> = { [statusKey]: target };
-  if (input.action === "approve" || input.action === "reject") {
+  // 会签（flow.countersign）：approve/reject 先把本人意见落审批人名单字段（JSON），
+  // approve 未全员通过时状态不变（只写名单字段、发进度通知），全员通过才按状态机流转
+  if (flow.countersign && (input.action === "approve" || input.action === "reject")) {
+    const field = flow.countersign.approversField;
+    const approvers = parseCountersignApprovers(record.fields[field]);
+    if (!approvers?.length) throw new ApprovalError(`会签审批人名单缺失或损坏（字段「${field}」）`, 409);
+    const me = approvers.find((a) => a.approverId === input.user.open_id || (!!a.name && a.name === input.user.name));
+    if (!me) throw new ApprovalError("你不是该单的会签审批人", 403);
+    if (me.status !== "pending") throw new ApprovalError("你已提交过审批意见", 409);
+    me.status = input.action === "approve" ? "approved" : "rejected";
+    const commentText = (input.comment ?? "").trim();
+    if (commentText) me.comment = commentText;
+    me.actedAt = new Date().toISOString();
+    patch[field] = JSON.stringify(approvers);
+    if (input.action === "approve" && approvers.some((a) => a.status === "pending")) {
+      const done = approvers.filter((a) => a.status !== "pending").length;
+      await updateBitableRecord(token, base, flow.tableId, record.record_id, { [field]: patch[field] });
+      const progressLink = buildRecordLink(base, flow.tableId, record.record_id);
+      await notifyFeishu(
+        env,
+        input.type,
+        `📝 会签进度 ${input.appId}（${done}/${approvers.length}）`,
+        `${input.user.name} 已通过${commentText ? `：${commentText}` : ""}，剩余 ${approvers.length - done} 人待审批`,
+        progressLink,
+      );
+      return { application_id: input.appId, status: current };
+    }
+  }
+  if ((input.action === "approve" || input.action === "reject") && !flow.countersign) {
+    // 会签流程的意见已落名单字段（approversField 常即「审批人」，不能用姓名覆盖）
     patch["审批人"] = input.user.name;
     patch["审批意见"] = input.comment ?? "";
     patch["审批完成时间"] = Date.now();
@@ -395,8 +526,8 @@ const TASK_DONE_RE = /完成|已完|完结|done|取消|cancel|关闭|close|drop/
 
 /**
  * 读单条流程底表（带 todo:tbl:<type> 5 分钟缓存）。aggregateTodos 与 G-04 门户待办条
- * （src/todos.ts approvals_local）共用：两个消费方都只取 状态="审批中" 的行，
- * 故缓存存 search 下推后的待审批子集（不带用户过滤，角色过滤仍在内存做）。
+ * （src/todos.ts approvals_local）共用：两个消费方都只取待审批状态（flow.pendingStates，缺省 ["审批中"]）
+ * 的行，故缓存存 search 下推后的待审批子集（不带用户过滤，角色过滤仍在内存做）。
  * search 失败（状态字段名不符等）时回退全表扫描，缓存全量，下游内存过滤语义不变。
  * 返回 null = 流程未配置 tableId / 无 base 可用。
  */
@@ -419,15 +550,17 @@ export async function fetchFlowRecordsCached(
   const token = await getTenantAccessToken(env).catch(() => "");
   if (token) {
     try {
-      // filter 下推：只拉 状态="审批中" 的行；失败回退全表扫描（下游 findFieldKey 模糊定位状态字段，语义不变）
+      const statusField = statusFieldOf(flow);
+      const pendings = pendingStatesOf(flow);
+      // filter 下推：只拉待审批状态（pendingStates）的行；失败回退全表扫描（下游 findFieldKey 模糊定位状态字段，语义不变）
       const records = await queryBitableRecords(
         token,
         base,
         flow.tableId,
-        [{ field_name: "状态", operator: "is", value: ["审批中"] }],
+        [{ field_name: statusField, operator: "is", value: pendings }],
         (r, rs) => {
-          const k = findFieldKey(rs, [/^状态$/, /状态/, /进度/]) ?? "状态";
-          return fieldText(r.fields[k]) === "审批中";
+          const k = findFieldKey(rs, statusFieldPatterns(flow)) ?? statusField;
+          return pendings.includes(fieldText(r.fields[k]));
         },
       );
       await env.REGISTRY.put(cacheKey, JSON.stringify({ data: records, cachedAt: Date.now() }), { expirationTtl: TODO_CACHE_TTL_SEC });
@@ -445,7 +578,7 @@ export async function fetchFlowRecordsCached(
 }
 
 /**
- * 待办聚合：4 张流程底表中 状态="审批中" 且当前角色可审的行（按 type 分组）+ 逾期任务前 8 条。
+ * 待办聚合：各流程底表中状态属 pendingStates（缺省 ["审批中"]）且当前角色可审的行（按 type 分组）+ 逾期任务前 8 条。
  * 缓存键 todo:tbl:<type> 存 search 下推后的待审批子集（不带用户过滤，角色过滤在内存做，保证各角色角标一致）。
  */
 export async function aggregateTodos(env: Env, role: UserRole): Promise<unknown> {
@@ -462,10 +595,11 @@ export async function aggregateTodos(env: Env, role: UserRole): Promise<unknown>
     const { records, base } = res;
     if (!cachedAt && res.cachedAt) cachedAt = res.cachedAt;
     if (!isApprover(role, flow.approvers)) continue;
-    const statusKey = findFieldKey(records, [/^状态$/, /状态/, /进度/]) ?? "状态";
+    const pendings = pendingStatesOf(flow);
+    const statusKey = findFieldKey(records, statusFieldPatterns(flow)) ?? statusFieldOf(flow);
     const idKey = findFieldKey(records, [/^申请单号$/, /申请单号/, /单号/]);
     const timeKey = findFieldKey(records, [/提交时间/, /创建时间/]);
-    const pending = records.filter((r) => fieldText(r.fields[statusKey]) === "审批中");
+    const pending = records.filter((r) => pendings.includes(fieldText(r.fields[statusKey])));
     if (!pending.length) continue;
     byType[type] = pending.map((r) => ({
       application_id: idKey ? fieldText(r.fields[idKey]) : r.record_id,

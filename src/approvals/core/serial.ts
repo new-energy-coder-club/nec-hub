@@ -15,9 +15,9 @@ export function serialKey(prefix: string, year: string | number): string {
   return KV_KEYS.serial(prefix, year);
 }
 
-/** 拼申请单号：<prefix>-<YYYY>-<4 位补零序号> */
-export function formatSerial(prefix: string, year: string | number, seq: number): string {
-  return `${prefix}-${year}-${String(seq).padStart(4, "0")}`;
+/** 拼申请单号：<prefix>-<YYYY>-<digits 位补零序号>（默认 4 位；合同 HT 用 3 位） */
+export function formatSerial(prefix: string, year: string | number, seq: number, digits = 4): string {
+  return `${prefix}-${year}-${String(seq).padStart(digits, "0")}`;
 }
 
 function parseCounterValue(raw: string | null): number {
@@ -25,14 +25,26 @@ function parseCounterValue(raw: string | null): number {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
+/** 预览下一个单号（只读，不占用计数；合同 next-number 路由用） */
+export async function peekNextSerial(
+  counter: SerialCounter,
+  prefix: string,
+  year: string | number = new Date().getFullYear(),
+  digits = 4,
+): Promise<string> {
+  const raw = await counter.get(serialKey(prefix, year));
+  return formatSerial(prefix, year, parseCounterValue(raw) + 1, digits);
+}
+
 /** 占用下一个单号（get → +1 → put，并发冲突接受 last-write，与合同编号一致） */
 export async function consumeNextSerial(
   counter: SerialCounter,
   prefix: string,
   year: string | number = new Date().getFullYear(),
+  digits = 4,
 ): Promise<string> {
   const key = serialKey(prefix, year);
   const seq = parseCounterValue(await counter.get(key)) + 1;
   await counter.put(key, String(seq));
-  return formatSerial(prefix, year, seq);
+  return formatSerial(prefix, year, seq, digits);
 }

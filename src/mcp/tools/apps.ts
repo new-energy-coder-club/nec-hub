@@ -3,7 +3,7 @@
  */
 
 import { domainZone } from "../../domains/service";
-import { readIndex, upsertIndex, type AppEntry } from "../../hosting";
+import { readBuiltinManifest, readIndex, upsertIndex, type AppEntry } from "../../hosting";
 import { KV_KEYS } from "../../shared/kv-keys";
 import { NAME_RE, type McpToolDef } from "./shared";
 
@@ -59,11 +59,16 @@ export async function toolDeployApp(args: Record<string, unknown>, env: Env, req
     description: args.description ? String(args.description) : undefined,
   };
   const list = await upsertIndex(env, KV_KEYS.appsIndex, entry);
+  // 同名内置应用检测：/apps/<name>/ 由平台资产层直接服务仓内版本，R2 版只在独立域名可达——双版本分叉需显式警告
+  const builtin = await readBuiltinManifest(env, origin);
+  const shadowWarn = builtin.some((b) => b.name === appName)
+    ? `\n⚠️ 警告：仓内存在同名内置应用「${appName}」，将形成双版本分叉——/apps/${appName}/ 始终展示仓内版本（平台资产层优先，R2 不生效），本 R2 版本仅在独立域名 https://${appName}.${domainZone(env)}/ 可达。若非有意为之，请换一个应用名。`
+    : "";
   return {
     content: [
       {
         type: "text",
-        text: `✅ 应用已上架：${entry.title}\n访问链接：${entry.url}\n独立域名：https://${appName}.${domainZone(env)}/（泛解析直达，无需申请）\n共上传 ${files.length} 个文件，应用广场现有 ${list.length} 个应用。`,
+        text: `✅ 应用已上架：${entry.title}\n访问链接：${entry.url}\n独立域名：https://${appName}.${domainZone(env)}/（泛解析直达，无需申请）\n共上传 ${files.length} 个文件，应用广场现有 ${list.length} 个应用。${shadowWarn}`,
       },
     ],
   };

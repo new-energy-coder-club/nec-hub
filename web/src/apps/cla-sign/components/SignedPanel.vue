@@ -78,16 +78,16 @@ async function onExportPdf() {
     <div id="cert" aria-hidden="true">
       <div style="display:flex; justify-content:space-between; align-items:flex-end;">
         <img src="/brand/nec-lockup-h.svg" alt="NEC 常州工学院 NEC 战队" style="height:56px; width:auto;" />
-        <p class="mono" style="font-size:11px; color:var(--nec-gray); text-align:right;">hub.newenergycoder.club<br/>BUILT TO DAWN · 为黎明而造</p>
+        <p class="mono text-nec-gray" style="font-size:11px; text-align:right;">hub.newenergycoder.club<br/>BUILT TO DAWN · 为黎明而造</p>
       </div>
       <div class="cert-horizon" style="margin:18px 0 28px;"></div>
 
-      <h1 style="font-size:26px; color:var(--nec-ink);">贡献者许可协议（CLA）签署证明</h1>
-      <p class="mono" style="font-size:12px; color:var(--nec-gray); margin-top:6px;">
+      <h1 class="text-nec-ink" style="font-size:26px;">贡献者许可协议（CLA）签署证明</h1>
+      <p class="mono text-nec-gray" style="font-size:12px; margin-top:6px;">
         Contributor License Agreement Certificate · 协议版本 v{{ cert.version }} · {{ cert.updatedAt }} 生效
       </p>
 
-      <div class="cert-box" style="margin-top:24px; border:1px solid var(--nec-line); border-radius:10px; padding:18px 20px; background:var(--nec-fog);">
+      <div class="cert-box border border-nec-line bg-nec-fog" style="margin-top:24px; border-radius:10px; padding:18px 20px;">
         <dl style="display:grid; grid-template-columns:1fr 1fr; row-gap:10px;">
           <div class="cert-kv"><dt>签署人</dt><dd>{{ cert.name }}</dd></div>
           <div class="cert-kv"><dt>GitHub</dt><dd class="mono">{{ cert.github }}</dd></div>
@@ -97,11 +97,11 @@ async function onExportPdf() {
         </dl>
       </div>
 
-      <p style="font-size:13px; margin-top:20px; font-weight:700; color:var(--nec-navy);">附：协议全文</p>
+      <p class="text-nec-navy" style="font-size:13px; margin-top:20px; font-weight:700;">附：协议全文</p>
       <pre class="cert-body mono" style="margin-top:10px;">{{ cert.agreement }}</pre>
 
       <div class="cert-horizon" style="margin-top:28px;"></div>
-      <p style="font-size:11px; color:var(--nec-gray); margin-top:12px;">
+      <p class="text-nec-gray" style="font-size:11px; margin-top:12px;">
         本证明由 NEC 团队 AI 中台自动生成，记录签署人对上述版本协议的同意。存证编号可由签署信息与协议版本重新计算校验。
       </p>
     </div>

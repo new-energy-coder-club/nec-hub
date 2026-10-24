@@ -32,12 +32,12 @@ const catBtns = [
   <section id="tab-docs">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-bold">资料页</h2>
-      <button @click="showPrompt = !showPrompt" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--nec-cyan)">＋ 发布/更新资料</button>
+ <button @click="showPrompt = !showPrompt" class="text-sm text-white px-4 py-2 rounded-lg bg-nec-cyan">＋ 发布/更新资料</button>
     </div>
     <div v-if="showPrompt" id="doc-publish-box" class="mb-6 bg-white rounded-xl shadow p-5">
       <h3 class="font-bold mb-2">资料页更新 Prompt（复制后发给你的 Agent）</h3>
       <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="doc-publish-prompt">{{ DOC_PUBLISH_PROMPT }}</pre>
-      <button @click="copyText(DOC_PUBLISH_PROMPT)" class="mt-3 text-sm text-white px-3 py-1.5 rounded" style="background:var(--nec-navy)">复制</button>
+ <button @click="copyText(DOC_PUBLISH_PROMPT)" class="mt-3 text-sm text-white px-3 py-1.5 rounded bg-nec-navy">复制</button>
     </div>
 
     <div class="flex items-center gap-2 mb-4 text-xs flex-wrap">

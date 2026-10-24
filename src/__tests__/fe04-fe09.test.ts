@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
 import { buildDashboard } from "../dashboard";
 import { toolUpdateProgress } from "../mcp/tools/bitable-progress";
-import { handleTodos } from "../todos";
+import { handleInvalidateTodos, handleTodos } from "../todos";
 import { handleValidateQuery, toolValidateBitable } from "../validation/handlers";
 import { KV_KEYS } from "../shared/kv-keys";
 import { mockGetRecordResponse, mockSearchResponse } from "./bitable-search-mock";
@@ -377,5 +377,32 @@ describe("GET /api/todos（FE-09）", () => {
     const bitableReads = ctx.fetchMock.mock.calls.slice(calls).filter((c: any[]) =>
       String(c[0]?.url ?? c[0]).includes(`/tables/${TBL_CP}/records`) || String(c[0]?.url ?? c[0]).includes(`/tables/${TBL_DR}/records`));
     expect(bitableReads.length).toBe(0);
+  });
+
+  it("G-04 internalTab：drawing→drawing-review 门户闭环，compliance 无 Tab 保持外链", async () => {
+    const ctx = createCtx();
+    seedLocalApprovals(ctx);
+    const res = await handleTodos(new Request("http://x/api/todos", { headers: { cookie: "nec_session=sid-member" } }), ctx.env);
+    const d = (await res.json()) as Record<string, any>;
+    const dr = d.approvals_local.items.find((x: any) => x.application_id === "MECH-2026-0001");
+    const cp = d.approvals_local.items.find((x: any) => x.application_id === "CP-2026-0002");
+    expect(dr.internalTab).toBe("drawing-review");
+    expect(cp.internalTab).toBeNull();
+  });
+
+  it("POST /api/todos/invalidate：清当前用户待办缓存，下次聚合重拉；未登录 401", async () => {
+    const ctx = createCtx();
+    seedTodos(ctx);
+    const req = () => new Request("http://x/api/todos", { headers: { cookie: "nec_session=sid-member" } });
+    await handleTodos(req(), ctx.env);
+    expect(ctx.kv.get(KV_KEYS.todos("ou-member"))).toBeTruthy();
+    const inv = await handleInvalidateTodos(new Request("http://x/api/todos/invalidate", { method: "POST", headers: { cookie: "nec_session=sid-member" } }), ctx.env);
+    expect(inv.status).toBe(200);
+    expect(ctx.kv.get(KV_KEYS.todos("ou-member"))).toBeUndefined();
+    const res = await handleTodos(req(), ctx.env);
+    const d = (await res.json()) as Record<string, any>;
+    expect(d.cached).toBe(false); // 缓存已清，重新聚合
+    const unauth = await handleInvalidateTodos(new Request("http://x/api/todos/invalidate", { method: "POST" }), ctx.env);
+    expect(unauth.status).toBe(401);
   });
 });

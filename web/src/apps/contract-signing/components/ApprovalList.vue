@@ -183,7 +183,7 @@ watch(() => store.view, v => { if (v === 'list') loadApprovals() })
       <p v-if="loading" class="text-sm text-nec-gray py-4">加载中…</p>
       <template v-else>
         <p v-if="store.authFailed" class="text-sm text-nec-gray py-4">请先登录后查看审批单。</p>
-        <div v-else-if="store.notConfigured" class="rounded-lg p-6 text-center" style="background:var(--nec-fog);border:1px dashed var(--nec-line)">
+ <div v-else-if="store.notConfigured" class="rounded-lg p-6 text-center bg-nec-fog border border-dashed border-nec-line">
           <p class="mono text-xs tracking-widest text-nec-cyan mb-2">WAITING FOR CONFIG</p>
           <p class="text-sm text-nec-gray">完成飞书 Base 配置后，合同审批单将在这里展示。</p>
         </div>

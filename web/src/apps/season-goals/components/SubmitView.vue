@@ -36,7 +36,7 @@ import { store, submit, submitGoal } from '../store'
           <input v-model="submit.note" type="text" name="note" class="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm" />
         </div>
         <div class="flex justify-end">
-          <button type="submit" class="text-white text-sm font-medium px-5 py-2 rounded-lg" style="background:var(--nec-royal)">提交收集单</button>
+ <button type="submit" class="text-white text-sm font-medium px-5 py-2 rounded-lg bg-nec-royal">提交收集单</button>
         </div>
       </form>
       <p v-if="submit.result" id="submit-result" class="mt-3 text-sm" :class="submit.resultOk ? 'text-green-600' : 'text-red-600'">{{ submit.result }}</p>

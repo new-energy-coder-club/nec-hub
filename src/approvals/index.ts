@@ -4,13 +4,14 @@
  * /api/approvals 前缀的三类端点分发到 ./handlers；引擎核心在 ./engine，流程配置在 ./flows。
  */
 
-import { handleApprovalAction, handleApprovalMine, handleApprovalPending, handleApprovalSubmit, handleApprovalUpload } from "./handlers";
+import { handleApprovalAction, handleApprovalMine, handleApprovalPending, handleApprovalSubmit, handleApprovalUpload, type ApprovalStatusHook } from "./handlers";
 
 export async function handleApprovals(
   request: Request,
   env: Env,
   pathname: string,
   ctx?: ExecutionContext,
+  hooks: { onStatusChange?: ApprovalStatusHook } = {},
 ): Promise<Response | null> {
   if (pathname === "/api/approvals" && request.method === "POST") {
     return await handleApprovalSubmit(request, env, ctx);
@@ -24,9 +25,10 @@ export async function handleApprovals(
   if (pathname === "/api/approvals/upload" && request.method === "POST") {
     return await handleApprovalUpload(request, env, ctx);
   }
-  const actionMatch = pathname.match(/^\/api\/approvals\/([a-z]+)\/([^/]+)\/(approve|reject|pay|start|archive|arrive|issue|publish)$/);
+  // 动作名白名单在 handleApprovalAction 内按流程校验（全局机动作 ∪ flow.machine 动作），路由层放行所有合法标识符
+  const actionMatch = pathname.match(/^\/api\/approvals\/([a-z_]+)\/([^/]+)\/([a-z][a-z0-9_]*)$/);
   if (actionMatch && request.method === "POST") {
-    return await handleApprovalAction(request, env, actionMatch[1], actionMatch[2], actionMatch[3], ctx);
+    return await handleApprovalAction(request, env, actionMatch[1], actionMatch[2], actionMatch[3], ctx, hooks.onStatusChange);
   }
   return null;
 }

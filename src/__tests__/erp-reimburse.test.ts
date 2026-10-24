@@ -500,14 +500,14 @@ describe("审批状态回写 D1（onStatusChange → syncReimburseDocStatus）",
 
     const approve = await handleApprovalAction(
       req(`/api/approvals/reimburse/${appId}/approve`, "sid-captain", "POST", { comment: "同意" }),
-      ctx.env, "reimburse", appId, "approve",
+      ctx.env, "reimburse", appId, "approve", undefined, syncReimburseDocStatus,
     );
     expect(approve.status).toBe(200);
     expect(ctx.d1.docs.get(appId)!.status).toBe("已通过");
 
     const pay = await handleApprovalAction(
       req(`/api/approvals/reimburse/${appId}/pay`, "sid-captain", "POST", {}),
-      ctx.env, "reimburse", appId, "pay",
+      ctx.env, "reimburse", appId, "pay", undefined, syncReimburseDocStatus,
     );
     expect(pay.status).toBe(200);
     expect(ctx.d1.docs.get(appId)!.status).toBe("已打款");
@@ -518,7 +518,7 @@ describe("审批状态回写 D1（onStatusChange → syncReimburseDocStatus）",
     const appId = await submitOne(ctx);
     const res = await handleApprovalAction(
       req(`/api/approvals/reimburse/${appId}/reject`, "sid-captain", "POST", { comment: "票据不全" }),
-      ctx.env, "reimburse", appId, "reject",
+      ctx.env, "reimburse", appId, "reject", undefined, syncReimburseDocStatus,
     );
     expect(res.status).toBe(200);
     expect(ctx.d1.docs.get(appId)!.status).toBe("已驳回");
@@ -527,7 +527,7 @@ describe("审批状态回写 D1（onStatusChange → syncReimburseDocStatus）",
     ctx.tables[TBL_REIMBURSE].push({ record_id: "rec-manual", fields: { 申请单号: "BX-2026-0099", 状态: "审批中", 申请人: "王五" } });
     const manual = await handleApprovalAction(
       req("/api/approvals/reimburse/BX-2026-0099/approve", "sid-captain", "POST", {}),
-      ctx.env, "reimburse", "BX-2026-0099", "approve",
+      ctx.env, "reimburse", "BX-2026-0099", "approve", undefined, syncReimburseDocStatus,
     );
     expect(manual.status).toBe(200);
     expect(ctx.d1.docs.has("BX-2026-0099")).toBe(false);
@@ -549,7 +549,7 @@ describe("审批状态回写 D1（onStatusChange → syncReimburseDocStatus）",
 
     const res = await handleApprovalAction(
       req(`/api/approvals/reimburse/${appId}/approve`, "sid-captain", "POST", {}),
-      ctx.env, "reimburse", appId, "approve",
+      ctx.env, "reimburse", appId, "approve", undefined, syncReimburseDocStatus,
     );
     expect(res.status).toBe(200);
     expect(((await res.json()) as { status: string }).status).toBe("已通过");

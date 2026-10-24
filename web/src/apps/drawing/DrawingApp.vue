@@ -56,10 +56,10 @@ watch(authed, now => { if (now) onAuthed() })
           <h1 class="hero-title text-3xl sm:text-5xl">机械图纸<span class="accent">审批</span></h1>
           <p class="mono mt-3 text-xs text-nec-gray tracking-widest">图纸不过审不进加工 · 驳回重提版本留痕 · 加工费 ≥500 自动提醒队长会签</p>
           <div class="mt-5 flex flex-wrap gap-2 text-sm">
-            <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">01</i>提交</span>
-            <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">02</i>组长审批</span>
-            <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">03</i>加工</span>
-            <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">04</i>归档</span>
+ <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy border-[1.5px] border-nec-navy"><i class="not-italic mr-1 text-nec-cyan">01</i>提交</span>
+ <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy border-[1.5px] border-nec-navy"><i class="not-italic mr-1 text-nec-cyan">02</i>组长审批</span>
+ <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy border-[1.5px] border-nec-navy"><i class="not-italic mr-1 text-nec-cyan">03</i>加工</span>
+ <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy border-[1.5px] border-nec-navy"><i class="not-italic mr-1 text-nec-cyan">04</i>归档</span>
           </div>
         </div>
 

@@ -9,11 +9,11 @@ import type { McpToolDef } from "./shared";
 export const submitApprovalTool: McpToolDef = {
   name: "submit_approval",
   description:
-    "代发起审批申请（Agent 帮队员代提交，需管理端 MCP_TOKEN）。type 限 4 枚举；fields 按 flows:config 的声明式规则校验；applicant_open_id 可指定申请人（缺省 mcp-admin）。",
+    "代发起审批申请（Agent 帮队员代提交，需管理端 MCP_TOKEN）。type 限 7 枚举（reimburse/drawing/hardware/compliance 四条存量流程 + drawing_review/hardware_review/contract 三条评审迁移流程）；fields 按 flows:config 的声明式规则校验；applicant_open_id 可指定申请人（缺省 mcp-admin）。",
   inputSchema: {
     type: "object",
     properties: {
-      type: { type: "string", description: "reimburse | drawing | hardware | compliance" },
+      type: { type: "string", description: "reimburse | drawing | hardware | compliance | drawing_review | hardware_review | contract" },
       fields: { type: "object", description: "业务字段（与底表字段名一致），如 {\"事项\":\"打样\",\"报销金额\":120}" },
       applicant_name: { type: "string", description: "可选：申请人姓名（缺省取 fields.applicant_open_id 或 mcp-admin）" },
     },
@@ -44,7 +44,7 @@ export const sendNoticeTool: McpToolDef = {
   inputSchema: {
     type: "object",
     properties: {
-      flow: { type: "string", description: "reimburse | drawing | hardware | compliance（bot 通道决定用哪个群 webhook，未配置 fallback 主群）" },
+      flow: { type: "string", description: "reimburse | drawing | hardware | compliance | drawing_review | hardware_review | contract（bot 通道决定用哪个群 webhook，未配置 fallback 主群）" },
       title: { type: "string", description: "标题" },
       content: { type: "string", description: "正文" },
       link: { type: "string", description: "可选：去处理链接" },
@@ -59,7 +59,7 @@ export const sendNoticeTool: McpToolDef = {
 export const configFlowsTool: McpToolDef = {
   name: "config_flows",
   description:
-    "查看/修改审批流程配置 flows:config（底表 tableId/base、单号前缀、审批角色、必填与条件必填校验规则、金额会签阈值）。action=set 深合并写入；tableId 须 tbl 开头或留空。仅管理端（MCP_TOKEN）。",
+    "查看/修改审批流程配置 flows:config（底表 tableId/base、单号前缀、审批角色、必填与条件必填校验规则、金额会签阈值、流程级状态机 machine、状态字段 statusField、待审批状态集 pendingStates、会签 countersign、单号位数 serialDigits）。action=set 深合并写入；tableId 须 tbl 开头或留空。仅管理端（MCP_TOKEN）。",
   inputSchema: {
     type: "object",
     properties: {

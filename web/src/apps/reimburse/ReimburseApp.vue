@@ -96,7 +96,7 @@ watch(authed, now => {
       <!-- 登录态确认中（启动 / OAuth 回跳兑换）：占位防门禁闪现 -->
       <section v-if="!authed && auth.phase !== 'ready'" class="erp-section">
         <div class="body flex items-center gap-3 text-sm text-nec-gray">
-          <span class="inline-block w-4 h-4 border-2 border-gray-200 rounded-full animate-spin" style="border-top-color:var(--nec-cyan)"></span>
+          <span class="inline-block w-4 h-4 border-2 border-gray-200 border-t-nec-cyan rounded-full animate-spin"></span>
           {{ auth.phase === 'exchanging' ? '飞书登录中…' : '正在确认登录态…' }}
         </div>
       </section>

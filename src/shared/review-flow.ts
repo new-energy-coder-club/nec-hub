@@ -64,7 +64,6 @@ export type StoredReview<R> = R & { recordId: string };
 
 export interface ReviewFlowAdapter<R, T extends string> {
   listReviews(): Promise<Array<StoredReview<R>>>;
-  createReview(review: R): Promise<StoredReview<R>>;
   findReviewById(reviewId: string): Promise<StoredReview<R> | null>;
   updateReview(recordId: string, patch: Partial<R>): Promise<StoredReview<R>>;
   createMinutes(minutes: ReviewMinutes): Promise<ReviewMinutes & { recordId: string }>;
@@ -80,9 +79,6 @@ export interface ReviewFlowConfig<
   P extends object,
   T extends string,
 > {
-  stateMachine: ReviewStateMachine<S>;
-  idPrefix: string;
-  initialStatus: S;
   preferences: {
     module: string;
     legacyFallback?: boolean;
@@ -100,14 +96,9 @@ export interface ReviewFlowConfig<
   versionSeed?: string;
   requiredError: string;
   tables: {
-    rectifications: T;
     events: T;
   };
   eventReviewField: string;
-  rectificationReviewField: string;
-  notify(env: Env, text: string): Promise<void>;
-  submitTitle: string;
-  transitionTitle: string;
   logTag: string;
   logMessages: {
     latestVersion: string;
@@ -118,7 +109,8 @@ export interface ReviewFlowConfig<
 }
 
 const VERSION_RE = /^V(\d+)\.(\d+)$/;
-const CONCLUSION_EVENTS: Record<ReviewConclusion, string> = {
+/** 评审结论 → 引擎动作名（薄壳 conclude 路由用） */
+export const CONCLUSION_EVENTS: Record<ReviewConclusion, string> = {
   passed: "conclude_passed",
   conditional: "conclude_conditional",
   rejected: "conclude_rejected",
@@ -134,13 +126,6 @@ function readString(value: object, key: string): string | undefined {
 
 function writeField(target: object, key: string, value: unknown): void {
   (target as Record<string, unknown>)[key] = value;
-}
-
-export function generateReviewId(prefix: string): string {
-  const now = new Date();
-  const date = now.toISOString().slice(0, 10).replace(/-/g, "");
-  const rand = Math.floor(100 + Math.random() * 900);
-  return `${prefix}-${date}-${rand}`;
 }
 
 function incrementLatestVersion<R>(reviews: R[], readVersion: (review: R) => string | undefined, seed?: string): string | undefined {
@@ -170,6 +155,14 @@ function incrementLatestVersion<R>(reviews: R[], readVersion: (review: R) => str
   const match = latest?.match(VERSION_RE);
   return match ? `V${Number(match[1])}.${Number(match[2]) + 1}` : undefined;
 }
+
+/**
+ * 评审流程共享服务（drawing-review / hardware-review 通用底座）。
+ *
+ * 迁移说明（审批引擎 Phase 1）：评审单本体/状态机/通知已迁入 src/approvals 引擎
+ * （submitApprovalCore / runApprovalAction），本类只保留提交前处理与富业务读写：
+ * 提交默认值（版本自增/用户偏好）、提交校验与偏好回写、会议纪要、评审单查询、事件日志。
+ */
 
 export class ReviewFlowService<
   S extends string,
@@ -224,6 +217,29 @@ export class ReviewFlowService<
     return defaults;
   }
 
+  /** 提交前校验（沿用旧 submit 口径）：项目编号 / 名称 / 附件必填，缺失抛 requiredError */
+  assertSubmitReady(input: I, defaults: Partial<I>): void {
+    const files = readField(input, this.config.fields.files) as { length: number } | undefined;
+    if (!defaults.projectId || !readString(defaults, this.config.fields.name) || !files || files.length === 0) {
+      throw new Error(this.config.requiredError);
+    }
+  }
+
+  /** 提交成功后的用户偏好回写（旧 submit 尾段；失败只记日志，不影响提交结果） */
+  async saveSubmissionPreferences(input: I, actorId: string): Promise<void> {
+    const prefs = await this.getUserPreferences(actorId);
+    try {
+      if (input.projectId) writeField(prefs, "defaultProjectId", input.projectId);
+      const inputName = readString(input, this.config.fields.name);
+      if (inputName) writeField(prefs, this.config.preferences.defaultNameKey, inputName);
+      const inputVersion = readString(input, this.config.fields.version);
+      if (inputVersion) writeField(prefs, "lastUsedVersion", inputVersion);
+      await this.saveUserPreferences(actorId, prefs);
+    } catch (err) {
+      console.warn(`[${this.config.logTag}] ${this.config.logMessages.afterSubmitPreferences}`, err);
+    }
+  }
+
   private async getUserPreferences(actorId: string): Promise<P> {
     try {
       const prefs = await this.env.REGISTRY.get(KV_KEYS.userPrefs(this.config.preferences.module, actorId));
@@ -246,58 +262,6 @@ export class ReviewFlowService<
     }
   }
 
-  async submit(input: I, actorId: string): Promise<StoredReview<R>> {
-    const prefs = await this.getUserPreferences(actorId);
-    const defaults = await this.getDefaultSubmissionValues(input, actorId, prefs);
-    const review = {
-      ...defaults,
-      reviewId: generateReviewId(this.config.idPrefix),
-      projectId: defaults.projectId || "",
-      designerId: defaults.designerId || actorId,
-      designNotes: defaults.designNotes || "",
-      status: this.config.initialStatus,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      [this.config.fields.name]: readString(defaults, this.config.fields.name) || "",
-      [this.config.fields.version]: readString(defaults, this.config.fields.version) || "V1.0",
-      [this.config.fields.files]: readField(input, this.config.fields.files),
-    } as unknown as R;
-
-    const files = readField(review, this.config.fields.files) as { length: number } | undefined;
-    if (!review.projectId || !readString(review, this.config.fields.name) || !files || files.length === 0) {
-      throw new Error(this.config.requiredError);
-    }
-
-    const saved = await this.adapter.createReview(review);
-    await this.logEvent(saved.reviewId, actorId, "submit", "draft" as S, this.config.initialStatus, { recordId: saved.recordId });
-    await this.config.notify(
-      this.env,
-      `${this.config.submitTitle}\n评审单 ${saved.reviewId}（${readString(saved, this.config.fields.name)}，${readString(saved, this.config.fields.version)}）\n设计负责人：${saved.designerId}\n请及时安排评审会议`,
-    );
-
-    try {
-      if (input.projectId) writeField(prefs, "defaultProjectId", input.projectId);
-      const inputName = readString(input, this.config.fields.name);
-      if (inputName) writeField(prefs, this.config.preferences.defaultNameKey, inputName);
-      const inputVersion = readString(input, this.config.fields.version);
-      if (inputVersion) writeField(prefs, "lastUsedVersion", inputVersion);
-      await this.saveUserPreferences(actorId, prefs);
-    } catch (err) {
-      console.warn(`[${this.config.logTag}] ${this.config.logMessages.afterSubmitPreferences}`, err);
-    }
-
-    return saved;
-  }
-
-  async startMeeting(reviewId: string, actorId: string, payload?: Record<string, unknown>): Promise<StoredReview<R>> {
-    const review = await this.requireReview(reviewId);
-    const next = this.config.stateMachine.next(review.status, "start_meeting");
-    if (!next) throw new Error(`当前状态 ${review.status} 不允许开始会议`);
-    const updated = await this.adapter.updateReview(review.recordId, { status: next, updatedAt: new Date().toISOString() } as Partial<R>);
-    await this.logEvent(reviewId, actorId, "start_meeting", review.status, next, payload);
-    return updated;
-  }
-
   async saveMinutes(
     reviewId: string,
     minutes: Omit<ReviewMinutes, "minutesId" | "reviewId">,
@@ -317,60 +281,6 @@ export class ReviewFlowService<
     return saved;
   }
 
-  async conclude(reviewId: string, input: ConclusionInput, actorId: string): Promise<StoredReview<R>> {
-    const review = await this.requireReview(reviewId);
-    if (review.status !== "in_review") throw new Error("只能在评审中状态下提交评审结论");
-    const next = this.config.stateMachine.next(review.status, CONCLUSION_EVENTS[input.conclusion]);
-    if (!next) throw new Error(`结论 ${input.conclusion} 无法驱动状态流转`);
-
-    const updated = await this.adapter.updateReview(review.recordId, {
-      status: next,
-      conclusion: input.conclusion,
-      conclusionNotes: input.notes,
-      updatedAt: new Date().toISOString(),
-    } as Partial<R>);
-    await this.logEvent(reviewId, actorId, "conclude", review.status, next, { conclusion: input.conclusion });
-
-    if (input.conclusion === "conditional" && input.issues && input.issues.length > 0) {
-      await Promise.all(
-        input.issues.map((issue) =>
-          this.adapter.createRecord(this.config.tables.rectifications, {
-            [this.config.rectificationReviewField]: reviewId,
-            问题描述: issue.description,
-            提出人: issue.raisedBy.open_id,
-            责任人: issue.owner?.open_id,
-            截止日期: issue.dueDate,
-            完成状态: "未完成",
-          }),
-        ),
-      );
-    }
-
-    return updated;
-  }
-
-  async completeRectification(reviewId: string, actorId: string): Promise<StoredReview<R>> {
-    const review = await this.requireReview(reviewId);
-    const next = this.config.stateMachine.next(review.status, "complete");
-    if (!next) throw new Error(`当前状态 ${review.status} 不允许完成整改`);
-    const updated = await this.adapter.updateReview(review.recordId, { status: next, updatedAt: new Date().toISOString() } as Partial<R>);
-    await this.logEvent(reviewId, actorId, "complete_rectification", review.status, next);
-    return updated;
-  }
-
-  async transitionTo(reviewId: string, event: string, actorId: string, payload?: Record<string, unknown>): Promise<StoredReview<R>> {
-    const review = await this.requireReview(reviewId);
-    const next = this.config.stateMachine.next(review.status, event);
-    if (!next) throw new Error(`当前状态 ${review.status} 不允许事件 ${event}`);
-    const updated = await this.adapter.updateReview(review.recordId, { status: next, updatedAt: new Date().toISOString() } as Partial<R>);
-    await this.logEvent(reviewId, actorId, event, review.status, next, payload);
-    await this.config.notify(
-      this.env,
-      `${this.config.transitionTitle}\n评审单 ${reviewId}（${readString(review, this.config.fields.name)}）\n${review.status} → ${next}\n操作人：${actorId}`,
-    );
-    return updated;
-  }
-
   async getReview(reviewId: string): Promise<StoredReview<R> | null> {
     return this.adapter.findReviewById(reviewId);
   }
@@ -385,7 +295,8 @@ export class ReviewFlowService<
     return review;
   }
 
-  private async logEvent(
+  /** 事件日志：写 events 子表；失败只记日志不阻断主流程（薄壳路由在引擎动作成功后调用） */
+  async logEvent(
     reviewId: string,
     actorId: string,
     action: string,

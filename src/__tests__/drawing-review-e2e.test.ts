@@ -66,7 +66,8 @@ describe("图纸评审全链路 e2e", () => {
     });
     expect(submit.status).toBe(200);
     const reviewId: string = submit.data.reviewId;
-    expect(reviewId).toMatch(/^DR-\d{8}-\d{3}$/);
+    // 迁移后单号走引擎年计数器（DR-2026-0001）
+    expect(reviewId).toMatch(/^DR-\d{4}-\d{4}$/);
     expect(submit.data.status).toBe("pending_review");
     // 附件落库：写入「图纸文件」文本字段（JSON 序列化），提交响应即读回
     expect(submit.data.drawingFiles).toEqual([{ name: "drawing.pdf", token: "tok" }]);

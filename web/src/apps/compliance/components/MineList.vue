@@ -22,7 +22,7 @@ import { store, statusColor, fmtMs, loadMine, doPublish } from '../store'
       <div v-else class="overflow-x-auto">
         <table class="w-full" style="min-width:760px">
           <thead>
-            <tr class="text-left text-xs text-nec-gray" style="border-bottom:1.5px solid var(--nec-line)">
+ <tr class="text-left text-xs text-nec-gray border-b-[1.5px] border-nec-line">
               <th class="py-2 pr-3 font-medium">单号</th><th class="py-2 pr-3 font-medium">合规类型</th>
               <th class="py-2 pr-3 font-medium">标题</th><th class="py-2 pr-3 font-medium">计划发布时间</th>
               <th class="py-2 pr-3 font-medium">状态</th><th class="py-2 pr-3 font-medium">驳回原因</th>
@@ -30,7 +30,7 @@ import { store, statusColor, fmtMs, loadMine, doPublish } from '../store'
             </tr>
           </thead>
           <tbody>
-            <tr v-for="r in store.mine.records" :key="r.application_id" style="border-top:1px solid var(--nec-line)">
+ <tr v-for="r in store.mine.records" :key="r.application_id">class="border-t border-nec-line"
               <td class="py-2 pr-3">
                 <a v-if="r.url" :href="r.url" target="_blank" rel="noopener" class="mono text-xs whitespace-nowrap hover:underline">{{ r.fields?.['申请单号'] || r.application_id || '—' }}</a>
                 <span v-else class="mono text-xs whitespace-nowrap">{{ r.fields?.['申请单号'] || r.application_id || '—' }}</span>

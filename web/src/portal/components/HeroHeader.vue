@@ -78,10 +78,10 @@ function goDashboard() {
       <div class="flex items-center gap-3 relative z-10">
         <img src="/brand/nec-logo.svg" alt="NEC" class="h-8 sm:h-9 w-auto" />
         <div class="leading-tight">
-          <div class="font-black text-lg" style="color:var(--nec-navy)">常州工NEC <span class="text-sm font-extrabold" style="color:var(--nec-cyan)">in CIT</span></div>
+ <div class="font-black text-lg text-nec-navy">常州工NEC <span class="text-sm font-extrabold text-nec-cyan">in CIT</span></div>
           <div class="mono text-[11px] text-gray-500 tracking-wider">newenergycoder.club</div>
         </div>
-        <span id="hero-mini" class="mono text-xs font-bold tracking-[.18em] ml-1" style="color:var(--nec-navy)">BUILT <span style="color:var(--nec-cyan)">TO</span> DAWN</span>
+ <span id="hero-mini" class="mono text-xs font-bold tracking-[.18em] ml-1 text-nec-navy">BUILT <span class="text-nec-cyan">TO</span> DAWN</span>
         <div class="ml-auto relative">
           <button id="health" @click="toggleHealthPanel" title="点击查看全站健康详情"
             class="text-xs px-2 py-1 rounded cursor-pointer"
@@ -91,7 +91,7 @@ function goDashboard() {
           <div v-if="panelOpen" id="health-panel" class="absolute right-0 top-full mt-1 w-72 sm:w-80 bg-white rounded-xl shadow-lg border border-gray-100 p-4 z-30 text-left">
             <p v-if="panelLoading" class="text-xs text-gray-400">检测中…</p>
             <template v-else>
-              <p class="text-xs font-bold mb-2" style="color:var(--nec-navy)">全站健康</p>
+ <p class="text-xs font-bold mb-2 text-nec-navy">全站健康</p>
               <ul class="text-xs text-gray-600 space-y-1.5">
                 <li class="flex justify-between gap-2"><span>API 服务</span>
                   <span v-if="healthData"><span class="text-green-600">● 正常</span> · {{ healthData.service || 'nec-hub' }}</span>
@@ -102,7 +102,7 @@ function goDashboard() {
                 <li class="flex justify-between gap-2"><span>NEC-MCP 端点</span><span v-html="mcpLine"></span></li>
                 <li class="flex justify-between gap-2"><span>数据健康（FE-05）</span><span v-html="validateLine"></span></li>
               </ul>
-              <button @click="goDashboard" class="mt-3 text-xs hover:underline" style="color:var(--nec-cyan)">数据健康详情 →</button>
+ <button @click="goDashboard" class="mt-3 text-xs hover:underline text-nec-cyan">数据健康详情 →</button>
             </template>
           </div>
         </div>
@@ -112,16 +112,16 @@ function goDashboard() {
       <!-- 全尺寸品牌区：仅未登录访客的首次访问展示；登录用户/回访访客走压缩细条 -->
       <div id="hero-full">
         <div class="mt-10 relative z-10">
-          <p class="mono text-xs tracking-[.18em] sm:tracking-[.22em] mb-3 sm:mb-4" style="color:var(--nec-navy)"><b>NEC HUB</b> · 团队 AI 中台 · KEEP BUILDING</p>
+ <p class="mono text-xs tracking-[.18em] sm:tracking-[.22em] mb-3 sm:mb-4 text-nec-navy"><b>NEC HUB</b> · 团队 AI 中台 · KEEP BUILDING</p>
           <h1 class="hero-title text-4xl sm:text-7xl">BUILT <span class="to">TO</span> DAWN</h1>
-          <p class="mt-3 sm:mt-4 font-black tracking-[.22em] sm:tracking-[.4em] text-sm sm:text-base" style="color:var(--nec-navy)">为黎明而造</p>
+ <p class="mt-3 sm:mt-4 font-black tracking-[.22em] sm:tracking-[.4em] text-sm sm:text-base text-nec-navy">为黎明而造</p>
           <p class="mono mt-3 text-xs text-gray-500 tracking-wider sm:tracking-widest leading-relaxed">应用广场 · SKILL 中心 · 开源仓库 · 数据看板 · NEC-MCP</p>
           <div class="mt-5 sm:mt-6 flex flex-wrap gap-2 sm:gap-3 text-sm">
             <span class="chip mono px-3 py-2 rounded-sm bg-white"><i class="not-italic mr-1">01</i>找物品</span>
             <span class="chip mono px-3 py-2 rounded-sm bg-white"><i class="not-italic mr-1">02</i>扫标签</span>
             <span class="chip mono px-3 py-2 rounded-sm bg-white"><i class="not-italic mr-1">03</i>办工单</span>
             <a href="https://mes.newenergycoder.club/home.html" target="_blank"
-               class="mono px-4 py-2 rounded-sm text-white inline-block" style="background:var(--nec-cyan)">→ NEC 仓库作业台</a>
+ class="mono px-4 py-2 rounded-sm text-white inline-block bg-nec-cyan">→ NEC 仓库作业台</a>
           </div>
         </div>
 

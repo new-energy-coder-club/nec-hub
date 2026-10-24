@@ -1,12 +1,15 @@
 /**
  * 新增机图纸评审流程 — 流程差异配置与共享服务封装
+ *
+ * 迁移说明（审批引擎 Phase 1）：评审单本体/状态机/通知由 src/approvals 引擎承担
+ * （flows:config 的 drawing_review：DR 前缀单号、英文状态机、初始 pending_review）；
+ * 本文件只保留状态表导出（TRANSITIONS/nextStatus 供看板与 BOM 路由判定）、
+ * 提交默认值/偏好/纪要等提交前后处理（ReviewFlowService，共享底座在 shared/review-flow.ts）。
  */
 
 import type { DrawingReviewAdapter } from "./adapter";
-import { notifyFeishuGroup } from "./notify";
 import {
   createReviewStateMachine,
-  generateReviewId as generatePrefixedReviewId,
   ReviewFlowService as SharedReviewFlowService,
   type ReviewFlowConfig,
 } from "../shared/review-flow";
@@ -46,10 +49,6 @@ export function nextStatus(current: ReviewStatus, event: string): ReviewStatus |
   return STATE_MACHINE.next(current, event);
 }
 
-export function generateReviewId(): string {
-  return generatePrefixedReviewId("DR");
-}
-
 export interface SubmitReviewInput {
   projectId?: string;
   machineName?: string;
@@ -57,13 +56,6 @@ export interface SubmitReviewInput {
   designerId?: string;
   drawingFiles: DrawingReview["drawingFiles"];
   designNotes?: string;
-}
-
-export interface MeetingInput {
-  topic?: string;
-  startTime: string;
-  durationMinutes?: number;
-  attendeeOpenIds: string[];
 }
 
 export interface ConclusionInput {
@@ -90,9 +82,6 @@ function defaultDesignNotesTemplate(template: string = "v1"): string {
 }
 
 const FLOW_CONFIG: ReviewFlowConfig<ReviewStatus, DrawingReview, SubmitReviewInput, UserPreferences, DrawingReviewTable> = {
-  stateMachine: STATE_MACHINE,
-  idPrefix: "DR",
-  initialStatus: "pending_review",
   preferences: {
     module: "dr",
     legacyFallback: true,
@@ -114,14 +103,9 @@ const FLOW_CONFIG: ReviewFlowConfig<ReviewStatus, DrawingReview, SubmitReviewInp
   versionSeed: "V0.0",
   requiredError: "项目编号、机型名称和图纸文件为必填项",
   tables: {
-    rectifications: "rectifications",
     events: "events",
   },
   eventReviewField: "关联评审单",
-  rectificationReviewField: "关联评审单",
-  notify: notifyFeishuGroup,
-  submitTitle: "📐 新图纸评审单提交",
-  transitionTitle: "📐 图纸评审状态变更",
   logTag: "drawing-review",
   logMessages: {
     latestVersion: "Failed to get latest version, using default:",

@@ -68,17 +68,17 @@ describe("buildPrdBoard", () => {
     expect(board.milestones[2].done).toBe(4);
   });
 
-  it("KV prd:status 覆盖合并到基线；prd:last_commit 透传", async () => {
+  it("KV prd:status 覆盖合并到基线；KV 项缺 subs 时保留默认子项；prd:last_commit 透传", async () => {
     const ctx = createCtx();
     ctx.kv.set(KV_KEYS.prdStatus, JSON.stringify({
-      items: { "FE-04": { ...DEFAULT_PRD_ITEMS["FE-04"], status: "done", note: "面板上线" } },
+      items: { "FE-04": { title: "赛季目标可视化面板", priority: "P1", status: "done", note: "面板上线" } }, // 故意不带 subs
       updatedAt: "2026-10-14T00:00:00.000Z",
     }));
     ctx.kv.set(KV_KEYS.prdLastCommit, JSON.stringify({ repo: "nec-hub", branch: "main", message: "feat: x", author: "a", url: "https://x", at: "2026-10-14T00:00:00.000Z" }));
     const board = (await buildPrdBoard(ctx.env)) as {
       updatedAt: string;
       progress: { done: number };
-      milestones: Array<{ id: string; cards: Array<{ id: string; status: string; note?: string }> }>;
+      milestones: Array<{ id: string; cards: Array<{ id: string; status: string; note?: string; subs?: Record<string, { status: string }> }> }>;
       lastCommit: { message: string };
     };
     expect(board.updatedAt).toBe("2026-10-14T00:00:00.000Z");
@@ -86,6 +86,7 @@ describe("buildPrdBoard", () => {
     const fe04 = board.milestones[1].cards.find((c) => c.id === "FE-04");
     expect(fe04?.status).toBe("done");
     expect(fe04?.note).toBe("面板上线");
+    expect(fe04?.subs?.["FE-18"]?.status).toBe("partial"); // 默认子项不被 KV 覆盖抹掉
     expect(board.lastCommit.message).toBe("feat: x");
   });
 
@@ -127,6 +128,21 @@ describe("update_prd（MCP 工具）", () => {
     // 再调一次同状态 → 不推
     await toolUpdatePrd({ id: "FE-04", status: "done" }, ctx.env, true);
     expect(ctx.webhookCalls).toHaveLength(1);
+  });
+
+  it("子项 id（FE-18）自动归到所属大项 FE-04 的 subs 下", async () => {
+    const ctx = createCtx();
+    const res = await toolUpdatePrd({ id: "fe-18", status: "done", note: "数据流打通" }, ctx.env, true);
+    expect(res.content[0].text).toContain("FE-04 › FE-18");
+    expect(res.content[0].text).toContain("done");
+    const saved = JSON.parse(ctx.kv.get(KV_KEYS.prdStatus)!);
+    expect(saved.items["FE-18"]).toBeUndefined(); // 不作为大项落库
+    expect(saved.items["FE-04"].subs["FE-18"].status).toBe("done");
+    expect(saved.items["FE-04"].subs["FE-18"].note).toBe("数据流打通");
+    // 看板透传子项状态
+    const board = (await buildPrdBoard(ctx.env)) as { milestones: Array<{ cards: Array<{ id: string; subs?: Record<string, { status: string }> }> }> };
+    const fe04 = board.milestones[1].cards.find((c) => c.id === "FE-04");
+    expect(fe04?.subs?.["FE-18"]?.status).toBe("done");
   });
 
   it("未配置 webhook 时静默降级（不报错、记录不影响）", async () => {

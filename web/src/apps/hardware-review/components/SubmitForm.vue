@@ -59,10 +59,10 @@ function onInsertTemplate() {
       </div>
 
       <!-- 草稿恢复提示 -->
-      <div v-if="store.draftBanner" class="rounded-lg p-3 mb-4 flex items-center justify-between flex-wrap gap-2" style="background:var(--nec-royal-100);border:1px solid var(--nec-line)">
+ <div v-if="store.draftBanner" class="rounded-lg p-3 mb-4 flex items-center justify-between flex-wrap gap-2 bg-nec-royal-100 border border-nec-line">
         <p class="text-sm text-nec-navy">检测到上次未完成的草稿<span class="mono text-xs text-nec-gray ml-1">{{ store.draftTime }}</span></p>
         <div class="flex gap-2">
-          <button type="button" class="text-sm font-medium px-3 py-1 rounded-lg text-white" style="background:var(--nec-royal)" @click="restoreDraft()">恢复草稿</button>
+ <button type="button" class="text-sm font-medium px-3 py-1 rounded-lg text-white bg-nec-royal" @click="restoreDraft()">恢复草稿</button>
           <button type="button" class="text-sm px-3 py-1 rounded-lg link" @click="discardDraft()">丢弃</button>
         </div>
       </div>
@@ -119,11 +119,11 @@ function onInsertTemplate() {
             <button type="button" id="spec-template-btn" class="text-xs link" @click="applySpecTemplate()">按类型填充常用参数</button>
           </div>
           <div class="rounded-lg border border-nec-line overflow-hidden">
-            <div class="hidden sm:grid grid-cols-12 gap-2 px-3 py-2 text-xs text-nec-gray" style="background:var(--nec-fog)">
+ <div class="hidden sm:grid grid-cols-12 gap-2 px-3 py-2 text-xs text-nec-gray bg-nec-fog">
               <span class="col-span-4">参数名</span><span class="col-span-4">参数值</span><span class="col-span-3">备注</span><span class="col-span-1"></span>
             </div>
             <div id="spec-rows">
-              <div v-for="(row, i) in store.specRows" :key="i" class="spec-row grid grid-cols-12 gap-2 px-3 py-2 items-center" style="border-top:1px solid var(--nec-line)">
+ <div v-for="(row, i) in store.specRows" :key="i" class="spec-row grid grid-cols-12 gap-2 px-3 py-2 items-center border-t border-nec-line">
                 <input type="text" v-model="row.key" class="spec-key col-span-4 rounded border border-nec-line px-2 py-1.5 text-sm" placeholder="参数名" />
                 <input type="text" v-model="row.value" class="spec-value col-span-4 rounded border border-nec-line px-2 py-1.5 text-sm" placeholder="参数值" />
                 <input type="text" v-model="row.note" class="spec-note col-span-3 rounded border border-nec-line px-2 py-1.5 text-sm" placeholder="备注" />
@@ -176,7 +176,7 @@ function onInsertTemplate() {
           <p v-show="store.fieldErrors.designNotes" class="field-error" data-for="designNotes">{{ store.fieldErrors.designNotes }}</p>
         </div>
 
-        <div class="flex items-center justify-end gap-3 pt-2" style="border-top:1px solid var(--nec-line)">
+ <div class="flex items-center justify-end gap-3 pt-2 border-t border-nec-line">
           <p id="submit-result" class="mr-auto text-sm" :style="store.submitResult.text ? { color: store.submitResult.ok ? '#177A4C' : '#C22E2E' } : {}">{{ store.submitResult.text }}</p>
           <button type="button" class="nav-btn text-sm font-medium px-4 py-2 rounded-lg" @click="saveDraft(true)">保存草稿</button>
           <button type="submit" class="btn-primary text-sm font-medium px-5 py-2 rounded-lg" :disabled="store.submitting">{{ store.submitting ? '提交中…' : '提交评审单' }}</button>

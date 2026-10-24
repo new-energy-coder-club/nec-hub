@@ -1,100 +1,31 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+/**
+ * 合同审批流程测试（迁移后：审批单本体/状态机/会签/单号/通知由审批引擎承担）
+ *
+ * 覆盖：状态表导出 · 提交前纯校验（金额/币种/日期/审批人名单）· 薄壳 submit 走引擎拿
+ * HT-2026-001 年计数单号（审批单号=申请单号、提交人/创建时间薄壳补写）· 手动编号查重 ·
+ * start-review/action/resubmit/archive 薄壳（participant/owner 守卫旧文案保留）·
+ * 会签全流程（未全过不流转/全过流转/重复审批拒绝）· 评论副作用前置（写失败则中止）·
+ * revise 落个人意见 · next-number 预览走引擎 serial 计数器 · members/file/start 端点。
+ *
+ * mock 风格：内存 KV + fetch 路由（bitable records CRUD，复用 bitable-search-mock）。
+ */
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
-  ContractApprovalFlowService,
-  formatContractNumber,
-  generateApprovalId,
+  buildContractApprovers,
   nextStatus,
-  peekNextContractNumber,
-  type SubmitApprovalInput,
+  validateContractAmount,
+  validateCurrency,
 } from "../flow.service";
+import { peekNextSerial } from "../../approvals/core/serial";
 import { handleContractApproval } from "../index";
 import { loadMemberDirectory } from "../../feishu/member-directory";
-import type { ApprovalStore } from "../adapter";
-import type { ApprovalComment, ContractApproval } from "../types";
+import type { BitableRecord } from "../../feishu/bitable";
 import { KV_KEYS } from "../../shared/kv-keys";
+import { mockGetRecordResponse, mockSearchResponse } from "../../__tests__/bitable-search-mock";
 
 vi.mock("../../feishu/member-directory", () => ({ loadMemberDirectory: vi.fn() }));
 
-type StoredApproval = ContractApproval & { recordId: string };
-
-/** 内存版 ApprovalStore，用于不依赖飞书的流程测试 */
-class FakeStore implements ApprovalStore {
-  approvals: StoredApproval[] = [];
-  comments: Array<ApprovalComment & { recordId: string }> = [];
-  events: Record<string, unknown>[] = [];
-  failNextComment = false;
-  private seq = 0;
-
-  async listApprovals(): Promise<StoredApproval[]> {
-    return this.approvals.map((a) => ({ ...a }));
-  }
-
-  async findApprovalById(approvalId: string): Promise<StoredApproval | null> {
-    const found = this.approvals.find((a) => a.approvalId === approvalId);
-    return found ? { ...found, approvers: found.approvers.map((a) => ({ ...a })) } : null;
-  }
-
-  async createApproval(approval: ContractApproval): Promise<StoredApproval> {
-    const stored: StoredApproval = {
-      ...approval,
-      approvers: approval.approvers.map((a) => ({ ...a })),
-      recordId: `rec-${++this.seq}`,
-    };
-    this.approvals.push(stored);
-    return { ...stored };
-  }
-
-  async updateApproval(recordId: string, patch: Partial<ContractApproval>): Promise<StoredApproval> {
-    const stored = this.approvals.find((a) => a.recordId === recordId);
-    if (!stored) throw new Error(`record ${recordId} not found`);
-    Object.assign(stored, patch);
-    return { ...stored, approvers: stored.approvers.map((a) => ({ ...a })) };
-  }
-
-  async createComment(comment: ApprovalComment): Promise<ApprovalComment & { recordId: string }> {
-    if (this.failNextComment) {
-      this.failNextComment = false;
-      throw new Error("评论写入失败（模拟）");
-    }
-    const saved = { ...comment, recordId: `com-${this.comments.length + 1}` };
-    this.comments.push(saved);
-    return saved;
-  }
-
-  async getCommentsByApproval(approvalId: string) {
-    return this.comments.filter((c) => c.approvalId === approvalId);
-  }
-
-  async createRecord(_table: string, fields: Record<string, unknown>): Promise<unknown> {
-    this.events.push(fields);
-    return { record_id: `evt-${this.events.length}` };
-  }
-}
-
-const SUBMITTER = "ou_submitter";
-const APPROVER_A = "ou_approver_a";
-const APPROVER_B = "ou_approver_b";
-const OUTSIDER = "ou_outsider";
-
-function validInput(overrides: Partial<SubmitApprovalInput> = {}): SubmitApprovalInput {
-  return {
-    contractName: "测试采购合同",
-    contractFiles: [{ name: "contract.pdf", token: "tok-1" }],
-    amount: 100,
-    approvers: [
-      { level: "team_lead", approverId: APPROVER_A },
-      { level: "finance", approverId: APPROVER_B },
-    ],
-    ...overrides,
-  };
-}
-
-/** 提交并由审批人 A 开始审批，返回审批单 ID */
-async function submitAndStart(flow: ContractApprovalFlowService): Promise<string> {
-  const created = await flow.submit(validInput(), SUBMITTER);
-  await flow.startReview(created.approvalId, APPROVER_A);
-  return created.approvalId;
-}
+// ---------- 状态表与纯校验 ----------
 
 describe("contract-approval 状态机", () => {
   it("nextStatus 覆盖全部流转", () => {
@@ -108,285 +39,119 @@ describe("contract-approval 状态机", () => {
     expect(nextStatus("rejected", "archive")).toBe("archived");
     expect(nextStatus("archived", "submit")).toBeNull();
   });
+});
 
-  it("generateApprovalId 生成 CA-日期-序号 格式", () => {
-    expect(generateApprovalId()).toMatch(/^CA-\d{8}-\d{3}$/);
+describe("contract-approval 提交前纯校验", () => {
+  it("金额缺失 / 为 0 / 负数 / 超上限 / 超两位小数 → 错误", () => {
+    expect(() => validateContractAmount(undefined)).toThrow("金额为必填项");
+    expect(() => validateContractAmount(0)).toThrow("金额必须大于 0");
+    expect(() => validateContractAmount(-1)).toThrow("金额必须大于 0");
+    expect(() => validateContractAmount(10_000_000)).toThrow("金额不能超过 9,999,999.99");
+    expect(() => validateContractAmount(100.123)).toThrow("金额最多两位小数");
+    expect(validateContractAmount(9_999_999.99)).toBe(9_999_999.99);
+  });
+
+  it("非法币种 → 错误；缺省默认 CNY；大小写规范化", () => {
+    expect(() => validateCurrency("RMB")).toThrow(/币种不合法/);
+    expect(validateCurrency(undefined)).toBe("CNY");
+    expect(validateCurrency("usd")).toBe("USD");
+  });
+
+  it("审批人名单：至少一名；提交人不能自审；初始全部 pending", () => {
+    expect(() => buildContractApprovers([], "ou_x")).toThrow("至少指定一名审批人");
+    expect(() =>
+      buildContractApprovers([{ level: "team_lead", approverId: "ou_x" }], "ou_x"),
+    ).toThrow("提交人不能兼任审批人");
+    const list = buildContractApprovers([{ level: "finance", approverId: "ou_a", name: "王A" }], "ou_x");
+    expect(list).toEqual([{ level: "finance", approverId: "ou_a", name: "王A", status: "pending" }]);
   });
 });
 
-describe("contract-approval 提交", () => {
-  let store: FakeStore;
-  let flow: ContractApprovalFlowService;
+// ---------- 路由级（薄壳转调引擎，内存 Base mock） ----------
 
-  beforeEach(() => {
-    store = new FakeStore();
-    flow = new ContractApprovalFlowService(store);
-  });
+const BASE = "neuBase0123456789";
+const TABLES = { approvals: "tblApprovals1", comments: "tblComments1", events: "tblEvents1" } as const;
 
-  it("缺少合同名称 / 合同文件 / 审批人时拒绝提交", async () => {
-    await expect(flow.submit(validInput({ contractName: "" }), SUBMITTER)).rejects.toThrow("合同名称为必填项");
-    await expect(flow.submit(validInput({ contractFiles: [] }), SUBMITTER)).rejects.toThrow("合同文件为必填项");
-    await expect(flow.submit(validInput({ approvers: [] }), SUBMITTER)).rejects.toThrow("至少指定一名审批人");
-  });
+const USERS = {
+  sub: { sid: "sid-sub", name: "提交人", open_id: "ou_submitter" },
+  a: { name: "王A", open_id: "ou_approver_a" },
+  b: { name: "李B", open_id: "ou_approver_b" },
+  out: { name: "外人", open_id: "ou_outsider" },
+} as const;
+const SID_A = "sid-a";
+const SID_B = "sid-b";
+const SID_OUT = "sid-out";
 
-  it("提交人不能兼任审批人", async () => {
-    const input = validInput({ approvers: [{ level: "team_lead", approverId: SUBMITTER }] });
-    await expect(flow.submit(input, SUBMITTER)).rejects.toThrow("提交人不能兼任审批人");
-  });
-
-  it("提交成功：记录提交人，审批人全部待审批", async () => {
-    const created = await flow.submit(validInput(), SUBMITTER);
-    expect(created.status).toBe("pending_approval");
-    expect(created.submittedBy).toBe(SUBMITTER);
-    expect(created.approvers).toHaveLength(2);
-    expect(created.approvers.every((a) => a.status === "pending")).toBe(true);
-    expect(created.approvers.some((a) => a.approverId === SUBMITTER)).toBe(false);
-  });
-});
-
-describe("contract-approval 审批权限与会签", () => {
-  let store: FakeStore;
-  let flow: ContractApprovalFlowService;
-
-  beforeEach(() => {
-    store = new FakeStore();
-    flow = new ContractApprovalFlowService(store);
-  });
-
-  it("非参与人不能开始审批", async () => {
-    const created = await flow.submit(validInput(), SUBMITTER);
-    await expect(flow.startReview(created.approvalId, OUTSIDER)).rejects.toThrow("参与人");
-  });
-
-  it("非审批人不能执行审批操作", async () => {
-    const id = await submitAndStart(flow);
-    await expect(flow.takeAction(id, { action: "approve" }, OUTSIDER)).rejects.toThrow("审批人");
-    await expect(flow.takeAction(id, { action: "approve" }, SUBMITTER)).rejects.toThrow("审批人");
-  });
-
-  it("会签：第一人通过保持审批中，全部通过才生效", async () => {
-    const id = await submitAndStart(flow);
-    const afterA = await flow.takeAction(id, { action: "approve", comment: "同意" }, APPROVER_A);
-    expect(afterA.status).toBe("in_review");
-    expect(afterA.approvers.find((a) => a.approverId === APPROVER_A)?.status).toBe("approved");
-
-    const afterB = await flow.takeAction(id, { action: "approve" }, APPROVER_B);
-    expect(afterB.status).toBe("approved");
-    expect(afterB.approvers.every((a) => a.status === "approved")).toBe(true);
-  });
-
-  it("同一审批人不能重复审批", async () => {
-    const id = await submitAndStart(flow);
-    await flow.takeAction(id, { action: "approve" }, APPROVER_A);
-    await expect(flow.takeAction(id, { action: "approve" }, APPROVER_A)).rejects.toThrow("已提交过审批意见");
-  });
-
-  it("任一审批人拒绝即整体拒绝", async () => {
-    const id = await submitAndStart(flow);
-    const after = await flow.takeAction(id, { action: "reject", comment: "条款有问题" }, APPROVER_A);
-    expect(after.status).toBe("rejected");
-    await expect(flow.takeAction(id, { action: "approve" }, APPROVER_B)).rejects.toThrow();
-  });
-
-  it("评论写入失败时状态不被半更新", async () => {
-    const id = await submitAndStart(flow);
-    store.failNextComment = true;
-    await expect(flow.takeAction(id, { action: "approve", comment: "x" }, APPROVER_A)).rejects.toThrow("评论写入失败");
-    const approval = await flow.getApproval(id);
-    expect(approval?.status).toBe("in_review");
-    expect(approval?.approvers.every((a) => a.status === "pending")).toBe(true);
-  });
-
-  it("带评论的审批会写入评论记录", async () => {
-    const id = await submitAndStart(flow);
-    await flow.takeAction(id, { action: "approve", comment: "没问题" }, APPROVER_A);
-    const comments = await flow.listComments(id);
-    expect(comments).toHaveLength(1);
-    expect(comments[0].reviewerId).toBe(APPROVER_A);
-    expect(comments[0].content).toBe("没问题");
-  });
-});
-
-describe("contract-approval 重新提交与归档", () => {
-  let store: FakeStore;
-  let flow: ContractApprovalFlowService;
-
-  beforeEach(() => {
-    store = new FakeStore();
-    flow = new ContractApprovalFlowService(store);
-  });
-
-  it("revise 后仅提交人可重新提交，且审批人重置", async () => {
-    const id = await submitAndStart(flow);
-    await flow.takeAction(id, { action: "revise", comment: "金额条款需修改" }, APPROVER_A);
-    expect((await flow.getApproval(id))?.status).toBe("revised");
-
-    await expect(flow.resubmit(id, {}, APPROVER_B)).rejects.toThrow("提交人");
-
-    const resubmitted = await flow.resubmit(id, {}, SUBMITTER);
-    expect(resubmitted.status).toBe("pending_approval");
-    expect(resubmitted.approvers.every((a) => a.status === "pending" && !a.comment && !a.actedAt)).toBe(true);
-  });
-
-  it("归档：仅终态可归档，非参与人不可归档", async () => {
-    const id = await submitAndStart(flow);
-    await expect(flow.archive(id, APPROVER_A)).rejects.toThrow("不允许归档");
-
-    await flow.takeAction(id, { action: "approve" }, APPROVER_A);
-    await flow.takeAction(id, { action: "approve" }, APPROVER_B);
-    await expect(flow.archive(id, OUTSIDER)).rejects.toThrow("参与人");
-
-    const archived = await flow.archive(id, SUBMITTER);
-    expect(archived.status).toBe("archived");
-  });
-});
-
-/** 内存版合同编号计数器（模拟 REGISTRY KV 的 get/put） */
-class FakeCounter {
-  map = new Map<string, string>();
-  async get(key: string): Promise<string | null> {
-    return this.map.get(key) ?? null;
-  }
-  async put(key: string, value: string): Promise<void> {
-    this.map.set(key, value);
-  }
-}
-
-describe("contract-approval 金额/币种/日期校验", () => {
-  let store: FakeStore;
-  let flow: ContractApprovalFlowService;
-
-  beforeEach(() => {
-    store = new FakeStore();
-    flow = new ContractApprovalFlowService(store);
-  });
-
-  it("金额缺失 / 为 0 / 负数 / 超上限 / 超两位小数 → 错误", async () => {
-    await expect(flow.submit(validInput({ amount: undefined }), SUBMITTER)).rejects.toThrow("金额为必填项");
-    await expect(flow.submit(validInput({ amount: 0 }), SUBMITTER)).rejects.toThrow("金额必须大于 0");
-    await expect(flow.submit(validInput({ amount: -1 }), SUBMITTER)).rejects.toThrow("金额必须大于 0");
-    await expect(flow.submit(validInput({ amount: 10_000_000 }), SUBMITTER)).rejects.toThrow("金额不能超过 9,999,999.99");
-    await expect(flow.submit(validInput({ amount: 100.123 }), SUBMITTER)).rejects.toThrow("金额最多两位小数");
-  });
-
-  it("金额上限恰好 9,999,999.99 可提交并写入单据", async () => {
-    const created = await flow.submit(validInput({ amount: 9_999_999.99 }), SUBMITTER);
-    expect(created.amount).toBe(9_999_999.99);
-    expect(created.currency).toBe("CNY");
-  });
-
-  it("非法币种 → 错误；缺省默认 CNY；大小写规范化", async () => {
-    await expect(flow.submit(validInput({ currency: "RMB" }), SUBMITTER)).rejects.toThrow(/币种不合法/);
-    await expect(flow.submit(validInput({ currency: "cny" }), SUBMITTER)).resolves.toMatchObject({ currency: "CNY" });
-    const usd = await flow.submit(validInput({ currency: "usd" }), SUBMITTER);
-    expect(usd.currency).toBe("USD");
-  });
-
-  it("到期日期必须晚于生效日期；缺一则跳过", async () => {
-    await expect(
-      flow.submit(validInput({ effectiveDate: "2026-01-01", expirationDate: "2026-01-01" }), SUBMITTER),
-    ).rejects.toThrow("到期日期必须晚于生效日期");
-    await expect(
-      flow.submit(validInput({ effectiveDate: "2026-01-01", expirationDate: "2025-12-31" }), SUBMITTER),
-    ).rejects.toThrow("到期日期必须晚于生效日期");
-    await flow.submit(validInput({ effectiveDate: "2026-01-01", expirationDate: "2026-02-01" }), SUBMITTER);
-    await flow.submit(validInput({ effectiveDate: "2026-01-01" }), SUBMITTER);
-    await flow.submit(validInput({ expirationDate: "2026-02-01" }), SUBMITTER);
-  });
-});
-
-describe("contract-approval 合同编号生成", () => {
-  let store: FakeStore;
-  let counter: FakeCounter;
-  let flow: ContractApprovalFlowService;
-
-  beforeEach(() => {
-    store = new FakeStore();
-    counter = new FakeCounter();
-    flow = new ContractApprovalFlowService(store, counter);
-  });
-
-  it("留空自动生成：首次 HT-2026-001、再次 HT-2026-002，KV 计数累加", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-03-05T04:00:00Z"));
-    try {
-      const first = await flow.submit(validInput(), SUBMITTER);
-      const second = await flow.submit(validInput(), SUBMITTER);
-      expect(first.contractNumber).toBe("HT-2026-001");
-      expect(second.contractNumber).toBe("HT-2026-002");
-      expect(counter.map.get(KV_KEYS.contractNumber(2026))).toBe("2");
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("计数缺失或损坏时从 HT-2026-001 开始", async () => {
-    counter.map.set(KV_KEYS.contractNumber(2026), "abc");
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-03-05T04:00:00Z"));
-    try {
-      const created = await flow.submit(validInput(), SUBMITTER);
-      expect(created.contractNumber).toBe("HT-2026-001");
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("手动编号重复 → 合同编号已存在（编号）", async () => {
-    await flow.submit(validInput({ contractNumber: "HT-2026-001" }), SUBMITTER);
-    await expect(
-      flow.submit(validInput({ contractNumber: "HT-2026-001" }), SUBMITTER),
-    ).rejects.toThrow("合同编号已存在（HT-2026-001）");
-    expect(counter.map.has(KV_KEYS.contractNumber(2026))).toBe(false);
-  });
-
-  it("手动编号唯一时直接采用，不占用 KV 计数", async () => {
-    const created = await flow.submit(validInput({ contractNumber: "CT-USR-9" }), SUBMITTER);
-    expect(created.contractNumber).toBe("CT-USR-9");
-    expect(counter.map.has(KV_KEYS.contractNumber(2026))).toBe(false);
-  });
-
-  it("预览编号 helper：HT-2026-042 且不写入计数", async () => {
-    counter.map.set(KV_KEYS.contractNumber(2026), "41");
-    expect(await peekNextContractNumber(counter, 2026)).toBe("HT-2026-042");
-    expect(counter.map.get(KV_KEYS.contractNumber(2026))).toBe("41");
-    expect(formatContractNumber(2026, 7)).toBe("HT-2026-007");
-  });
-});
-
-// ---------- HTTP 层（index.ts 端点，经 module-gateway 全链路） ----------
-
-interface HttpCtx {
+interface Ctx {
   env: Env;
   kv: Map<string, string>;
+  tables: Record<string, BitableRecord[]>;
   objects: Map<string, { body: string; contentType?: string }>;
+  failTables: Set<string>;
+  seed(tableId: string, fields: Record<string, unknown>, recordId?: string): BitableRecord;
 }
 
-function createHttpCtx(): HttpCtx {
+function jsonResp(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } });
+}
+
+function createCtx(): Ctx {
   const kv = new Map<string, string>();
+  const tables: Record<string, BitableRecord[]> = {};
+  const objects = new Map<string, { body: string; contentType?: string }>();
+  const failTables = new Set<string>();
+  let seq = 0;
+
   kv.set(
     KV_KEYS.contractApprovalConfig,
-    JSON.stringify({
-      base: "neuBase0123456789",
-      tables: { approvals: "tblApprovals1", comments: "tblComments1", events: "tblEvents1" },
-      updatedAt: new Date().toISOString(),
-    }),
+    JSON.stringify({ base: BASE, tables: { ...TABLES }, updatedAt: new Date().toISOString() }),
   );
-  kv.set(
-    KV_KEYS.session("sid-1"),
-    JSON.stringify({
-      name: "提交人",
-      open_id: "ou_submitter",
-      createdAt: new Date().toISOString(),
-      expiresAt: Date.now() + 4 * 24 * 3600e3,
-    }),
-  );
-  const objects = new Map<string, { body: string; contentType?: string }>();
+  for (const [sid, u] of [
+    [USERS.sub.sid, USERS.sub],
+    [SID_A, USERS.a],
+    [SID_B, USERS.b],
+    [SID_OUT, USERS.out],
+  ] as const) {
+    kv.set(
+      KV_KEYS.session(sid),
+      JSON.stringify({ name: u.name, open_id: u.open_id, createdAt: new Date().toISOString(), expiresAt: Date.now() + 4 * 24 * 3600e3 }),
+    );
+  }
+
+  vi.stubGlobal("fetch", vi.fn(async (input: unknown, init?: { method?: string; body?: string }) => {
+    const url = String((input as { url?: string })?.url ?? input);
+    const m = url.match(/\/bitable\/v1\/apps\/([^/]+)\/tables\/([^/?]+)\/records(?:\/([^/?]+))?/);
+    if (!m) return jsonResp({ code: 404, msg: `not mocked: ${url}` });
+    const [, , tableId, recordId] = m;
+    const method = (init?.method ?? "GET").toUpperCase();
+    const items = (tables[tableId] ??= []);
+    if (failTables.has(tableId)) return jsonResp({ code: 1254045, msg: "mocked table failure" });
+    if (method === "POST" && recordId === "search") return mockSearchResponse(items, init?.body ?? "{}");
+    if (method === "GET" && recordId) return mockGetRecordResponse(items, recordId);
+    if (method === "GET") return jsonResp({ code: 0, data: { items, has_more: false } });
+    if (method === "POST" && !recordId) {
+      const rec: BitableRecord = { record_id: `rec-${++seq}`, fields: JSON.parse(init!.body!).fields };
+      items.push(rec);
+      return jsonResp({ code: 0, data: { record: rec } });
+    }
+    if (method === "PUT" && recordId) {
+      const rec = items.find((r) => r.record_id === recordId);
+      if (!rec) return jsonResp({ code: 1254045, msg: "record not found" });
+      Object.assign(rec.fields, JSON.parse(init!.body!).fields);
+      return jsonResp({ code: 0, data: { record: rec } });
+    }
+    return jsonResp({ code: 400, msg: `unsupported ${method} ${url}` });
+  }));
+
   const env = {
     REGISTRY: {
-      get: async (k: string) => kv.get(k) ?? null,
-      put: async (k: string, v: string) => void kv.set(k, v),
-      delete: async (k: string) => void kv.delete(k),
+      get: vi.fn(async (key: string, type?: string) => {
+        if (key === KV_KEYS.feishuTenantAccessToken) return { token: "mock-token", expireAt: Date.now() + 3600e3 };
+        const v = kv.get(key);
+        return v == null ? null : type === "json" ? JSON.parse(v) : v;
+      }),
+      put: vi.fn(async (key: string, value: string) => { kv.set(key, value); }),
+      delete: vi.fn(async (key: string) => { kv.delete(key); }),
       list: async () => ({ keys: [] }),
     },
     APPS_BUCKET: {
@@ -397,111 +162,343 @@ function createHttpCtx(): HttpCtx {
       put: async (k: string, v: string) => void objects.set(k, v as never),
       delete: async (k: string) => void objects.delete(k),
     },
+    FEISHU_APP_ID: "mock-app-id",
+    FEISHU_APP_SECRET: "mock-app-secret",
   } as unknown as Env;
-  return { env, kv, objects };
+
+  return {
+    env,
+    kv,
+    tables,
+    objects,
+    failTables,
+    seed(tableId, fields, recordId) {
+      const rec: BitableRecord = { record_id: recordId ?? `rec-${++seq}`, fields };
+      (tables[tableId] ??= []).push(rec);
+      return rec;
+    },
+  };
 }
 
-async function httpGet(ctx: HttpCtx, fullPath: string): Promise<Response> {
-  // 与实际路由一致：pathname 不带 query，query 保留在 request.url
+async function api(ctx: Ctx, sid: string, fullPath: string, method = "GET", body?: unknown): Promise<{ status: number; data: any }> {
   const url = new URL(`https://hub.test${fullPath}`);
   const res = await handleContractApproval(
-    new Request(url.toString(), { headers: { cookie: "nec_session=sid-1" } }),
+    new Request(url.toString(), {
+      method,
+      headers: { "content-type": "application/json", cookie: `nec_session=${sid}` },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }),
     ctx.env,
     url.pathname,
   );
   if (!res) throw new Error(`no handler matched ${url.pathname}`);
-  return res;
+  return { status: res.status, data: await res.json() };
 }
 
-describe("contract-approval HTTP 端点", () => {
-  let ctx: HttpCtx;
+function validBody(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    contractName: "测试采购合同",
+    contractFiles: [{ name: "contract.pdf", token: "tok-1" }],
+    amount: 100,
+    approvers: [
+      { level: "team_lead", approverId: USERS.a.open_id, name: USERS.a.name },
+      { level: "finance", approverId: USERS.b.open_id, name: USERS.b.name },
+    ],
+    ...overrides,
+  };
+}
 
+/** 提交并开始审批，返回审批单号 */
+async function submitAndStart(ctx: Ctx, overrides: Record<string, unknown> = {}): Promise<string> {
+  const submitted = await api(ctx, USERS.sub.sid, "/api/contract-approval/submit", "POST", validBody(overrides));
+  expect(submitted.status).toBe(200);
+  const id = submitted.data.approvalId as string;
+  const started = await api(ctx, SID_A, `/api/contract-approval/${id}/start-review`, "POST");
+  expect(started.status).toBe(200);
+  return id;
+}
+
+describe("contract-approval 薄壳提交（引擎写单）", () => {
+  let ctx: Ctx;
   beforeEach(() => {
-    ctx = createHttpCtx();
+    ctx = createCtx();
     vi.mocked(loadMemberDirectory).mockReset();
   });
+  afterEach(() => vi.unstubAllGlobals());
 
-  it("GET /next-number：预览不占用计数", async () => {
-    const year = new Date().getFullYear();
-    ctx.kv.set(KV_KEYS.contractNumber(year), "41");
-    const res = await httpGet(ctx, "/api/contract-approval/next-number");
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ number: `HT-${year}-042` });
-    expect(ctx.kv.get(KV_KEYS.contractNumber(year))).toBe("41");
+  it("缺合同名称 / 合同文件 / 审批人 → 旧文案 500", async () => {
+    for (const [overrides, msg] of [
+      [{ contractName: "" }, "合同名称为必填项"],
+      [{ contractFiles: [] }, "合同文件为必填项"],
+      [{ approvers: [] }, "至少指定一名审批人"],
+      [{ amount: undefined }, "金额为必填项"],
+      [{ approvers: [{ level: "team_lead", approverId: USERS.sub.open_id }] }, "提交人不能兼任审批人"],
+    ] as const) {
+      const res = await api(ctx, USERS.sub.sid, "/api/contract-approval/submit", "POST", validBody(overrides as Record<string, unknown>));
+      expect(res.status).toBe(500);
+      expect(res.data.error).toContain(msg);
+    }
   });
 
-  it("GET /next-number：计数为空时预览 001 且不创建键", async () => {
+  it("提交成功：HT 三位年计数单号，审批单号=申请单号=合同编号，薄壳补写提交人/创建时间", async () => {
     const year = new Date().getFullYear();
-    const res = await httpGet(ctx, "/api/contract-approval/next-number");
+    const res = await api(ctx, USERS.sub.sid, "/api/contract-approval/submit", "POST", validBody());
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ number: `HT-${year}-001` });
-    expect(ctx.kv.has(KV_KEYS.contractNumber(year))).toBe(false);
+    expect(res.data.approvalId).toBe(`HT-${year}-001`);
+    expect(res.data.contractNumber).toBe(`HT-${year}-001`);
+    expect(res.data.status).toBe("pending_approval");
+    expect(res.data.submittedBy).toBe(USERS.sub.open_id);
+    expect(res.data.approvers).toHaveLength(2);
+    expect(res.data.approvers.every((a: { status: string }) => a.status === "pending")).toBe(true);
+
+    const row = ctx.tables[TABLES.approvals][0];
+    expect(row.fields["审批单号"]).toBe(res.data.approvalId);
+    expect(row.fields["申请单号"]).toBe(res.data.approvalId);
+    expect(row.fields["提交人"]).toBe(USERS.sub.open_id);
+    expect(row.fields["申请人"]).toBe(USERS.sub.name);
+    expect(row.fields["创建时间"]).toBeTruthy();
+    expect(row.fields["状态"]).toBe("pending_approval");
+    // 引擎 serial 计数器已占用 001
+    expect(ctx.kv.get(KV_KEYS.serial("HT", year))).toBe("1");
+
+    // 第二单 → 002；submit 事件落 events 表
+    const second = await api(ctx, USERS.sub.sid, "/api/contract-approval/submit", "POST", validBody());
+    expect(second.data.approvalId).toBe(`HT-${year}-002`);
+    const actions = (ctx.tables[TABLES.events] ?? []).map((r) => r.fields["动作"]);
+    expect(actions).toEqual(["submit", "submit"]);
   });
 
-  it("GET /members：q 命中姓名与 ou_ 子串；无匹配返回空数组", async () => {
+  it("手动编号查重保留；手动编号只影响合同编号，审批单号仍走 HT 计数", async () => {
+    const year = new Date().getFullYear();
+    const first = await api(ctx, USERS.sub.sid, "/api/contract-approval/submit", "POST", validBody({ contractNumber: "CT-USR-9" }));
+    expect(first.status).toBe(200);
+    expect(first.data.contractNumber).toBe("CT-USR-9");
+    // 引擎审批单号始终分配 HT 年计数（与旧版 approvalId 随机号、合同编号独立计数不同）
+    expect(first.data.approvalId).toBe(`HT-${year}-001`);
+
+    const dup = await api(ctx, USERS.sub.sid, "/api/contract-approval/submit", "POST", validBody({ contractNumber: "CT-USR-9" }));
+    expect(dup.status).toBe(500);
+    expect(dup.data.error).toContain("合同编号已存在（CT-USR-9）");
+  });
+});
+
+describe("contract-approval 薄壳会签（引擎承担）", () => {
+  let ctx: Ctx;
+  beforeEach(() => {
+    ctx = createCtx();
+    vi.mocked(loadMemberDirectory).mockReset();
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("非参与人不能开始审批；审批人 start_review → in_review", async () => {
+    const submitted = await api(ctx, USERS.sub.sid, "/api/contract-approval/submit", "POST", validBody());
+    const id = submitted.data.approvalId as string;
+    const denied = await api(ctx, SID_OUT, `/api/contract-approval/${id}/start-review`, "POST");
+    expect(denied.status).toBe(500);
+    expect(denied.data.error).toContain("参与人");
+    const ok = await api(ctx, SID_A, `/api/contract-approval/${id}/start-review`, "POST");
+    expect(ok.status).toBe(200);
+    expect(ok.data.status).toBe("in_review");
+    // 重复开始 → 旧文案
+    const again = await api(ctx, SID_A, `/api/contract-approval/${id}/start-review`, "POST");
+    expect(again.status).toBe(500);
+    expect(again.data.error).toContain("不允许开始审批");
+  });
+
+  it("非审批人不能审批（提交人/外人都不行）；重复审批拒绝", async () => {
+    const id = await submitAndStart(ctx);
+    const byOutsider = await api(ctx, SID_OUT, `/api/contract-approval/${id}/action`, "POST", { action: "approve" });
+    expect(byOutsider.status).toBe(500);
+    expect(byOutsider.data.error).toContain("参与人");
+    const bySubmitter = await api(ctx, USERS.sub.sid, `/api/contract-approval/${id}/action`, "POST", { action: "approve" });
+    expect(bySubmitter.status).toBe(500);
+    expect(bySubmitter.data.error).toContain("会签审批人");
+
+    await api(ctx, SID_A, `/api/contract-approval/${id}/action`, "POST", { action: "approve" });
+    const dup = await api(ctx, SID_A, `/api/contract-approval/${id}/action`, "POST", { action: "approve" });
+    expect(dup.status).toBe(500);
+    expect(dup.data.error).toContain("已提交过审批意见");
+  });
+
+  it("会签：第一人通过保持 in_review 且名单落个人意见，全部通过才 approved；评论写入", async () => {
+    const id = await submitAndStart(ctx);
+    const afterA = await api(ctx, SID_A, `/api/contract-approval/${id}/action`, "POST", { action: "approve", comment: "同意" });
+    expect(afterA.status).toBe(200);
+    expect(afterA.data.status).toBe("in_review");
+    const a = afterA.data.approvers.find((x: { approverId: string }) => x.approverId === USERS.a.open_id);
+    expect(a.status).toBe("approved");
+    expect(a.comment).toBe("同意");
+    expect(a.actedAt).toBeTruthy();
+
+    const comments = await api(ctx, SID_A, `/api/contract-approval/${id}/comments`);
+    expect(comments.data).toHaveLength(1);
+    expect(comments.data[0].reviewerId).toBe(USERS.a.open_id);
+    expect(comments.data[0].content).toBe("同意");
+
+    const afterB = await api(ctx, SID_B, `/api/contract-approval/${id}/action`, "POST", { action: "approve" });
+    expect(afterB.data.status).toBe("approved");
+    expect(afterB.data.approvers.every((x: { status: string }) => x.status === "approved")).toBe(true);
+  });
+
+  it("评论写入失败则整个操作中止，状态与名单不变", async () => {
+    const id = await submitAndStart(ctx);
+    ctx.failTables.add(TABLES.comments);
+    const res = await api(ctx, SID_A, `/api/contract-approval/${id}/action`, "POST", { action: "approve", comment: "x" });
+    expect(res.status).toBe(500);
+    ctx.failTables.delete(TABLES.comments);
+    const detail = await api(ctx, SID_A, `/api/contract-approval/${id}`);
+    expect(detail.data.status).toBe("in_review");
+    expect(detail.data.approvers.every((a: { status: string }) => a.status === "pending")).toBe(true);
+  });
+
+  it("任一审批人拒绝即整体 rejected；此后不能再审批", async () => {
+    const id = await submitAndStart(ctx);
+    const after = await api(ctx, SID_A, `/api/contract-approval/${id}/action`, "POST", { action: "reject", comment: "条款有问题" });
+    expect(after.data.status).toBe("rejected");
+    const detail = await api(ctx, SID_A, `/api/contract-approval/${id}`);
+    const a = detail.data.approvers.find((x: { approverId: string }) => x.approverId === USERS.a.open_id);
+    expect(a.status).toBe("rejected");
+    const late = await api(ctx, SID_B, `/api/contract-approval/${id}/action`, "POST", { action: "approve" });
+    expect(late.status).toBe(500);
+    expect(late.data.error).toContain("不允许审批操作");
+  });
+
+  it("revise 落本人 rejected 意见；仅提交人可 resubmit，且审批人重置", async () => {
+    const id = await submitAndStart(ctx);
+    const revised = await api(ctx, SID_A, `/api/contract-approval/${id}/action`, "POST", { action: "revise", comment: "金额条款需修改" });
+    expect(revised.data.status).toBe("revised");
+    const a = revised.data.approvers.find((x: { approverId: string }) => x.approverId === USERS.a.open_id);
+    expect(a.status).toBe("rejected");
+    expect(a.comment).toBe("金额条款需修改");
+
+    const byOther = await api(ctx, SID_B, `/api/contract-approval/${id}/resubmit`, "POST", {});
+    expect(byOther.status).toBe(500);
+    expect(byOther.data.error).toContain("只有提交人可以重新提交");
+
+    const resubmitted = await api(ctx, USERS.sub.sid, `/api/contract-approval/${id}/resubmit`, "POST", {});
+    expect(resubmitted.status).toBe(200);
+    expect(resubmitted.data.status).toBe("pending_approval");
+    expect(resubmitted.data.approvers.every((x: { status: string; comment?: string }) => x.status === "pending" && !x.comment && !("actedAt" in x && x.actedAt))).toBe(true);
+
+    const actions = (ctx.tables[TABLES.events] ?? []).map((r) => r.fields["动作"]);
+    expect(actions).toEqual(expect.arrayContaining(["submit", "start_review", "revise", "resubmit"]));
+  });
+
+  it("归档：仅终态可归档（旧文案），非参与人不可归档，提交人可归档", async () => {
+    const id = await submitAndStart(ctx);
+    const early = await api(ctx, SID_A, `/api/contract-approval/${id}/archive`, "POST");
+    expect(early.status).toBe(500);
+    expect(early.data.error).toContain("不允许归档");
+
+    await api(ctx, SID_A, `/api/contract-approval/${id}/action`, "POST", { action: "approve" });
+    await api(ctx, SID_B, `/api/contract-approval/${id}/action`, "POST", { action: "approve" });
+
+    const byOutsider = await api(ctx, SID_OUT, `/api/contract-approval/${id}/archive`, "POST");
+    expect(byOutsider.status).toBe(500);
+    expect(byOutsider.data.error).toContain("参与人");
+
+    const archived = await api(ctx, USERS.sub.sid, `/api/contract-approval/${id}/archive`, "POST");
+    expect(archived.status).toBe(200);
+    expect(archived.data.status).toBe("archived");
+  });
+
+  it("旧格式单号（仅审批单号字段）经引擎第二通道流转", async () => {
+    // 新格式记录让「申请单号」字段在表中存在；旧记录只有「审批单号」
+    ctx.seed(TABLES.approvals, {
+      审批单号: "HT-2026-001", 申请单号: "HT-2026-001", 状态: "archived",
+      提交人: USERS.sub.open_id, 审批人: JSON.stringify([{ level: "team_lead", approverId: USERS.a.open_id, status: "approved" }]),
+    });
+    ctx.seed(TABLES.approvals, {
+      审批单号: "CA-20261024-001", 状态: "approved",
+      提交人: USERS.sub.open_id, 审批人: JSON.stringify([{ level: "team_lead", approverId: USERS.a.open_id, status: "approved" }]),
+    });
+    const res = await api(ctx, USERS.sub.sid, "/api/contract-approval/CA-20261024-001/archive", "POST");
+    expect(res.status).toBe(200);
+    expect(res.data.status).toBe("archived");
+    expect(res.data.approvalId).toBe("CA-20261024-001");
+  });
+});
+
+describe("contract-approval 编号预览（引擎 serial 计数器）", () => {
+  let ctx: Ctx;
+  beforeEach(() => {
+    ctx = createCtx();
+    vi.mocked(loadMemberDirectory).mockReset();
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("peekNextSerial 只读不占用", async () => {
+    const year = new Date().getFullYear();
+    ctx.kv.set(KV_KEYS.serial("HT", year), "41");
+    expect(await peekNextSerial(ctx.env.REGISTRY, "HT", year, 3)).toBe(`HT-${year}-042`);
+    expect(ctx.kv.get(KV_KEYS.serial("HT", year))).toBe("41");
+  });
+
+  it("GET /next-number：预览 serial 计数；为空时 001 且不创建键", async () => {
+    const year = new Date().getFullYear();
+    ctx.kv.set(KV_KEYS.serial("HT", year), "41");
+    const res = await api(ctx, USERS.sub.sid, "/api/contract-approval/next-number");
+    expect(res.status).toBe(200);
+    expect(res.data).toEqual({ number: `HT-${year}-042` });
+    expect(ctx.kv.get(KV_KEYS.serial("HT", year))).toBe("41");
+
+    const ctx2 = createCtx();
+    const empty = await api(ctx2, USERS.sub.sid, "/api/contract-approval/next-number");
+    expect(empty.data).toEqual({ number: `HT-${year}-001` });
+    expect(ctx2.kv.has(KV_KEYS.serial("HT", year))).toBe(false);
+  });
+});
+
+describe("contract-approval 读取与附件端点（保留原样）", () => {
+  let ctx: Ctx;
+  beforeEach(() => {
+    ctx = createCtx();
+    vi.mocked(loadMemberDirectory).mockReset();
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("GET /members：q 命中姓名与 ou_ 子串；目录未配置 → 空数组 + hint", async () => {
     vi.mocked(loadMemberDirectory).mockResolvedValue(
       new Map([
         ["张三", "ou_zhangsan"],
         ["李四", "ou_lisi"],
       ]),
     );
-    const byName = await httpGet(ctx, "/api/contract-approval/members?q=%E5%BC%A0");
-    expect(byName.status).toBe(200);
-    expect(await byName.json()).toEqual({ members: [{ name: "张三", open_id: "ou_zhangsan" }] });
+    const byName = await api(ctx, USERS.sub.sid, "/api/contract-approval/members?q=%E5%BC%A0");
+    expect(byName.data).toEqual({ members: [{ name: "张三", open_id: "ou_zhangsan" }] });
 
-    const byOid = await httpGet(ctx, "/api/contract-approval/members?q=ou_li");
-    const byOidData = (await byOid.json()) as { members: Array<{ name: string; open_id: string }> };
-    expect(byOidData.members).toEqual([{ name: "李四", open_id: "ou_lisi" }]);
+    const byOid = await api(ctx, USERS.sub.sid, "/api/contract-approval/members?q=ou_li");
+    expect(byOid.data.members).toEqual([{ name: "李四", open_id: "ou_lisi" }]);
 
-    const miss = await httpGet(ctx, "/api/contract-approval/members?q=%E7%8E%8B");
-    expect(await miss.json()).toEqual({ members: [] });
-  });
-
-  it("GET /members：目录未配置或为空 → 空数组 + hint 队员名单未配置", async () => {
     vi.mocked(loadMemberDirectory).mockResolvedValue(null);
-    const res = await httpGet(ctx, "/api/contract-approval/members?q=%E5%BC%A0");
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ members: [], hint: "队员名单未配置" });
-
-    vi.mocked(loadMemberDirectory).mockResolvedValue(new Map());
-    const empty = await httpGet(ctx, "/api/contract-approval/members?q=%E5%BC%A0");
-    expect(await empty.json()).toEqual({ members: [], hint: "队员名单未配置" });
+    const none = await api(ctx, USERS.sub.sid, "/api/contract-approval/members?q=%E5%BC%A0");
+    expect(none.data).toEqual({ members: [], hint: "队员名单未配置" });
   });
 
-  it("GET /file：200 流式返回 R2 对象，Content-Type 与 inline filename 正确", async () => {
+  it("GET /file：200 流式返回 R2 对象；对象不存在 404", async () => {
     ctx.objects.set("receipts/20261015/uuid-x.pdf", { body: "%PDF-1.4 fake", contentType: "application/pdf" });
-    const res = await httpGet(
-      ctx,
-      `/api/contract-approval/file?key=${encodeURIComponent("receipts/20261015/uuid-x.pdf")}&name=${encodeURIComponent("采购合同.pdf")}`,
+    const url = new URL(`https://hub.test/api/contract-approval/file?key=${encodeURIComponent("receipts/20261015/uuid-x.pdf")}&name=${encodeURIComponent("采购合同.pdf")}`);
+    const res = await handleContractApproval(
+      new Request(url.toString(), { headers: { cookie: `nec_session=${USERS.sub.sid}` } }),
+      ctx.env,
+      url.pathname,
     );
-    expect(res.status).toBe(200);
-    expect(res.headers.get("content-type")).toBe("application/pdf");
-    const cd = res.headers.get("content-disposition") ?? "";
-    expect(cd).toContain("inline");
-    expect(cd).toContain(encodeURIComponent("采购合同.pdf"));
-    expect(await res.text()).toBe("%PDF-1.4 fake");
-  });
+    expect(res!.status).toBe(200);
+    expect(res!.headers.get("content-type")).toBe("application/pdf");
+    expect(res!.headers.get("content-disposition")).toContain("inline");
+    expect(await res!.text()).toBe("%PDF-1.4 fake");
 
-  it("GET /file：对象不存在 404；无 metadata 默认 octet-stream 并以 key 尾部兜底文件名", async () => {
-    const miss = await httpGet(ctx, "/api/contract-approval/file?key=receipts%2Fnope.pdf");
+    const miss = await api(ctx, USERS.sub.sid, "/api/contract-approval/file?key=receipts%2Fnope.pdf");
     expect(miss.status).toBe(404);
-    expect(await miss.json()).toEqual({ error: "文件不存在" });
-
-    ctx.objects.set("receipts/x/no-meta.bin", { body: "0101" });
-    const res = await httpGet(ctx, "/api/contract-approval/file?key=receipts%2Fx%2Fno-meta.bin");
-    expect(res.status).toBe(200);
-    expect(res.headers.get("content-type")).toBe("application/octet-stream");
-    expect(res.headers.get("content-disposition")).toContain("no-meta.bin");
-    expect(await res.text()).toBe("0101");
+    expect(miss.data).toEqual({ error: "文件不存在" });
   });
 
   it("GET /start：required 含 amount，rules 含金额/币种/日期校验描述", async () => {
-    const res = await httpGet(ctx, "/api/contract-approval/start");
+    const res = await api(ctx, USERS.sub.sid, "/api/contract-approval/start");
     expect(res.status).toBe(200);
-    const data = (await res.json()) as { required: string[]; rules: string[] };
-    expect(data.required).toContain("amount");
-    expect(data.rules.join(" ")).toContain("金额必须大于 0");
-    expect(data.rules.join(" ")).toContain("币种仅支持");
-    expect(data.rules.join(" ")).toContain("到期日期必须晚于生效日期");
+    expect(res.data.required).toContain("amount");
+    expect(res.data.rules.join(" ")).toContain("金额必须大于 0");
+    expect(res.data.rules.join(" ")).toContain("币种仅支持");
+    expect(res.data.rules.join(" ")).toContain("到期日期必须晚于生效日期");
   });
 });

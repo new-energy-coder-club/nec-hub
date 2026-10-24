@@ -125,7 +125,7 @@ export const toolConfigContractApproval = createModuleConfigTool({
 export const configDrawingReviewTool: McpToolDef = {
   name: "config_drawing_review",
   description:
-    "配置/查看新增机图纸评审流程对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。",
+    "配置/查看新增机图纸评审流程对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。注意：reviews 主表同时被审批引擎 flows:config（drawing_review）引用——两侧指向同一张表是刻意的（引擎写单/状态机/通知，本配置供子表查询）；引擎侧缺省时由路由自动回填，无需重复配置。",
   inputSchema: {
     type: "object",
     properties: {
@@ -155,7 +155,7 @@ export const configDrawingReviewTool: McpToolDef = {
 export const configHardwareReviewTool: McpToolDef = {
   name: "config_hardware_review",
   description:
-    "配置/查看硬件评审流程对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。",
+    "配置/查看硬件评审流程对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。注意：reviews 主表同时被审批引擎 flows:config（hardware_review）引用——两侧指向同一张表是刻意的（引擎写单/状态机/通知，本配置供子表查询）；引擎侧缺省时由路由自动回填，无需重复配置。",
   inputSchema: {
     type: "object",
     properties: {
@@ -180,7 +180,7 @@ export const configHardwareReviewTool: McpToolDef = {
 export const configContractApprovalTool: McpToolDef = {
   name: "config_contract_approval",
   description:
-    "配置/查看合同审批流程对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。",
+    "配置/查看合同审批流程对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。注意：approvals 主表同时被审批引擎 flows:config（contract）引用——两侧指向同一张表是刻意的（引擎写单/会签/通知，本配置供评论/事件子表）；引擎侧缺省时由路由自动回填，无需重复配置。",
   inputSchema: {
     type: "object",
     properties: {

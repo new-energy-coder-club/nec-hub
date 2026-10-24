@@ -7,7 +7,7 @@ import SeasonGoalsApp from '@apps/season-goals/SeasonGoalsApp.vue'
   <section id="tab-season-goals">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-bold">赛季目标</h2>
-      <a href="/apps/season-goals/" target="_blank" class="text-xs hover:underline" style="color:var(--nec-cyan)">独立全屏版 /apps/season-goals/ →</a>
+ <a href="/apps/season-goals/" target="_blank" class="text-xs hover:underline text-nec-cyan">独立全屏版 /apps/season-goals/ →</a>
     </div>
     <div class="rounded-xl border border-gray-200 overflow-hidden bg-white">
       <SeasonGoalsApp embedded />

@@ -3,12 +3,12 @@
  *
  * REST：
  *   POST /api/approvals                        → 发起审批（需登录；external 403；流程限组校验）
- *   POST /api/approvals/<type>/<单号>/<action> → 状态机动作（approve/reject/pay/start/archive/arrive/issue/publish，幂等）
+ *   POST /api/approvals/<type>/<单号>/<action> → 状态机动作（全局机：approve/reject/pay/start/archive/arrive/issue/publish；
+ *                                                flow.machine 流程：其 transitions 声明的动作名；幂等）
  *   GET  /api/approvals/mine?type=             → 我的申请列表（按 open_id 过滤，提交时间降序 20 条）
  */
 
 import { ROLES, resolveUserRole } from "../auth/role";
-import { syncReimburseDocStatus } from "../erp/reimburse";
 import { fieldNum, fieldText, findFieldKey, firstFieldText, getTenantAccessToken, queryBitableRecords } from "../feishu/bitable";
 import { notifyFeishu } from "../feishu/bot";
 import { approvalResultMailHtml, defaultMailRecipients, sendFeishuMail } from "../feishu/mail";
@@ -22,6 +22,9 @@ import {
   getFlowBase,
   getFlowsConfig,
   isApprover,
+  pendingStatesOf,
+  statusFieldOf,
+  statusFieldPatterns,
   type ApprovalType,
   type FlowConfig,
 } from "./flows";
@@ -31,7 +34,11 @@ import {
   runApprovalAction,
   submitApprovalCore,
   type ApprovalAction,
+  type ApprovalStatusChange,
 } from "./engine";
+
+/** 状态流转钩子（如 ERP 快照回写）：由组合根（src/index.ts 路由）注入，审批域不反向依赖 ERP */
+export type ApprovalStatusHook = (env: Env, change: ApprovalStatusChange) => Promise<void>;
 
 export async function handleApprovalSubmit(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
   const session = await resolveSession(env, request, ctx);
@@ -66,22 +73,28 @@ export async function handleApprovalAction(
   appId: string,
   action: string,
   ctx?: ExecutionContext,
+  onStatusChange?: ApprovalStatusHook,
 ): Promise<Response> {
   const session = await resolveSession(env, request, ctx);
   if (!session) return json({ error: "unauthorized" }, 401);
   if (!APPROVAL_TYPES.includes(type as ApprovalType)) return json({ error: `未知流程 type：${type}` }, 400);
-  if (!APPROVAL_ACTIONS.includes(action as ApprovalAction)) return json({ error: `未知动作：${action}` }, 400);
+  // 动作白名单：全局状态机动作 ∪ 该流程 machine 动作（评审流程的 start_meeting/conclude_passed 等）
+  const flowCfg = await getFlowsConfig(env);
+  const machineActions = flowCfg[type as ApprovalType].machine?.transitions.map((t) => t.action) ?? [];
+  if (!APPROVAL_ACTIONS.includes(action as ApprovalAction) && !machineActions.includes(action)) {
+    return json({ error: `未知动作：${action}` }, 400);
+  }
   const body = (await request.json().catch(() => ({}))) as { comment?: string; link?: string; reason?: string };
   try {
     return json(
       await runApprovalAction(env, {
         type: type as ApprovalType,
         appId,
-        action: action as ApprovalAction,
+        action,
         comment: body.comment,
         link: body.link,
         reason: body.reason,
-        onStatusChange: syncReimburseDocStatus,
+        onStatusChange,
         user: session.user,
         role: await resolveUserRole(env, session.user, ctx),
       }),
@@ -146,20 +159,22 @@ export async function handleApprovalPending(request: Request, env: Env, ctx?: Ex
   const base = await getFlowBase(env, flow);
   if (!base) return json({ records: [] });
   const token = await getTenantAccessToken(env);
-  // filter 下推只拉「审批中」行；search 失败回退全表扫描（match 保留字段名模糊匹配，语义不变）
+  const statusField = statusFieldOf(flow);
+  const pendings = pendingStatesOf(flow);
+  // filter 下推只拉待审批状态（pendingStates）行；search 失败回退全表扫描（match 保留字段名模糊匹配，语义不变）
   const records = await queryBitableRecords(
     token,
     base,
     flow.tableId,
-    [{ field_name: "状态", operator: "is", value: ["审批中"] }],
+    [{ field_name: statusField, operator: "is", value: pendings }],
     (r, rs) => {
-      const k = findFieldKey(rs, [/^状态$/, /状态/, /进度/]) ?? "状态";
-      return fieldText(r.fields[k]) === "审批中";
+      const k = findFieldKey(rs, statusFieldPatterns(flow)) ?? statusField;
+      return pendings.includes(fieldText(r.fields[k]));
     },
   );
-  const statusKey = findFieldKey(records, [/^状态$/, /状态/, /进度/]) ?? "状态";
+  const statusKey = findFieldKey(records, statusFieldPatterns(flow)) ?? statusField;
   const pending = records
-    .filter((r) => fieldText(r.fields[statusKey]) === "审批中")
+    .filter((r) => pendings.includes(fieldText(r.fields[statusKey])))
     .sort((a, b) => (fieldNum(a.fields["提交时间"]) ?? 0) - (fieldNum(b.fields["提交时间"]) ?? 0))
     .slice(0, 20);
   return json({
@@ -211,7 +226,7 @@ export async function handleApprovalMine(request: Request, env: Env, ctx?: Execu
       }
       return {
         application_id: fieldText(f["申请单号"]),
-        status: fieldText(f["状态"]),
+        status: fieldText(f[statusFieldOf(flow)]),
         record_id: r.record_id,
         url: buildRecordLink(base, flow.tableId, r.record_id),
         fields,
@@ -375,6 +390,47 @@ export async function toolConfigFlows(args: Record<string, unknown>, env: Env, h
     }
     if (patch.conditional !== undefined && !Array.isArray(patch.conditional)) {
       throw new Error(`conditional 不合法（${t}）：应为 [{ when: { field, equals }, require: [...] }]`);
+    }
+    if (patch.machine !== undefined) {
+      const m = patch.machine as Record<string, unknown> | null;
+      if (typeof m !== "object" || m === null || Array.isArray(m)) {
+        throw new Error(`machine 不合法（${t}）：应为 { initial: string, transitions: [{ action, from, to, guard? }] }`);
+      }
+      if (m.initial !== undefined && typeof m.initial !== "string") {
+        throw new Error(`machine.initial 不合法（${t}）：应为状态字符串`);
+      }
+      if (m.transitions !== undefined) {
+        if (!Array.isArray(m.transitions)) throw new Error(`machine.transitions 不合法（${t}）：应为数组`);
+        const GUARDS = new Set(["approver", "finance", "owner", "participant", "any"]);
+        for (const tr of m.transitions as Array<Record<string, unknown>>) {
+          if (!tr || typeof tr !== "object" || typeof tr.action !== "string" || typeof tr.from !== "string" || typeof tr.to !== "string") {
+            throw new Error(`machine.transitions 项不合法（${t}）：action/from/to 均须为字符串`);
+          }
+          if (tr.guard !== undefined && !GUARDS.has(String(tr.guard))) {
+            throw new Error(`machine.transitions.guard 不合法（${t}）：应为 approver|finance|owner|participant|any`);
+          }
+        }
+      }
+    }
+    if (patch.countersign !== undefined) {
+      const c = patch.countersign as Record<string, unknown> | null;
+      if (typeof c !== "object" || c === null || Array.isArray(c) || typeof c.approversField !== "string" || !c.approversField.trim()) {
+        throw new Error(`countersign 不合法（${t}）：应为 { approversField: "审批人名单字段名" }`);
+      }
+    }
+    if (patch.pendingStates !== undefined) {
+      if (!Array.isArray(patch.pendingStates) || patch.pendingStates.some((s) => typeof s !== "string" || !s.trim())) {
+        throw new Error(`pendingStates 不合法（${t}）：应为非空状态字符串数组`);
+      }
+    }
+    if (patch.statusField !== undefined && (typeof patch.statusField !== "string" || !patch.statusField.trim())) {
+      throw new Error(`statusField 不合法（${t}）：应为非空字段名字符串`);
+    }
+    if (patch.serialDigits !== undefined) {
+      const d = patch.serialDigits;
+      if (typeof d !== "number" || !Number.isInteger(d) || d < 1 || d > 8) {
+        throw new Error(`serialDigits 不合法（${t}）：应为 1-8 的整数（默认 4，合同 HT 用 3）`);
+      }
     }
     const merged = { ...current[t], ...patch } as FlowConfig;
     if (merged.tableId && !/^tbl[A-Za-z0-9]+$/.test(merged.tableId)) {

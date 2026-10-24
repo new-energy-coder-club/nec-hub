@@ -122,9 +122,9 @@ onMounted(load)
     <div class="mb-2">
       <template v-if="compare">
         <p v-if="!compare.materials || !compare.materials.length" class="text-xs text-nec-gray">暂无询价数据可比价</p>
-        <div v-else class="rounded-lg p-3 space-y-2" style="border:1px solid var(--nec-line);background:var(--nec-royal-100, #E8ECFB)">
+ <div v-else class="rounded-lg p-3 space-y-2 border border-nec-line bg-nec-royal-100">
           <p class="text-xs font-bold text-nec-navy">比价建议书（价格优先，交期超需求日期按 1.2 倍折算）</p>
-          <div v-for="m in compare.materials" :key="m.bomItemId" class="text-xs pt-1.5" style="border-top:1px solid var(--nec-line)">
+ <div v-for="m in compare.materials" :key="m.bomItemId" class="text-xs pt-1.5 border-t border-nec-line">
             <p class="font-bold text-nec-ink">{{ m.materialName || m.bomItemId }}{{ m.materialCode ? `（${m.materialCode}）` : '' }}</p>
             <p v-for="q in m.quotes" :key="q.inquiryId" class="text-nec-gray pl-2">
               {{ q.supplierName }}：{{ q.price != null ? '¥' + q.price : '未报价' }}{{ q.deliveryDate ? ' · 交期 ' + q.deliveryDate : '' }}<span v-if="q.late" class="text-red-600"> 超期</span>
@@ -142,7 +142,7 @@ onMounted(load)
     <div class="space-y-2">
       <p v-if="loadError" class="text-xs text-red-600">询价单加载失败：{{ loadError }}</p>
       <p v-else-if="inquiries && !inquiries.length" class="text-xs text-nec-gray">暂无询价单，点击「生成询价单」从 BOM 外购/标准件物料生成</p>
-      <div v-for="q in inquiries || []" :key="q.inquiryId" class="rounded-lg p-3" style="border:1px solid var(--nec-line);background:var(--nec-fog)">
+ <div v-for="q in inquiries || []" :key="q.inquiryId" class="rounded-lg p-3 border border-nec-line bg-nec-fog">
         <div class="flex items-start justify-between gap-2 flex-wrap">
           <p class="text-xs">
             <span class="mono font-bold text-nec-royal">{{ q.inquiryId }}</span>

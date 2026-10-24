@@ -20,7 +20,7 @@ onMounted(async () => {
   <p v-else-if="!docs.length" class="text-sm text-gray-400">资料页暂无条目。</p>
   <ul v-else class="divide-y divide-gray-100">
     <li v-for="(d, i) in docs" :key="i" class="py-1.5">
-      <a v-if="d.url" :href="d.url" target="_blank" class="hover:underline font-medium" style="color:var(--nec-navy)">{{ d.title }}</a>
+ <a v-if="d.url" :href="d.url" target="_blank" class="hover:underline font-medium text-nec-navy">{{ d.title }}</a>
       <template v-else>
         <span class="font-medium text-gray-400">{{ d.title }}</span>
         <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-600">即将上线</span>

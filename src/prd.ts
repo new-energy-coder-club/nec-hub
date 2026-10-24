@@ -44,13 +44,13 @@ export const DEFAULT_PRD_ITEMS: Record<string, PrdItem> = {
     title: "审批/待办聚合", priority: "P2", status: "partial",
     note: "四类聚合 + 合规 T-1 标红已交付，登录实测通过；48h 视角复核与审批 scope 待办",
     subs: {
-      "FE-17": { title: "我的任务（飞书任务绑定同步）", priority: "P1", status: "partial", note: "Task v2 同步 + 5min 缓存 + 解绑已上线；待队员真实账号绑定走查" },
+      "FE-17": { title: "我的任务（飞书任务绑定同步）", priority: "P1", status: "partial", note: "Task v2 同步 + 5min 缓存 + 解绑已上线；门户 Tab 与首页 widget 同源已修复（10-24）；待队员真实账号绑定走查" },
     },
   },
   "FE-12": { title: "Skill 仓库 CI", priority: "P2", status: "done", note: "quality-check.yml 强制校验 + PR 自动评论质量报告" },
   "FE-13": { title: "运营配置自动化复查（lark-cli）", priority: "P2", status: "done", note: "能力边界验证报告已交付" },
   "FE-14": { title: "新增机图纸评审流程", priority: "P1", status: "done", note: "10 表配齐 + 询价比价 + 流程看板 + 群通知 + 阻塞告警 cron；飞书会议/ERP/MES 联调待办" },
-  "FE-15": { title: "硬件评审流程", priority: "P1", status: "partial", note: "后端 + 独立应用页 + 评估报告流转已上线；待真实数据走查与门户入口曝光" },
+  "FE-15": { title: "硬件评审流程", priority: "P1", status: "partial", note: "后端 + 独立应用页 + 评估报告流转已上线；核心流程卡片与评审 Tab 入口已就位，待真实数据走查" },
   "FE-16": { title: "合同审批流程", priority: "P1", status: "partial", note: "状态机 + 会签权限 + 前端可用性重构（12 项）已上线；待真实合同走查" },
 };
 

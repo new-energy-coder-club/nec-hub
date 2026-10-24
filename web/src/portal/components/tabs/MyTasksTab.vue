@@ -82,15 +82,15 @@ watch(() => auth.tick, () => loadMyTasks())
       <div v-else-if="state === 'unbound'" class="bg-white rounded-xl shadow p-8 text-center">
         <p class="text-sm text-gray-500 mb-1">尚未绑定飞书任务{{ data?.rebind ? '（原授权已失效）' : '' }}</p>
         <p class="text-xs text-gray-400 mb-4">授权后中台将代你同步拉取飞书任务（Task v2，只读）</p>
-        <button v-if="authUrl" @click="bindMyTasks" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--nec-cyan)">🔗 绑定飞书任务</button>
+ <button v-if="authUrl" @click="bindMyTasks" class="text-sm text-white px-4 py-2 rounded-lg bg-nec-cyan">🔗 绑定飞书任务</button>
         <p v-else class="text-xs text-red-500">飞书应用未配置，无法发起授权</p>
       </div>
       <div v-else-if="state === 'list' && !(data?.tasks?.length)" class="bg-white rounded-xl shadow p-8 text-center text-sm text-gray-400">🎉 没有未完成的飞书任务</div>
       <template v-else-if="state === 'list'">
         <div v-for="(t, i) in data.tasks" :key="i" class="bg-white rounded-xl shadow p-4 flex items-center gap-3" :class="{ 'opacity-50': t.completedAt }">
           <div class="flex-1 min-w-0">
-            <a v-if="t.url" :href="t.url" target="_blank" class="font-medium hover:underline" :class="{ 'line-through text-gray-400': t.completedAt }" style="color:var(--nec-navy)">{{ t.summary }}</a>
-            <span v-else class="font-medium" :class="{ 'line-through text-gray-400': t.completedAt }" style="color:var(--nec-navy)">{{ t.summary }}</span>
+ <a v-if="t.url" :href="t.url" target="_blank" class="font-medium hover:underline text-nec-navy" :class="{ 'line-through text-gray-400': t.completedAt }">{{ t.summary }}</a>
+ <span v-else class="font-medium text-nec-navy" :class="{ 'line-through text-gray-400': t.completedAt }">{{ t.summary }}</span>
             <p class="text-xs mt-1" :class="isOverdue(t) ? 'text-red-600 font-medium' : 'text-gray-400'">{{ isOverdue(t) ? '已逾期 · ' : '' }}截止：{{ dueOf(t) }}</p>
           </div>
           <span v-if="t.completedAt" class="text-xs text-gray-400 shrink-0">已完成</span>

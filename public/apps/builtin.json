@@ -1,0 +1,86 @@
+[
+  {
+    "name": "drawing-review",
+    "title": "新增机图纸评审",
+    "desc": "提交 · 评审 · BOM · 排期 · 采购",
+    "icon": "📐",
+    "group": "core"
+  },
+  {
+    "name": "hardware-review",
+    "title": "硬件评审流程",
+    "desc": "选型 · 评审 · 立项 · 归档",
+    "icon": "🔧",
+    "group": "core"
+  },
+  {
+    "name": "mech-review-6014",
+    "title": "6014 电机机械评审",
+    "desc": "评审纪要 · 转接板草图 · DXF/CSV",
+    "icon": "⚙️",
+    "group": "core"
+  },
+  {
+    "name": "scoring",
+    "title": "NEC 评分看板",
+    "desc": "赛事成绩 · 评分记录 · 排名",
+    "icon": "🏆",
+    "group": "core"
+  },
+  {
+    "name": "contract-signing",
+    "title": "协议签署 OA 审批",
+    "desc": "合同提交 · 会签审批 · 归档",
+    "icon": "📝",
+    "group": "core"
+  },
+  {
+    "name": "domains",
+    "title": "域名分发系统",
+    "desc": "子域名申请 · 分发管理",
+    "icon": "🌐",
+    "group": "core"
+  },
+  {
+    "name": "reimburse",
+    "title": "报销助手",
+    "desc": "费用报销单 · 发票附件 · 提交审批",
+    "icon": "💰",
+    "group": "standalone"
+  },
+  {
+    "name": "compliance",
+    "title": "合规申请",
+    "desc": "合规事项提交 · 审批 · 归档",
+    "icon": "🛡️",
+    "group": "standalone"
+  },
+  {
+    "name": "cla-sign",
+    "title": "CLA 协议签署",
+    "desc": "开源贡献协议 · 签署 · PDF 证书",
+    "icon": "✍️",
+    "group": "standalone"
+  },
+  {
+    "name": "drawing",
+    "title": "机械图纸审批",
+    "desc": "图纸提交 · 审批流转",
+    "icon": "📏",
+    "group": "standalone"
+  },
+  {
+    "name": "season-goals",
+    "title": "赛季目标管理",
+    "desc": "目标 · 关键结果 · 完成度跟踪",
+    "icon": "🎯",
+    "group": "standalone"
+  },
+  {
+    "name": "task-schedule",
+    "title": "任务排期",
+    "desc": "任务计划 · 排期甘特 · 进度",
+    "icon": "🗓️",
+    "group": "standalone"
+  }
+]

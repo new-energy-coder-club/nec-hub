@@ -44,8 +44,8 @@ function onDel() {
               <td><input type="checkbox" class="line-check" :checked="checks.has(i)" @click.stop="toggleCheck(i)" /></td>
               <td class="mono text-nec-gray">{{ i + 1 }}</td>
               <td>
-                <button type="button" class="line-input text-left cat-pick" :class="{ ng: !l.cat }"
-                        style="border:1px solid var(--nec-line);background:#fff;display:flex;justify-content:space-between;align-items:center;gap:4px"
+                <button type="button" class="line-input text-left cat-pick border border-nec-line bg-nec-paper" :class="{ ng: !l.cat }"
+                        style="display:flex;justify-content:space-between;align-items:center;gap:4px"
                         @click="openCatModal(i)">
                   <span :class="l.cat ? '' : 'text-nec-gray'">{{ l.cat || '请选择' }}</span><span class="text-nec-gray">🔍</span>
                 </button>

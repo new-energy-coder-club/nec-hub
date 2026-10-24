@@ -4,6 +4,8 @@ node_modules/
 *.log
 worker-configuration.d.ts
 .kimi-code/
+.mcp.json
+*.bak
 .DS_Store
 .mcp-token
 worker-configuration.d.ts

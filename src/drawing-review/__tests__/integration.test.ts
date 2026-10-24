@@ -65,20 +65,20 @@ describe('图纸评审 - 联想功能集成测试', () => {
       );
       expect(machineSuggestions.some(s => s.type === 'machine')).toBe(true);
       
-      // 3. 用户提交表单，系统应用智能默认值
+      // 3. 用户提交表单，系统应用智能默认值（提交本体已迁入审批引擎，这里验证提交前默认值）
       const submitInput = {
         projectId: selectedProject,
         machineName: 'R1底盘',
         drawingFiles: [{ name: 'test.pdf', token: 'test-token' }],
         designNotes: '', // 空值，应该使用模板
       };
-      
-      const result = await flowService.submit(submitInput, 'user-123');
-      
-      expect(result.projectId).toBe(selectedProject);
-      expect(result.machineName).toBe('R1底盘');
-      expect(result.designNotes).toContain('【设计说明模板】');
-      expect(result.designerId).toBe('user-123');
+
+      const defaults = await flowService.getDefaultSubmissionValues(submitInput, 'user-123');
+
+      expect(defaults.projectId).toBe(selectedProject);
+      expect(defaults.machineName).toBe('R1底盘');
+      expect(defaults.designNotes).toContain('【设计说明模板】');
+      expect(defaults.designerId).toBe('user-123');
     });
 
     it('should handle task-based suggestions in workflow', async () => {
@@ -132,27 +132,27 @@ describe('图纸评审 - 联想功能集成测试', () => {
           return await suggestionService.getSuggestions({ projectId: 'PRJ-001' }, 'R');
         },
         
-        // 步骤 3: 提交表单
+        // 步骤 3: 提交表单（提交本体已迁入审批引擎，这里验证提交前默认值解析）
         async () => {
           const input = {
             projectId: 'PRJ-001',
             machineName: 'R1底盘',
             drawingFiles: [{ name: 'test.pdf', token: 'test-token' }],
           };
-          return await flowService.submit(input, 'user-123');
+          return await flowService.getDefaultSubmissionValues(input, 'user-123');
         },
       ];
-      
+
       // 执行完整工作流程
       const projectSuggestions = await workflowSteps[0]();
       expect(projectSuggestions.length).toBeGreaterThan(0);
-      
+
       const machineSuggestions = await workflowSteps[1]();
       expect(machineSuggestions.length).toBeGreaterThan(0);
-      
-      const submitResult = await workflowSteps[2]();
-      expect(submitResult.reviewId).toBeDefined();
-      expect(submitResult.status).toBe('pending_review');
+
+      const submitDefaults = await workflowSteps[2]();
+      expect(submitDefaults.machineName).toBe('R1底盘');
+      expect(submitDefaults.drawingVersion).toBe('V1.0');
     });
   });
 
