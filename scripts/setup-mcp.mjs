@@ -10,7 +10,7 @@
  * 写入前先用 initialize 验证 token 有效性，401 直接报错不写坏配置。
  * 产物：.kimi-code/mcp.json + .mcp.json（均含 token，已加入 .gitignore；旧文件备份为 *.bak）。
  */
-import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -51,12 +51,18 @@ if (!resp.ok) {
   console.error(`❌ initialize 失败：HTTP ${resp.status} ${await resp.text()}`);
   process.exit(1);
 }
-const body = await resp.json();
+// 流式响应可能不主动关闭连接（streamable HTTP 保活），json() 会挂起：限时取文本后解析首个 JSON
+const text = await Promise.race([
+  resp.text(),
+  new Promise((_, reject) => setTimeout(() => reject(new Error("读取响应超时")), 15_000)),
+]);
+const body = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
 console.log(`✅ 连接验证通过：${body.result?.serverInfo?.name ?? "NEC-MCP"} ${body.result?.serverInfo?.version ?? ""} @ ${url}`);
 
 const config = { mcpServers: { "nec-hub": { url, headers: { Authorization: `Bearer ${token}` } } } };
 for (const rel of [".kimi-code/mcp.json", ".mcp.json"]) {
   const file = path.join(root, rel);
+  mkdirSync(path.dirname(file), { recursive: true });
   if (existsSync(file)) copyFileSync(file, file + ".bak");
   writeFileSync(file, JSON.stringify(config, null, 2) + "\n");
   console.log(`📝 已写入 ${rel}${existsSync(file + ".bak") ? "（旧文件备份为 .bak）" : ""}`);

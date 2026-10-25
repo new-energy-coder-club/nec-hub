@@ -52,6 +52,8 @@ declare global {
     /** 域名分发系统：Cloudflare API Token（需 Zone.DNS 编辑权限）与 Zone ID（newenergycoder.club），用 wrangler secret put 配置 */
     CF_API_TOKEN?: string;
     CF_ZONE_ID?: string;
+    /** 超级管理员兜底：逗号/空格分隔的 open_id 列表，命中即视为「维护者」（CONFIG_ADMIN 口径）；管理后台 purge_cache 另需 Zone.Cache Purge 权限 */
+    ADMIN_OPEN_IDS?: string;
     /** 域名分发系统：根域（默认 newenergycoder.club）与每成员域名上限（默认 3），可在 wrangler.jsonc vars 覆盖 */
     DOMAIN_ZONE?: string;
     DOMAIN_MAX_PER_USER?: string;
