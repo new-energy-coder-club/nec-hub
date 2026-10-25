@@ -35,18 +35,22 @@ function goalBannerSig(items: GoalItem[]): string {
 // progress 先做 0-1 → 0-100 归一（与 widget 进度条显示同一口径），再钳制 [0,100]。
 export type GoalRisk = 'late' | 'warn' | 'ok'
 
+/** 时间基准（0-100）：年初 0 点 → 截止日走完的百分比，与 goalRisk 同一口径，供双条对比与刻度线 */
+export function goalTimeProgress(deadlineMs: number): number {
+  const yearStart = new Date(new Date().getFullYear(), 0, 1, 0, 0, 0, 0).getTime()
+  const span = deadlineMs - yearStart
+  // span ≤ 0（截止早于年初的数据异常）：视为时间已走完
+  if (span <= 0) return 100
+  return Math.min(100, Math.max(0, ((Date.now() - yearStart) / span) * 100))
+}
+
 export function goalRisk(deadlineMs: number | null | undefined, progress: number | null | undefined): GoalRisk {
-  const now = Date.now()
   let p = typeof progress === 'number' && isFinite(progress) ? progress : 0
   if (p > 0 && p <= 1) p = p * 100 // 数据源若给 0-1 小数，统一按百分比量纲
   p = Math.min(Math.max(p, 0), 100)
-  if (typeof deadlineMs === 'number' && isFinite(deadlineMs) && deadlineMs < now && p < 100) return 'late'
+  if (typeof deadlineMs === 'number' && isFinite(deadlineMs) && deadlineMs < Date.now() && p < 100) return 'late'
   if (typeof deadlineMs !== 'number' || !isFinite(deadlineMs)) return 'ok'
-  const yearStart = new Date(new Date().getFullYear(), 0, 1, 0, 0, 0, 0).getTime()
-  const span = deadlineMs - yearStart
-  // span ≤ 0（截止早于年初的数据异常）：视为时间已走完，进度不足即高风险
-  const timeProgress = span > 0 ? Math.min(100, Math.max(0, ((now - yearStart) / span) * 100)) : 100
-  const gap = timeProgress - p
+  const gap = goalTimeProgress(deadlineMs) - p
   if (gap > 20) return 'late'
   if (gap > 10) return 'warn'
   return 'ok'

@@ -7,7 +7,7 @@ import { ref, onMounted, inject } from 'vue'
 import { GOALS_CONFIG_PROMPT } from '@shared/prompts'
 import { copyText } from '@shared/api'
 import { fmtDashDate, goalBarColor } from '@shared/format'
-import { goalRisk } from '@portal/composables/useBanners'
+import { goalRisk, goalTimeProgress } from '@portal/composables/useBanners'
 
 const props = defineProps<{ shared: { load(name: string): Promise<any> } }>()
 const noteHomeFreshness = inject<(d: any) => void>('noteHomeFreshness', () => {})
@@ -58,6 +58,12 @@ function barColor(it: any): string {
   return goalBarColor(it)
 }
 
+/** 时间基准刻度位置（0-100）：与 goalRisk 同一口径（年初→截止日），null = 无截止日不画刻度 */
+function timeMark(it: any): number | null {
+  if (typeof it.deadline !== 'number' || !isFinite(it.deadline)) return null
+  return Math.round(goalTimeProgress(it.deadline))
+}
+
 onMounted(async () => {
   try {
     const d = await props.shared.load('dashboard')
@@ -98,9 +104,16 @@ onMounted(async () => {
         <span class="text-xs text-gray-300 shrink-0" aria-hidden="true">›</span>
         <a :href="it.link" target="_blank" @click.stop title="打开飞书记录" class="text-xs text-gray-300 hover:text-gray-500 shrink-0" aria-label="打开飞书记录">↗</a>
       </div>
-      <div class="h-1.5 rounded bg-gray-100 overflow-hidden mt-1">
+      <div class="relative h-1.5 rounded bg-gray-100 overflow-hidden mt-1">
         <div :style="{ width: normPct(it.progress) + '%', height: '100%', maxWidth: '100%', background: barColor(it) }"></div>
+        <!-- 时间基准刻度：竖线标出「年初→今天」应到的位置，条长明显短于刻度即落后来源 -->
+        <div v-if="timeMark(it) !== null" class="absolute top-0 h-full w-[2px] bg-gray-500/70"
+             :style="{ left: `min(${timeMark(it)}%, calc(100% - 2px))` }" title="时间基准（年初至今）"></div>
       </div>
     </div>
+    <!-- 图例：口径与颜色一屏说清（与顶部告警条同一套 goalRisk 分级） -->
+    <p class="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
+      条＝实际进度，刻度＝时间基准（年初 → 截止日）· 红＝落后超 20%，黄＝落后超 10%，绿＝正常
+    </p>
   </template>
 </template>

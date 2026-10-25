@@ -26,6 +26,7 @@
  *   GET  /api/validate    → 数据校验触发（FE-05，?scope=mine|all，登录门禁）
  *   POST /api/reports/weekly/run → 团队周报手动触发（队长/组长；cron 每周一 00:16 UTC 自动推送飞书群）
  *   POST /auth/feishu     → 飞书 code 兑换用户信息 + 签发中台会话（MES 免登与本门户登录共用）
+ *   POST /auth/password   → 账号密码登录（本地账号，open_id 为 local:<username>，实习生等无飞书身份成员用）
  *   POST /auth/logout     → 登出（销毁会话）
  *   GET  /api/repos       → NEC 开源仓库列表（GitHub org + KV 1 小时缓存）
  *   GET  /api/cla         → 开源社区贡献协议（CLA）元信息 + 公开签署名单（KV cla:signatures，脱敏）
@@ -103,6 +104,7 @@ declare global {
 
 import { handleFeishuAuth } from "./auth/feishu-auth";
 import { handleLogout, handleWhoami } from "./auth/handlers";
+import { handlePasswordLogin } from "./auth/password";
 import { buildDashboard, prewarmDashboard } from "./dashboard";
 import { buildDocs } from "./docs";
 import { handleGetHome, handleResetHome, handleSetHome } from "./home/handlers";
@@ -147,6 +149,9 @@ export default {
       }
       if (url.pathname === "/auth/feishu") {
         return await handleFeishuAuth(request, env);
+      }
+      if (url.pathname === "/auth/password") {
+        return await handlePasswordLogin(request, env);
       }
       if (url.pathname === "/auth/logout") {
         return await handleLogout(request, env, ctx);
@@ -242,6 +247,10 @@ export default {
         const dm = await import("./domains");
         const res = await dm.handleDomains(request, env, url.pathname, ctx);
         if (res) return res;
+      }
+      if (url.pathname.startsWith("/api/admin")) {
+        const adm = await import("./admin");
+        return await adm.handleAdmin(request, env, url.pathname, ctx);
       }
       if (url.pathname.startsWith("/api/erp/reimburse")) {
         const er = await import("./erp/reimburse");

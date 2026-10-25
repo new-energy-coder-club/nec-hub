@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// 用户盒：登录态徽章 / 登录按钮（带"上次登录"提示 + 登录中过渡态 + 内联错误提示）
-import { computed } from 'vue'
-import { auth, getLastLogin, logout, startLogin } from '@shared/auth'
+// 用户盒：登录态徽章 / 飞书登录按钮 / 账号密码登录（本地账号，实习生等无飞书身份成员用）
+import { computed, ref } from 'vue'
+import { auth, getLastLogin, loginWithPassword, logout, startLogin } from '@shared/auth'
 import AuthToast from '@shared/ui/AuthToast.vue'
 
 // 角色徽标补充权限说明（external 等非常规角色用户常不知道边界）
@@ -13,6 +13,28 @@ const exchanging = computed(() => auth.phase === 'exchanging')
 // “记住上次登录”：登录成功后后端写入非 HttpOnly 的 nec_last_login Cookie（30 天，仅展示信息）
 const last = computed(() => getLastLogin())
 const roleTip = computed(() => (me.value.user?.role && ROLE_TIPS[me.value.user.role]) || '')
+
+// 账号密码登录（内联表单）
+const showPwdForm = ref(false)
+const pwdUser = ref('')
+const pwdPass = ref('')
+const pwdBusy = ref(false)
+const pwdErr = ref('')
+async function submitPwd() {
+  if (pwdBusy.value) return
+  pwdErr.value = ''
+  if (!pwdUser.value.trim() || !pwdPass.value) { pwdErr.value = '请输入账号和密码'; return }
+  pwdBusy.value = true
+  try {
+    await loginWithPassword(pwdUser.value, pwdPass.value)
+    showPwdForm.value = false
+    pwdPass.value = ''
+  } catch (e: any) {
+    pwdErr.value = e.message || '登录失败'
+  } finally {
+    pwdBusy.value = false
+  }
+}
 </script>
 
 <template>
@@ -37,7 +59,19 @@ const roleTip = computed(() => (me.value.user?.role && ROLE_TIPS[me.value.user.r
       </template>
       <button @click="startLogin" class="px-3 py-1 rounded text-white" style="background:var(--nec-navy)">{{ last && last.name ? '以 ' + last.name + ' 继续登录' : '飞书登录' }}</button>
     </template>
+    <!-- 账号密码登录：本地账号（实习生等无飞书身份成员），与飞书登录互斥展开 -->
+    <button v-if="!showPwdForm" @click="showPwdForm = true" class="text-gray-400 hover:text-gray-600">账号登录</button>
+    <form v-else class="flex items-center gap-1" @submit.prevent="submitPwd">
+      <input v-model="pwdUser" placeholder="账号" autocomplete="username"
+             class="w-20 px-1.5 py-1 border border-gray-200 rounded text-xs" :disabled="pwdBusy" />
+      <input v-model="pwdPass" type="password" placeholder="密码" autocomplete="current-password"
+             class="w-20 px-1.5 py-1 border border-gray-200 rounded text-xs" :disabled="pwdBusy" />
+      <button type="submit" class="px-2 py-1 rounded text-white text-xs" style="background:var(--nec-cyan)"
+              :disabled="pwdBusy">{{ pwdBusy ? '登录中…' : '登录' }}</button>
+      <button type="button" class="text-gray-400 hover:text-gray-600" :disabled="pwdBusy" @click="showPwdForm = false; pwdErr = ''">取消</button>
+    </form>
   </div>
+  <div v-if="pwdErr" class="text-xs mt-1" style="color:var(--nec-red, #c0392b)">{{ pwdErr }}</div>
 
   <!-- 登录错误提示：内联横幅（替代原生 alert），可手动关闭/重试 -->
   <AuthToast />

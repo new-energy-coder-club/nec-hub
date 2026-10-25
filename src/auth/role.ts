@@ -13,6 +13,17 @@ import type { HubUser } from "../shared/session";
 /** 角色解析缓存 TTL（秒）。负结果不入缓存，保证移除队员后下一次请求即失效 */
 const ROLE_CACHE_TTL_SEC = 60;
 
+/** 环境变量超级管理员兜底：ADMIN_OPEN_IDS（逗号/空格分隔的 open_id 列表）。
+ *  用于飞书名单表未配置/拉取失败时的自救通道：命中即视为「维护者」——
+ *  只覆盖 CONFIG_ADMIN 口径（管理后台/域名/模块配置），不含队长/财务等其它角色权限。 */
+export function envSuperAdminRole(env: Env, openId: string): UserRole | null {
+  const raw = (env as Env & { ADMIN_OPEN_IDS?: string }).ADMIN_OPEN_IDS;
+  if (!raw) return null;
+  return raw.split(/[,\s]+/).filter(Boolean).includes(openId)
+    ? { role: "维护者", group: "指导", matched: true }
+    : null;
+}
+
 export interface UserRole {
   role: string;
   group: string;
@@ -31,8 +42,8 @@ export const ROLES = {
   FINANCE_MANAGER: /队长|财务/,
   /** 队长硬编码放行（限组流程提交、审批人兜底） */
   CAPTAIN: /队长/,
-  /** 配置写权限管理员：模块 config 接口、域名申请 */
-  CONFIG_ADMIN: /队长|指导|管理员|admin/i,
+  /** 配置写权限管理员：模块 config 接口、域名申请、管理后台 */
+  CONFIG_ADMIN: /队长|指导|管理员|维护者|admin/i,
   /** 询价管理：报价回填、选定供应商 */
   INQUIRY_MANAGER: /队长|采购|项目经理/,
 } as const;
@@ -45,6 +56,8 @@ export function hasRole(role: string, re: RegExp): boolean {
 const FINANCE_ROLE_RE = ROLES.FINANCE;
 
 export async function resolveUserRole(env: Env, user: HubUser, ctx?: ExecutionContext): Promise<UserRole> {
+  const fallback = envSuperAdminRole(env, user.open_id);
+  if (fallback) return fallback;
   const cacheKey = `role:${user.open_id}`;
   const cached = await env.REGISTRY.get(cacheKey, "json") as UserRole | null;
   if (cached) return cached;
@@ -77,7 +90,12 @@ async function lookupRoleFresh(env: Env, user: HubUser, ctx?: ExecutionContext):
   const roleKey = findFieldKey(records, [/权限角色/, /角色/, /role/i]);
   const groupKey = findFieldKey(records, [/^组别/, /组别/, /小组/, /部门/, /group/i]);
   const rec = matchMemberRecord(records, user);
-  if (!rec) return { role: "external", group: "", matched: false };
+  if (!rec) {
+    // 本地账号（账号密码登录，open_id 为 local:<username>）兜底"队员"：实习生等无飞书身份成员可正常用门户；
+    // 后续把姓名录入名单表即可升级为指定角色（matched=false 不入缓存，立即生效）
+    if (user.open_id.startsWith("local:")) return { role: "队员", group: "", matched: false };
+    return { role: "external", group: "", matched: false };
+  }
   return {
     role: (roleKey ? fieldText(rec.fields[roleKey]) : "") || "队员",
     group: groupKey ? fieldText(rec.fields[groupKey]) : "",

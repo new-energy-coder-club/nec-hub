@@ -43,7 +43,7 @@ export function readCookie(name: string): string | null {
   return m ? decodeURIComponent(m[1]) : null
 }
 
-export interface LastLogin { name?: string; avatar_url?: string; at?: number }
+export interface LastLogin { name?: string; avatar_url?: string; at?: number; local?: boolean }
 
 export function getLastLogin(): LastLogin | null {
   try {
@@ -98,6 +98,8 @@ function maybeAutoLogin() {
     if (sessionStorage.getItem('nec_auto_login_off') || sessionStorage.getItem('nec_auto_login_tried')) return
   } catch { return }
   if (!getLastLogin()?.name) return
+  // 上次是账号密码登录（local）不自动跳飞书 OAuth，否则本地账号会话过期后会被重定向到飞书
+  if (getLastLogin()?.local) return
   try { sessionStorage.setItem('nec_auto_login_tried', '1') } catch { /* ignore */ }
   startLogin()
 }
@@ -149,6 +151,22 @@ export async function logout() {
   // 主动登出后本会话不再自动重登，避免"刚登出又被拉回登录"
   try { sessionStorage.setItem('nec_auto_login_off', '1') } catch { /* ignore */ }
   auth.me = { authenticated: false, user: null }
+  auth.tick++
+}
+
+/** 账号密码登录（本地账号，open_id 为 local:<username>）：与飞书登录同一 nec_session Cookie */
+export async function loginWithPassword(username: string, password: string): Promise<void> {
+  const resp = await fetch('/auth/password', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ username: username.trim(), password }),
+  })
+  const data = await resp.json().catch(() => ({}))
+  if (!resp.ok || data.error) throw new Error(data.error || ('HTTP ' + resp.status))
+  // 防止"账号登录成功后又被飞书 OAuth 自动重登覆盖"：标记本会话不再自动跳 OAuth
+  try { sessionStorage.setItem('nec_auto_login_off', '1') } catch { /* ignore */ }
+  auth.error = ''
+  await refreshMe()
   auth.tick++
 }
 
