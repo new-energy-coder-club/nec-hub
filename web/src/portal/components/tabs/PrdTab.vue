@@ -23,12 +23,14 @@ function subList(c: any) {
 }
 
 // PRD 文档库：docs/ 下全部 PRD 在线阅读（原文同步自 docs/*.md → public/docs/prd/）
+// html: true 的条目为独立 HTML 图页（marked 不适用），经 iframe 嵌入阅读器
 const PRD_DOCS = [
   { slug: 'team-ai-platform-v2.1',       title: '团队 AI 中台 PRD',              version: 'V2.1', date: '2026-10-16', desc: '中台总纲：M1 地基 / M2 资产与智能 / M3 个性化与自动化 / M4 业务流程域，FE-01 ~ FE-18 需求全景（上方看板的数据来源）' },
   { slug: 'approval-notification-v1.1',  title: '审批与通知中心 PRD',            version: 'V1.1', date: '2026-10-12', desc: '报销 / 机械图纸 / 硬件采购领用 / 合规四条流程，流程即配置的 Plan B 审批引擎' },
   { slug: 'approval-notification-v1.2',  title: '审批与通知中心 PRD（缺口补齐）', version: 'V1.2', date: '2026-10-14', desc: '台账联动、合规申请页、审批时效治理、待办 T-1 标红、邮件通道（飞书邮箱）' },
   { slug: 'contract-signing-oa-v1.0',    title: '协议签署 OA 审批 PRD',          version: 'V1.0', date: '2026-10-14', desc: '合作协议 / 保密协议（NDA）走飞书原生 OA 审批：法务 → 运营 → 合规三级串行审核，全部通过方可签署用章' },
   { slug: 'drawing-review-process-v1.0', title: '新增机图纸评审流程 PRD',         version: 'v1.0', date: '2026-10-14', desc: '图纸评审数字化工作流：在线提交、会议自动预约、BOM/电控/布线评估、询价与发货清单' },
+  { slug: '416mes-architecture',         title: '416MES 架构与数据流图',          version: 'V1.0', date: '2026-10-19', desc: '416MES 仓储执行系统全景：门户/中台/飞书多维表格/MES 四层架构与数据流向（宽画布图页）', html: true },
 ]
 
 const readerSlug = ref('')
@@ -55,6 +57,12 @@ async function openPrdDoc(slug: string) {
   readerHtml.value = ''
   readerLoading.value = true
   document.getElementById('prd-reader')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // HTML 图页：marked 不适用，iframe 直接嵌入（团队自有静态页，非用户输入）
+  if ((doc as { html?: boolean }).html) {
+    readerHtml.value = `<iframe src="/docs/prd/${slug}.html" title="${doc.title}" style="width:100%;height:72vh;border:0" loading="lazy"></iframe>`
+    readerLoading.value = false
+    return
+  }
   try {
     const [md] = await Promise.all([
       fetch('/docs/prd/' + slug + '.md').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text() }),

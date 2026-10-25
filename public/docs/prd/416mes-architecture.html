@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>416MES 仓储执行系统 · 架构与数据流图</title>
+<style>
+  :root{
+    --blue:#2b6ff0; --ink:#1a2233; --sub:#5a6478;
+    --line:#8f9bb0; --box-bg:#ffffff; --page:#f6f7f9;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
+    background:var(--page); color:var(--ink); padding:40px 48px;
+  }
+  .stage{ width:1880px; }
+
+  /* ---------- 标题 ---------- */
+  .title{ margin-bottom:28px; }
+  .title .brand{ font-size:20px; font-weight:700; letter-spacing:1px; }
+  .title .brand span{ color:var(--blue); font-weight:700; }
+  .title h1{ font-size:34px; font-weight:800; margin-top:6px; }
+  .title h1 em{ font-style:normal; color:var(--blue); }
+  .title .url{ font-size:14px; color:var(--sub); margin-top:8px; }
+
+  /* ---------- 画布 ---------- */
+  .canvas{ position:relative; width:1880px; height:1300px; }
+  svg.wires{ position:absolute; inset:0; width:1880px; height:1300px; }
+
+  .box{
+    position:absolute; background:var(--box-bg); border:1.5px solid #d9dee8;
+    border-radius:14px; padding:22px 20px; text-align:center;
+    box-shadow:0 1px 4px rgba(30,45,80,.06);
+  }
+  .box h3{ font-size:18px; font-weight:700; line-height:1.4; }
+  .box p{ font-size:13.5px; color:var(--sub); line-height:1.85; margin-top:8px; }
+
+  /* 416MES 虚线容器 */
+  .platform{
+    position:absolute; left:250px; top:130px; width:1180px; height:660px;
+    border:2.5px dashed #7aa2f5; border-radius:22px;
+  }
+  .platform .tag{
+    position:absolute; left:40px; top:24px; font-size:20px; font-weight:800;
+  }
+  .platform .tag span{ color:var(--blue); }
+
+  /* 受控管道高亮框 */
+  .hook{
+    border:2.5px solid var(--blue);
+    background:linear-gradient(180deg,#eef4ff 0%,#e3edff 100%);
+    box-shadow:0 4px 18px rgba(43,111,240,.18);
+  }
+
+  /* 灰色旁路框 */
+  .side{
+    background:#fafbfc; border:2px dashed #b9c2d0;
+  }
+
+  /* 连线标签（带圈数字） */
+  .num{
+    position:absolute; width:30px; height:30px; border-radius:50%;
+    background:#fff; border:2px solid var(--ink); color:var(--ink);
+    font-size:14px; font-weight:700; display:flex; align-items:center;
+    justify-content:center; z-index:3;
+  }
+  .num.blue{ border-color:var(--blue); color:var(--blue); }
+  .lbl{
+    position:absolute; font-size:12.5px; color:var(--sub); z-index:3;
+    white-space:nowrap;
+  }
+  .lbl.blue{ color:var(--blue); font-weight:600; }
+
+  /* ---------- 流程说明 ---------- */
+  .legend{
+    position:absolute; left:40px; top:1000px; width:1800px;
+    background:#fff; border-radius:14px; padding:26px 30px;
+    box-shadow:0 1px 4px rgba(30,45,80,.06);
+  }
+  .legend h2{ font-size:21px; font-weight:800; margin-bottom:14px; }
+  .legend .cols{ display:flex; gap:40px; }
+  .legend .col{ flex:1; }
+  .legend .item{ font-size:13.5px; color:#3a4356; line-height:2.0; }
+  .legend .item b{
+    display:inline-block; min-width:24px; height:20px; line-height:20px;
+    text-align:center; border:1.5px solid var(--ink); border-radius:50%;
+    font-size:11.5px; margin-right:8px; vertical-align:1px;
+  }
+  .legend .frozen{
+    margin-top:14px; padding-top:12px; border-top:1px dashed #d0d6e0;
+    font-size:13px; color:#9aa3b2;
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="title">
+    <div class="brand">416MES<span>〈A416 现场仓储〉</span></div>
+    <h1>416MES 仓储执行系统 <em>架构与数据流</em></h1>
+    <div class="url">mes.newenergycoder.club · v3.13 ITM 一件一码逐件作业 · 唯一真源 = 飞书多维表格</div>
+  </div>
+
+  <div class="canvas">
+    <svg class="wires" viewBox="0 0 1880 1300" fill="none">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+                markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#8f9bb0"/>
+        </marker>
+        <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5"
+                markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#2b6ff0"/>
+        </marker>
+      </defs>
+
+      <!-- ① 操作员 -> 扫码台 / 返回 -->
+      <line x1="228" y1="418" x2="312" y2="418" stroke="#8f9bb0" stroke-width="2.2" marker-end="url(#arrow)"/>
+      <line x1="312" y1="488" x2="228" y2="488" stroke="#8f9bb0" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+      <!-- ② 扫码台 -> 管道 -->
+      <line x1="567" y1="390" x2="655" y2="390" stroke="#8f9bb0" stroke-width="2.2" marker-end="url(#arrow)"/>
+      <!-- 管道 -> 扫码台 : 终态回执 -->
+      <line x1="655" y1="470" x2="567" y2="470" stroke="#8f9bb0" stroke-width="2.2" marker-end="url(#arrow)"/>
+      <!-- ⑦ 管道 <- Vercel : 终态回执 -->
+      <line x1="1085" y1="470" x2="955" y2="470" stroke="#8f9bb0" stroke-width="2.2" marker-end="url(#arrow)"/>
+      <!-- ③ 管道 -> Vercel -->
+      <line x1="952" y1="390" x2="1087" y2="390" stroke="#8f9bb0" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+      <!-- ④ Vercel -> 飞书 : 读真源 plan -->
+      <line x1="1338" y1="392" x2="1465" y2="392" stroke="#8f9bb0" stroke-width="2.2" marker-end="url(#arrow)"/>
+      <!-- ⑤ Vercel -> 飞书 : apply 写账 -->
+      <line x1="1338" y1="448" x2="1465" y2="448" stroke="#8f9bb0" stroke-width="2.2" marker-end="url(#arrow)"/>
+      <!-- ⑥ 飞书 -> Vercel : 回读校验 -->
+      <line x1="1465" y1="505" x2="1338" y2="505" stroke="#8f9bb0" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+      <!-- ⑧ 管道 -> IndexedDB : ack 更新镜像 -->
+      <path d="M780 532 V 660 H 470 V 814" stroke="#8f9bb0" stroke-width="2.2" marker-end="url(#arrow)"/>
+      <!-- ⑨ IndexedDB -> 管道 : outbox 重试 -->
+      <path d="M600 814 V 748 H 850 V 536" stroke="#8f9bb0" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+      <!-- ⑩ 飞书 -> 管道（经 Vercel）：在线增量拉取 -->
+      <path d="M1240 522 V 640 H 902 V 536" stroke="#2b6ff0" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrowBlue)"/>
+
+      <!-- 本地服务器 <-> Vercel：同一 handler -->
+      <line x1="1262" y1="820" x2="1262" y2="526" stroke="#8f9bb0" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+    </svg>
+
+    <div class="platform"><div class="tag">416MES<span>〈自研系统〉</span></div></div>
+
+    <!-- 左侧：操作员 -->
+    <div class="box" style="left:40px; top:380px; width:185px; height:170px;">
+      <h3 style="font-size:16.5px;">操作员 · 现场设备</h3>
+      <p>PC · 手机 · PDA<br>扫码枪 · 相机扫码<br>打印 ITM / CTN 标签</p>
+    </div>
+
+    <!-- 扫码台 -->
+    <div class="box" style="left:320px; top:330px; width:245px; height:190px;">
+      <h3>扫码台 · ITM 作业<br>（index.html 工作台）</h3>
+      <p>相机扫码 ZXing(wasm)<br>建档 · 入库 · 出库 · 移库<br>盘点 · 工单执行</p>
+    </div>
+
+    <!-- 受控写入管道 -->
+    <div class="box hook" style="left:660px; top:300px; width:290px; height:230px;">
+      <h3>受控写入管道</h3>
+      <p style="color:#33415e;">
+        opId 幂等 · 乐观版本锁<br>
+        receive / issue 命令<br>
+        outbox 离线重试<br>
+        三方合并 three-way-merge<br>
+        Web Lock 单写者
+      </p>
+    </div>
+
+    <!-- Vercel Serverless -->
+    <div class="box" style="left:1090px; top:330px; width:245px; height:190px;">
+      <h3>Vercel Serverless</h3>
+      <p>api/feishu/* 11 接口<br>item-operation · state<br>incremental · reconcile<br>短链 /i · /c（hkg1）</p>
+    </div>
+
+    <!-- 飞书真源 -->
+    <div class="box" style="left:1470px; top:330px; width:250px; height:190px;">
+      <h3>飞书多维表格<br>〈唯一真源 · 9 表〉</h3>
+      <p>items · itemOperations<br>append-only 审计账<br>SSO 操作人自动认领</p>
+    </div>
+
+    <!-- IndexedDB -->
+    <div class="box" style="left:320px; top:820px; width:360px; height:120px;">
+      <h3>端侧 IndexedDB</h3>
+      <p>本地镜像 · outbox 离线队列 · baseline / 冲突 / 删除日志</p>
+    </div>
+
+    <!-- 本地服务器 -->
+    <div class="box side" style="left:760px; top:820px; width:460px; height:120px;">
+      <h3>本地开发服务器（feishu-server.mjs :8000）</h3>
+      <p>npm run dev / 局域网 · Cloudflare Tunnel → api.newenergycoder.club</p>
+    </div>
+
+    <!-- 带圈编号 -->
+    <div class="num" style="left:257px; top:403px;">1</div>
+    <div class="lbl" style="left:256px; top:448px;">扫码</div>
+    <div class="lbl" style="left:248px; top:510px;">返回结果</div>
+
+    <div class="num" style="left:597px; top:375px;">2</div>
+    <div class="lbl" style="left:575px; top:425px;">命令 · opId</div>
+    <div class="lbl" style="left:580px; top:505px;">终态回执</div>
+
+    <div class="num" style="left:1001px; top:375px;">3</div>
+    <div class="lbl" style="left:952px; top:368px; font-size:12px;">POST item-operation</div>
+    <div class="num" style="left:1001px; top:455px;">7</div>
+    <div class="lbl" style="left:978px; top:505px;">终态回执</div>
+
+    <div class="lbl" style="left:1348px; top:368px;">读真源 · plan</div>
+    <div class="num" style="left:1382px; top:377px;">4</div>
+    <div class="num" style="left:1382px; top:433px;">5</div>
+    <div class="lbl" style="left:1352px; top:470px;">apply items</div>
+    <div class="lbl" style="left:1352px; top:486px;">+ 审计账</div>
+    <div class="num" style="left:1382px; top:490px;">6</div>
+    <div class="lbl" style="left:1362px; top:532px;">回读校验</div>
+
+    <div class="num" style="left:571px; top:645px;">8</div>
+    <div class="lbl" style="left:488px; top:675px;">ack 更新镜像</div>
+    <div class="num" style="left:686px; top:715px;">9</div>
+    <div class="lbl" style="left:728px; top:722px;">outbox 离线重试</div>
+
+    <div class="num blue" style="left:900px; top:585px;">10</div>
+    <div class="lbl blue" style="left:945px; top:580px;">/state · /incremental 增量拉取</div>
+    <div class="lbl blue" style="left:945px; top:600px;">reconcile 只读对账</div>
+
+    <!-- 流程说明 -->
+    <div class="legend">
+      <h2>流程说明</h2>
+      <div class="cols">
+        <div class="col">
+          <div class="item"><b>1</b>操作员扫 LOC:CTN:ITM（或 LOC:ITM），提交 receive / issue 作业</div>
+          <div class="item"><b>2</b>扫码台生成带稳定 opId 与期望版本的受控命令，进入写入管道</div>
+          <div class="item"><b>3</b>管道 POST /api/feishu/item-operation 至 Vercel Serverless</div>
+          <div class="item"><b>4</b>服务端读飞书真源，生成 before/after 计划，审计账落 PREPARED</div>
+          <div class="item"><b>5</b>apply 写 items 状态机（pending→in_stock→out），append itemOperations（APPLIED，opId 去重）</div>
+          <div class="item"><b>6</b>回读飞书校验，账本置终态</div>
+        </div>
+        <div class="col">
+          <div class="item"><b>7</b>终态回执返回前端；结果未知时查原 opId 终态，禁止换号重发</div>
+          <div class="item"><b>8</b>ack 后更新 IndexedDB 本地镜像（records / 草稿 / 日志）</div>
+          <div class="item"><b>9</b>离线时写入 outbox，恢复在线后按原 opId 重试</div>
+          <div class="item"><b>10</b>在线时经 /state、/incremental 增量拉取 + 三方合并；/reconcile 只读对账，schema 失配 fail-closed</div>
+          <div class="item"><b>11</b>标签短链 /i·/c 扫码直达云端查询页；每笔操作留操作人 / 设备 / 时间，可 complete-valid 重放校验</div>
+        </div>
+      </div>
+      <div class="frozen">已冻结 / 移除的历史方向：InvenTree（localhost:8001，已从产品范围移除）· 闲鱼同步（G3 冻结，仅保留脚本）· MAT 数量账（v3.13 起封存为只读历史视图）</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
