@@ -84,7 +84,7 @@ async function onGenerateReport(reviewId: string) {
     <p v-else-if="store.detailState === 'error'" class="text-sm" style="color:#C22E2E">加载失败：{{ store.detailError }}</p>
 
     <template v-else-if="store.detail">
-      <div class="nec-card p-5" style="border-top:3px solid var(--nec-cyan)">
+ <div class="nec-card p-5 border-t-[3px] border-nec-cyan">
         <div class="flex items-start justify-between">
           <div>
             <p class="mono text-xs text-nec-cyan tracking-widest mb-1">{{ store.detail.reviewId }}</p>
@@ -155,7 +155,7 @@ async function onGenerateReport(reviewId: string) {
             <button class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:#177A4C" @click="assess(store.detail!.reviewId, 'pass')">评估通过</button>
             <button class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:#C22E2E" @click="assess(store.detail!.reviewId, 'fail')">评估不通过</button>
           </template>
-          <button v-if="store.detail.status === 'approved'" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:var(--nec-navy)" @click="archive(store.detail!.reviewId)">归档</button>
+ <button v-if="store.detail.status === 'approved'" class="text-xs px-3 py-1.5 rounded-lg text-white bg-nec-navy" @click="archive(store.detail!.reviewId)">归档</button>
           <span v-if="!hasActions" class="text-xs text-nec-gray">当前状态无可用操作</span>
         </div>
       </div>

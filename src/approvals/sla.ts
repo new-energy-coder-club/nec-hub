@@ -1,7 +1,7 @@
 /**
- * G-03 审批时效治理（PRD V1.2 §5）：每小时 cron（"7 * * * *"）扫描四条流程底表
- *   - 审批中超 sla.escalateHours（默认 48h）→ 升级提醒（KV approval:esc:<appId> 幂等，TTL=距自动取消剩余秒数）
- *   - 审批中超 sla.autoCancelDays（默认 14 天）→ 状态直接改「已取消」（不走 ACTION_TARGET）+ 群通知 + 清升级标记
+ * G-03 审批时效治理（PRD V1.2 §5）：每小时 cron（"7 * * * *"）扫描各流程底表
+ *   - 待审批状态（flow.pendingStates，缺省 ["审批中"]）超 sla.escalateHours（默认 48h）→ 升级提醒（KV approval:esc:<appId> 幂等，TTL=距自动取消剩余秒数）
+ *   - 待审批状态超 sla.autoCancelDays（默认 14 天）→ 状态直接改「已取消」（不走 ACTION_TARGET）+ 群通知 + 清升级标记
  * sla 全关（均为 0）或未配 tableId 的流程跳过；提交时间为空的脏数据行跳过并记日志（不误伤）。
  * 底表读取复用 todo:tbl:<type> 5 分钟缓存（与 engine.aggregateTodos 同键同 TTL），整轮失败只记日志，
  * 有动作时向主群（flow=default）发一条汇总。
@@ -17,8 +17,9 @@ import {
   type BitableRecord,
 } from "../feishu/bitable";
 import { notifyFeishu } from "../feishu/bot";
+import { KV_KEYS } from "../shared/kv-keys";
 import { buildRecordLink } from "../validation/service";
-import { APPROVAL_TYPES, getFlowBase, getFlowsConfig, type FlowConfig } from "./flows";
+import { APPROVAL_TYPES, getFlowBase, getFlowsConfig, pendingStatesOf, statusFieldOf, statusFieldPatterns, type FlowConfig } from "./flows";
 
 /** 与 engine.aggregateTodos 一致的底表缓存 TTL（秒） */
 const TABLE_CACHE_TTL_SEC = 300;
@@ -32,7 +33,7 @@ export interface SlaRunSummary {
 
 /** 读流程底表：先吃 todo:tbl:<type> 5 分钟缓存，miss 则拉飞书并回写；拉取失败回退过期缓存 */
 async function readFlowRecords(env: Env, token: string, base: string, type: string, flow: FlowConfig): Promise<BitableRecord[]> {
-  const cacheKey = `todo:tbl:${type}`;
+  const cacheKey = KV_KEYS.todoTable(type);
   const cached = (await env.REGISTRY.get(cacheKey, "json")) as { data: BitableRecord[]; cachedAt: number } | null;
   if (cached && cached.cachedAt > Date.now() - TABLE_CACHE_TTL_SEC * 1000) return cached.data;
   try {
@@ -74,15 +75,16 @@ export async function runApprovalSla(env: Env): Promise<SlaRunSummary> {
       continue;
     }
 
-    const statusKey = findFieldKey(records, [/^状态$/, /状态/, /进度/]) ?? "状态";
+    const statusKey = findFieldKey(records, statusFieldPatterns(flow)) ?? statusFieldOf(flow);
+    const pendings = pendingStatesOf(flow);
     const idKey = findFieldKey(records, [/^申请单号$/, /申请单号/, /单号/]);
     const timeKey = findFieldKey(records, [/^提交时间$/, /提交时间/, /创建时间/]);
     const applicantKey = findFieldKey(records, [/^申请人$/, /申请人/, /报销人/]);
     let tableDirty = false;
 
     for (const r of records) {
-      // 只动「审批中」：已通过/已驳回/已取消等任何其他状态不触碰
-      if (fieldText(r.fields[statusKey]) !== "审批中") continue;
+      // 只动待审批状态（pendingStates）：已通过/已驳回/已取消等任何其他状态不触碰
+      if (!pendings.includes(fieldText(r.fields[statusKey]))) continue;
       const appId = (idKey ? fieldText(r.fields[idKey]) : "") || r.record_id;
       try {
         // 提交时间底表存 epoch ms；为空/非正数 = 历史脏数据，跳过不误伤
@@ -107,10 +109,10 @@ export async function runApprovalSla(env: Env): Promise<SlaRunSummary> {
             `提交超 ${Math.round(cancelMs / 86400e3)} 天未审批，已自动取消${applicant ? `（申请人：${applicant}）` : ""}；如需继续请重新提交`,
             link,
           );
-          await env.REGISTRY.delete(`approval:esc:${appId}`);
+          await env.REGISTRY.delete(KV_KEYS.approvalEscalation(appId));
           summary.cancelled++;
         } else if (escalateMs > 0 && age > escalateMs) {
-          const escKey = `approval:esc:${appId}`;
+          const escKey = KV_KEYS.approvalEscalation(appId);
           if (await env.REGISTRY.get(escKey)) continue;
           const hours = Math.floor(age / 3600e3);
           const escalateTo = (sla.escalateTo ?? "").trim();
@@ -137,7 +139,7 @@ export async function runApprovalSla(env: Env): Promise<SlaRunSummary> {
     }
     // 有状态变更时回写缓存，避免 5 分钟缓存窗口内重复处理已取消的单
     if (tableDirty) {
-      await env.REGISTRY.put(`todo:tbl:${type}`, JSON.stringify({ data: records, cachedAt: Date.now() }), { expirationTtl: TABLE_CACHE_TTL_SEC }).catch(() => {});
+      await env.REGISTRY.put(KV_KEYS.todoTable(type), JSON.stringify({ data: records, cachedAt: Date.now() }), { expirationTtl: TABLE_CACHE_TTL_SEC }).catch(() => {});
     }
   }
 
@@ -145,7 +147,7 @@ export async function runApprovalSla(env: Env): Promise<SlaRunSummary> {
     await notifyFeishu(env, "default", "🕐 时效巡检", `升级提醒 ${summary.escalated} 条，自动取消 ${summary.cancelled} 条`);
   }
   // 巡检摘要落 KV（7 天）：cron 无日志可观测性弱，这是排障与验收的证据点
-  await env.REGISTRY.put("sla:lastRun", JSON.stringify({ at: now, ...summary }), { expirationTtl: 7 * 86400 }).catch(() => {});
+  await env.REGISTRY.put(KV_KEYS.slaLastRun, JSON.stringify({ at: now, ...summary }), { expirationTtl: 7 * 86400 }).catch(() => {});
   console.log(
     `[sla] 时效巡检完成：升级提醒 ${summary.escalated}，自动取消 ${summary.cancelled}，脏数据跳过 ${summary.skipped}，失败 ${summary.errors.length}`,
   );

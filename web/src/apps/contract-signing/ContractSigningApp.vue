@@ -98,7 +98,7 @@ onMounted(async () => {
       </div>
 
       <!-- 未登录提示 -->
-      <div v-if="store.authFailed" id="not-authed" class="rounded-lg p-4 mb-6" style="background:#E8ECFB;border:1px solid var(--nec-line)">
+      <div v-if="store.authFailed" id="not-authed" class="rounded-lg p-4 mb-6 bg-nec-royal-100 border border-nec-line">
         <p class="font-medium text-nec-navy">需要登录</p>
         <p class="text-sm text-nec-gray">本应用需要飞书登录态，请回到 <a href="/" class="link hover:underline">门户首页</a> 完成登录后再访问。</p>
       </div>

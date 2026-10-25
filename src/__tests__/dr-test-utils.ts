@@ -4,6 +4,7 @@
 import { vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
 import type { DrawingReviewConfig } from "../drawing-review/types";
+import { KV_KEYS } from "../shared/kv-keys";
 import { mockGetRecordResponse, mockSearchResponse } from "./bitable-search-mock";
 
 export const DR_TABLES = {
@@ -53,11 +54,11 @@ export function createDrMock(opts: DrMockOptions = {}): DrMockCtx {
     if (!opts.omitTables?.includes(k as keyof typeof DR_TABLES)) cfgTables[k] = v;
   }
   const cfg: DrawingReviewConfig = { base: "appMockBase", tables: cfgTables, updatedAt: new Date().toISOString() };
-  kv.set("drawing-review:config", JSON.stringify(cfg));
+  kv.set(KV_KEYS.drawingReviewConfig, JSON.stringify(cfg));
 
   if (opts.session) {
     kv.set(
-      `session:${opts.session.sid}`,
+      KV_KEYS.session(opts.session.sid),
       JSON.stringify({
         name: opts.session.name,
         open_id: opts.session.openId,
@@ -106,7 +107,7 @@ export function createDrMock(opts: DrMockOptions = {}): DrMockCtx {
 
   const REGISTRY = {
     get: vi.fn(async (key: string, type?: string) => {
-      if (key === "feishu:tenant_access_token") return { token: "mock-token", expireAt: Date.now() + 3600e3 };
+      if (key === KV_KEYS.feishuTenantAccessToken) return { token: "mock-token", expireAt: Date.now() + 3600e3 };
       const v = kv.get(key);
       if (v == null) return null;
       return type === "json" ? JSON.parse(v) : v;

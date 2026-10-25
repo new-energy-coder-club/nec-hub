@@ -19,7 +19,7 @@ import { store, REJECT_REASONS, fmtMs, loadTodos, toggleRejectPanel, doApprove, 
       <p v-else-if="store.todos.state === 'error'" class="text-red-500">加载失败，请稍后重试。</p>
       <p v-else-if="store.todos.state === 'empty'" class="text-nec-gray">暂无待你审批的合规申请（仅审批人可见待审列表）。</p>
       <div v-else class="space-y-3">
-        <div v-for="r in store.todos.records" :key="r.application_id" class="rounded-lg p-4" style="border:1px solid var(--nec-line)">
+ <div v-for="r in store.todos.records" :key="r.application_id" class="rounded-lg p-4 border border-nec-line">
           <div class="flex items-center justify-between flex-wrap gap-2">
             <div>
               <p class="font-bold text-nec-ink"><span class="mono text-nec-royal">{{ r.application_id || '' }}</span> · {{ r.title || '—' }}</p>

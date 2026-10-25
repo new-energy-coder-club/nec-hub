@@ -46,7 +46,7 @@ onMounted(() => {
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div class="flex items-center gap-4 min-w-0">
           <img src="/brand/nec-lockup-h.svg" alt="NEC 常州工学院 NEC 战队" class="h-11 w-auto shrink-0" />
-          <div class="border-l pl-4 min-w-0" style="border-color: var(--nec-line);">
+          <div class="border-l border-nec-line pl-4 min-w-0">
             <h1 class="text-lg font-black text-slate-800">开源社区贡献协议签署</h1>
             <p class="text-xs text-gray-500 mono truncate">$ nec cla sign — 签署 CLA 后，你的贡献才会被合入官方仓库</p>
           </div>

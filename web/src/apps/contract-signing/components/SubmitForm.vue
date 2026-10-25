@@ -338,7 +338,7 @@ onBeforeUnmount(() => {
         <MembersPicker v-model="chips" :error="errors.approvers" :disabled="submitting" />
       </div>
 
-      <div class="flex items-center justify-end gap-3 pt-2" style="border-top:1px solid var(--nec-line)">
+ <div class="flex items-center justify-end gap-3 pt-2 border-t border-nec-line">
         <p id="submit-result" class="mr-auto text-sm" :style="{ color: resultColor }">{{ resultMsg }}</p>
         <button type="submit" class="btn-primary text-sm font-medium px-5 py-2 rounded-lg" :disabled="submitting">{{ submitting ? '提交中…' : '提交审批单' }}</button>
       </div>

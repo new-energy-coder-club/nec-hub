@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NEC 中台管理后台 · Cloudflare 线上配置</title>
+<link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+<link rel="stylesheet" href="/brand/nec-tokens.css" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--nec-font-cn); background: var(--nec-fog); color: var(--nec-ink); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px 64px; }
+  .mono { font-family: var(--nec-font-mono); }
+
+  .hero { background: var(--nec-navy); color: #fff; position: relative; overflow: hidden; }
+  .hero::before { content: ""; position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(31,169,232,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(31,169,232,.16) 1px, transparent 1px);
+    background-size: var(--nec-grid-size) var(--nec-grid-size); }
+  .hero .wrap { position: relative; padding-top: 40px; padding-bottom: 36px; }
+  .hero h1 { font-family: var(--nec-font-display); font-size: clamp(24px, 4vw, 34px); letter-spacing: .04em; }
+  .hero p.sub { color: var(--nec-sky); margin-top: 8px; font-size: 14px; }
+  .hero .who { margin-top: 14px; font-size: 13px; color: #cfd8ff; }
+  .hero .who a { color: var(--nec-sky); }
+
+  .card { background: var(--nec-paper); border: 1px solid var(--nec-line); border-radius: 12px; padding: 20px 22px; margin-top: 20px; }
+  .card h2 { font-size: 17px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card h2 .tag { font-size: 12px; font-weight: normal; font-family: var(--nec-font-mono); color: var(--nec-gray); }
+  .card .desc { color: var(--nec-gray); font-size: 13px; margin-top: 6px; line-height: 1.7; }
+  .card .desc code { background: var(--nec-royal-100); padding: 1px 6px; border-radius: 4px; font-family: var(--nec-font-mono); font-size: 12px; }
+
+  .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
+  input, select, textarea { font-family: inherit; font-size: 14px; padding: 9px 12px; border: 1px solid var(--nec-line); border-radius: 8px; background: #fff; color: var(--nec-ink); }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--nec-cyan); outline-offset: -1px; border-color: var(--nec-cyan); }
+  input.mono, textarea.mono { font-family: var(--nec-font-mono); font-size: 13px; }
+  textarea { width: 100%; min-height: 72px; resize: vertical; }
+  button { font-family: inherit; font-size: 14px; padding: 9px 18px; border: none; border-radius: 8px; cursor: pointer; background: var(--nec-royal-500); color: #fff; }
+  button:hover { background: var(--nec-royal-700); }
+  button.ghost { background: #fff; color: var(--nec-royal-500); border: 1px solid var(--nec-line); }
+  button.ghost:hover { border-color: var(--nec-cyan); color: var(--nec-cyan); }
+  button.danger { background: var(--nec-danger); }
+  button.danger:hover { filter: brightness(.9); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+
+  .msg { margin-top: 12px; font-size: 13px; padding: 10px 14px; border-radius: 8px; display: none; white-space: pre-wrap; word-break: break-all; }
+  .msg.ok { display: block; background: var(--nec-success-bg); color: var(--nec-success); }
+  .msg.err { display: block; background: var(--nec-danger-bg); color: var(--nec-danger); }
+  .msg.info { display: block; background: var(--nec-info-bg); color: var(--nec-royal-700); }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--nec-line); vertical-align: top; }
+  th { color: var(--nec-gray); font-weight: 600; font-size: 12px; }
+  td.mono, th.mono { font-family: var(--nec-font-mono); font-size: 12px; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 12px; }
+  .pill.on { background: var(--nec-success-bg); color: var(--nec-success); }
+  .pill.off { background: var(--nec-warning-bg); color: var(--nec-warning); }
+
+  .probe-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+  @media (max-width: 760px) { .probe-grid { grid-template-columns: 1fr; } }
+  .probe-item { border: 1px solid var(--nec-line); border-radius: 8px; padding: 12px 14px; font-size: 13px; }
+  .probe-item .u { font-family: var(--nec-font-mono); font-size: 12px; color: var(--nec-royal-500); word-break: break-all; }
+  .probe-item .st { margin-top: 6px; font-weight: 600; }
+  .probe-item .meta { margin-top: 4px; color: var(--nec-gray); font-size: 12px; line-height: 1.8; word-break: break-all; }
+  .st.ok { color: var(--nec-success); } .st.warn { color: var(--nec-warning); } .st.err { color: var(--nec-danger); }
+
+  .kv { display: grid; grid-template-columns: 130px 1fr; gap: 6px 14px; margin-top: 12px; font-size: 13px; }
+  .kv dt { color: var(--nec-gray); } .kv dd { font-family: var(--nec-font-mono); font-size: 12px; word-break: break-all; }
+  .foot { margin-top: 28px; color: var(--nec-gray); font-size: 12px; line-height: 1.9; }
+  .foot a { color: var(--nec-royal-500); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>管理后台 · Cloudflare 线上配置</h1>
+    <p class="sub">DNS 记录 · 边缘缓存 · 域名直达诊断 — newenergycoder.club</p>
+    <div class="who" id="who">正在确认登录状态…</div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- 凭证状态 -->
+  <section class="card">
+    <h2>凭证状态 <span class="tag">/api/admin/cf/status</span></h2>
+    <dl class="kv" id="cfStatus"><dt>状态</dt><dd>加载中…</dd></dl>
+  </section>
+
+  <!-- 域名直达诊断 -->
+  <section class="card">
+    <h2>域名直达诊断 <span class="tag">/api/admin/probe</span></h2>
+    <div class="desc">从 Worker 服务端探测 URL（带源站指纹，可区分<b>边缘缓存旧内容</b>与<b>真实回源</b>）。判读：<code>cf-cache-status: HIT</code> 且无源站指纹 = 缓存投毒；带 <code>x-vercel-id</code> = 回源 Vercel。</div>
+    <div class="row">
+      <input class="mono" id="probeUrl" style="flex:1;min-width:280px" placeholder="https://mes.newenergycoder.club/" />
+      <button onclick="probeOne()">探测</button>
+    </div>
+    <div class="row">
+      <button class="ghost" onclick="probePreset('https://mes.newenergycoder.club/')">MES 根路径 /</button>
+      <button class="ghost" onclick="probePreset('https://mes.newenergycoder.club/index.html')">MES /index.html</button>
+      <button class="ghost" onclick="probePreset('https://mes.newenergycoder.club/home.html')">MES /home.html</button>
+      <button class="ghost" onclick="probePreset('https://hub.newenergycoder.club/')">hub 对照 /</button>
+    </div>
+    <div class="probe-grid" id="probeResults"></div>
+  </section>
+
+  <!-- 缓存清除 -->
+  <section class="card">
+    <h2>边缘缓存清除 <span class="tag">/api/admin/cf/purge</span></h2>
+    <div class="desc">源站切换后必须清缓存，否则旧内容会被持续命中（如 MES 被中台门户抢占事件）。每行一个 URL；<code>files</code> 精确匹配，<code>prefixes</code> 前缀匹配（推荐，覆盖子路径）。</div>
+    <div class="row" style="align-items:flex-start">
+      <textarea class="mono" id="purgeUrls" placeholder="https://mes.newenergycoder.club/&#10;https://mes.newenergycoder.club/index.html"></textarea>
+    </div>
+    <div class="row">
+      <select id="purgeMode">
+        <option value="prefixes">按前缀清除（推荐）</option>
+        <option value="files">精确 URL 清除</option>
+      </select>
+      <button onclick="purgeUrls()">清除缓存</button>
+    </div>
+    <div class="row" style="margin-top:18px;border-top:1px dashed var(--nec-line);padding-top:16px">
+      <span style="font-size:13px;color:var(--nec-danger)">危险区：清除全站缓存</span>
+      <input class="mono" id="purgeAllConfirm" style="width:220px" placeholder="输入域名以确认，如 newenergycoder.club" />
+      <button class="danger" onclick="purgeEverything()">全部清除</button>
+    </div>
+    <div class="msg" id="purgeMsg"></div>
+  </section>
+
+  <!-- DNS 记录 -->
+  <section class="card">
+    <h2>DNS 记录 <span class="tag">/api/admin/cf/dns</span></h2>
+    <div class="desc">查看 / 新增 / 删除 Zone 内 DNS 记录。泛域名直达（<code>&lt;app&gt;.newenergycoder.club</code>）需要一条 <code>*</code> 的 AAAA → <code>100::</code> 橙云记录（当前缺失，点下方按钮一键补建）。</div>
+    <div class="row">
+      <input class="mono" id="dnsName" style="width:240px" placeholder="按名称过滤，如 mes 或留空" />
+      <select id="dnsType">
+        <option value="">全部类型</option>
+        <option>A</option><option>AAAA</option><option>CNAME</option><option>TXT</option><option>MX</option>
+      </select>
+      <button class="ghost" onclick="loadDns()">查询</button>
+      <button class="ghost" onclick="prefillWildcard()">一键补泛解析 *（AAAA → 100::，橙云）</button>
+    </div>
+    <table id="dnsTable" style="display:none">
+      <thead><tr><th>名称</th><th>类型</th><th>内容</th><th>代理</th><th class="mono">ID</th><th></th></tr></thead>
+      <tbody id="dnsTbody"></tbody>
+    </table>
+    <div class="msg" id="dnsMsg"></div>
+
+    <h2 style="margin-top:22px;font-size:15px">新增记录</h2>
+    <div class="row">
+      <select id="newType"><option>AAAA</option><option>A</option><option>CNAME</option><option>TXT</option><option>MX</option><option>NS</option></select>
+      <input class="mono" id="newName" style="width:220px" placeholder="名称：* 或 mes 或 mes.newenergycoder.club" />
+      <input class="mono" id="newContent" style="flex:1;min-width:200px" placeholder="内容：100:: / cname.vercel-dns.com / IP…" />
+      <label style="font-size:13px;display:flex;align-items:center;gap:4px"><input type="checkbox" id="newProxied" checked /> 橙云代理</label>
+      <button onclick="createDns()">创建</button>
+    </div>
+    <div class="msg" id="newDnsMsg"></div>
+  </section>
+
+  <!-- 本地账号管理 -->
+  <section class="card">
+    <h2>本地账号 <span class="tag">/api/admin/accounts</span></h2>
+    <div class="desc">账号密码登录（<code>POST /auth/password</code>），供实习生等无飞书身份成员使用。口令 PBKDF2 加盐哈希存储；新建/重置的密码只在响应里出现一次，请立即抄送本人。角色默认「队员」，把姓名录入飞书名单表可升级。</div>
+    <table id="acctTable" style="display:none">
+      <thead><tr><th>账号</th><th>姓名</th><th>创建时间</th><th>更新时间</th><th></th></tr></thead>
+      <tbody id="acctTbody"></tbody>
+    </table>
+    <div class="row" style="margin-top:10px">
+      <input class="mono" id="acctUser" style="width:140px" placeholder="账号（小写）" />
+      <input id="acctName" style="width:140px" placeholder="姓名" />
+      <input class="mono" id="acctPwd" style="width:160px" placeholder="密码（留空自动生成）" />
+      <button onclick="createAccount()">新建账号</button>
+    </div>
+    <div class="msg" id="acctMsg"></div>
+  </section>
+
+  <p class="foot">
+    相关入口：<a href="/apps/domains/">域名分发系统</a> · <a href="/apps/domains/index.html">（直达）</a> · 本页路径 <span class="mono">/apps/admin/</span>，仅 队长/指导/管理员/维护者 可用。<br/>
+    凭证：<span class="mono">CF_API_TOKEN</span>（需 Zone.DNS 编辑 + Zone.Cache Purge）与 <span class="mono">CF_ZONE_ID</span>，经 <span class="mono">wrangler secret put</span> 配置；token 权限不足时错误会原样显示。<br/>
+    权限兜底：<span class="mono">ADMIN_OPEN_IDS</span> secret（逗号/空格分隔的 open_id）命中即视为维护者，名单表配坏时也可进入本页。
+  </p>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+function show(el, text, kind) { el.className = "msg " + kind; el.textContent = text; }
+async function api(path, opts) {
+  const res = await fetch(path, opts ? { headers: { "content-type": "application/json" }, ...opts } : undefined);
+  const data = await res.json().catch(() => ({}));
+  return { status: res.status, data };
+}
+
+// ---- 登录状态 ----
+(async () => {
+  const { status, data } = await api("/api/admin/cf/status");
+  if (status === 401) { $("who").innerHTML = '未登录：<a href="/">去门户登录</a>后回到本页。'; return; }
+  if (status === 403) { $("who").textContent = "已登录，但当前角色无管理员权限（需要 队长/指导/管理员/维护者）。"; return; }
+  $("who").textContent = "已授权（管理员）";
+  renderCfStatus(data);
+  loadDns();
+  loadAccounts();
+})();
+function renderCfStatus(d) {
+  $("cfStatus").innerHTML = `
+    <dt>CF 凭证</dt><dd>${d.configured ? '<span class="pill on">已配置</span>' : '<span class="pill off">未配置</span>'}</dd>
+    <dt>Zone</dt><dd>${d.zone ?? "-"}（${d.zoneId ?? "-"}）</dd>
+    ${d.hint ? `<dt>配置方式</dt><dd>${d.hint}</dd>` : ""}`;
+}
+
+// ---- 诊断 ----
+function probePreset(u) { $("probeUrl").value = u; probeOne(); }
+async function probeOne() {
+  const u = $("probeUrl").value.trim();
+  if (!u) return;
+  const box = document.createElement("div");
+  box.className = "probe-item";
+  box.innerHTML = `<div class="u">${u}</div><div class="meta">探测中…</div>`;
+  $("probeResults").prepend(box);
+  const { status, data } = await api("/api/admin/probe?url=" + encodeURIComponent(u));
+  if (status !== 200) { box.querySelector(".meta").textContent = "失败：" + (data.error || status); return; }
+  const h = data.headers || {};
+  const cache = h["cf-cache-status"] || "-";
+  const vercel = h["x-vercel-id"] || h["x-vercel-cache"];
+  let verdict, cls;
+  if (data.status >= 300 && data.status < 400) { verdict = "重定向 → " + (h["location"] || "?"); cls = "warn"; }
+  else if (cache === "HIT" && !vercel) { verdict = "⚠ 边缘缓存命中且无源站指纹：疑似缓存旧内容"; cls = "warn"; }
+  else if (vercel) { verdict = "✓ 回源 Vercel（源站指纹正常）"; cls = "ok"; }
+  else if (data.status === 200) { verdict = "✓ 200（无缓存/源站指纹，结合 title 判断）"; cls = "ok"; }
+  else { verdict = "状态 " + data.status; cls = "err"; }
+  box.innerHTML = `
+    <div class="u">${u}</div>
+    <div class="st ${cls}">HTTP ${data.status} · ${verdict}</div>
+    <div class="meta">title：${data.title || "-"}<br/>cf-cache-status：${cache}<br/>x-vercel-id：${vercel || "-"}<br/>server：${h["server"] || "-"}</div>`;
+}
+
+// ---- 缓存清除 ----
+async function purgeUrls() {
+  const lines = $("purgeUrls").value.split("\n").map((s) => s.trim()).filter(Boolean);
+  if (!lines.length) return show($("purgeMsg"), "请先填写要清除的 URL", "err");
+  const mode = $("purgeMode").value;
+  const { status, data } = await api("/api/admin/cf/purge", { method: "POST", body: JSON.stringify({ [mode]: lines }) });
+  if (status === 200) show($("purgeMsg"), "清除完成：" + JSON.stringify(data.result), "ok");
+  else show($("purgeMsg"), "失败（" + status + "）：" + (data.error || JSON.stringify(data)), "err");
+}
+async function purgeEverything() {
+  if (!confirm("确认清除 newenergycoder.club 全站边缘缓存？全站流量将短暂回源。")) return;
+  const { status, data } = await api("/api/admin/cf/purge", {
+    method: "POST",
+    body: JSON.stringify({ purge_everything: true, confirm: $("purgeAllConfirm").value.trim() }),
+  });
+  if (status === 200) show($("purgeMsg"), "全站缓存已清除", "ok");
+  else show($("purgeMsg"), "失败（" + status + "）：" + (data.error || JSON.stringify(data)), "err");
+}
+
+// ---- DNS ----
+async function loadDns() {
+  const name = $("dnsName").value.trim();
+  const type = $("dnsType").value;
+  const q = new URLSearchParams();
+  if (name) q.set("name", name.includes(".") ? name : name + ".newenergycoder.club");
+  if (type) q.set("type", type);
+  const { status, data } = await api("/api/admin/cf/dns?" + q.toString());
+  if (status !== 200) { $("dnsTable").style.display = "none"; return show($("dnsMsg"), "查询失败：" + (data.error || status), "err"); }
+  show($("dnsMsg"), "", "info"); $("dnsMsg").style.display = "none";
+  const tb = $("dnsTbody");
+  tb.innerHTML = "";
+  if (!data.records.length) { $("dnsTable").style.display = "none"; return show($("dnsMsg"), "没有匹配的记录", "info"); }
+  $("dnsTable").style.display = "";
+  for (const r of data.records) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td class="mono">${r.name}</td><td class="mono">${r.type}</td><td class="mono">${r.content}</td>
+      <td>${r.proxied ? '<span class="pill on">橙云</span>' : '<span class="pill off">仅 DNS</span>'}</td>
+      <td class="mono">${r.id}</td><td><button class="danger" style="padding:4px 10px;font-size:12px" onclick="delDns('${r.id}','${r.name}')">删除</button></td>`;
+    tb.appendChild(tr);
+  }
+}
+async function delDns(id, name) {
+  if (!confirm("删除记录 " + name + "（" + id + "）？")) return;
+  const { status, data } = await api("/api/admin/cf/dns/delete", { method: "POST", body: JSON.stringify({ id }) });
+  if (status === 200) { show($("dnsMsg"), "已删除 " + name, "ok"); loadDns(); }
+  else show($("dnsMsg"), "删除失败：" + (data.error || status), "err");
+}
+function prefillWildcard() {
+  $("newType").value = "AAAA";
+  $("newName").value = "*";
+  $("newContent").value = "100::";
+  $("newProxied").checked = true;
+  $("newDnsMsg").className = "msg info";
+  $("newDnsMsg").textContent = "已预填泛解析记录（* AAAA → 100:: 橙云），点击「创建」生效。";
+}
+async function createDns() {
+  const body = {
+    type: $("newType").value,
+    name: $("newName").value.trim(),
+    content: $("newContent").value.trim(),
+    proxied: $("newProxied").checked,
+  };
+  const { status, data } = await api("/api/admin/cf/dns", { method: "POST", body: JSON.stringify(body) });
+  if (status === 200) { show($("newDnsMsg"), "已创建：" + JSON.stringify(data.record), "ok"); loadDns(); }
+  else show($("newDnsMsg"), "创建失败（" + status + "）：" + (data.error || JSON.stringify(data)), "err");
+}
+
+// ---- 本地账号 ----
+async function loadAccounts() {
+  const { status, data } = await api("/api/admin/accounts");
+  if (status !== 200) return; // 权限提示已由 who 区展示
+  const tb = $("acctTbody");
+  tb.innerHTML = "";
+  $("acctTable").style.display = data.accounts.length ? "" : "none";
+  for (const a of data.accounts) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td class="mono">${a.username}</td><td>${a.name}</td>
+      <td class="mono">${(a.createdAt || "").slice(0, 19).replace("T", " ")}</td>
+      <td class="mono">${(a.updatedAt || "").slice(0, 19).replace("T", " ")}</td>
+      <td><button class="ghost" style="padding:4px 10px;font-size:12px" onclick="resetAccount('${a.username}')">重置密码</button>
+          <button class="danger" style="padding:4px 10px;font-size:12px" onclick="delAccount('${a.username}')">删除</button></td>`;
+    tb.appendChild(tr);
+  }
+}
+async function createAccount() {
+  const body = { username: $("acctUser").value.trim(), name: $("acctName").value.trim(), password: $("acctPwd").value.trim() || undefined };
+  if (!body.username || !body.name) return show($("acctMsg"), "账号与姓名必填", "err");
+  const { status, data } = await api("/api/admin/accounts", { method: "POST", body: JSON.stringify(body) });
+  if (status === 201) {
+    show($("acctMsg"), "已创建：" + data.username + "（" + data.name + "）· 密码：" + data.password + "（仅显示这一次，请立即抄送本人）", "ok");
+    $("acctUser").value = ""; $("acctName").value = ""; $("acctPwd").value = "";
+    loadAccounts();
+  } else show($("acctMsg"), "创建失败（" + status + "）：" + (data.error || JSON.stringify(data)), "err");
+}
+async function resetAccount(username) {
+  if (!confirm("重置 " + username + " 的密码？旧密码立即失效。")) return;
+  const { status, data } = await api("/api/admin/accounts/reset", { method: "POST", body: JSON.stringify({ username }) });
+  if (status === 200) show($("acctMsg"), "已重置：" + data.username + " · 新密码：" + data.password + "（仅显示这一次）", "ok");
+  else show($("acctMsg"), "重置失败（" + status + "）：" + (data.error || JSON.stringify(data)), "err");
+}
+async function delAccount(username) {
+  if (!confirm("删除账号 " + username + "？其已登录会话最长存活 7 天自然过期。")) return;
+  const { status, data } = await api("/api/admin/accounts/delete", { method: "POST", body: JSON.stringify({ username }) });
+  if (status === 200 && data.deleted) { show($("acctMsg"), "已删除 " + username, "ok"); loadAccounts(); }
+  else show($("acctMsg"), "删除失败（" + status + "）：" + (data.error || JSON.stringify(data)), "err");
+}
+</script>
+</body>
+</html>

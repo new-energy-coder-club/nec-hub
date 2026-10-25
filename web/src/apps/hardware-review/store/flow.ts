@@ -15,11 +15,13 @@ export function router(view: 'list' | 'submit' | 'detail', id?: string) {
   if (view === 'detail' && id) loadDetail(id)
 }
 
-export async function loadReviews() {
+export async function loadReviews(silent = false) {
   try {
     store.reviews = await api('/api/hardware-review')
     store.listState = 'ok'
   } catch (err) {
+    // 后台轮询失败时保留旧数据与 ok 状态，不打断浏览
+    if (silent && store.listState === 'ok') return
     const msg = errMsg(err)
     store.listState = /尚未配置/.test(msg) ? 'unconfigured' : 'error'
     store.listError = msg

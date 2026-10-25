@@ -8,6 +8,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleDrawingReview } from "../drawing-review";
+import { KV_KEYS } from "../shared/kv-keys";
 import { createDrMock, DR_TABLES, type DrMockCtx } from "./dr-test-utils";
 
 const SID = "sid-e2e";
@@ -46,7 +47,7 @@ describe("图纸评审全链路 e2e", () => {
     currentSid = SID;
     ctx = createDrMock({ session: { sid: SID, openId: "ou-e2e", name: "链路测试" } });
     // 报价回填与选定供应商需管理角色：把 e2e 用户登记为队长
-    ctx.kv.set("dashboard:config", JSON.stringify({ base: "appMockBase", tables: { members: "tblMembers" }, updatedAt: "" }));
+    ctx.kv.set(KV_KEYS.dashboardConfig, JSON.stringify({ base: "appMockBase", tables: { members: "tblMembers" }, updatedAt: "" }));
     ctx.seed("tblMembers", { open_id: "ou-e2e", 姓名: "链路测试", 权限角色: "队长" }, "rec-member-e2e");
   });
 
@@ -65,7 +66,8 @@ describe("图纸评审全链路 e2e", () => {
     });
     expect(submit.status).toBe(200);
     const reviewId: string = submit.data.reviewId;
-    expect(reviewId).toMatch(/^DR-\d{8}-\d{3}$/);
+    // 迁移后单号走引擎年计数器（DR-2026-0001）
+    expect(reviewId).toMatch(/^DR-\d{4}-\d{4}$/);
     expect(submit.data.status).toBe("pending_review");
     // 附件落库：写入「图纸文件」文本字段（JSON 序列化），提交响应即读回
     expect(submit.data.drawingFiles).toEqual([{ name: "drawing.pdf", token: "tok" }]);

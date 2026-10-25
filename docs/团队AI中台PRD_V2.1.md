@@ -98,7 +98,7 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 - **团队周报自动化（2026-10-16）**：`src/reports/weekly.ts` —— 周一 08:16–08:20（UTC+8）cron 聚合五张底表 + 仓库动态，与 KV `weekly:snapshot` 上周快照 diff 生成文案推群（可用 `FEISHU_BOT_WEBHOOK_WEEKLY_REPORT` 分流，缺省回落主 webhook）；`POST /api/reports/weekly/run` 队长/组长手动补发；13 例单测
 - **《NEC-HUB 模块优化评估报告 V1.0》（2026-10-16）**：已归档 docs/
 
-**缺口（本 PRD 覆盖）**：飞书内 JSAPI 免登端到端验证、三角色测试账号走查、数据基建灌数收口走查（物资 12 / 财务 6 / 赛季目标 6 已灌，剩 5 人通讯录查无部门待人工确认，见 §0 FE-02）、飞书视频会议企业授权与 ERP/MES 集成联调（未就绪前手动导入模板兜底）、硬件评审/合同审批前端页面、D 组新建能力（飞书邮件通道 + refresh_token 持久化、真两级审批、48h 代理人升级，见主线对照文尾）；工作台 Level 3 切换待超管后台操作；图纸评审全流程集成（腾讯会议/ERP/MES）待联调。
+**缺口（本 PRD 覆盖）**：飞书内 JSAPI 免登端到端验证、三角色测试账号走查、数据基建灌数收口走查（物资 12 / 财务 6 / 赛季目标 6 已灌，剩 5 人通讯录查无部门待人工确认，见 §0 FE-02）、飞书视频会议企业授权与 ERP/MES 集成联调（未就绪前手动导入模板兜底）、D 组新建能力（飞书邮件通道 + refresh_token 持久化、真两级审批、48h 代理人升级，见主线对照文尾）；工作台 Level 3 切换待超管后台操作；图纸评审全流程集成（腾讯会议/ERP/MES）待联调。
 
 ## 5. 功能需求
 
@@ -493,7 +493,7 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 - ✅ `src/hardware-review/` 模块（flow/adapter/config/report 服务）+ 路由 `/api/hardware-review`（submit/list/start/detail/meeting/minutes/conclusion/rectify/report/assess/archive）。
 - ✅ 独立应用页 `public/apps/hardware-review/`（含看板卡片、状态筛选、详情、提交表单；状态色已收口至 VI 语义色）。
 - ✅ MCP `config_hardware_review` 工具；评估报告生成（`/report/generate`）与 pass/fail 流转（`/assess`）含事件日志。
-- ✅ `meeting.test.ts` 等用例覆盖；飞书会议预约走共享 `meeting/` 服务（未授权限时降级 mock）。待办：真实硬件评审数据走查、门户核心流程卡片与入口曝光。
+- ✅ `meeting.test.ts` 等用例覆盖；飞书会议预约走共享 `meeting/` 服务（未授权限时降级 mock）。门户入口已上线（应用广场核心流程卡片 + 更多→评审 Tab，2026-10-24 核实）。待办：真实硬件评审数据走查。
 
 ### FE-16 合同审批流程（P1）——审批域第一实例
 
@@ -513,7 +513,7 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 
 - ✅ `src/contract-approval/` 模块 + 路由 `/api/contract-approval`（submit/list/start/detail/start-review/action/resubmit/archive/comments）。
 - ✅ MCP `config_contract_approval`；`contract-approval.test.ts` 用例覆盖状态机全流转、单号格式（CA-日期-序号）、提交校验（必填/提交人不能兼任审批人）、会签与权限（非参与者不可审批、逐一通过、任一拒绝即整体拒绝、防重复审批）。
-- 待办：前端页面（《页面与Tab状态现状》P1-4 已立项：以图纸评审 Tab 为模板复制改造）、真实合同数据走查。
+- ✅ 前端已上线：合同审批 Tab（复用 Vue 应用）+ 2026-10-16 可用性重构 12 项（列表优先+抽屉表单）。待办：真实合同数据走查。
 
 ### FE-17 我的任务（P1）——飞书任务绑定与同步
 
@@ -532,7 +532,7 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 **进展（2026-10-14 深夜，已上线）**：
 
 - ✅ `src/my-tasks/` 模块：`GET /api/my-tasks`（Task v2 同步拉取，KV `my-tasks:<open_id>` 5 分钟缓存，`?refresh=1` 强刷）、`POST /api/my-tasks/unbind`（清授权 token 与缓存）。
-- ✅ 登录门禁（401 未登录）；`my-tasks.test.ts` 用例覆盖。待办：队员真实账号绑定走查（验收 1/2）、门户组件曝光。
+- ✅ 登录门禁（401 未登录）；`my-tasks.test.ts` 用例覆盖；门户「我的任务」Tab 已上线，首页 my-tasks widget 已与 /api/my-tasks 同源（2026-10-24 修复，未绑定回退 dashboard）。待办：队员真实账号绑定走查（验收 1/2）。
 
 ### FE-18 赛季目标收集与自动规划（P1）——FE-04 的专项应用
 

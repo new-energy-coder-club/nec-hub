@@ -37,10 +37,10 @@ onMounted(() => {
           <h1 class="hero-title text-3xl sm:text-5xl">NEC <span class="accent">评分</span>看板</h1>
           <p class="mono mt-3 text-xs text-nec-gray tracking-widest">ASPIEC-DCB v0.1.0 · A416::REVIEW 模式 · 终端视觉合规标准</p>
           <div class="mt-5 flex flex-wrap gap-2 text-sm">
-            <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">01</i>诊断</span>
-            <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">02</i>方案</span>
-            <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">03</i>Hotfix</span>
-            <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">04</i>归档</span>
+ <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy border-[1.5px] border-nec-navy"><i class="not-italic mr-1 text-nec-cyan">01</i>诊断</span>
+ <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy border-[1.5px] border-nec-navy"><i class="not-italic mr-1 text-nec-cyan">02</i>方案</span>
+ <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy border-[1.5px] border-nec-navy"><i class="not-italic mr-1 text-nec-cyan">03</i>Hotfix</span>
+ <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy border-[1.5px] border-nec-navy"><i class="not-italic mr-1 text-nec-cyan">04</i>归档</span>
           </div>
         </div>
 
@@ -89,7 +89,7 @@ onMounted(() => {
       <HotfixList />
 
       <!-- 08 页脚：治理徽章 + 认证签名 -->
-      <footer class="nec-card p-5" style="border-top:3px solid var(--nec-cyan)">
+ <footer class="nec-card p-5 border-t-[3px] border-nec-cyan">
         <div class="flex flex-wrap gap-2">
           <span v-for="b in GOV_BADGES" :key="b" class="gov-badge">{{ b }}</span>
         </div>
@@ -100,7 +100,7 @@ onMounted(() => {
           现行用法为社区约定俗成的内部标准。备份中无原始横幅成品代码，6.0 → 9.0 之间的中间轮次（7.x / 8.x）未留存。
           数据截至 2026-10-14：已全量检索近 3 个月本机 openClaw / Kimi Code 会话日志，确认无新增评审轮次，9.3 仍为最高记录。
         </p>
-        <div class="mt-4 pt-3 flex flex-wrap gap-2" style="border-top:1px dashed var(--nec-line)">
+ <div class="mt-4 pt-3 flex flex-wrap gap-2 border-t border-dashed border-nec-line">
           <span class="gov-badge">AUTH=宿主设备 PI5</span>
           <span class="gov-badge">MGMT=管理面 CLAW/openClaw</span>
           <span class="gov-badge">STD=遵循标准 ASPIEC</span>

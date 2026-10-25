@@ -57,10 +57,10 @@ onMounted(async () => {
           <h1 class="hero-title text-3xl sm:text-5xl">新增机图纸<span class="accent">评审</span>流程</h1>
           <p class="mono mt-3 text-xs text-nec-gray tracking-widest">提交图纸 → 自动预约会议 → 保存纪要 → BOM 生成</p>
           <div class="mt-5 flex flex-wrap gap-2 text-sm">
-            <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">01</i>提交</span>
-            <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">02</i>评审</span>
-            <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">03</i>纪要</span>
-            <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy" style="border:1.5px solid var(--nec-navy)"><i class="not-italic mr-1 text-nec-cyan">04</i>BOM</span>
+ <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy border-[1.5px] border-nec-navy"><i class="not-italic mr-1 text-nec-cyan">01</i>提交</span>
+ <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy border-[1.5px] border-nec-navy"><i class="not-italic mr-1 text-nec-cyan">02</i>评审</span>
+ <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy border-[1.5px] border-nec-navy"><i class="not-italic mr-1 text-nec-cyan">03</i>纪要</span>
+ <span class="mono px-3 py-1 rounded-sm bg-white text-nec-navy border-[1.5px] border-nec-navy"><i class="not-italic mr-1 text-nec-cyan">04</i>BOM</span>
           </div>
         </div>
 

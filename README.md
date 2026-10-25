@@ -3,7 +3,7 @@
 单体 Cloudflare Worker：门户 + 飞书 OAuth 登录 + API + MCP 端点 + 应用托管（R2）+ 注册表（KV）+ 报销 ERP 快照（D1）。
 
 - 生产门户：<https://hub.newenergycoder.club>
-- MCP 端点（Agent 接入）：`https://hub.newenergycoder.club/mcp`（streamable HTTP / JSON-RPC，写操作需 `Authorization: Bearer <MCP_TOKEN>`）
+- MCP 端点（Agent 接入）：`https://hub.newenergycoder.club/mcp`（streamable HTTP / JSON-RPC，写操作需 `Authorization: Bearer <MCP_TOKEN>`）；token 生成 `npm run mcp:token` + `wrangler secret put MCP_TOKEN`，桌面 IDE 一键接入 `npm run mcp:setup`，详见 [`docs/IDE接入指南.md`](docs/IDE接入指南.md)
 - 源码：GitHub [new-energy-coder-club/nec-hub](https://github.com/new-energy-coder-club/nec-hub) · Gitee 镜像 [darrenpig/nec-hub](https://gitee.com/darrenpig/nec-hub)
 
 ## 线上内容（截至 2026-10-16）
@@ -28,11 +28,13 @@ Skill 中心 21 个（实时列表见 [`GET /api/skills`](https://hub.newenergyc
 
 ## 代码结构
 
-`src/index.ts` 为纯路由表 + cron 分发（~340 行），业务按域拆分，公共层沉淀在 `src/shared/`（session、http、feishu-table-adapter、module-config、module-gateway、meeting.service）；门户前端为独立 Vue 3 + Vite 工程（`web/`，构建产物输出到 `public/portal-assets/`，hash 路由深链）：
+`src/index.ts` 为纯路由表（~250 行），Cron 调度独立为 `src/scheduled.ts`（时间窗驱动 + guard 去重），secrets 的 Env 声明在 `src/env.d.ts`；跨域钩子（如 ERP 状态回写）在路由层注入，依赖保持 erp → approvals 单向。业务按域拆分，公共层沉淀在 `src/shared/`（session、http、feishu-table-adapter、module-config、module-gateway、meeting.service）；门户前端为独立 Vue 3 + Vite 工程（`web/`，构建产物输出到 `public/portal-assets/`，hash 路由深链）：
 
 ```
 src/
-├── index.ts            # 纯路由表 + scheduled() Cron 分发（时间窗驱动 + guard 去重）
+├── index.ts            # 纯路由表 + 跨域钩子注入（组合根）
+├── scheduled.ts        # Cron 调度（时间窗驱动 + guard 去重）
+├── env.d.ts            # secrets 的全局 Env 声明
 ├── auth/               # 飞书 OAuth、会话、角色解析
 ├── home/               # FE-06/07 个人首页布局（个人 > 组 > 默认三级覆盖）
 ├── todos.ts            # FE-09 审批/待办聚合
@@ -49,9 +51,9 @@ src/
 ├── domains/            # 域名分发系统（自助申请三级域名 + Cloudflare API 落 DNS）+ 泛域名应用直达
 ├── cla/                # 开源社区贡献协议（CLA）签署与公开名单
 ├── hosting.ts          # /apps/ /skills/ 静态托管（R2 + Cache API 边缘缓存）
-├── drawing-review/     # 图纸评审：flow/board/bom/inquiry/suggestion(联想)/alert 服务
-├── hardware-review/    # 硬件评审流程
-├── contract-approval/  # 合同审批流程
+├── drawing-review/     # 图纸评审：薄壳路由（单据走审批引擎）+ board/bom/inquiry/suggestion(联想)/alert 子表服务
+├── hardware-review/    # 硬件评审：薄壳路由（单据走审批引擎）+ 纪要/整改/报告子表
+├── contract-approval/  # 合同审批：薄壳路由（单据走审批引擎，HT 单号 + 会签）+ 评论/事件子表
 ├── meeting/            # 飞书日历 + 视频会议创建（评审拉会共用）
 ├── feishu/             # 飞书多维表格客户端（token 实例缓存 + in-flight 去重）+ 群机器人 webhook（加签/重试/留痕）
 ├── mcp/                # MCP 端点：handler / tools / implementations / module-config-tools
@@ -72,11 +74,11 @@ src/
 - **团队周报**：`src/reports/weekly` 每周一 00:16 UTC 窗口 cron 自动汇总推飞书群，`POST /api/reports/weekly/run` 队长/组长可手动补发（可用 `FEISHU_BOT_WEBHOOK_WEEKLY_REPORT` 分流）。
 - **报销提交**：`POST /api/reimburse`（multipart/form-data，需登录），门户数据看板内直接提交报销单；支持发票号字段与发票 OCR 识别（含 PDF）；`GET /api/reimburse/mine` 我的报销列表，`POST /api/reimburse/<单号>/<action>` 审批动作（approve/reject/pay）。
 - **报销 ERP 化（R-01）**：`/api/erp/reimburse/*` —— 费用项目目录 + 收款账户（D1），整单提交走 SOP 校验 → 审批引擎写底表 → D1 单据快照；附件经 `POST /api/approvals/upload` 存 R2 `receipts/`；`GET /api/erp/reimburse/manage` 为队长/财务报销单据台账（搜索/排序/分页），门户「报销」Tab 三视图。
-- **审批引擎（Plan B）**：`POST /api/approvals` 统一发起（reimburse / drawing / hardware / compliance 四流程，flows:config 配置驱动，required + conditional 声明式校验 + 金额须 >0），`POST /api/approvals/<type>/<单号>/<action>` 状态机动作（approve/reject/pay/start/archive/arrive/issue/publish，幂等），`GET /api/approvals/mine` 我的申请；状态机落多维表格底表「状态」字段，结果推飞书群机器人（多群分流 + 加签 + 重试 + `notify:failed` 留痕）；SLA 时效巡检每小时 :08 窗口 cron 自动跑（G-03）。
+- **审批引擎（Plan B）**：`POST /api/approvals` 统一发起（reimburse / drawing / hardware / compliance / drawing_review / hardware_review / contract 七流程，flows:config 配置驱动，required + conditional 声明式校验 + 金额须 >0），`POST /api/approvals/<type>/<单号>/<action>` 状态机动作（全局中文状态机：approve/reject/pay/start/archive/arrive/issue/publish，幂等；评审三流程走各自英文 machine 配置），`GET /api/approvals/mine` 我的申请；状态机落多维表格底表「状态」字段，结果推飞书群机器人（多群分流 + 加签 + 重试 + `notify:failed` 留痕）；SLA 时效巡检每小时 :08 窗口 cron 自动跑（G-03）。旧 `drawing`(MECH)/`hardware`(HW) 轻审批线已废弃（由 drawing_review/hardware_review 取代，tableId 清空即停用）。
 - **PRD 看板与提交推送**：门户「PRD 看板」Tab（`GET /api/prd`，M1/M2/M3 三列卡片 + 总进度 + 最近 git 提交）；初始状态为 PRD V2.0 盘点基线（`src/prd.ts` 内 `DEFAULT_PRD_ITEMS`），之后由 Agent 调 `update_prd` 维护（覆盖存 KV `prd:status`）；`POST /api/hooks/github` 接收 GitHub push webhook（HMAC-SHA256 验签），记录最近提交到看板并推飞书群（可用 `FEISHU_BOT_WEBHOOK_PRD` 分流）。
-- **图纸评审**：`src/drawing-review/` 模块 + 门户「图纸评审」Tab + 静态页 `public/apps/drawing-review/`，对接飞书多维表格（评审单/纪要/整改项/BOM/事件日志）；含列表/看板双视图（`/api/drawing-review/board`）与联想功能（`/api/drawing-review/suggestions`）；PRD 与设计文档见 `docs/新增机图纸评审流程_*.md`，联想功能全套文档见 `docs/文档目录索引.md`。
-- **硬件评审**：`src/hardware-review/` + `/api/hardware-review/*`（提交/列表/发起）+ 门户「硬件评审」Tab，MCP `config_hardware_review` 配置底表。
-- **合同审批**：`src/contract-approval/` + `/api/contract-approval/*`（提交/列表/发起）+ 门户「合同审批」Tab（列表优先 + 抽屉表单、批准人选择器、文件上传、编号自动生成/查重、审批进度时间线、临期告警、草稿），MCP `config_contract_approval` 配置底表。
+- **图纸评审**：`src/drawing-review/` 薄壳路由（URL 不变，评审单本体/状态机/通知由审批引擎 `drawing_review` 流程承担，单号 `DR-2026-0001` 年计数器）+ 门户「图纸评审」Tab + 静态页 `public/apps/drawing-review/`，对接飞书多维表格（评审单/纪要/整改项/BOM/事件日志）；含列表/看板双视图（`/api/drawing-review/board`）与联想功能（`/api/drawing-review/suggestions`）；PRD 与设计文档见 `docs/新增机图纸评审流程_*.md`，联想功能全套文档见 `docs/文档目录索引.md`。
+- **硬件评审**：`src/hardware-review/` 薄壳路由（单据走引擎 `hardware_review` 流程，单号 `HR-2026-0001`）+ `/api/hardware-review/*`（提交/列表/发起）+ 门户「硬件评审」Tab，MCP `config_hardware_review` 配置底表。
+- **合同审批**：`src/contract-approval/` 薄壳路由（单据走引擎 `contract` 流程，单号 `HT-2026-001` 三位年计数器，会签全员通过才生效）+ `/api/contract-approval/*`（提交/列表/发起）+ 门户「合同审批」Tab（列表优先 + 抽屉表单、批准人选择器、文件上传、编号自动生成/查重、审批进度时间线、临期告警、草稿），MCP `config_contract_approval` 配置底表。
 - **域名分发系统**：`/api/domains/*` 成员自助申请 `<subdomain>.newenergycoder.club` 三级域名（CNAME/A/AAAA，Cloudflare API 落 DNS，未配凭证时 pending + retry 补同步），申请/释放推群公示；泛域名应用直达 `<app>.<zone>` → R2 `apps/<app>/`（`deploy_app` 零配置获得独立域名）。
 - **CLA 签署**：`/api/cla*` 开源社区贡献协议——元信息 + 公开签署名单（脱敏）、签署状态查询、按 GitHub 用户名幂等签署（登录会话自动绑定 open_id）。
 - **资料页**：品牌规范 / 文档模板 / 制度 SOP / 培训材料的登记与展示（`GET /api/docs` + `publish_doc` 工具）。
@@ -85,7 +87,7 @@ src/
 ## 审批通知与 webhook 配置（两步待办）
 
 1. **GitHub 侧**：仓库 Settings → Webhooks → Add webhook → `https://hub.newenergycoder.club/api/hooks/github`，Content type 选 `application/json`，secret 用 `GITHUB_WEBHOOK_SECRET` 的值（`wrangler secret put GITHUB_WEBHOOK_SECRET` 先写入）。
-2. **飞书群机器人**：战队群 → 群设置 → 群机器人 → 添加「自定义机器人」→ webhook 地址写入 `FEISHU_BOT_WEBHOOK`（加签 secret 写 `FEISHU_BOT_WEBHOOK_SECRET`）；可按流程分流 `FEISHU_BOT_WEBHOOK_<TYPE>`（PRD/REIMBURSE/DRAWING/HARDWARE/COMPLIANCE/DOMAINS/WEEKLY_REPORT，secret 同名 `_SECRET` 后缀）。未配置时推送静默跳过，失败留痕 KV `notify:failed`（7 天 TTL，100 条截断）。其中 `FEISHU_BOT_WEBHOOK_WEEKLY_REPORT` 为团队周报（每周一 00:16 UTC cron 自动推送，`POST /api/reports/weekly/run` 队长可手动补发）的可选分流，缺省回落主 webhook。
+2. **飞书群机器人**：战队群 → 群设置 → 群机器人 → 添加「自定义机器人」→ webhook 地址写入 `FEISHU_BOT_WEBHOOK`（加签 secret 写 `FEISHU_BOT_WEBHOOK_SECRET`）；可按流程分流 `FEISHU_BOT_WEBHOOK_<TYPE>`（PRD/REIMBURSE/DRAWING/HARDWARE/COMPLIANCE/DRAWING_REVIEW/HARDWARE_REVIEW/CONTRACT/DOMAINS/WEEKLY_REPORT，secret 同名 `_SECRET` 后缀）。未配置时推送静默跳过，失败留痕 KV `notify:failed`（7 天 TTL，100 条截断）。其中 `FEISHU_BOT_WEBHOOK_WEEKLY_REPORT` 为团队周报（每周一 00:16 UTC cron 自动推送，`POST /api/reports/weekly/run` 队长可手动补发）的可选分流，缺省回落主 webhook。
 
 FE-05 校验周报与图纸评审告警走另一变量 `FEISHU_WEBHOOK_URL`（加签 secret 为 `FEISHU_WEBHOOK_SECRET`）。
 
@@ -113,6 +115,35 @@ npm run build:web  # 门户前端构建（产物输出到 public/portal-assets/�
 注意：`public/index.html`、`public/apps/*/index.html`、`public/portal-assets/` 均为构建产物（已被 .gitignore 忽略），勿手改；手写静态资源在 `public/brand/`、`public/docs/`、`public/assets/`。
 
 打开 http://localhost:8787 即为门户。本地模式下 KV/R2/D1 走 Miniflare 本地模拟，无需 Cloudflare 账号。
+
+### 作为 Kimi Code 插件（本地 MCP）
+
+仓库自带项目级 MCP 配置 `.kimi-code/mcp.json`（已被 .gitignore 忽略，不入库），`npm run dev` 启动后新开 Kimi Code 会话即自动接入，工具以 `mcp__nec-hub__*` 出现。本地启用全部 30 个工具（含写操作）需配置本地 token：
+
+```bash
+openssl rand -hex 24 > .mcp-token                                   # 生成本地 token（gitignored）
+printf 'MCP_TOKEN=%s\n' "$(cat .mcp-token)" > .dev.vars             # Worker 侧（gitignored）
+# .kimi-code/mcp.json 的 nec-hub.headers.Authorization 写入 "Bearer <同一 token>"
+```
+
+不配 token 时插件仍可用，但 MCP 降级为只读模式（仅放行 readOnly 工具，写工具返回引导性错误）。生产环境写操作同理需 `Authorization: Bearer <MCP_TOKEN>`（secret 经 `wrangler secret put` 配置）。
+
+### 绑定 Kimi Code 的三层方式（按场景选）
+
+| 层 | 配置位置 | 指向 | 适用 |
+|---|---|---|---|
+| 用户级 | `~/.kimi-code/mcp.json` 加 `nec-hub` 条目（headers 带生产 token） | 生产 `https://hub.newenergycoder.club/mcp` | 日常使用，**所有项目**可用，无需本地起服务 |
+| 项目级 | 本仓库 `.kimi-code/mcp.json`（gitignored） | 本地 `http://localhost:8787/mcp` | 开发中台本身；**同名条目自动覆盖用户级**，进本仓库即走本地 |
+| 插件级 | 本仓库 `.kimi-plugin/plugin.json`（随仓库分发） | 生产（token 走环境变量 `NEC_HUB_MCP_TOKEN`，不落文件） | 团队成员一键安装：`/plugins install https://github.com/new-energy-coder-club/nec-hub` |
+| Pi 常驻 | `scripts/pi/`（install.sh + systemd，仓库分发） | 局域网树莓派 `http://<pi-ip>:8787/mcp` | 团队共享 staging：调试/联调走 Pi（Miniflare 模拟，与生产隔离），**不耗 CF 配额**；队员配 `nec-hub-dev` 条目与生产并存，详见 [`scripts/pi/README.md`](scripts/pi/README.md) |
+
+三条规则让体验「充分绑定」：① 用户级与项目级同名 `nec-hub`，Kimi Code 按项目级优先自动切换本地/生产，无需手工改配置；② `config.toml` 加 `[[permission.rules]]`（`decision = "allow"`, `pattern = "mcp__nec-hub__*"`）免逐次批准；③ 改动后 `/reload` 或新会话生效，`/mcp` 可查连接状态。
+
+### 升级路径
+
+- **工具增删改（最常见）**：只动服务端。push 到 `main` → CI 自动 `wrangler deploy`；客户端**零操作**，新会话 `tools/list` 自动拿到最新工具表。改工具时同步递增 `src/mcp/handler.ts` 的 `serverInfo.version`。
+- **插件清单变更**（systemPrompt / 元信息）：改 `.kimi-plugin/plugin.json` 并递增其 `version`，已安装的队员在 `/plugins` 面板按 Enter 即更新；工具变更**不需要**重装插件（工具表在会话启动时实时拉取）。
+- **本地开发环境**：`git pull && npm run dev` 即可，token 配置一次长期有效。
 
 ## 部署
 
@@ -174,9 +205,9 @@ Cron（`wrangler.jsonc` triggers，2 条 + 时间窗调度）：`*/8 * * * *` �
 | `remove_skills` | 按名称批量下架 Skill（安全约束：只能删外部登记来源，自托管不受影响） |
 | `query_bitable` | 只读查询飞书多维表格；finance 表需管理端（MCP_TOKEN）或有效 user_token（角色为队长/财务） |
 | `config_dashboard` | 配置/查看数据看板对接的多维表格（app_token + 各表 table_id） |
-| `config_drawing_review` | 配置/查看图纸评审流程对接的多维表格（reviews/minutes/rectifications/bom/events 等 10 张表） |
-| `config_hardware_review` | 配置/查看硬件评审流程对接的多维表格（reviews/minutes/rectifications/reports/events） |
-| `config_contract_approval` | 配置/查看合同审批流程对接的多维表格（approvals/comments/events） |
+| `config_drawing_review` | 配置/查看图纸评审流程对接的多维表格（reviews/minutes/rectifications/bom/events 等 10 张表；reviews 主表与引擎 flows:config 双配置同源，引擎侧自动回填） |
+| `config_hardware_review` | 配置/查看硬件评审流程对接的多维表格（reviews/minutes/rectifications/reports/events；主表双配置同源同上） |
+| `config_contract_approval` | 配置/查看合同审批流程对接的多维表格（approvals/comments/events；approvals 主表双配置同源同上） |
 | `update_progress` | 回写赛季目标表完成度%/状态/备注（FE-04；唯一匹配才写入，写后自动清看板缓存） |
 | `validate_bitable` | 校验看板 4 张底表脏数据，输出按类型分组的异常清单（FE-05；scope=mine/all） |
 | `config_validate_rules` | 查看/整体替换/恢复数据校验规则集（声明式 JSON 存 KV，新增规则无需改代码） |

@@ -38,3 +38,5 @@ export const setHomeLayoutTool: McpToolDef = {
   },
   impl: (args, env, ctx) => toolSetHomeLayout(args, env, ctx.hasMcpToken),
 };
+
+export const tools: McpToolDef[] = [setHomeLayoutTool];

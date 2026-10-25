@@ -62,7 +62,7 @@ const gridScores = [6, 7, 8, 9, 10]
         <span class="status-badge" :style="r.current ? 'background:#E8ECFB;color:#1A2FA0' : 'background:#EEF1F8;color:#5A6472'">{{ r.score.toFixed(1) }}</span>
         <span class="text-nec-gray"><b class="text-nec-ink">{{ r.round }}</b> · {{ r.stage }} —— {{ r.note }}</span>
       </div>
-      <p class="text-xs text-nec-gray pt-1" style="border-top:1px dashed var(--nec-line)">
+ <p class="text-xs text-nec-gray pt-1 border-t border-dashed border-nec-line">
         注：6.0 → 9.0 之间的中间轮次（7.x / 8.x）未留存，折线仅连接已留存的三轮记录。
       </p>
     </div>

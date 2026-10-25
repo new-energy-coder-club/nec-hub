@@ -14,7 +14,7 @@ import { store, sopList, canSubmit, submitReimburse, resetAll } from '../store'
           <span>{{ c.label }}</span>
         </div>
       </div>
-      <div class="flex items-center gap-3 mt-4 pt-3" style="border-top:1px solid var(--nec-line)">
+ <div class="flex items-center gap-3 mt-4 pt-3 border-t border-nec-line">
         <button id="btn-submit-2" class="tool-btn primary" :disabled="!canSubmit" @click="submitReimburse(false)">提交报销申请</button>
         <span id="submit-status" aria-live="polite" class="text-xs text-nec-gray">{{ store.submitStatus }}</span>
       </div>

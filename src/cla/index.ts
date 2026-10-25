@@ -14,15 +14,14 @@
  */
 
 import { json } from "../shared/http";
+import { KV_KEYS, KV_PREFIXES } from "../shared/kv-keys";
 import { resolveSession } from "../shared/session";
 
 export const CLA_TITLE = "常州工学院 NEC 开源社区贡献者许可协议（CLA）";
 export const CLA_VERSION = "1.0";
 export const CLA_UPDATED_AT = "2026-10-14";
 
-const SIG_PREFIX = "cla:sig:";
-const OID_PREFIX = "cla:oid:";
-const RL_PREFIX = "rl:cla:";
+const SIG_PREFIX = KV_PREFIXES.claSignature;
 const RL_LIMIT = 10;
 const RL_WINDOW_MS = 3600e3;
 const PUBLIC_LIST_LIMIT = 100;
@@ -55,7 +54,7 @@ interface SignBody {
 
 /** 滑动日志窗口限流：窗口内已达上限返回 false；KV 并发写允许少量超限，属可接受的近似 */
 async function rateLimit(env: Env, ip: string): Promise<boolean> {
-  const key = RL_PREFIX + (ip || "unknown");
+  const key = KV_KEYS.claRateLimit(ip || "unknown");
   const now = Date.now();
   let hits: number[] = [];
   const raw = await env.REGISTRY.get(key);
@@ -74,7 +73,7 @@ async function rateLimit(env: Env, ip: string): Promise<boolean> {
 }
 
 async function readSignature(env: Env, id: string): Promise<ClaSignature | null> {
-  const raw = await env.REGISTRY.get(SIG_PREFIX + id);
+  const raw = await env.REGISTRY.get(KV_KEYS.claSignature(id));
   if (!raw) return null;
   try {
     return JSON.parse(raw) as ClaSignature;
@@ -129,7 +128,7 @@ export async function handleCla(
     if (github) {
       hit = await readSignature(env, github);
     } else if (session) {
-      const id = await env.REGISTRY.get(OID_PREFIX + session.user.open_id);
+      const id = await env.REGISTRY.get(KV_KEYS.claOpenId(session.user.open_id));
       if (id) hit = await readSignature(env, id);
     }
     const res = json({ signed: Boolean(hit), signature: hit ? publicView(hit) : null, authenticated: Boolean(session) });
@@ -178,8 +177,8 @@ export async function handleCla(
       signedAt: new Date().toISOString(),
       ip: ip || undefined,
     };
-    await env.REGISTRY.put(SIG_PREFIX + id, JSON.stringify(sig));
-    if (sig.openId) await env.REGISTRY.put(OID_PREFIX + sig.openId, id);
+    await env.REGISTRY.put(KV_KEYS.claSignature(id), JSON.stringify(sig));
+    if (sig.openId) await env.REGISTRY.put(KV_KEYS.claOpenId(sig.openId), id);
     const { count } = await listSignatures(env, PUBLIC_LIST_LIMIT);
     return json({ ok: true, alreadySigned: false, signature: publicView(sig), count });
   }

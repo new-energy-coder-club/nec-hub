@@ -143,7 +143,7 @@ onMounted(loadDetail)
       <p v-else-if="errorMsg" class="text-sm" style="color:#C22E2E">加载失败：{{ errorMsg }}</p>
       <template v-else-if="detail">
         <!-- 信息卡 -->
-        <div class="nec-card p-5" style="border-top:3px solid var(--nec-cyan)">
+ <div class="nec-card p-5 border-t-[3px] border-nec-cyan">
           <div class="flex items-start justify-between gap-2">
             <div>
               <p class="mono text-xs text-nec-cyan tracking-widest mb-1">{{ detail.approvalId }}</p>
@@ -224,7 +224,7 @@ onMounted(loadDetail)
                 <button class="text-sm font-medium px-4 py-2 rounded-lg text-white" style="background:#B04A0F" @click="takeAction('revise')">要求修改</button>
               </div>
             </div>
-            <button v-if="(detail.status === 'approved' || detail.status === 'rejected') && isParticipant" class="text-sm font-medium px-4 py-2 rounded-lg text-white" style="background:var(--nec-navy)" @click="archiveApproval">归档</button>
+ <button v-if="(detail.status === 'approved' || detail.status === 'rejected') && isParticipant" class="text-sm font-medium px-4 py-2 rounded-lg text-white bg-nec-navy" @click="archiveApproval">归档</button>
             <p v-if="detail.status === 'revised' && isSubmitter" class="text-xs text-nec-gray w-full">审批人要求修改，请在下方「重新提交」区域更新材料后重新发起审批。</p>
             <span
               v-if="!(detail.status === 'pending_approval' && isParticipant)

@@ -1,9 +1,9 @@
 // Tab 切换 + Hash 路由：/#/dashboard 等深链可直达对应面板，刷新/分享不丢位置（旧式 #tab-dashboard 自动升级）
 import { reactive } from 'vue'
-import { auth } from '@shared/auth'
+import { auth, canAccessAdmin } from '@shared/auth'
 import { pendingHash } from '@shared/pendingTab'
 
-export const TAB_IDS = ['home', 'my-tasks', 'drawing-review', 'reimburse', 'task-schedule', 'season-goals', 'apps', 'skills', 'docs', 'repos', 'hardware-review', 'contract-approval', 'dashboard', 'prd', 'agent'] as const
+export const TAB_IDS = ['home', 'my-tasks', 'drawing-review', 'reimburse', 'task-schedule', 'season-goals', 'apps', 'skills', 'docs', 'repos', 'hardware-review', 'contract-approval', 'dashboard', 'prd', 'agent', 'admin'] as const
 export type TabId = (typeof TAB_IDS)[number]
 
 // 低频 Tab（Skill 中心/资料页/开源仓库/硬件评审/合同审批）默认收进「更多」，保持导航高频入口精简
@@ -11,6 +11,9 @@ export const MORE_TABS: TabId[] = ['skills', 'docs', 'repos', 'hardware-review',
 
 // 登录门控 Tab（gate-off）：未登录时始终隐藏；登录后，属「更多」分组的随折叠状态显隐
 export const GATE_TABS: TabId[] = ['drawing-review', 'hardware-review', 'contract-approval']
+
+// 管理门控 Tab：登录且角色命中 队长/组长/指导/管理员 才可见（展示侧开关，真正鉴权以后端 /api/admin/overview 为准）
+export const ADMIN_TABS: TabId[] = ['admin']
 
 export const TAB_LABELS: Record<TabId, string> = {
   home: '我的首页',
@@ -28,6 +31,7 @@ export const TAB_LABELS: Record<TabId, string> = {
   dashboard: '数据看板',
   prd: 'PRD 看板',
   agent: 'NEC-MCP',
+  admin: '管理',
 }
 
 export const tabs = reactive({
@@ -35,8 +39,9 @@ export const tabs = reactive({
   more: false,
 })
 
-/** 登录门控：图纸评审/硬件评审/合同审批登录后可见 */
+/** 登录门控：图纸评审/硬件评审/合同审批登录后可见；管理 Tab 另需队长/组长/指导/管理员角色 */
 export function gateVisible(tab: TabId): boolean {
+  if (ADMIN_TABS.includes(tab)) return canAccessAdmin()
   if (!GATE_TABS.includes(tab)) return true
   return !!(auth.me.authenticated && auth.me.user)
 }

@@ -12,7 +12,8 @@ import {
   resolveHomeLayout,
 } from "../home/layout";
 import { deleteHomeLayout, getResolvedHome, saveHomeLayout } from "../home/service";
-import { toolSetHomeLayout } from "../home/handlers";
+import { handleGetHome, handleGetHomeDefaults, toolSetHomeLayout } from "../home/handlers";
+import { KV_KEYS } from "../shared/kv-keys";
 import { createMockEnv, type MockEnv } from "./mock-env";
 
 /** Map Backed 的 REGISTRY.get(key, "json") 模拟 */
@@ -124,6 +125,42 @@ describe("home service（KV 存取）", () => {
   it("save 对全非法组件抛错", async () => {
     const { env } = kvBackedEnv();
     await expect(saveHomeLayout(env, "user", "ou_a", { version: 1, widgets: [{ id: "evil" as never }] })).rejects.toThrow();
+  });
+});
+
+describe("GET /api/home", () => {
+  it("返回后端默认布局与组件元数据，供门户避免维护第二份默认清单", async () => {
+    const { env, store } = kvBackedEnv();
+    store.set(KV_KEYS.session("sid-home"), JSON.stringify({
+      name: "张三",
+      open_id: "ou_a",
+      createdAt: new Date().toISOString(),
+      expiresAt: Date.now() + 7 * 24 * 3600 * 1000,
+    }));
+    store.set(KV_KEYS.role("ou_a"), { role: "队员", group: "", matched: true });
+
+    const res = await handleGetHome(
+      new Request("https://hub.test/api/home", { headers: { cookie: "nec_session=sid-home" } }),
+      env,
+    );
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { defaults?: typeof DEFAULT_HOME_LAYOUT; widgets?: unknown };
+    expect(data.defaults).toEqual(DEFAULT_HOME_LAYOUT);
+    expect(data.widgets).toEqual(HOME_WIDGET_META);
+  });
+
+  it("公开默认布局端点不要求登录，且返回同一份后端默认值", async () => {
+    const res = handleGetHomeDefaults();
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { defaults?: typeof DEFAULT_HOME_LAYOUT; widgets?: unknown };
+    expect(data.defaults).toEqual(DEFAULT_HOME_LAYOUT);
+    expect(data.widgets).toEqual(HOME_WIDGET_META);
+  });
+
+  it("未登录读取生效布局仍返回 401", async () => {
+    const { env } = kvBackedEnv();
+    const res = await handleGetHome(new Request("https://hub.test/api/home"), env);
+    expect(res.status).toBe(401);
   });
 });
 

@@ -3,6 +3,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { handleGetMyTasks, handleUnbindMyTasks } from "../my-tasks";
+import { KV_KEYS } from "../shared/kv-keys";
 import { createMockEnv } from "./mock-env";
 
 /** Map Backed 的 KV 模拟：get(key) 返回原文，get(key,"json") 解析（贴近真实 KV 语义，会话存取依赖原文） */
@@ -27,7 +28,7 @@ function kvBackedEnv() {
 
 function authedRequest(store: Map<string, string>, path = "/api/my-tasks"): Request {
   store.set(
-    "session:sid-test",
+    KV_KEYS.session("sid-test"),
     JSON.stringify({
       name: "张三",
       open_id: "ou_test",
@@ -40,7 +41,7 @@ function authedRequest(store: Map<string, string>, path = "/api/my-tasks"): Requ
 
 function seedUserToken(store: Map<string, string>, expiresInMs = 3600e3): void {
   store.set(
-    "feishu:user_token:ou_test",
+    KV_KEYS.feishuUserToken("ou_test"),
     JSON.stringify({
       user_access_token: "u-tok-1",
       refresh_token: "r-tok-1",
@@ -108,9 +109,9 @@ describe("GET /api/my-tasks", () => {
     const data = (await res.json()) as { authorizeUrl: string };
     const state = new URL(data.authorizeUrl).searchParams.get("state");
     expect(state).toBeTruthy();
-    expect(store.has(`oauth:state:${state}`)).toBe(true);
-    expect(JSON.parse(store.get(`oauth:state:${state}`)!)).toMatchObject({ openId: "ou_test" });
-    const putCall = raw.REGISTRY.put.mock.calls.find((c) => c[0] === `oauth:state:${state}`);
+    expect(store.has(KV_KEYS.oauthState(state!))).toBe(true);
+    expect(JSON.parse(store.get(KV_KEYS.oauthState(state!))!)).toMatchObject({ openId: "ou_test" });
+    const putCall = raw.REGISTRY.put.mock.calls.find((c) => c[0] === KV_KEYS.oauthState(state!));
     expect(putCall?.[2]).toMatchObject({ expirationTtl: 600 });
   });
 
@@ -125,7 +126,7 @@ describe("GET /api/my-tasks", () => {
     expect(data.tasks[0].dueTimestamp).toBe(1893456000000);
     expect(data.tasks[1].dueTimestamp).toBeNull();
     expect(data.syncedAt).toBeTruthy();
-    expect(store.has("my-tasks:ou_test")).toBe(true);
+    expect(store.has(KV_KEYS.myTasks("ou_test"))).toBe(true);
     // user_access_token 随请求发出
     const taskCall = (fetch as ReturnType<typeof vi.fn>).mock.calls.find((c) => String(c[0]).includes("/task/v2/tasks"));
     expect(taskCall?.[1]?.headers?.authorization).toBe("Bearer u-tok-1");
@@ -135,7 +136,7 @@ describe("GET /api/my-tasks", () => {
     const { env, store } = kvBackedEnv();
     seedUserToken(store);
     store.set(
-      "my-tasks:ou_test",
+      KV_KEYS.myTasks("ou_test"),
       JSON.stringify({ data: { tasks: [{ guid: "cached", summary: "缓存任务" }], syncedAt: "2026-10-14T00:00:00Z" } as unknown, cachedAt: Date.now() }),
     );
     mockFeishu({ "/task/v2/tasks": TASK_PAGE });
@@ -166,7 +167,7 @@ describe("GET /api/my-tasks", () => {
     const data = (await res.json()) as { bound: boolean; tasks: unknown[] };
     expect(data.bound).toBe(true);
     expect(data.tasks).toHaveLength(2);
-    const saved = JSON.parse(store.get("feishu:user_token:ou_test")!);
+    const saved = JSON.parse(store.get(KV_KEYS.feishuUserToken("ou_test"))!);
     expect(saved.user_access_token).toBe("u-tok-2");
     expect(saved.refresh_token).toBe("r-tok-2");
     const taskCall = (fetch as ReturnType<typeof vi.fn>).mock.calls.find((c) => String(c[0]).includes("/task/v2/tasks"));
@@ -176,13 +177,13 @@ describe("GET /api/my-tasks", () => {
   it("refresh_token 已过期：视为未绑定并清除", async () => {
     const { env, store } = kvBackedEnv();
     seedUserToken(store, -1); // token 与 refresh 均过期
-    const rec = JSON.parse(store.get("feishu:user_token:ou_test")!);
+    const rec = JSON.parse(store.get(KV_KEYS.feishuUserToken("ou_test"))!);
     rec.refresh_expires_at = Date.now() - 1000;
-    store.set("feishu:user_token:ou_test", JSON.stringify(rec));
+    store.set(KV_KEYS.feishuUserToken("ou_test"), JSON.stringify(rec));
     const res = await handleGetMyTasks(authedRequest(store), env);
     const data = (await res.json()) as { bound: boolean };
     expect(data.bound).toBe(false);
-    expect(store.has("feishu:user_token:ou_test")).toBe(false);
+    expect(store.has(KV_KEYS.feishuUserToken("ou_test"))).toBe(false);
   });
 
   it("Task v2 返回 99991663（token 失效）：清绑定并引导重新授权", async () => {
@@ -194,7 +195,7 @@ describe("GET /api/my-tasks", () => {
     expect(data.bound).toBe(false);
     expect(data.rebind).toBe(true);
     expect(data.authorizeUrl).toContain("task%3Atask%3Aread");
-    expect(store.has("feishu:user_token:ou_test")).toBe(false);
+    expect(store.has(KV_KEYS.feishuUserToken("ou_test"))).toBe(false);
   });
 });
 
@@ -208,11 +209,11 @@ describe("POST /api/my-tasks/unbind", () => {
   it("解绑清除授权 token 与任务缓存", async () => {
     const { env, store } = kvBackedEnv();
     seedUserToken(store);
-    store.set("my-tasks:ou_test", JSON.stringify({ data: { tasks: [], syncedAt: "" }, cachedAt: Date.now() }));
+    store.set(KV_KEYS.myTasks("ou_test"), JSON.stringify({ data: { tasks: [], syncedAt: "" }, cachedAt: Date.now() }));
     const res = await handleUnbindMyTasks(authedRequest(store, "/api/my-tasks/unbind"), env);
     expect(res.status).toBe(200);
     expect(((await res.json()) as { ok: boolean }).ok).toBe(true);
-    expect(store.has("feishu:user_token:ou_test")).toBe(false);
-    expect(store.has("my-tasks:ou_test")).toBe(false);
+    expect(store.has(KV_KEYS.feishuUserToken("ou_test"))).toBe(false);
+    expect(store.has(KV_KEYS.myTasks("ou_test"))).toBe(false);
   });
 });

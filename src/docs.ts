@@ -3,10 +3,11 @@
  */
 
 import { readIndex } from "./hosting";
+import { KV_KEYS } from "./shared/kv-keys";
 import { resolveSession } from "./shared/session";
 
 /** 资料页注册表 KV key */
-export const DOCS_REGISTRY_KEY = "docs:registry";
+export const DOCS_REGISTRY_KEY = KV_KEYS.docsRegistry;
 
 /** 资料页条目（KV key: docs:registry，由 MCP publish_doc 写入） */
 export interface DocEntry {

@@ -111,7 +111,7 @@ onMounted(load)
     <p v-else-if="!review" class="text-sm text-nec-gray">加载中…</p>
 
     <template v-else>
-      <div class="nec-card p-5" style="border-top:3px solid var(--nec-cyan)">
+ <div class="nec-card p-5 border-t-[3px] border-nec-cyan">
         <div class="flex items-start justify-between">
           <div>
             <p class="mono text-xs text-nec-cyan tracking-widest mb-1">{{ review.reviewId }}</p>

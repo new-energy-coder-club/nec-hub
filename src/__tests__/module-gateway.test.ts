@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { withModuleGate, type ModuleRouteContext } from "../shared/module-gateway";
 import { json } from "../shared/http";
+import { KV_KEYS } from "../shared/kv-keys";
 
 interface TestCfg {
   base: string;
@@ -27,7 +28,7 @@ function makeEnv(kv = new Map<string, string>()): Env {
 
 function seedSession(kv: Map<string, string>, sid: string, expiresInMs = 6 * 24 * 3600e3) {
   kv.set(
-    `session:${sid}`,
+    KV_KEYS.session(sid),
     JSON.stringify({ name: "张三", open_id: "ou-test", createdAt: new Date().toISOString(), expiresAt: Date.now() + expiresInMs }),
   );
 }
@@ -101,7 +102,7 @@ describe("module-gateway：配置接口（GET 免登录 / POST 按 configRoles �
   it("POST 配置 configRoles：管理员（队长）→ 委托 handleConfig", async () => {
     const kv = new Map<string, string>();
     seedSession(kv, "sid-1");
-    kv.set("role:ou-test", JSON.stringify({ role: "队长", group: "", matched: true }));
+    kv.set(KV_KEYS.role("ou-test"), JSON.stringify({ role: "队长", group: "", matched: true }));
     const res = await withModuleGate(
       makeSpec(kv, { configRoles: /队长/ }),
       new Request("http://x/api/test/config", { method: "POST", headers: { cookie: "nec_session=sid-1" } }),
@@ -167,7 +168,7 @@ describe("module-gateway：门禁链", () => {
     const cookie = res!.headers.get("set-cookie") ?? "";
     const match = cookie.match(/nec_session=([^;]+)/);
     const sidAfter = match ? match[1] : "sid-old";
-    const data = JSON.parse(kv.get(`session:${sidAfter}`)!) as { expiresAt: number };
+    const data = JSON.parse(kv.get(KV_KEYS.session(sidAfter))!) as { expiresAt: number };
     expect(data.expiresAt).toBeGreaterThan(Date.now() + 6 * 24 * 3600e3);
   });
 

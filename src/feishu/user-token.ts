@@ -6,6 +6,7 @@
  */
 
 import { getAppAccessToken } from "../auth/feishu-auth";
+import { KV_KEYS } from "../shared/kv-keys";
 import { FEISHU_API } from "./client";
 
 /** user_access_token 临期阈值：剩余不足 5 分钟就走 refresh 续期 */
@@ -21,7 +22,7 @@ export interface FeishuUserToken {
 }
 
 export function userTokenKey(openId: string): string {
-  return `feishu:user_token:${openId}`;
+  return KV_KEYS.feishuUserToken(openId);
 }
 
 /** 读取用户 user_access_token；临期自动 refresh 并回写 KV；refresh 也失效返回 null（视为未绑定） */

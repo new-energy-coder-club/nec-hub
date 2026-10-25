@@ -14,8 +14,8 @@ const APP_BASE = '/apps/mech-review-6014'
       <h1 class="text-2xl sm:text-3xl font-black tracking-tight">6014 电机尾部安装方案 · 评审纪要</h1>
       <p class="text-sm text-nec-gray mt-2">数据来源：官方 STEP（6014快速安装 / 环抱安装 / 赛事推荐安装）实测提取 · 单位 mm · 2026-10</p>
       <div class="mt-4 flex flex-wrap gap-3 text-sm no-print">
-        <a :href="`${APP_BASE}/sketch.png`" download class="px-3 py-1.5 rounded-lg text-white" style="background:var(--nec-royal)">下载草图 PNG</a>
-        <a :href="`${APP_BASE}/adapter_plate.dxf`" download class="px-3 py-1.5 rounded-lg text-white" style="background:var(--nec-navy)">下载转接板 DXF</a>
+ <a :href="`${APP_BASE}/sketch.png`" download class="px-3 py-1.5 rounded-lg text-white bg-nec-royal">下载草图 PNG</a>
+ <a :href="`${APP_BASE}/adapter_plate.dxf`" download class="px-3 py-1.5 rounded-lg text-white bg-nec-navy">下载转接板 DXF</a>
         <a :href="`${APP_BASE}/tail_hole_coordinates.csv`" download class="px-3 py-1.5 rounded-lg border border-nec-line bg-white">孔位坐标 CSV</a>
         <a :href="`${APP_BASE}/minutes.md`" download class="px-3 py-1.5 rounded-lg border border-nec-line bg-white">纪要源文件 MD</a>
         <a href="/" class="px-3 py-1.5 rounded-lg border border-nec-line bg-white text-nec-gray">← 返回门户</a>

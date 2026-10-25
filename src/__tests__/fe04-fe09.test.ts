@@ -10,9 +10,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
 import { buildDashboard } from "../dashboard";
-import { toolUpdateProgress } from "../mcp/tools/bitable";
-import { handleTodos } from "../todos";
+import { toolUpdateProgress } from "../mcp/tools/bitable-progress";
+import { handleInvalidateTodos, handleTodos } from "../todos";
 import { handleValidateQuery, toolValidateBitable } from "../validation/handlers";
+import { KV_KEYS } from "../shared/kv-keys";
 import { mockGetRecordResponse, mockSearchResponse } from "./bitable-search-mock";
 
 const BASE = "appMockBase";
@@ -50,9 +51,9 @@ function createCtx(opts: { withGoals?: boolean } = {}): Ctx {
 
   const tablesCfg: Record<string, string> = { members: T.members, tasks: T.tasks, inventory: T.inventory, finance: T.finance };
   if (opts.withGoals !== false) tablesCfg.goals = T.goals;
-  kv.set("dashboard:config", JSON.stringify({ base: BASE, tables: tablesCfg, updatedAt: new Date().toISOString() }));
-  kv.set("session:sid-member", JSON.stringify({ name: "张三", open_id: "ou-member", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
-  kv.set("session:sid-captain", JSON.stringify({ name: "张队", open_id: "ou-captain", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
+  kv.set(KV_KEYS.dashboardConfig, JSON.stringify({ base: BASE, tables: tablesCfg, updatedAt: new Date().toISOString() }));
+  kv.set(KV_KEYS.session("sid-member"), JSON.stringify({ name: "张三", open_id: "ou-member", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
+  kv.set(KV_KEYS.session("sid-captain"), JSON.stringify({ name: "张队", open_id: "ou-captain", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
 
   const ctx: Ctx = {
     kv,
@@ -103,7 +104,7 @@ function createCtx(opts: { withGoals?: boolean } = {}): Ctx {
   ctx.env = {
     REGISTRY: {
       get: vi.fn(async (key: string, type?: string) => {
-        if (key === "feishu:tenant_access_token") return { token: "mock-token", expireAt: Date.now() + 3600e3 };
+        if (key === KV_KEYS.feishuTenantAccessToken) return { token: "mock-token", expireAt: Date.now() + 3600e3 };
         const v = kv.get(key);
         return v == null ? null : type === "json" ? JSON.parse(v) : v;
       }),
@@ -134,7 +135,7 @@ describe("update_progress（FE-04）", () => {
     const ctx = createCtx();
     ctx.seed(T.goals, { 目标: "中期检查", 完成度: 30, 状态: "进行中" }, "rec-g1");
     ctx.seed(T.goals, { 目标: "报名截止", 完成度: 100, 状态: "已完成" }, "rec-g2");
-    ctx.kv.set("dashboard:cache:goals", JSON.stringify({ data: [], cachedAt: Date.now() }));
+    ctx.kv.set(KV_KEYS.dashboardCache("goals"), JSON.stringify({ data: [], cachedAt: Date.now() }));
 
     const res = await toolUpdateProgress({ goal: "中期", progress: 60, note: "场地已约" }, ctx.env, true);
     const text = res.content[0].text;
@@ -142,7 +143,7 @@ describe("update_progress（FE-04）", () => {
     expect(text).toContain("record_id=rec-g1");
     expect(ctx.tables[T.goals][0].fields["完成度"]).toBe(60);
     expect(ctx.tables[T.goals][0].fields["备注"]).toBe("场地已约");
-    expect(ctx.kv.has("dashboard:cache:goals")).toBe(false);
+    expect(ctx.kv.has(KV_KEYS.dashboardCache("goals"))).toBe(false);
     // 未匹配的记录不受影响
     expect(ctx.tables[T.goals][1].fields["完成度"]).toBe(100);
   });
@@ -312,7 +313,7 @@ describe("GET /api/todos（FE-09）", () => {
 
   function seedLocalApprovals(ctx: Ctx) {
     seedTodos(ctx);
-    ctx.kv.set("flows:config", JSON.stringify({
+    ctx.kv.set(KV_KEYS.flowsConfig, JSON.stringify({
       compliance: { tableId: TBL_CP, base: "" },
       drawing: { tableId: TBL_DR, base: "" },
     }));
@@ -366,8 +367,8 @@ describe("GET /api/todos（FE-09）", () => {
     seedLocalApprovals(ctx);
     // 预热整包缓存之前的第一次请求会拉表；清空用户级缓存后第二次应命中 todo:tbl 表缓存
     await handleTodos(new Request("http://x/api/todos", { headers: { cookie: "nec_session=sid-captain" } }), ctx.env);
-    ctx.kv.delete("todos:ou-captain");
-    expect(ctx.kv.get("todo:tbl:compliance")).toBeTruthy();
+    ctx.kv.delete(KV_KEYS.todos("ou-captain"));
+    expect(ctx.kv.get(KV_KEYS.todoTable("compliance"))).toBeTruthy();
     const calls = ctx.fetchMock.mock.calls.length;
     const res = await handleTodos(new Request("http://x/api/todos", { headers: { cookie: "nec_session=sid-captain" } }), ctx.env);
     const d = (await res.json()) as Record<string, any>;
@@ -376,5 +377,32 @@ describe("GET /api/todos（FE-09）", () => {
     const bitableReads = ctx.fetchMock.mock.calls.slice(calls).filter((c: any[]) =>
       String(c[0]?.url ?? c[0]).includes(`/tables/${TBL_CP}/records`) || String(c[0]?.url ?? c[0]).includes(`/tables/${TBL_DR}/records`));
     expect(bitableReads.length).toBe(0);
+  });
+
+  it("G-04 internalTab：drawing→drawing-review 门户闭环，compliance 无 Tab 保持外链", async () => {
+    const ctx = createCtx();
+    seedLocalApprovals(ctx);
+    const res = await handleTodos(new Request("http://x/api/todos", { headers: { cookie: "nec_session=sid-member" } }), ctx.env);
+    const d = (await res.json()) as Record<string, any>;
+    const dr = d.approvals_local.items.find((x: any) => x.application_id === "MECH-2026-0001");
+    const cp = d.approvals_local.items.find((x: any) => x.application_id === "CP-2026-0002");
+    expect(dr.internalTab).toBe("drawing-review");
+    expect(cp.internalTab).toBeNull();
+  });
+
+  it("POST /api/todos/invalidate：清当前用户待办缓存，下次聚合重拉；未登录 401", async () => {
+    const ctx = createCtx();
+    seedTodos(ctx);
+    const req = () => new Request("http://x/api/todos", { headers: { cookie: "nec_session=sid-member" } });
+    await handleTodos(req(), ctx.env);
+    expect(ctx.kv.get(KV_KEYS.todos("ou-member"))).toBeTruthy();
+    const inv = await handleInvalidateTodos(new Request("http://x/api/todos/invalidate", { method: "POST", headers: { cookie: "nec_session=sid-member" } }), ctx.env);
+    expect(inv.status).toBe(200);
+    expect(ctx.kv.get(KV_KEYS.todos("ou-member"))).toBeUndefined();
+    const res = await handleTodos(req(), ctx.env);
+    const d = (await res.json()) as Record<string, any>;
+    expect(d.cached).toBe(false); // 缓存已清，重新聚合
+    const unauth = await handleInvalidateTodos(new Request("http://x/api/todos/invalidate", { method: "POST" }), ctx.env);
+    expect(unauth.status).toBe(401);
   });
 });

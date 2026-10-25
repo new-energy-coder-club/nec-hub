@@ -62,7 +62,7 @@ const ganttLabels = Object.values(DR_GANTT_MS).join(' / ')
       <div class="space-y-1.5">
         <div v-for="r in barRows" :key="r.reviewId" class="flex items-center gap-2">
           <p class="text-xs text-nec-gray w-28 truncate shrink-0 cursor-pointer hover:underline" @click="emit('open', r.reviewId)">{{ r.name }}</p>
-          <div style="position:relative;flex:1;height:18px;background:var(--nec-fog);border-radius:6px">
+          <div class="bg-nec-fog" style="position:relative;flex:1;height:18px;border-radius:6px">
             <div :style="`position:absolute;left:${r.left}%;width:${r.width}%;top:5px;height:8px;border-radius:4px;background:var(--nec-cyan);opacity:.45`"></div>
             <span v-for="(p, i) in r.dots" :key="i" :title="p.title"
                   :style="`position:absolute;left:${p.x}%;top:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:var(--nec-navy);border:1.5px solid #fff`"></span>

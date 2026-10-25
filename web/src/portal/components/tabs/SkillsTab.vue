@@ -102,7 +102,7 @@ function skillUrl(s: any): string {
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
                   <h3 class="font-bold">{{ s.name }}</h3>
-                  <span class="text-[10px] px-1.5 py-0.5 rounded" style="background:var(--nec-paper);color:var(--nec-gray);border:1px solid var(--nec-line)">{{ SKILL_CAT_LABEL[skillCategoryOf(s)] }}</span>
+ <span class="text-[10px] px-1.5 py-0.5 rounded bg-nec-paper text-nec-gray border border-nec-line">{{ SKILL_CAT_LABEL[skillCategoryOf(s)] }}</span>
                   <span v-if="s.source === 'gitee'" class="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-500">Gitee</span>
                   <span v-if="s.source === 'hub'" class="text-[10px] px-1.5 py-0.5 rounded bg-[#E8ECFB] text-[#1A2FA0]">中台自托管</span>
                 </div>
@@ -113,7 +113,7 @@ function skillUrl(s: any): string {
                 <p class="text-xs text-gray-400 mt-1.5">更新于 {{ new Date(s.updatedAt).toLocaleString('zh-CN') }}</p>
               </div>
               <a :href="skillUrl(s)" target="_blank"
-                 class="text-sm hover:underline whitespace-nowrap" style="color:var(--nec-cyan)">查看 SKILL.md{{ s.source === 'gitee' ? ' ⤤' : '' }}</a>
+ class="text-sm hover:underline whitespace-nowrap text-nec-cyan">查看 SKILL.md{{ s.source === 'gitee' ? ' ⤤' : '' }}</a>
             </div>
           </div>
         </div>
@@ -123,7 +123,7 @@ function skillUrl(s: any): string {
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
               <h3 class="font-bold">{{ s.name }}</h3>
-              <span class="text-[10px] px-1.5 py-0.5 rounded" style="background:var(--nec-paper);color:var(--nec-gray);border:1px solid var(--nec-line)">{{ SKILL_CAT_LABEL[skillCategoryOf(s)] }}</span>
+ <span class="text-[10px] px-1.5 py-0.5 rounded bg-nec-paper text-nec-gray border border-nec-line">{{ SKILL_CAT_LABEL[skillCategoryOf(s)] }}</span>
               <span v-if="s.source === 'gitee'" class="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-500">Gitee</span>
               <span v-if="s.source === 'hub'" class="text-[10px] px-1.5 py-0.5 rounded bg-[#E8ECFB] text-[#1A2FA0]">中台自托管</span>
             </div>
@@ -134,7 +134,7 @@ function skillUrl(s: any): string {
             <p class="text-xs text-gray-400 mt-1.5">更新于 {{ new Date(s.updatedAt).toLocaleString('zh-CN') }}</p>
           </div>
           <a :href="skillUrl(s)" target="_blank"
-             class="text-sm hover:underline whitespace-nowrap" style="color:var(--nec-cyan)">查看 SKILL.md{{ s.source === 'gitee' ? ' ⤤' : '' }}</a>
+ class="text-sm hover:underline whitespace-nowrap text-nec-cyan">查看 SKILL.md{{ s.source === 'gitee' ? ' ⤤' : '' }}</a>
         </div>
       </template>
     </div>

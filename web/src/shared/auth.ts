@@ -1,7 +1,7 @@
 // 飞书登录态（FE-01）：OAuth 跳转登录 + 会话 Cookie + 角色徽章
 import { reactive } from 'vue'
 import { pendingHash } from '@shared/pendingTab'
-import { LEADER_ROLE_RE, hasRole } from '@shared/roles'
+import { LEADER_ROLE_RE, CONFIG_ADMIN_ROLE_RE, hasRole } from '@shared/roles'
 
 export interface HubUser {
   name: string
@@ -58,6 +58,15 @@ export async function bootAuth() {
   try { auth.config = await (await fetch('/api/config')).json() } catch { /* ignore */ }
   const params = new URLSearchParams(location.search)
   const code = params.get('code')
+  // 飞书授权失败回跳（用户拒绝/无权限等）：?error=xxx&error_description=yyy，内联提示而不是静默落回未登录态
+  const oauthError = params.get('error')
+  if (oauthError && !code) {
+    history.replaceState(null, '', location.pathname + location.hash)
+    const desc = params.get('error_description')
+    auth.error = oauthError === 'access_denied'
+      ? '飞书授权被拒绝或已取消，请重试'
+      : `飞书登录失败（${oauthError}）${desc ? '：' + desc : ''}`
+  }
   if (code) {
     // 回调兑换期：先把 URL 里的 code 抹掉（防刷新重复兑换），UI 进入"登录中"过渡态
     auth.phase = 'exchanging'
@@ -130,13 +139,12 @@ export function startLogin() {
     sessionStorage.setItem('nec_login_scroll', String(window.scrollY))
   } catch { /* ignore */ }
   const redirect = location.origin + location.pathname
-  // scope：task:task:read 读任务 + task:tasklist:read 读清单 + mail:user_mailbox.message:send 邮件通道发信（G-05）；
-  // scope 变化后老用户需重新授权一次，"我的任务"/邮件发信才能绑定
+  // 登录只走默认授权、不带 scope：任务/邮箱等高级权限由"我的任务"绑定流程按需追加（rebind 授权，
+  // 飞书授权对同一用户是累积的）。否则后台未把这些权限对全员开放时，普通成员会在授权页被整体拦截，连门户都进不来
   location.href = 'https://open.feishu.cn/open-apis/authen/v1/authorize?app_id='
     + encodeURIComponent(auth.config.feishuAppId || '')
     + '&redirect_uri=' + encodeURIComponent(redirect)
     + '&state=' + state
-    + '&scope=' + encodeURIComponent('task:task:read task:tasklist:read mail:user_mailbox.message:send')
 }
 
 /** 登录入口统一守卫：未配置飞书应用时写 auth.error（由 AuthToast 内联提示）并返回 false */
@@ -148,7 +156,21 @@ export function tryStartLogin(): boolean {
 
 export async function logout() {
   await fetch('/auth/logout', { method: 'POST' }).catch(() => {})
-  // 主动登出后本会话不再自动重登，避免"刚登出又被拉回登录"
+  clearLocalSession()
+}
+
+/** 退出所有设备：后端删除本人全部会话 key 后，本机走与 logout() 相同的本地清理 */
+export async function logoutAllDevices(): Promise<number> {
+  const resp = await fetch('/api/auth/logout-all', { method: 'POST' })
+  const data = await resp.json()
+  if (!resp.ok || data.error) throw new Error(data.error || ('HTTP ' + resp.status))
+  clearLocalSession()
+  return data.revoked ?? 0
+}
+
+/** 主动登出后的本地清理：本会话不再自动重登（避免"刚登出又被拉回登录"），清 me 并广播 tick。
+ *  管理员「下线本人会话」等场景（服务端会话已删、本机 Cookie 未清）也需要同样的本地清理，故导出。 */
+export function clearLocalSession() {
   try { sessionStorage.setItem('nec_auto_login_off', '1') } catch { /* ignore */ }
   auth.me = { authenticated: false, user: null }
   auth.tick++
@@ -172,4 +194,10 @@ export async function loginWithPassword(username: string, password: string): Pro
 
 export function isLeader(): boolean {
   return !!(auth.me.authenticated && auth.me.user && hasRole(auth.me.user.role, LEADER_ROLE_RE))
+}
+
+/** 管理 Tab 可见口径：登录且角色命中 队长/组长 或 队长/指导/管理员（真正鉴权以后端 /api/admin/overview 为准） */
+export function canAccessAdmin(): boolean {
+  const role = auth.me.user?.role
+  return !!(auth.me.authenticated && auth.me.user && (hasRole(role, LEADER_ROLE_RE) || hasRole(role, CONFIG_ADMIN_ROLE_RE)))
 }

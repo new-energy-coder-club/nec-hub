@@ -4,6 +4,8 @@ node_modules/
 *.log
 worker-configuration.d.ts
 .kimi-code/
+.mcp.json
+*.bak
 .DS_Store
 .mcp-token
 worker-configuration.d.ts
@@ -14,5 +16,10 @@ worker-configuration.d.ts
 public/portal-assets/
 public/index.html
 public/apps/*/index.html
+# 例外：admin 运维后台为手写单页源文件（非构建产物），必须入库
+!public/apps/admin/index.html
 public/apps/task-schedule/animated.html
 __pycache__/
+
+# 会议纪要迁移中间产物（音视频/妙记抓取物，不入库）
+minutes-migration/

@@ -25,10 +25,10 @@ function dblPick(v: string) {
 <template>
   <Modal :open="store.catModal.open" title="费用项目" body-class="!p-0 flex flex-1 min-h-0" @close="closeCatModal">
     <template #head-extra>
-      <input id="cat-search" class="line-input" style="border:1px solid var(--nec-line);width:200px" placeholder="搜索编码/名称"
+      <input id="cat-search" class="line-input border border-nec-line" style="width:200px" placeholder="搜索编码/名称"
              v-model="store.catModal.search" />
     </template>
-    <div id="cat-tree" class="w-44 flex-none overflow-y-auto border-r p-2 space-y-0.5" style="border-color:var(--nec-line)">
+    <div id="cat-tree" class="w-44 flex-none overflow-y-auto border-r border-nec-line p-2 space-y-0.5">
       <div v-for="g in store.catalog" :key="g.group" class="tree-item" :class="{ on: g.group === store.catModal.group }"
            @click="store.catModal.group = g.group">▸ {{ g.group }}</div>
     </div>
@@ -41,7 +41,7 @@ function dblPick(v: string) {
         <span class="text-xs text-green-600">可用</span>
       </div>
     </div>
-    <div class="w-40 flex-none border-l p-3" style="border-color:var(--nec-line)">
+    <div class="w-40 flex-none border-l border-nec-line p-3">
       <p class="text-xs text-nec-gray mb-2">已选（作用于第 <b id="cat-row-no" class="text-nec-navy">{{ store.selected + 1 }}</b> 行）</p>
       <p id="cat-selected" class="text-sm font-semibold text-nec-navy break-all">{{ store.catModal.temp || '—' }}</p>
     </div>

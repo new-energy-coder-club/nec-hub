@@ -101,3 +101,5 @@ export const removeDocsTool: McpToolDef = {
   },
   impl: (args, env) => toolRemoveDocs(args, env),
 };
+
+export const tools: McpToolDef[] = [publishDocTool, removeDocsTool];

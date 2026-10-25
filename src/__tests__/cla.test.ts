@@ -5,6 +5,7 @@
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { handleCla, CLA_VERSION } from "../cla";
+import { KV_KEYS } from "../shared/kv-keys";
 
 interface Ctx {
   env: Env;
@@ -65,7 +66,7 @@ describe("CLA 签署", () => {
     expect(res.status).toBe(200);
     const data = await res.json() as { ok: boolean; alreadySigned: boolean; count: number };
     expect(data).toMatchObject({ ok: true, alreadySigned: false, count: 1 });
-    expect(ctx.kv.has("cla:sig:octo-cat")).toBe(true);
+    expect(ctx.kv.has(KV_KEYS.claSignature("octo-cat"))).toBe(true);
 
     const list = await call(ctx, new Request("https://hub.test/api/cla"), "/api/cla");
     const pub = await list.json() as { signatures: Array<Record<string, unknown>> };
@@ -97,7 +98,7 @@ describe("CLA 签署", () => {
       const res = await call(ctx, signRequest(body), "/api/cla/sign");
       expect(res.status).toBe(400);
     }
-    expect([...ctx.kv.keys()].some((k) => k.startsWith("cla:sig:"))).toBe(false);
+    expect([...ctx.kv.keys()].some((k) => k.startsWith(KV_KEYS.claSignature("")))).toBe(false);
   });
 
   it("每 IP 每小时限 10 次，第 11 次返回 429；换 IP 不受限", async () => {
@@ -112,13 +113,13 @@ describe("CLA 签署", () => {
   });
 
   it("登录会话签署自动绑定 open_id，status 对已登录用户返回 signed", async () => {
-    ctx.kv.set("session:sid-1", JSON.stringify({
+    ctx.kv.set(KV_KEYS.session("sid-1"), JSON.stringify({
       name: "张三", open_id: "ou-zhangsan",
       createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3,
     }));
     const res = await call(ctx, signRequest(VALID, { cookie: "nec_session=sid-1" }), "/api/cla/sign");
     expect(res.status).toBe(200);
-    const stored = JSON.parse(ctx.kv.get("cla:sig:octo-cat")!) as { openId?: string };
+    const stored = JSON.parse(ctx.kv.get(KV_KEYS.claSignature("octo-cat"))!) as { openId?: string };
     expect(stored.openId).toBe("ou-zhangsan");
 
     const status = await call(ctx, new Request("https://hub.test/api/cla/status", { headers: { cookie: "nec_session=sid-1" } }), "/api/cla/status");

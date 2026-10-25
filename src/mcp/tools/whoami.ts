@@ -43,3 +43,5 @@ export const whoamiTool: McpToolDef = {
   },
   impl: (args, env, ctx) => toolWhoami(args, env, ctx.hasMcpToken),
 };
+
+export const tools: McpToolDef[] = [whoamiTool];

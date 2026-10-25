@@ -1,7 +1,7 @@
 /**
  * FE-06/07 首页布局 — Worker 侧胶水层
  *
- * HTTP 端点：GET /api/home（生效布局）、POST /api/home（写个人布局）、POST /api/home/reset（恢复默认）。
+ * HTTP 端点：GET /api/home（生效布局）、GET /api/home/defaults（全员默认）、POST /api/home（写个人布局）、POST /api/home/reset（恢复默认）。
  * MCP 工具：set_home_layout（自然语言「改我的首页」的写入入口，user_token 鉴权绑定调用者；
  * scope=group 配置组别默认首页，需组长/队长角色）。
  */
@@ -10,18 +10,24 @@ import { validateUserToken } from "../auth/feishu-auth";
 import { ROLES, resolveUserRole } from "../auth/role";
 import { json } from "../shared/http";
 import { resolveSession } from "../shared/session";
-import { HOME_WIDGET_META, parseHomeLayout, type HomeLayout } from "./layout";
+import { DEFAULT_HOME_LAYOUT, HOME_WIDGET_META, parseHomeLayout, type HomeLayout } from "./layout";
 import { deleteHomeLayout, getResolvedHome, saveHomeLayout } from "./service";
 
-/** 生效布局的 API 响应形状（门户渲染引擎消费） */
+/** 生效布局的 API 响应形状（门户渲染引擎消费）；defaults 为后端默认布局，门户无需维护第二份清单 */
 async function homePayload(env: Env, openId: string, group: string) {
   const resolved = await getResolvedHome(env, openId, group);
   return {
     layout: resolved.layout,
     source: resolved.source,
     group: resolved.group,
+    defaults: DEFAULT_HOME_LAYOUT,
     widgets: HOME_WIDGET_META,
   };
+}
+
+/** GET /api/home/defaults：公开的全员默认布局与组件元数据，不含任何用户配置 */
+export function handleGetHomeDefaults(): Response {
+  return json({ defaults: DEFAULT_HOME_LAYOUT, widgets: HOME_WIDGET_META });
 }
 
 /** GET /api/home：当前用户的生效布局（三层回退后的结果）。未登录 401 */

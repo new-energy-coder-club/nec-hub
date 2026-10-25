@@ -1,0 +1,16 @@
+[Unit]
+Description=NEC Hub 团队共享开发/MCP 端点（Miniflare 本地模拟）
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__INSTALL_DIR__
+Environment=HOME=/home/__USER__
+ExecStart=/usr/bin/npx wrangler dev --local --port __PORT__ --ip 0.0.0.0
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

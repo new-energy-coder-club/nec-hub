@@ -5,6 +5,8 @@
  * GitHub 提交数用 commits 接口 Link 尾页号推断；Gitee 用响应头 total_count。
  */
 
+import { KV_KEYS } from "./shared/kv-keys";
+
 /** NEC 开源仓库条目（/api/repos 返回项，GitHub/Gitee 合并） */
 interface RepoEntry {
   host: "github" | "gitee";
@@ -35,8 +37,8 @@ const REPOS_CACHE_TTL_SEC = 3600;
 
 export async function buildRepos(env: Env, ctx?: ExecutionContext): Promise<unknown> {
   const giteeUser = env.GITEE_USER ?? GITEE_USER_DEFAULT;
-  const cacheKey = "repos:cache:v2";
-  const legacyKey = "repos:cache";
+  const cacheKey = KV_KEYS.reposCache;
+  const legacyKey = KV_KEYS.legacyReposCache;
   const cached = await env.REGISTRY.get(cacheKey, "json") as
     | { data: RepoEntry[]; cachedAt: number }
     | null;
@@ -233,7 +235,7 @@ async function fetchGiteeCommitCount(fullName: string, token?: string): Promise<
 export async function prewarmRepos(env: Env): Promise<void> {
   try {
     const repos = await fetchAllRepos(env);
-    await env.REGISTRY.put("repos:cache:v2", JSON.stringify({ data: repos, cachedAt: Date.now() }));
+    await env.REGISTRY.put(KV_KEYS.reposCache, JSON.stringify({ data: repos, cachedAt: Date.now() }));
   } catch (err) {
     console.error("[nec-hub] prewarm repos failed:", err);
   }

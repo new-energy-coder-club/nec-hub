@@ -54,7 +54,7 @@ watch(authed, now => { if (now) onAuthed() })
       <!-- 登录态确认中（启动 / OAuth 回跳兑换）：占位防门禁闪现 -->
       <section v-if="!authed && auth.phase !== 'ready'" class="nec-card p-6">
         <div class="flex items-center gap-3 text-sm text-nec-gray">
-          <span class="inline-block w-4 h-4 border-2 border-gray-200 rounded-full animate-spin" style="border-top-color:var(--nec-cyan)"></span>
+          <span class="inline-block w-4 h-4 border-2 border-gray-200 border-t-nec-cyan rounded-full animate-spin"></span>
           {{ auth.phase === 'exchanging' ? '飞书登录中…' : '正在确认登录态…' }}
         </div>
       </section>
@@ -79,7 +79,7 @@ watch(authed, now => { if (now) onAuthed() })
       </div>
 
       <!-- 页脚 -->
-      <footer class="nec-card p-5" style="border-top:3px solid var(--nec-cyan)">
+ <footer class="nec-card p-5 border-t-[3px] border-nec-cyan">
         <p class="text-xs text-nec-gray leading-relaxed">
           合规申请 G-02 · 审批与通知中心（PRD V1.1 Plan B）：对外发布、商务合作、授权使用等内容须过审后才可发布；
           驳回原因标准化（5 个固定选项）便于统计复盘；通过后由申请人回填发布链接，状态流转为「已发布」留档。

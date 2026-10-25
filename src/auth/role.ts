@@ -8,6 +8,7 @@
 
 import { BitableRecord, fieldText, findFieldKey } from "../feishu/bitable";
 import { fetchTableCached, getDashboardConfig, type TableFetchResult } from "../dashboard";
+import { KV_KEYS } from "../shared/kv-keys";
 import type { HubUser } from "../shared/session";
 
 /** 角色解析缓存 TTL（秒）。负结果不入缓存，保证移除队员后下一次请求即失效 */
@@ -58,7 +59,7 @@ const FINANCE_ROLE_RE = ROLES.FINANCE;
 export async function resolveUserRole(env: Env, user: HubUser, ctx?: ExecutionContext): Promise<UserRole> {
   const fallback = envSuperAdminRole(env, user.open_id);
   if (fallback) return fallback;
-  const cacheKey = `role:${user.open_id}`;
+  const cacheKey = KV_KEYS.role(user.open_id);
   const cached = await env.REGISTRY.get(cacheKey, "json") as UserRole | null;
   if (cached) return cached;
   const role = await lookupRoleFresh(env, user, ctx);
@@ -103,7 +104,9 @@ async function lookupRoleFresh(env: Env, user: HubUser, ctx?: ExecutionContext):
   };
 }
 
-/** 在名单表记录里定位当前用户：优先 open_id 精确匹配，其次姓名精确匹配 */
+/** 在名单表记录里定位当前用户：仅 open_id 精确匹配 + 姓名精确匹配。
+ *  曾有"双向包含"兜底（飞书显示名带前缀如 "DarrenPig 朱佩韦" 也能命中），但重名/昵称包含关系会误配权限，
+ *  已移除——显示名与名单姓名不一致时须在队员名单补录 open_id（管理 Tab 可见缺录人数）。 */
 function matchMemberRecord(records: BitableRecord[], user: HubUser): BitableRecord | null {
   const idKeys = new Set<string>();
   const nameKeys = new Set<string>();
@@ -122,13 +125,6 @@ function matchMemberRecord(records: BitableRecord[], user: HubUser): BitableReco
     for (const r of records) {
       for (const k of nameKeys) {
         if (fieldText(r.fields[k]) === user.name) return r;
-      }
-    }
-    // 飞书显示名可能带前缀/后缀（如 "DarrenPig 朱佩韦"）：退化为双向包含匹配，要求名单姓名 ≥2 字
-    for (const r of records) {
-      for (const k of nameKeys) {
-        const n = fieldText(r.fields[k]);
-        if (n && n.length >= 2 && (user.name.includes(n) || n.includes(user.name))) return r;
       }
     }
   }

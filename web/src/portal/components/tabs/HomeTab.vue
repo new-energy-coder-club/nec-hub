@@ -27,19 +27,25 @@ const HOME_WIDGET_DEFS: Record<string, { title: string; comp: Component }> = {
   'goals': { title: '赛季目标', comp: HomeWidgetGoals },
   'inventory': { title: '物资查询', comp: HomeWidgetInventory },
 }
-/** 与后端 DEFAULT_HOME_LAYOUT 保持一致（未登录访客与 /api/home 失败时的兜底） */
-const HOME_DEFAULT_WIDGETS = ['my-tasks', 'goals', 'my-apps', 'docs']
 const HOME_SOURCE_LABEL: Record<string, string> = { personal: '个人定制', group: '组默认', default: '全员默认' }
 
 interface HomeWidget { id: string; title?: string }
 
-const widgets = ref<HomeWidget[]>(HOME_DEFAULT_WIDGETS.map(id => ({ id })))
+const widgets = ref<HomeWidget[]>([])
+const homeLoading = ref(true)
 const source = ref('default')
 const group = ref('')
 const freshNote = ref('')
 const showPrompt = ref(false)
+let cachedDefaultWidgets: HomeWidget[] = []
+let homeLoadSeq = 0
 // 同一次渲染内共享数据请求，避免多组件重复拉同一接口
 const shared = ref<SharedLoader>(createShared())
+
+function filterHomeWidgets(raw: unknown): HomeWidget[] {
+  if (!Array.isArray(raw)) return []
+  return raw.filter((w: any) => w && typeof w.id === 'string' && HOME_WIDGET_DEFS[w.id])
+}
 
 function createShared(): SharedLoader {
   const cache: Record<string, Promise<any>> = {}
@@ -72,25 +78,48 @@ const sourceLabel = computed(() => {
 })
 
 async function loadHome() {
-  let list = HOME_DEFAULT_WIDGETS.map(id => ({ id }))
+  const seq = ++homeLoadSeq
+  homeLoading.value = true
+  let list = cachedDefaultWidgets.slice()
   let src = 'default', grp = ''
+  let resolved = false
   if (auth.me.authenticated) {
     try {
       const resp = await fetch('/api/home')
-      if (resp.ok) {
-        const d = await resp.json()
-        const wl = (d.layout?.widgets ?? []).filter((w: HomeWidget) => HOME_WIDGET_DEFS[w.id])
+      const d = await resp.json().catch(() => null)
+      if (resp.ok && d) {
+        const defaults = filterHomeWidgets(d.defaults?.widgets)
+        if (defaults.length) cachedDefaultWidgets = defaults
+        const wl = filterHomeWidgets(d.layout?.widgets)
         if (wl.length) list = wl
+        else if (defaults.length) list = defaults
         src = d.source || 'default'
         grp = d.group || ''
+        resolved = true
       }
-    } catch { /* 布局读取失败按默认渲染 */ }
+    } catch { /* 布局读取失败时继续尝试后端默认布局 */ }
   }
+  // 未登录或生效布局读取失败时，仍展示后端默认布局，不在前端复制默认清单。
+  if (!resolved && !list.length) {
+    try {
+      const resp = await fetch('/api/home/defaults')
+      if (resp.ok) {
+        const d = await resp.json()
+        const defaults = filterHomeWidgets(d.defaults?.widgets)
+        if (defaults.length) {
+          cachedDefaultWidgets = defaults
+          list = defaults
+        }
+      }
+    } catch { /* 默认布局读取失败时保留空态，避免渲染未知组件 */ }
+  }
+  if (seq !== homeLoadSeq) return
   freshNote.value = ''
   source.value = src
   group.value = grp
   widgets.value = list
   shared.value = createShared()
+  homeLoading.value = false
 }
 
 async function resetHome() {
@@ -302,13 +331,13 @@ watch(() => todoBar.data, () => applyTodoCounts())
       <h2 class="text-lg font-bold">我的首页<span id="home-source" class="text-xs font-normal text-gray-400 ml-2">{{ sourceLabel }}</span></h2>
       <div class="flex items-center gap-2">
         <button @click="resetHome" id="home-reset-btn" v-show="auth.me.authenticated" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600">恢复默认</button>
-        <button @click="showPrompt = !showPrompt" id="home-edit-layout-btn" class="text-sm text-white px-4 py-2 rounded-lg" style="background:var(--nec-cyan)">编辑布局</button>
+ <button @click="showPrompt = !showPrompt" id="home-edit-layout-btn" class="text-sm text-white px-4 py-2 rounded-lg bg-nec-cyan">编辑布局</button>
       </div>
     </div>
     <div v-if="showPrompt" id="home-prompt-box" class="mb-6 bg-white rounded-xl shadow p-5">
       <h3 class="font-bold mb-2">编辑布局：复制 Prompt 给你的 Agent</h3>
       <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="home-prompt">{{ HOME_PROMPT }}</pre>
-      <button @click="copyText(HOME_PROMPT)" class="mt-3 text-sm text-white px-3 py-1.5 rounded" style="background:var(--nec-navy)">复制</button>
+ <button @click="copyText(HOME_PROMPT)" class="mt-3 text-sm text-white px-3 py-1.5 rounded bg-nec-navy">复制</button>
       <p class="text-xs text-gray-400 mt-3">布局为白名单组件制（禁止自由 HTML），组件顺序即渲染顺序，配置绑定飞书账号、换设备/重新登录都保持。组长/队长把 Prompt 里的 scope 改成 group 可配置本组默认首页。也可直接拖动下方卡片右上角的 ⠿ 手柄排序，松手自动保存。</p>
     </div>
 
@@ -352,15 +381,15 @@ watch(() => todoBar.data, () => applyTodoCounts())
     <div id="home-activity" class="mb-4">
       <div v-if="commits.length" class="bg-white rounded-xl shadow px-4 py-3">
         <div class="flex items-center gap-2 text-xs mb-1">
-          <span class="font-bold" style="color:var(--nec-navy)">团队动态</span>
+ <span class="font-bold text-nec-navy">团队动态</span>
           <span class="text-gray-400">· 最近 git 提交</span>
-          <button @click="emit('goto', 'prd')" class="ml-auto hover:underline" style="color:var(--nec-cyan)">PRD 看板 →</button>
+ <button @click="emit('goto', 'prd')" class="ml-auto hover:underline text-nec-cyan">PRD 看板 →</button>
         </div>
         <ul class="divide-y divide-gray-50">
           <li v-for="(c, i) in commits" :key="i" class="py-1.5 flex items-baseline gap-2 text-sm">
             <span v-if="c.branches.length > 1" class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 mono shrink-0" :title="c.branches.join(' / ')">{{ c.branches.length }} 分支</span>
             <span v-else class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 mono shrink-0" :title="c.branches[0]">{{ c.branches[0] }}</span>
-            <a v-if="commitHref(c)" :href="commitHref(c)" target="_blank" :title="c.message" class="flex-1 min-w-0 truncate hover:underline" style="color:var(--nec-ink)">{{ c.message || '' }}</a>
+ <a v-if="commitHref(c)" :href="commitHref(c)" target="_blank" :title="c.message" class="flex-1 min-w-0 truncate hover:underline text-nec-ink">{{ c.message || '' }}</a>
             <span v-else :title="c.message" class="flex-1 min-w-0 truncate">{{ c.message || '' }}</span>
             <span class="text-xs text-gray-400 shrink-0">{{ c.author || '' }}{{ c.at ? ' · ' + fmtAt(c.at) : '' }}</span>
           </li>
@@ -370,22 +399,28 @@ watch(() => todoBar.data, () => applyTodoCounts())
 
     <!-- #6 信息密度两栏：xl 屏 CSS columns-2（顺序自上而下），小屏单列；卡片 break-inside-avoid -->
     <div id="home-widgets" class="xl:columns-2 xl:gap-4">
-      <div v-for="(w, i) in widgets" :key="w.id"
-           class="bg-white rounded-xl shadow p-5 group relative break-inside-avoid mb-4"
-           :class="{ 'ring-2 ring-sky-200': dragIdx === i }"
-           @dragover="onDragOver(i, $event)" @drop="onCardDrop($event)">
-        <div class="flex items-center justify-between gap-2 mb-3">
-          <h3 class="font-bold truncate">{{ w.title || HOME_WIDGET_DEFS[w.id].title }}</h3>
-          <div v-if="auth.me.authenticated" class="flex items-center gap-2 shrink-0">
-            <span @dragstart="onDragStart(i, $event)" @dragend="onDragEnd"
-                  draggable="true" title="拖拽排序（松手自动保存）"
-                  class="text-xs text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing select-none">⠿ 拖拽</span>
-            <button @click="removeHomeWidget(i)" title="从我的首页移除该组件（写入个人布局）"
-                    class="hidden group-hover:block text-xs text-gray-300 hover:text-red-500">✕ 移除</button>
+      <div v-if="homeLoading && !widgets.length" id="home-widgets-loading"
+           class="bg-white rounded-xl shadow p-8 text-center text-sm text-gray-400 break-inside-avoid mb-4">首页布局加载中…</div>
+      <div v-else-if="!widgets.length" id="home-widgets-empty"
+           class="bg-white rounded-xl shadow p-8 text-center text-sm text-gray-400 break-inside-avoid mb-4">暂无可用首页组件</div>
+      <template v-else>
+        <div v-for="(w, i) in widgets" :key="w.id"
+             class="bg-white rounded-xl shadow p-5 group relative break-inside-avoid mb-4"
+             :class="{ 'ring-2 ring-sky-200': dragIdx === i }"
+             @dragover="onDragOver(i, $event)" @drop="onCardDrop($event)">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <h3 class="font-bold truncate">{{ w.title || HOME_WIDGET_DEFS[w.id].title }}</h3>
+            <div v-if="auth.me.authenticated" class="flex items-center gap-2 shrink-0">
+              <span @dragstart="onDragStart(i, $event)" @dragend="onDragEnd"
+                    draggable="true" title="拖拽排序（松手自动保存）"
+                    class="text-xs text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing select-none">⠿ 拖拽</span>
+              <button @click="removeHomeWidget(i)" title="从我的首页移除该组件（写入个人布局）"
+                      class="hidden group-hover:block text-xs text-gray-300 hover:text-red-500">✕ 移除</button>
+            </div>
           </div>
+          <component :is="HOME_WIDGET_DEFS[w.id].comp" :shared="shared" />
         </div>
-        <component :is="HOME_WIDGET_DEFS[w.id].comp" :shared="shared" />
-      </div>
+      </template>
     </div>
   </section>
 </template>

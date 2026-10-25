@@ -1,22 +1,41 @@
 /**
  * 新增机图纸评审流程 — 路由注册
  *
- * 入口骨架（配置接口 / 503 / 会话 / 401 / 500 兜底）统一由 shared/module-gateway 提供。
+ * 迁移说明（审批引擎 Phase 1，选项 A 兼容迁移）：评审单本体/状态机/群通知由
+ * src/approvals 引擎承担（submitApprovalCore / runApprovalAction，单号 DR-2026-0001，
+ * 引擎按「申请单号」写字段，「评审单号」= 申请单号供子表外键沿用）；本文件只做
+ * 薄壳转调 + 富业务副作用（提交默认值/偏好回写、会议纪要、整改项创建、事件日志）。
+ * URL 与请求/响应形状保持不变，前端零改动。
+ * BOM/询价/库存/联想建议等子路由原样保留。入口骨架（配置接口 / 503 / 会话 / 401 / 500 兜底）
+ * 统一由 shared/module-gateway 提供。
  */
 
+import { ensureFlowTableLink } from "../approvals/flows";
+import { submitApprovalCore } from "../approvals/engine";
 import { ROLES, resolveUserRole } from "../auth/role";
 import { json, readJson } from "../shared/http";
 import { handleScheduleMeeting } from "../shared/meeting.service";
 import { withModuleGate, CONFIG_ADMIN_ROLES, type ModuleRouteContext } from "../shared/module-gateway";
+import { logReviewEvent, runReviewEngineAction, type ReviewShellSpec } from "../shared/review-engine-bridge";
+import { CONCLUSION_EVENTS } from "../shared/review-flow";
 import { DrawingReviewAdapter } from "./adapter";
 import { BoardService } from "./board.service";
 import { BOMService } from "./bom.service";
 import { getDrawingReviewConfig } from "./config";
-import { ReviewFlowService, nextStatus, type SubmitReviewInput } from "./flow.service";
+import { ReviewFlowService, nextStatus, type ConclusionInput, type SubmitReviewInput } from "./flow.service";
 import { InquiryService } from "./inquiry.service";
 import { InventoryService } from "./inventory.service";
 import { SuggestionService } from "./suggestion.service";
 import type { DrawingReviewConfig } from "./types";
+
+/** 引擎流程类型与薄壳事件日志配置（评审单动作全部走引擎 drawing_review 流程） */
+const FLOW_TYPE = "drawing_review" as const;
+const SHELL: ReviewShellSpec = {
+  type: FLOW_TYPE,
+  logTag: "drawing-review",
+  eventsTable: "events",
+  eventReviewField: "关联评审单",
+};
 
 /** 询价管理角色口径：报价回填与选定供应商共用 */
 const INQUIRY_MANAGER_ROLE_RE = ROLES.INQUIRY_MANAGER;
@@ -43,7 +62,7 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
   const adapter = new DrawingReviewAdapter(env, cfg);
   const flow = new ReviewFlowService(env, adapter);
 
-  // 评审单
+  // 评审单提交（薄壳：默认值/偏好 → 引擎写单与通知；事件日志留本层）
   if (pathname === "/api/drawing-review/submit" && request.method === "POST") {
     const body = await readJson<Partial<SubmitReviewInput>>(request);
     if (!body) return json({ error: "请求体必须是 JSON" }, 400);
@@ -56,8 +75,27 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
       drawingFiles: body.drawingFiles || [],
       designNotes: body.designNotes,
     };
-    const review = await flow.submit(input, session.open_id);
-    return json(review);
+    const defaults = await flow.getDefaultSubmissionValues(input, session.open_id);
+    flow.assertSubmitReady(input, defaults);
+    await ensureFlowTableLink(env, FLOW_TYPE, cfg.tables.reviews, cfg.base);
+    const { application_id, status } = await submitApprovalCore(env, {
+      type: FLOW_TYPE,
+      fields: {
+        评审单号: "@appId",
+        项目编号: defaults.projectId,
+        机型名称: defaults.machineName,
+        图纸版本: defaults.drawingVersion,
+        设计负责人: defaults.designerId,
+        图纸文件: JSON.stringify(input.drawingFiles),
+        设计说明: defaults.designNotes,
+      },
+      user: session,
+      role: await resolveUserRole(env, session),
+      source: "portal",
+    });
+    await logReviewEvent(adapter, SHELL, application_id, session.open_id, "submit", "draft", status);
+    await flow.saveSubmissionPreferences(input, session.open_id);
+    return json(await adapter.findReviewById(application_id));
   }
 
   if (pathname === "/api/drawing-review" && request.method === "GET") {
@@ -138,14 +176,26 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
     return json(review);
   }
 
-  // 会议预约
+  // 会议预约（薄壳：建会与会议信息回写不变；start_meeting 状态流转走引擎）
   const meetingMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/meeting$/);
   if (meetingMatch && request.method === "POST") {
     return handleScheduleMeeting(
       request,
       env,
       {
-        flow,
+        flow: {
+          getReview: (reviewId) => adapter.findReviewById(reviewId),
+          startMeeting: async (reviewId, _actorId, payload) => {
+            const current = await adapter.findReviewById(reviewId);
+            if (!current) throw new Error(`评审单 ${reviewId} 不存在`);
+            if (!nextStatus(current.status, "start_meeting")) {
+              throw new Error(`当前状态 ${current.status} 不允许开始会议`);
+            }
+            await ensureFlowTableLink(env, FLOW_TYPE, cfg.tables.reviews, cfg.base);
+            await runReviewEngineAction(env, SHELL, adapter, reviewId, "start_meeting", session, await resolveUserRole(env, session), payload);
+            return adapter.findReviewById(reviewId);
+          },
+        },
         adapter,
         topic: (review) => `新增机图纸评审 - ${review.machineName} - ${review.drawingVersion}`,
       },
@@ -163,20 +213,57 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
     return json(minutes);
   }
 
-  // 评审结论
+  // 评审结论（薄壳：状态流转走引擎；结论字段回写 + 整改项创建 + 事件日志留本层）
   const conclusionMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/conclusion$/);
   if (conclusionMatch && request.method === "POST") {
-    const body = await readJson<import("./flow.service").ConclusionInput>(request);
+    const body = await readJson<ConclusionInput>(request);
     if (!body) return json({ error: "请求体必须是 JSON" }, 400);
-    const review = await flow.conclude(conclusionMatch[1], body, session.open_id);
-    return json(review);
+    const reviewId = conclusionMatch[1];
+    const current = await adapter.findReviewById(reviewId);
+    if (!current) throw new Error(`评审单 ${reviewId} 不存在`);
+    if (current.status !== "in_review") throw new Error("只能在评审中状态下提交评审结论");
+    const event = CONCLUSION_EVENTS[body.conclusion];
+    if (!event) throw new Error(`结论 ${body.conclusion} 无法驱动状态流转`);
+    await ensureFlowTableLink(env, FLOW_TYPE, cfg.tables.reviews, cfg.base);
+    await runReviewEngineAction(
+      env, SHELL, adapter, reviewId, event, session, await resolveUserRole(env, session),
+      { conclusion: body.conclusion }, "conclude",
+    );
+    const updated = await adapter.updateReview(current.recordId, {
+      conclusion: body.conclusion,
+      conclusionNotes: body.notes,
+      updatedAt: new Date().toISOString(),
+    });
+    if (body.conclusion === "conditional" && body.issues && body.issues.length > 0) {
+      await Promise.all(
+        body.issues.map((issue) =>
+          adapter.createRecord("rectifications", {
+            关联评审单: reviewId,
+            问题描述: issue.description,
+            提出人: issue.raisedBy.open_id,
+            责任人: issue.owner?.open_id,
+            截止日期: issue.dueDate,
+            完成状态: "未完成",
+          }),
+        ),
+      );
+    }
+    return json(updated);
   }
 
-  // 整改完成
+  // 整改完成（薄壳：complete 流转走引擎；事件日志动作名沿用 complete_rectification）
   const rectifyMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)\/rectify$/);
   if (rectifyMatch && request.method === "POST") {
-    const review = await flow.completeRectification(rectifyMatch[1], session.open_id);
-    return json(review);
+    const reviewId = rectifyMatch[1];
+    const current = await adapter.findReviewById(reviewId);
+    if (!current) throw new Error(`评审单 ${reviewId} 不存在`);
+    if (!nextStatus(current.status, "complete")) throw new Error(`当前状态 ${current.status} 不允许完成整改`);
+    await ensureFlowTableLink(env, FLOW_TYPE, cfg.tables.reviews, cfg.base);
+    await runReviewEngineAction(
+      env, SHELL, adapter, reviewId, "complete", session, await resolveUserRole(env, session),
+      undefined, "complete_rectification",
+    );
+    return json(await adapter.findReviewById(reviewId));
   }
 
   // BOM 生成（幂等：已有 BOM 直接返回；仅当状态机允许时才流转 assessing）
@@ -194,7 +281,8 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
     // 仅 bom_generating 状态允许 generated 事件；其它状态（如补录 BOM）只写数据不流转
     const review = await flow.getReview(bomMatch[1]);
     if (review && nextStatus(review.status, "generated")) {
-      await flow.transitionTo(bomMatch[1], "generated", session.open_id);
+      await ensureFlowTableLink(env, FLOW_TYPE, cfg.tables.reviews, cfg.base);
+      await runReviewEngineAction(env, SHELL, adapter, bomMatch[1], "generated", session, await resolveUserRole(env, session));
     }
     return json(result);
   }

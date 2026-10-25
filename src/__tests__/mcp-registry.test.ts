@@ -39,9 +39,37 @@ const EXPECTED_TOOL_NAMES = [
   "release_domain",
 ];
 
+const DOMAIN_MODULE_LOADERS = [
+  () => import("../mcp/tools/approvals"),
+  () => import("../mcp/tools/apps"),
+  () => import("../mcp/tools/bitable-config"),
+  () => import("../mcp/tools/bitable-inventory"),
+  () => import("../mcp/tools/bitable-progress"),
+  () => import("../mcp/tools/bitable-query"),
+  () => import("../mcp/tools/bitable-setup"),
+  () => import("../mcp/tools/docs"),
+  () => import("../mcp/tools/domains"),
+  () => import("../mcp/tools/home"),
+  () => import("../mcp/tools/mail"),
+  () => import("../mcp/tools/meeting"),
+  () => import("../mcp/tools/module-config"),
+  () => import("../mcp/tools/prd"),
+  () => import("../mcp/tools/skills"),
+  () => import("../mcp/tools/validation"),
+  () => import("../mcp/tools/whoami"),
+];
+
 describe("TOOL_REGISTRY", () => {
   it("注册 30 个工具，名称与顺序与注册表化前 tools/list 输出一致", () => {
     expect(TOOL_REGISTRY.map((t) => t.name)).toEqual(EXPECTED_TOOL_NAMES);
+  });
+
+  it("各域 tools 数组完整覆盖注册工具且无重复", async () => {
+    const modules = await Promise.all(DOMAIN_MODULE_LOADERS.map((load) => load()));
+    const domainTools = modules.flatMap((module) =>
+      "tools" in module && Array.isArray(module.tools) ? module.tools : [],
+    );
+    expect(domainTools.map((tool) => tool.name).sort()).toEqual([...EXPECTED_TOOL_NAMES].sort());
   });
 
   it("每个工具同处定义 description / inputSchema / impl", () => {

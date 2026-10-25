@@ -5,6 +5,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildPrdBoard, DEFAULT_PRD_ITEMS, handleGithubPush, toolUpdatePrd } from "../prd";
+import { KV_KEYS } from "../shared/kv-keys";
 
 function jsonResp(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } });
@@ -52,7 +53,7 @@ beforeEach(() => {
 });
 
 describe("buildPrdBoard", () => {
-  it("无 KV 覆盖时返回基线：13 项、M1/M2/M3 三里程碑、lastCommit 为 null", async () => {
+  it("无 KV 覆盖时返回基线：16 项、M1~M4 四里程碑、lastCommit 为 null", async () => {
     const ctx = createCtx();
     const board = (await buildPrdBoard(ctx.env)) as {
       progress: { done: number; total: number };
@@ -60,40 +61,41 @@ describe("buildPrdBoard", () => {
       lastCommit: unknown;
     };
     expect(board.progress.total).toBe(Object.keys(DEFAULT_PRD_ITEMS).length);
-    expect(board.milestones.map((m) => m.id)).toEqual(["M1", "M2", "M3"]);
+    expect(board.milestones.map((m) => m.id)).toEqual(["M1", "M2", "M3", "M4"]);
     expect(board.lastCommit).toBeNull();
-    // 基线里 FE-01 为 done
-    expect(board.progress.done).toBe(1);
-    expect(board.milestones[0].done).toBe(1);
+    // 基线 done 共 9 项（FE-03/04/05/06/07/10/12/13/14），M3 内 4 项 done
+    expect(board.progress.done).toBe(9);
+    expect(board.milestones[2].done).toBe(4);
   });
 
-  it("KV prd:status 覆盖合并到基线；prd:last_commit 透传", async () => {
+  it("KV prd:status 覆盖合并到基线；KV 项缺 subs 时保留默认子项；prd:last_commit 透传", async () => {
     const ctx = createCtx();
-    ctx.kv.set("prd:status", JSON.stringify({
-      items: { "FE-04": { ...DEFAULT_PRD_ITEMS["FE-04"], status: "done", note: "面板上线" } },
+    ctx.kv.set(KV_KEYS.prdStatus, JSON.stringify({
+      items: { "FE-04": { title: "赛季目标可视化面板", priority: "P1", status: "done", note: "面板上线" } }, // 故意不带 subs
       updatedAt: "2026-10-14T00:00:00.000Z",
     }));
-    ctx.kv.set("prd:last_commit", JSON.stringify({ repo: "nec-hub", branch: "main", message: "feat: x", author: "a", url: "https://x", at: "2026-10-14T00:00:00.000Z" }));
+    ctx.kv.set(KV_KEYS.prdLastCommit, JSON.stringify({ repo: "nec-hub", branch: "main", message: "feat: x", author: "a", url: "https://x", at: "2026-10-14T00:00:00.000Z" }));
     const board = (await buildPrdBoard(ctx.env)) as {
       updatedAt: string;
       progress: { done: number };
-      milestones: Array<{ id: string; cards: Array<{ id: string; status: string; note?: string }> }>;
+      milestones: Array<{ id: string; cards: Array<{ id: string; status: string; note?: string; subs?: Record<string, { status: string }> }> }>;
       lastCommit: { message: string };
     };
     expect(board.updatedAt).toBe("2026-10-14T00:00:00.000Z");
-    expect(board.progress.done).toBe(2);
+    expect(board.progress.done).toBe(9);
     const fe04 = board.milestones[1].cards.find((c) => c.id === "FE-04");
     expect(fe04?.status).toBe("done");
     expect(fe04?.note).toBe("面板上线");
+    expect(fe04?.subs?.["FE-18"]?.status).toBe("partial"); // 默认子项不被 KV 覆盖抹掉
     expect(board.lastCommit.message).toBe("feat: x");
   });
 
   it("KV 损坏时回退基线", async () => {
     const ctx = createCtx();
-    ctx.kv.set("prd:status", "{not json");
-    ctx.kv.set("prd:last_commit", "{broken");
+    ctx.kv.set(KV_KEYS.prdStatus, "{not json");
+    ctx.kv.set(KV_KEYS.prdLastCommit, "{broken");
     const board = (await buildPrdBoard(ctx.env)) as { progress: { total: number }; lastCommit: unknown };
-    expect(board.progress.total).toBe(13);
+    expect(board.progress.total).toBe(16);
     expect(board.lastCommit).toBeNull();
   });
 });
@@ -114,7 +116,7 @@ describe("update_prd（MCP 工具）", () => {
     const res = await toolUpdatePrd({ id: "fe-04", status: "done", note: "搞定" }, ctx.env, true);
     expect(res.content[0].text).toContain("FE-04");
     expect(res.content[0].text).toContain("done");
-    const saved = JSON.parse(ctx.kv.get("prd:status")!);
+    const saved = JSON.parse(ctx.kv.get(KV_KEYS.prdStatus)!);
     expect(saved.items["FE-04"].status).toBe("done");
     expect(saved.items["FE-04"].note).toBe("搞定");
     // 状态变化 → 推群一次，消息体 msg_type + 加签字段
@@ -126,6 +128,21 @@ describe("update_prd（MCP 工具）", () => {
     // 再调一次同状态 → 不推
     await toolUpdatePrd({ id: "FE-04", status: "done" }, ctx.env, true);
     expect(ctx.webhookCalls).toHaveLength(1);
+  });
+
+  it("子项 id（FE-18）自动归到所属大项 FE-04 的 subs 下", async () => {
+    const ctx = createCtx();
+    const res = await toolUpdatePrd({ id: "fe-18", status: "done", note: "数据流打通" }, ctx.env, true);
+    expect(res.content[0].text).toContain("FE-04 › FE-18");
+    expect(res.content[0].text).toContain("done");
+    const saved = JSON.parse(ctx.kv.get(KV_KEYS.prdStatus)!);
+    expect(saved.items["FE-18"]).toBeUndefined(); // 不作为大项落库
+    expect(saved.items["FE-04"].subs["FE-18"].status).toBe("done");
+    expect(saved.items["FE-04"].subs["FE-18"].note).toBe("数据流打通");
+    // 看板透传子项状态
+    const board = (await buildPrdBoard(ctx.env)) as { milestones: Array<{ cards: Array<{ id: string; subs?: Record<string, { status: string }> }> }> };
+    const fe04 = board.milestones[1].cards.find((c) => c.id === "FE-04");
+    expect(fe04?.subs?.["FE-18"]?.status).toBe("done");
   });
 
   it("未配置 webhook 时静默降级（不报错、记录不影响）", async () => {
@@ -174,7 +191,7 @@ describe("POST /api/hooks/github", () => {
     expect(data.commit.branch).toBe("main");
     expect(data.commit.author).toBe("张三");
     expect(data.notified).toBe(true);
-    expect(JSON.parse(ctx.kv.get("prd:last_commit")!).message).toBe("feat: 测试提交");
+    expect(JSON.parse(ctx.kv.get(KV_KEYS.prdLastCommit)!).message).toBe("feat: 测试提交");
     expect(ctx.webhookCalls).toHaveLength(1);
   });
 
@@ -194,7 +211,7 @@ describe("POST /api/hooks/github", () => {
       ctx.env,
     );
     expect(((await res.json()) as { ignored?: string }).ignored).toBe("no commit");
-    expect(ctx.kv.has("prd:last_commit")).toBe(false);
+    expect(ctx.kv.has(KV_KEYS.prdLastCommit)).toBe(false);
   });
 
   it("连续 push 累积 prd:recent_commits（最新在前，最多 10 条），buildPrdBoard 透传", async () => {
@@ -215,7 +232,7 @@ describe("POST /api/hooks/github", () => {
       );
       expect(res.status).toBe(200);
     }
-    const list = JSON.parse(ctx.kv.get("prd:recent_commits")!) as Array<{ message: string }>;
+    const list = JSON.parse(ctx.kv.get(KV_KEYS.prdRecentCommits)!) as Array<{ message: string }>;
     expect(list.map(c => c.message)).toEqual(["commit 3", "commit 2", "commit 1"]);
 
     const board = (await buildPrdBoard(ctx.env)) as { recentCommits: Array<{ message: string }>; lastCommit: { message: string } };
@@ -225,7 +242,7 @@ describe("POST /api/hooks/github", () => {
 
   it("只有存量 prd:last_commit（无列表）时 recentCommits 回落为单条", async () => {
     const ctx = createCtx();
-    ctx.kv.set("prd:last_commit", JSON.stringify({ repo: "nec-hub", branch: "main", message: "feat: 存量", author: "a", url: "https://x", at: "2026-10-14T00:00:00.000Z" }));
+    ctx.kv.set(KV_KEYS.prdLastCommit, JSON.stringify({ repo: "nec-hub", branch: "main", message: "feat: 存量", author: "a", url: "https://x", at: "2026-10-14T00:00:00.000Z" }));
     const board = (await buildPrdBoard(ctx.env)) as { recentCommits: Array<{ message: string }> };
     expect(board.recentCommits.map(c => c.message)).toEqual(["feat: 存量"]);
   });

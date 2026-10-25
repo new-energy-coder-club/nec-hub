@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
 import { handleApprovalAction } from "../approvals/handlers";
 import { buildApprovalFields, handleErpReimburse, syncReimburseDocStatus, validateErpDoc, type ErpLine } from "../erp/reimburse";
+import { KV_KEYS } from "../shared/kv-keys";
 import { mockGetRecordResponse, mockSearchResponse } from "./bitable-search-mock";
 
 const BASE = "appMockBase";
@@ -100,10 +101,10 @@ function createCtx() {
   const d1 = fakeD1();
   let seq = 0;
 
-  kv.set("flows:config", JSON.stringify({ reimburse: { tableId: TBL_REIMBURSE, base: BASE } }));
-  kv.set("dashboard:config", JSON.stringify({ base: BASE, tables: { members: "tblM" }, updatedAt: new Date().toISOString() }));
-  kv.set("session:sid-member", JSON.stringify({ name: "张三", open_id: "ou-member", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
-  kv.set("session:sid-captain", JSON.stringify({ name: "张队", open_id: "ou-captain", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
+  kv.set(KV_KEYS.flowsConfig, JSON.stringify({ reimburse: { tableId: TBL_REIMBURSE, base: BASE } }));
+  kv.set(KV_KEYS.dashboardConfig, JSON.stringify({ base: BASE, tables: { members: "tblM" }, updatedAt: new Date().toISOString() }));
+  kv.set(KV_KEYS.session("sid-member"), JSON.stringify({ name: "张三", open_id: "ou-member", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
+  kv.set(KV_KEYS.session("sid-captain"), JSON.stringify({ name: "张队", open_id: "ou-captain", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
 
   vi.stubGlobal("fetch", vi.fn(async (input: unknown, init?: { method?: string; body?: string }) => {
     const url = String((input as { url?: string })?.url ?? input);
@@ -133,7 +134,7 @@ function createCtx() {
   const env = {
     REGISTRY: {
       get: vi.fn(async (key: string, type?: string) => {
-        if (key === "feishu:tenant_access_token") return { token: "mock-token", expireAt: Date.now() + 3600e3 };
+        if (key === KV_KEYS.feishuTenantAccessToken) return { token: "mock-token", expireAt: Date.now() + 3600e3 };
         const v = kv.get(key);
         return v == null ? null : type === "json" ? JSON.parse(v) : v;
       }),
@@ -313,7 +314,7 @@ describe("GET docs/mine 与 docs/<id>", () => {
     const cap = await handleErpReimburse(req(`/api/erp/reimburse/docs/${id1}`, "sid-captain"), ctx.env, `/api/erp/reimburse/docs/${id1}`);
     expect(cap!.status).toBe(200);
     // 其他队员 403（再注册一名队员）
-    ctx.kv.set("session:sid-other", JSON.stringify({ name: "李四", open_id: "ou-other", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
+    ctx.kv.set(KV_KEYS.session("sid-other"), JSON.stringify({ name: "李四", open_id: "ou-other", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
     ctx.tables["tblM"].push({ record_id: "m3", fields: { 姓名: "李四", 飞书ID: "ou-other", 权限角色: "队员", 组别: "电控组" } });
     const denied = await handleErpReimburse(req(`/api/erp/reimburse/docs/${id1}`, "sid-other"), ctx.env, `/api/erp/reimburse/docs/${id1}`);
     expect(denied!.status).toBe(403);
@@ -499,14 +500,14 @@ describe("审批状态回写 D1（onStatusChange → syncReimburseDocStatus）",
 
     const approve = await handleApprovalAction(
       req(`/api/approvals/reimburse/${appId}/approve`, "sid-captain", "POST", { comment: "同意" }),
-      ctx.env, "reimburse", appId, "approve",
+      ctx.env, "reimburse", appId, "approve", undefined, syncReimburseDocStatus,
     );
     expect(approve.status).toBe(200);
     expect(ctx.d1.docs.get(appId)!.status).toBe("已通过");
 
     const pay = await handleApprovalAction(
       req(`/api/approvals/reimburse/${appId}/pay`, "sid-captain", "POST", {}),
-      ctx.env, "reimburse", appId, "pay",
+      ctx.env, "reimburse", appId, "pay", undefined, syncReimburseDocStatus,
     );
     expect(pay.status).toBe(200);
     expect(ctx.d1.docs.get(appId)!.status).toBe("已打款");
@@ -517,7 +518,7 @@ describe("审批状态回写 D1（onStatusChange → syncReimburseDocStatus）",
     const appId = await submitOne(ctx);
     const res = await handleApprovalAction(
       req(`/api/approvals/reimburse/${appId}/reject`, "sid-captain", "POST", { comment: "票据不全" }),
-      ctx.env, "reimburse", appId, "reject",
+      ctx.env, "reimburse", appId, "reject", undefined, syncReimburseDocStatus,
     );
     expect(res.status).toBe(200);
     expect(ctx.d1.docs.get(appId)!.status).toBe("已驳回");
@@ -526,7 +527,7 @@ describe("审批状态回写 D1（onStatusChange → syncReimburseDocStatus）",
     ctx.tables[TBL_REIMBURSE].push({ record_id: "rec-manual", fields: { 申请单号: "BX-2026-0099", 状态: "审批中", 申请人: "王五" } });
     const manual = await handleApprovalAction(
       req("/api/approvals/reimburse/BX-2026-0099/approve", "sid-captain", "POST", {}),
-      ctx.env, "reimburse", "BX-2026-0099", "approve",
+      ctx.env, "reimburse", "BX-2026-0099", "approve", undefined, syncReimburseDocStatus,
     );
     expect(manual.status).toBe(200);
     expect(ctx.d1.docs.has("BX-2026-0099")).toBe(false);
@@ -548,7 +549,7 @@ describe("审批状态回写 D1（onStatusChange → syncReimburseDocStatus）",
 
     const res = await handleApprovalAction(
       req(`/api/approvals/reimburse/${appId}/approve`, "sid-captain", "POST", {}),
-      ctx.env, "reimburse", appId, "approve",
+      ctx.env, "reimburse", appId, "approve", undefined, syncReimburseDocStatus,
     );
     expect(res.status).toBe(200);
     expect(((await res.json()) as { status: string }).status).toBe("已通过");

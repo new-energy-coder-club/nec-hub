@@ -7,6 +7,7 @@
  */
 
 import { createSession, sessionCookie, type HubUser } from "../shared/session";
+import { KV_KEYS } from "../shared/kv-keys";
 import { FEISHU_API, cachedToken, type CachedToken } from "../feishu/client";
 
 /** 未命中白名单时回退的固定允许源（门户主域） */
@@ -80,7 +81,7 @@ export async function handleFeishuAuth(request: Request, env: Env): Promise<Resp
   // 服务端签发的 state（"我的任务"重新授权等场景，oauth:state:<state>，TTL 10 分钟）一次性消费：
   // 比对不上视为伪造/过期，直接 400。门户自身登录的 state 由前端 sessionStorage 校验，不带到这里
   if (state) {
-    const stateKey = `oauth:state:${state}`;
+    const stateKey = KV_KEYS.oauthState(state);
     const stored = await env.REGISTRY.get(stateKey);
     if (!stored) return jsonCors({ error: "state 校验失败或已过期，请重新发起授权" }, 400);
     await env.REGISTRY.delete(stateKey);
@@ -164,7 +165,7 @@ async function saveUserToken(
   const now = Date.now();
   const refreshExpiresAt = now + (d.refresh_expires_in ?? 30 * 24 * 3600) * 1000;
   await env.REGISTRY.put(
-    `feishu:user_token:${openId}`,
+    KV_KEYS.feishuUserToken(openId),
     JSON.stringify({
       user_access_token: d.access_token,
       refresh_token: d.refresh_token,
@@ -177,7 +178,7 @@ async function saveUserToken(
 
 /** 供 feishu/user-token.ts 续期 refresh 时复用 */
 export async function getAppAccessToken(env: Env): Promise<string> {
-  return cachedToken(env, "feishu:app_access_token", fetchAppAccessToken);
+  return cachedToken(env, KV_KEYS.feishuAppAccessToken, fetchAppAccessToken);
 }
 
 async function fetchAppAccessToken(env: Env): Promise<CachedToken> {

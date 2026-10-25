@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // FE-09：待办条（登录后有待办时显示；逾期任务/待确认报销/飞书审批/本地审批单聚合，可展开清单；合规 T-1 单标红置顶）
-import { todoBar, todoSummary, toggleTodoList, hideTodoBar, TODO_TYPE_LABELS } from '@portal/composables/useBanners'
+// 本地审批单带 internalTab 时门户内闭环处理（跳对应 Tab），其余条目跳外部链接
+import { todoBar, todoSummary, toggleTodoList, hideTodoBar, refreshTodos, TODO_TYPE_LABELS } from '@portal/composables/useBanners'
+import { switchTab } from '@portal/composables/useTabs'
 
 function localMeta(x: any): string {
   if (x.urgent && x.deadline) return '距计划发布不足 24h'
@@ -10,6 +12,10 @@ function localMeta(x: any): string {
   }
   return ''
 }
+
+function gotoInternal(x: any) {
+  if (x.internalTab && switchTab(x.internalTab)) todoBar.expanded = false
+}
 </script>
 
 <template>
@@ -18,6 +24,7 @@ function localMeta(x: any): string {
       <div class="flex items-center gap-3">
         <span class="shrink-0">✅</span>
         <button @click="toggleTodoList" class="flex-1 text-left leading-snug hover:underline" id="todo-bar-text">{{ todoSummary() }}</button>
+        <button @click="refreshTodos" class="text-white/60 hover:text-white shrink-0" title="处理完待办后点此立即刷新（不等 5 分钟缓存）">⟳</button>
         <button @click="hideTodoBar" class="text-white/60 hover:text-white shrink-0">✕</button>
       </div>
       <div id="todo-list" v-show="todoBar.expanded" class="mt-2 pt-2 border-t border-white/20">
@@ -26,7 +33,8 @@ function localMeta(x: any): string {
               class="py-1.5 flex items-baseline gap-2 flex-wrap" :class="{ '-mx-2 px-2 rounded bg-red-500/25': x.urgent }">
             <span class="text-xs px-1.5 py-0.5 rounded shrink-0" :class="x.urgent ? 'bg-red-500/60' : 'bg-white/15'">{{ TODO_TYPE_LABELS[x.type] ?? '审批' }}</span>
             <span v-if="x.urgent" class="text-xs px-1.5 py-0.5 rounded bg-red-500 text-white font-bold shrink-0">T-1</span>
-            <a :href="x.url" target="_blank" class="hover:underline font-medium">{{ x.title }}</a>
+            <a v-if="x.internalTab" href="#" @click.prevent="gotoInternal(x)" class="hover:underline font-medium">{{ x.title }}<span class="text-xs text-white/70">（去处理 →）</span></a>
+            <a v-else :href="x.url" target="_blank" class="hover:underline font-medium">{{ x.title }}</a>
             <span v-if="localMeta(x)" class="text-xs" :class="x.urgent ? 'text-red-200 font-medium' : 'text-white/70'">{{ localMeta(x) }}</span>
           </li>
           <li v-for="(x, i) in (todoBar.data.tasks ?? [])" :key="'t' + i" class="py-1.5 flex items-baseline gap-2 flex-wrap">

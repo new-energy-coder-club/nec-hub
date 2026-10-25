@@ -136,7 +136,7 @@ const goals = computed(() => d.value?.goals)
       <p>📊 数据源为飞书多维表格（队员名单 / 任务进度 / 物资台账 / 财务报销），尚未接入。</p>
       <p>把下面的 Prompt 发给你已接入 nec-hub MCP 的 Agent，即可完成配置：</p>
       <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="dash-prompt">{{ DASH_CONFIG_PROMPT }}</pre>
-      <button @click="copyText(DASH_CONFIG_PROMPT)" class="text-sm text-white px-3 py-1.5 rounded" style="background:var(--nec-navy)">复制配置 Prompt</button>
+ <button @click="copyText(DASH_CONFIG_PROMPT)" class="text-sm text-white px-3 py-1.5 rounded bg-nec-navy">复制配置 Prompt</button>
     </div>
 
     <div v-else id="dash-body" class="space-y-4">
@@ -191,7 +191,7 @@ const goals = computed(() => d.value?.goals)
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div v-for="(c, i) in cards" :key="i" class="bg-white rounded-xl shadow p-5">
           <div class="text-xs text-gray-400">{{ c.label }}</div>
-          <div class="text-3xl font-black mt-1" style="color:var(--nec-navy)">{{ c.value }}</div>
+ <div class="text-3xl font-black mt-1 text-nec-navy">{{ c.value }}</div>
           <div v-if="c.extraParts?.length" class="text-xs text-gray-400 mt-1">
             <template v-for="(p, j) in c.extraParts" :key="j"><span v-if="j"> · </span><span :class="{ 'text-red-500 font-bold': p.danger }">{{ p.text }}</span></template>
           </div>
@@ -222,7 +222,7 @@ const goals = computed(() => d.value?.goals)
                 <tbody>
                   <tr v-for="(t, i) in upcoming" :key="i" class="border-t border-gray-100" :class="{ 'bg-red-50': t.overdue }">
                     <td class="py-2 pr-3">
-                      <a v-if="t.link" :href="t.link" target="_blank" class="hover:underline" style="color:var(--nec-cyan)">{{ t.title || '—' }}</a>
+ <a v-if="t.link" :href="t.link" target="_blank" class="hover:underline text-nec-cyan">{{ t.title || '—' }}</a>
                       <template v-else>{{ t.title || '—' }}</template>
                       <span v-if="t.overdue" class="px-1.5 py-0.5 rounded text-[10px] text-white font-bold" style="background:#DC2626">已逾期</span>
                     </td>
@@ -275,7 +275,7 @@ const goals = computed(() => d.value?.goals)
           </li>
         </ul>
         <p v-else-if="finVis === 'full'" class="text-sm text-gray-400">暂无报销数据</p>
-        <p v-else-if="finVis === 'summary'" class="text-sm text-gray-400">本月已报销 <b style="color:var(--nec-navy)">{{ d.finance?.monthCount ?? d.finance?.records ?? 0 }}</b> 笔 · 金额明细仅队长/财务角色可见。</p>
+        <p v-else-if="finVis === 'summary'" class="text-sm text-gray-400">本月已报销 <b class="text-nec-navy">{{ d.finance?.monthCount ?? d.finance?.records ?? 0 }}</b> 笔 · 金额明细仅队长/财务角色可见。</p>
         <p v-else class="text-sm text-gray-400">报销数据登录后可见：队员可见笔数，金额明细仅队长/财务。</p>
         <div v-if="d.finance?.error" class="text-xs text-amber-600 mt-2">⚠ {{ d.finance.error }}</div>
       </div>

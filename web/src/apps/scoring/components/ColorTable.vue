@@ -12,12 +12,12 @@ import { COLOR_LEVELS } from '../data'
     <div class="overflow-x-auto">
       <table class="w-full text-sm" style="min-width:520px">
         <thead>
-          <tr class="text-left mono text-xs text-nec-gray" style="border-bottom:1.5px solid var(--nec-line)">
+ <tr class="text-left mono text-xs text-nec-gray border-b-[1.5px] border-nec-line">
             <th class="py-2 pr-3">级别</th><th class="py-2 pr-3">用途</th><th class="py-2 pr-3">色号</th><th class="py-2">色块（xterm-256 近似）</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="c in COLOR_LEVELS" :key="c.level" style="border-bottom:1px solid var(--nec-line)">
+ <tr v-for="c in COLOR_LEVELS" :key="c.level">class="border-b border-nec-line"
             <td class="py-3 pr-3 mono font-black text-nec-navy">{{ c.level }}</td>
             <td class="py-3 pr-3 text-nec-ink">{{ c.usage }}</td>
             <td class="py-3 pr-3 mono text-xs text-nec-gray">{{ c.codes.join(' / ') }}</td>

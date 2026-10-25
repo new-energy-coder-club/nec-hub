@@ -55,13 +55,16 @@ export function createModuleConfig<T extends ModuleConfigShape>(opts: ModuleConf
   return { get, set, require };
 }
 
+export const BITABLE_BASE_RE = /^[A-Za-z0-9]{10,}$/;
+export const BITABLE_TABLE_ID_RE = /^tbl[A-Za-z0-9]+$/;
+
 /** 校验 base_token / table_id 基本格式（三模块共用规则） */
 export function validateModuleConfig(cfg: ModuleConfigShape): void {
-  if (!/^[A-Za-z0-9]{10,}$/.test(cfg.base)) {
+  if (!BITABLE_BASE_RE.test(cfg.base)) {
     throw new Error("base 不合法：应为飞书多维表格 URL 中 /base/ 后的 app_token");
   }
   for (const [name, id] of Object.entries(cfg.tables)) {
-    if (id && !/^tbl[A-Za-z0-9]+$/.test(id)) {
+    if (id && !BITABLE_TABLE_ID_RE.test(id)) {
       throw new Error(`table_id 不合法（${name}）：应以 tbl 开头`);
     }
   }

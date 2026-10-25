@@ -33,3 +33,5 @@ export const scheduleMeetingTool: McpToolDef = {
   },
   impl: (args, env, ctx) => toolScheduleMeeting(args, env, ctx.hasMcpToken),
 };
+
+export const tools: McpToolDef[] = [scheduleMeetingTool];

@@ -63,9 +63,9 @@ const hostBtns = [
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-bold">NEC 开源仓库</h2>
       <div class="text-sm">
-        <a href="https://github.com/new-energy-coder-club" target="_blank" class="hover:underline" style="color:var(--nec-cyan)">GitHub org →</a>
+ <a href="https://github.com/new-energy-coder-club" target="_blank" class="hover:underline text-nec-cyan">GitHub org →</a>
         <span class="text-gray-300 mx-1">·</span>
-        <a href="https://gitee.com/darrenpig" target="_blank" class="hover:underline" style="color:var(--nec-cyan)">Gitee →</a>
+ <a href="https://gitee.com/darrenpig" target="_blank" class="hover:underline text-nec-cyan">Gitee →</a>
       </div>
     </div>
     <div class="flex items-center gap-2 mb-3 text-xs">
@@ -91,7 +91,7 @@ const hostBtns = [
           <tbody>
             <tr v-for="r in rows" :key="r.host + r.name" class="border-b last:border-0 hover:bg-gray-50">
               <td class="px-4 py-3">
-                <a :href="r.url" target="_blank" class="font-bold hover:underline" style="color:var(--nec-navy)">{{ r.name }}</a>
+ <a :href="r.url" target="_blank" class="font-bold hover:underline text-nec-navy">{{ r.name }}</a>
                 <span v-if="r.host === 'gitee'" class="text-[10px] text-red-500 border border-red-200 rounded px-1 ml-1">Gitee</span>
                 <span v-else class="text-[10px] text-gray-400 border border-gray-200 rounded px-1 ml-1">GitHub</span>
                 <span v-if="r.isFork" class="text-[10px] text-gray-400 border border-gray-200 rounded px-1">fork</span>

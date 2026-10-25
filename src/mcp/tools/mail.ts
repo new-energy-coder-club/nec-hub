@@ -86,3 +86,5 @@ export const sendMailTool: McpToolDef = {
   },
   impl: (args, env, ctx) => toolSendMail(args, env, ctx.hasMcpToken),
 };
+
+export const tools: McpToolDef[] = [sendMailTool];

@@ -123,8 +123,8 @@ async function onSubmit() {
             <input type="text" name="projectId" v-model="form.projectId" required class="mono w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="PRJ-2026-001"
                    @input="handleInput('project')"
                    @focus="showSuggestionsOnFocus('project')" />
-            <div v-show="suggestOpen.project" id="project-suggestions" class="absolute z-10 w-full mt-1 rounded-lg shadow-lg max-h-40 overflow-y-auto" style="background:var(--nec-paper);border:1px solid var(--nec-line)">
-              <div v-for="s in suggestions.project" :key="s.value" class="px-3 py-2 cursor-pointer" style="border-bottom:1px solid var(--nec-line)"
+ <div v-show="suggestOpen.project" id="project-suggestions" class="absolute z-10 w-full mt-1 rounded-lg shadow-lg max-h-40 overflow-y-auto bg-nec-paper border border-nec-line">
+ <div v-for="s in suggestions.project" :key="s.value" class="px-3 py-2 cursor-pointer border-b border-nec-line"
                    @click="selectSuggestion('project', s.value)">
                 <div class="text-sm font-medium text-nec-ink">{{ s.label }}</div>
                 <div v-if="s.count" class="text-xs text-nec-gray">使用 {{ s.count }} 次</div>
@@ -136,8 +136,8 @@ async function onSubmit() {
             <input type="text" name="machineName" v-model="form.machineName" required class="w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="R1 底盘"
                    @input="handleInput('machine')"
                    @focus="showSuggestionsOnFocus('machine')" />
-            <div v-show="suggestOpen.machine" id="machine-suggestions" class="absolute z-10 w-full mt-1 rounded-lg shadow-lg max-h-40 overflow-y-auto" style="background:var(--nec-paper);border:1px solid var(--nec-line)">
-              <div v-for="s in suggestions.machine" :key="s.value" class="px-3 py-2 cursor-pointer" style="border-bottom:1px solid var(--nec-line)"
+ <div v-show="suggestOpen.machine" id="machine-suggestions" class="absolute z-10 w-full mt-1 rounded-lg shadow-lg max-h-40 overflow-y-auto bg-nec-paper border border-nec-line">
+ <div v-for="s in suggestions.machine" :key="s.value" class="px-3 py-2 cursor-pointer border-b border-nec-line"
                    @click="selectSuggestion('machine', s.value)">
                 <div class="text-sm font-medium text-nec-ink">{{ s.label }}</div>
                 <div v-if="s.count" class="text-xs text-nec-gray">使用 {{ s.count }} 次</div>

@@ -6,6 +6,7 @@
  * config_dashboard 形状不同（写后清看板缓存、无动态 import），不在此合并。
  */
 
+import { BITABLE_BASE_RE, BITABLE_TABLE_ID_RE } from "../../shared/module-config";
 import type { McpToolDef } from "./shared";
 
 interface ModuleConfigLike {
@@ -50,7 +51,7 @@ export function createModuleConfigTool<Cfg extends ModuleConfigLike>(spec: Modul
     if (action !== "set") throw new Error("action 必须是 get | set");
 
     const base = String(args.base ?? "").trim();
-    if (!/^[A-Za-z0-9]{10,}$/.test(base)) {
+    if (!BITABLE_BASE_RE.test(base)) {
       throw new Error("base 不合法：应为飞书多维表格 URL 中 /base/ 后的 app_token（10 位以上字母数字串）");
     }
     const rawTables = (args.tables ?? {}) as Record<string, unknown>;
@@ -58,7 +59,7 @@ export function createModuleConfigTool<Cfg extends ModuleConfigLike>(spec: Modul
     for (const key of spec.tableKeys) {
       const v = String(rawTables[key] ?? "").trim();
       if (v) {
-        if (!/^tbl[A-Za-z0-9]+$/.test(v)) {
+        if (!BITABLE_TABLE_ID_RE.test(v)) {
           throw new Error(`table_id 不合法（${key}）：应以 tbl 开头，如 tblsH8aOxxx`);
         }
         tables[key] = v;
@@ -124,7 +125,7 @@ export const toolConfigContractApproval = createModuleConfigTool({
 export const configDrawingReviewTool: McpToolDef = {
   name: "config_drawing_review",
   description:
-    "配置/查看新增机图纸评审流程对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。",
+    "配置/查看新增机图纸评审流程对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。注意：reviews 主表同时被审批引擎 flows:config（drawing_review）引用——两侧指向同一张表是刻意的（引擎写单/状态机/通知，本配置供子表查询）；引擎侧缺省时由路由自动回填，无需重复配置。",
   inputSchema: {
     type: "object",
     properties: {
@@ -154,7 +155,7 @@ export const configDrawingReviewTool: McpToolDef = {
 export const configHardwareReviewTool: McpToolDef = {
   name: "config_hardware_review",
   description:
-    "配置/查看硬件评审流程对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。",
+    "配置/查看硬件评审流程对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。注意：reviews 主表同时被审批引擎 flows:config（hardware_review）引用——两侧指向同一张表是刻意的（引擎写单/状态机/通知，本配置供子表查询）；引擎侧缺省时由路由自动回填，无需重复配置。",
   inputSchema: {
     type: "object",
     properties: {
@@ -179,7 +180,7 @@ export const configHardwareReviewTool: McpToolDef = {
 export const configContractApprovalTool: McpToolDef = {
   name: "config_contract_approval",
   description:
-    "配置/查看合同审批流程对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。",
+    "配置/查看合同审批流程对接的飞书多维表格。action=set 写入 base（app_token）与 tables（逻辑表名→table_id），action=get 查看当前配置。注意：approvals 主表同时被审批引擎 flows:config（contract）引用——两侧指向同一张表是刻意的（引擎写单/会签/通知，本配置供评论/事件子表）；引擎侧缺省时由路由自动回填，无需重复配置。",
   inputSchema: {
     type: "object",
     properties: {
@@ -199,3 +200,5 @@ export const configContractApprovalTool: McpToolDef = {
   },
   impl: (args, env) => toolConfigContractApproval(args, env),
 };
+
+export const tools: McpToolDef[] = [configDrawingReviewTool, configHardwareReviewTool, configContractApprovalTool];

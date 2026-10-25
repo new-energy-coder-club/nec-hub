@@ -18,6 +18,7 @@ import {
 } from "../feishu/mail";
 import { notifyApprovalResult } from "../notify";
 import { toolSendNotice } from "../approvals/handlers";
+import { KV_KEYS } from "../shared/kv-keys";
 
 function jsonResp(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } });
@@ -70,7 +71,7 @@ function createCtx(opts: { withSender?: boolean; mailTo?: string; draftFailTimes
 
   if (opts.withSender) {
     kv.set(
-      "feishu:user_token:ou-sender",
+      KV_KEYS.feishuUserToken("ou-sender"),
       JSON.stringify({
         user_access_token: "u-token",
         refresh_token: "r-token",
@@ -79,7 +80,7 @@ function createCtx(opts: { withSender?: boolean; mailTo?: string; draftFailTimes
       }),
     );
   }
-  kv.set("flows:config", JSON.stringify({ reimburse: { tableId: "tblR", base: "appB", mailTo: ["flow@nec.com"] } }));
+  kv.set(KV_KEYS.flowsConfig, JSON.stringify({ reimburse: { tableId: "tblR", base: "appB", mailTo: ["flow@nec.com"] } }));
 
   vi.stubGlobal("fetch", vi.fn(async (input: unknown, init?: { method?: string; body?: string }) => {
     const url = String((input as { url?: string })?.url ?? input);
@@ -249,7 +250,7 @@ describe("sendFeishuMail（指定发信人 openId 代发）", () => {
 
   it("发信人已授权 → 走 profile→草稿→发送链路成功", async () => {
     const kv = new Map<string, string>([
-      ["feishu:user_token:ou_1", JSON.stringify({
+      [KV_KEYS.feishuUserToken("ou_1"), JSON.stringify({
         user_access_token: "utok",
         refresh_token: "r-token",
         expires_at: Date.now() + 3600e3,
@@ -327,7 +328,7 @@ describe("sendFeishuMail（团队发信通道）", () => {
     const res = await sendFeishuMail(ctx.env, { to: ["a@nec.com"], subject: "s", html: "<p>x</p>" });
     expect(res.ok).toBe(false);
     expect(res.disabled).toBeUndefined();
-    const failed = JSON.parse(ctx.kv.get("notify:failed") ?? "[]");
+    const failed = JSON.parse(ctx.kv.get(KV_KEYS.notifyFailed) ?? "[]");
     expect(failed.length).toBe(1);
     expect(failed[0].flow).toBe("mail");
     expect(failed[0].detail).toContain("no permission");

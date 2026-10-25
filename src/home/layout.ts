@@ -6,6 +6,8 @@
  * 本文件不触碰 KV / 网络，校验与回退解析均为纯函数，便于测试。
  */
 
+import { KV_KEYS } from "../shared/kv-keys";
+
 export const HOME_WIDGET_IDS = ["my-apps", "my-tasks", "my-reimburse", "docs", "goals", "inventory"] as const;
 export type HomeWidgetId = (typeof HOME_WIDGET_IDS)[number];
 
@@ -105,10 +107,10 @@ export async function resolveHomeLayout(
 
 /** 个人布局 KV key：home:<open_id> */
 export function personalHomeKey(openId: string): string {
-  return `home:${openId}`;
+  return KV_KEYS.homeUser(openId);
 }
 
 /** 组默认布局 KV key：home:group:<组名> */
 export function groupHomeKey(group: string): string {
-  return `home:group:${group}`;
+  return KV_KEYS.homeGroup(group);
 }

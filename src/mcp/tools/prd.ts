@@ -12,7 +12,7 @@ export const updatePrdTool: McpToolDef = {
   inputSchema: {
     type: "object",
     properties: {
-      id: { type: "string", description: "需求编号：FE-01 ~ FE-13" },
+      id: { type: "string", description: "需求编号：FE-01 ~ FE-18（FE-17/FE-18 为子项，分别挂在 FE-09/FE-04 下）" },
       status: { type: "string", description: "done | partial | pending | todo" },
       note: { type: "string", description: "可选：备注（覆盖旧备注）" },
     },
@@ -20,3 +20,5 @@ export const updatePrdTool: McpToolDef = {
   },
   impl: (args, env, ctx) => toolUpdatePrd(args, env, ctx.hasMcpToken),
 };
+
+export const tools: McpToolDef[] = [updatePrdTool];

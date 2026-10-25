@@ -39,7 +39,7 @@ async function testConnection() {
   <section id="tab-agent">
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h2 class="text-2xl font-black flex items-center gap-3" style="color:var(--nec-navy)">
+ <h2 class="text-2xl font-black flex items-center gap-3 text-nec-navy">
           <span class="bg-gradient-to-r from-[#1A2FA0] to-[#1FA9E8] bg-clip-text text-transparent">NEC-MCP</span>
           <span class="text-sm font-normal text-gray-500">AI Agent</span>
         </h2>
@@ -53,7 +53,7 @@ async function testConnection() {
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="bg-gradient-to-br from-[#F4F6FB] to-[#E6ECF5] border border-[#D9DFF0] rounded-2xl p-6 shadow-sm">
-        <h3 class="font-bold text-lg mb-3 flex items-center gap-2" style="color:var(--nec-navy)">
+ <h3 class="font-bold text-lg mb-3 flex items-center gap-2 text-nec-navy">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm1 3a7 7 0 11-14 0 7 7 0 0114 0zm-.707-4.707a1 1 0 00-1.414-1.414L9 10.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
           </svg>
@@ -100,7 +100,7 @@ async function testConnection() {
     </div>
 
     <div class="mt-8 bg-white/50 backdrop-blur-sm rounded-2xl p-6 border border-[#D9DFF0] shadow-sm">
-      <h3 class="font-bold text-lg mb-4 flex items-center gap-2" style="color:var(--nec-navy)">
+ <h3 class="font-bold text-lg mb-4 flex items-center gap-2 text-nec-navy">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm1 3a7 7 0 11-14 0 7 7 0 0114 0zm-.707-4.707a1 1 0 00-1.414-1.414L9 10.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
         </svg>

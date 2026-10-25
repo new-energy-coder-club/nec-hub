@@ -10,10 +10,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
 import { evalFlowFields, getFlowsConfig, DEFAULT_FLOWS } from "../approvals/flows";
-import { consumeNextSerial, serialKey, type SerialCounter } from "../approvals/core/serial";
-import { runApprovalAction, submitApprovalCore } from "../approvals/engine";
+import { consumeNextSerial, formatSerial, serialKey, type SerialCounter } from "../approvals/core/serial";
+import { aggregateTodos, fetchFlowRecordsCached, runApprovalAction, submitApprovalCore } from "../approvals/engine";
+import { runApprovalSla } from "../approvals/sla";
 import { handleApprovalMine, handleApprovalPending, handleApprovalSubmit, handleApprovalUpload, toolConfigFlows, toolSendNotice } from "../approvals/handlers";
 import { notifyFeishu } from "../feishu/bot";
+import { KV_KEYS } from "../shared/kv-keys";
 import { mockGetRecordResponse, mockSearchResponse } from "./bitable-search-mock";
 
 const BASE = "appMockBase";
@@ -40,10 +42,10 @@ function createCtx(opts: { webhookFailTimes?: number; withWebhook?: boolean } = 
   let webhookFailBudget = opts.webhookFailTimes ?? 0;
 
   // 流程配置：reimburse 底表挂到看板 base；其余流程保持未配置
-  kv.set("flows:config", JSON.stringify({ reimburse: { tableId: TBL_REIMBURSE, base: BASE } }));
-  kv.set("dashboard:config", JSON.stringify({ base: BASE, tables: { members: "tblM" }, updatedAt: new Date().toISOString() }));
-  kv.set("session:sid-member", JSON.stringify({ name: "张三", open_id: "ou-member", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
-  kv.set("session:sid-captain", JSON.stringify({ name: "张队", open_id: "ou-captain", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
+  kv.set(KV_KEYS.flowsConfig, JSON.stringify({ reimburse: { tableId: TBL_REIMBURSE, base: BASE } }));
+  kv.set(KV_KEYS.dashboardConfig, JSON.stringify({ base: BASE, tables: { members: "tblM" }, updatedAt: new Date().toISOString() }));
+  kv.set(KV_KEYS.session("sid-member"), JSON.stringify({ name: "张三", open_id: "ou-member", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
+  kv.set(KV_KEYS.session("sid-captain"), JSON.stringify({ name: "张队", open_id: "ou-captain", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
 
   const ctx: Ctx = {
     kv,
@@ -93,7 +95,7 @@ function createCtx(opts: { webhookFailTimes?: number; withWebhook?: boolean } = 
   ctx.env = {
     REGISTRY: {
       get: vi.fn(async (key: string, type?: string) => {
-        if (key === "feishu:tenant_access_token") return { token: "mock-token", expireAt: Date.now() + 3600e3 };
+        if (key === KV_KEYS.feishuTenantAccessToken) return { token: "mock-token", expireAt: Date.now() + 3600e3 };
         const v = kv.get(key);
         return v == null ? null : type === "json" ? JSON.parse(v) : v;
       }),
@@ -204,7 +206,7 @@ describe("submitApprovalCore（发起审批）", () => {
     expect(row.fields["申请人"]).toBe("张三");
     expect(row.fields["申请人 open_id"]).toBe("ou-member");
     expect(row.fields["申请单号"]).toBe(res.application_id);
-    expect(JSON.parse(ctx.kv.get(`approval:map:${res.application_id}`)!).record_id).toBe(row.record_id);
+    expect(JSON.parse(ctx.kv.get(KV_KEYS.approvalMap(res.application_id))!).record_id).toBe(row.record_id);
     expect(ctx.webhookCalls).toHaveLength(1);
     expect(String(ctx.webhookCalls[0].body.content && (ctx.webhookCalls[0].body.content as { text: string }).text)).toContain("新报销申请");
   });
@@ -221,14 +223,14 @@ describe("submitApprovalCore（发起审批）", () => {
     await expect(
       submitApprovalCore(ctx.env, { type: "reimburse", fields: goodFields, user: null, role: null, source: "mcp" }),
     ).rejects.toThrow("申请人姓名为空");
-    ctx.kv.set(`serial:BX:${new Date().getFullYear()}`, "1"); // BX-<年>-0001 已占用
+    ctx.kv.set(KV_KEYS.serial("BX", new Date().getFullYear()), "1"); // BX-<年>-0001 已占用
     const res = await submitApprovalCore(ctx.env, { type: "reimburse", fields: goodFields, user: null, role: null, applicantName: "李四", source: "mcp" });
     expect(res.application_id).toMatch(/-0002$/);
   });
 
   it("drawing：图号 @appId 占位符替换为分配单号；mine 透传图纸字段与 record 链接", async () => {
     const ctx = createCtx({ withWebhook: true });
-    ctx.kv.set("flows:config", JSON.stringify({
+    ctx.kv.set(KV_KEYS.flowsConfig, JSON.stringify({
       reimburse: { tableId: TBL_REIMBURSE, base: BASE },
       drawing: { tableId: "tblDrawing", base: BASE },
     }));
@@ -274,9 +276,9 @@ describe("POST /api/approvals（门户入口）", () => {
   it("限组流程：非本组且非队长 → 403；队长硬编码放行进入字段校验 → 400", async () => {
     const ctx = createCtx();
     // drawing 流程限机械组；配好 tableId 后走组别门禁
-    ctx.kv.set("flows:config", JSON.stringify({ drawing: { tableId: "tblD", base: BASE } }));
+    ctx.kv.set(KV_KEYS.flowsConfig, JSON.stringify({ drawing: { tableId: "tblD", base: BASE } }));
     ctx.seed("tblM", { 姓名: "李四", 飞书ID: "ou-other", 权限角色: "队员", 组别: "电控组" });
-    ctx.kv.set("session:sid-other", JSON.stringify({ name: "李四", open_id: "ou-other", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
+    ctx.kv.set(KV_KEYS.session("sid-other"), JSON.stringify({ name: "李四", open_id: "ou-other", createdAt: new Date().toISOString(), expiresAt: Date.now() + 6 * 24 * 3600e3 }));
     const res403 = await handleApprovalSubmit(sessionReq("https://hub.test/api/approvals", "sid-other", { type: "drawing", fields: {} }), ctx.env);
     expect(res403.status).toBe(403);
     expect(((await res403.json()) as { hint?: string }).hint).toContain("机械组");
@@ -512,7 +514,7 @@ describe("config_flows（MCP 工具）", () => {
 
   it("set 深合并 + 校验（tableId 须 tbl 开头 / roles 须合法正则）并清待办缓存", async () => {
     const ctx = createCtx();
-    ctx.kv.set("todo:tbl:reimburse", "x");
+    ctx.kv.set(KV_KEYS.todoTable("reimburse"), "x");
     await expect(
       toolConfigFlows({ action: "set", flows: { reimburse: { tableId: "bad" } } }, ctx.env, true),
     ).rejects.toThrow("table_id 不合法");
@@ -524,7 +526,7 @@ describe("config_flows（MCP 工具）", () => {
     const saved = (await getFlowsConfig(ctx.env)).reimburse;
     expect(saved.prefix).toBe("BX2");
     expect(saved.tableId).toBe(TBL_REIMBURSE); // 未传字段保留
-    expect(ctx.kv.has("todo:tbl:reimburse")).toBe(false);
+    expect(ctx.kv.has(KV_KEYS.todoTable("reimburse"))).toBe(false);
   });
 });
 
@@ -556,7 +558,7 @@ describe("notifyFeishu（群机器人通知）", () => {
       expect(res.ok).toBe(false);
       expect(res.detail).toContain("重试 2 次");
       expect(ctx.webhookFailTimes).toBe(3); // 首发 + 2 次重试
-      const failed = JSON.parse(ctx.kv.get("notify:failed")!);
+      const failed = JSON.parse(ctx.kv.get(KV_KEYS.notifyFailed)!);
       expect(failed[0].flow).toBe("hardware");
       expect(failed[0].detail).toContain("sign match fail");
     } finally {
@@ -573,5 +575,264 @@ describe("notifyFeishu（群机器人通知）", () => {
     expect(degraded.content[0].text).toContain("通知未送达");
     await expect(toolSendNotice({ flow: "x", title: "", content: "c" }, ctx.env, true)).rejects.toThrow("title 不能为空");
     await expect(toolSendNotice({ flow: "x", title: "t", content: "c" }, ctx.env, false)).rejects.toThrow("MCP_TOKEN");
+  });
+});
+
+// ---------- Phase 0 引擎泛化：自定义状态机 / participant 守卫 / 会签 / pendingStates / serial digits ----------
+
+describe("serial digits（单号补零位数可配）", () => {
+  it("默认 4 位不变；digits=3 → HT-2026-001", async () => {
+    const year = new Date().getFullYear();
+    expect(formatSerial("BX", year, 1)).toBe(`BX-${year}-0001`);
+    expect(formatSerial("HT", year, 1, 3)).toBe(`HT-${year}-001`);
+    const m = new Map<string, string>();
+    const counter: SerialCounter = { get: async (k) => m.get(k) ?? null, put: async (k, v) => { m.set(k, v); } };
+    expect(await consumeNextSerial(counter, "HT", year, 3)).toBe(`HT-${year}-001`);
+    expect(await consumeNextSerial(counter, "HT", year, 3)).toBe(`HT-${year}-002`);
+  });
+});
+
+describe("getFlowsConfig 新字段深合并", () => {
+  it("machine/countersign 对象级合并，pendingStates 数组整体替换", async () => {
+    const ctx = createCtx();
+    ctx.kv.set(KV_KEYS.flowsConfig, JSON.stringify({
+      drawing_review: { machine: { transitions: [{ action: "x", from: "a", to: "b" }] } },
+      contract: { countersign: { approversField: "会签名单" }, pendingStates: ["in_review"] },
+    }));
+    const cfg = await getFlowsConfig(ctx.env);
+    // machine 只覆盖 transitions，initial 保留默认
+    expect(cfg.drawing_review.machine?.initial).toBe("pending_review");
+    expect(cfg.drawing_review.machine?.transitions).toHaveLength(1);
+    // countersign 覆盖字段名
+    expect(cfg.contract.countersign?.approversField).toBe("会签名单");
+    // pendingStates 整体替换
+    expect(cfg.contract.pendingStates).toEqual(["in_review"]);
+    // 未覆盖流程取默认
+    expect(cfg.contract.machine?.initial).toBe("pending_approval");
+    expect(cfg.drawing_review.pendingStates).toEqual(["pending_review", "in_review"]);
+  });
+});
+
+describe("flow.machine 自定义状态机（drawing_review 英文状态）", () => {
+  function setupDr(ctx: Ctx) {
+    ctx.kv.set(KV_KEYS.flowsConfig, JSON.stringify({ drawing_review: { tableId: "tblDR", base: BASE } }));
+  }
+
+  it("提交落初始状态 pending_review + DR 单号；必填按模块字段校验", async () => {
+    const ctx = createCtx();
+    setupDr(ctx);
+    await expect(
+      submitApprovalCore(ctx.env, { type: "drawing_review", fields: { 机型名称: "6014" }, user: MEMBER, role: MEMBER_ROLE, source: "portal" }),
+    ).rejects.toThrow("项目编号");
+    const res = await submitApprovalCore(ctx.env, {
+      type: "drawing_review",
+      fields: { 项目编号: "P-6014", 机型名称: "6014 底盘", 图纸文件: [{ name: "plate.pdf" }] },
+      user: MEMBER,
+      role: MEMBER_ROLE,
+      source: "portal",
+    });
+    expect(res.application_id).toMatch(/^DR-\d{4}-0001$/);
+    expect(res.status).toBe("pending_review");
+    expect(ctx.tables["tblDR"][0].fields["状态"]).toBe("pending_review");
+  });
+
+  it("按流程机流转（guard any 放行队员）；complete 双分支按 from 分派；未知动作 400；前置不符 409", async () => {
+    const ctx = createCtx();
+    setupDr(ctx);
+    const rec = ctx.seed("tblDR", {
+      申请单号: "DR-2026-0001", 状态: "pending_review", 申请人: "张三", "申请人 open_id": "ou-member", 机型名称: "X",
+    });
+    // guard "any"：普通队员即可驱动
+    const r1 = await runApprovalAction(ctx.env, { type: "drawing_review", appId: "DR-2026-0001", action: "start_meeting", user: MEMBER, role: MEMBER_ROLE });
+    expect(r1.status).toBe("in_review");
+    const r2 = await runApprovalAction(ctx.env, { type: "drawing_review", appId: "DR-2026-0001", action: "conclude_conditional", user: MEMBER, role: MEMBER_ROLE });
+    expect(r2.status).toBe("rectifying");
+    // complete 第一分支：rectifying → bom_generating
+    const r3 = await runApprovalAction(ctx.env, { type: "drawing_review", appId: "DR-2026-0001", action: "complete", user: MEMBER, role: MEMBER_ROLE });
+    expect(r3.status).toBe("bom_generating");
+    // complete 第二分支：procuring → archived
+    rec.fields["状态"] = "procuring";
+    const r4 = await runApprovalAction(ctx.env, { type: "drawing_review", appId: "DR-2026-0001", action: "complete", user: MEMBER, role: MEMBER_ROLE });
+    expect(r4.status).toBe("archived");
+    // 幂等：已 archived 再 complete → already
+    const again = await runApprovalAction(ctx.env, { type: "drawing_review", appId: "DR-2026-0001", action: "complete", user: MEMBER, role: MEMBER_ROLE });
+    expect(again.status).toBe("archived");
+    // 前置不符 → 409；全局机动作在本流程 → 400
+    await expect(
+      runApprovalAction(ctx.env, { type: "drawing_review", appId: "DR-2026-0001", action: "start_meeting", user: MEMBER, role: MEMBER_ROLE }),
+    ).rejects.toThrow("不能执行 start_meeting");
+    await expect(
+      runApprovalAction(ctx.env, { type: "drawing_review", appId: "DR-2026-0001", action: "approve", user: CAPTAIN, role: CAPTAIN_ROLE }),
+    ).rejects.toThrow("不支持动作 approve");
+  });
+});
+
+describe("contract 会签（countersign + participant 守卫 + HT 三位单号）", () => {
+  const APPROVERS = JSON.stringify([
+    { approverId: "ou-a", name: "王审", status: "pending" },
+    { approverId: "ou-b", name: "李审", status: "pending" },
+  ]);
+  const REVIEWER_A = { name: "王审", open_id: "ou-a" };
+  const REVIEWER_B = { name: "李审", open_id: "ou-b" };
+
+  function setupCt(ctx: Ctx) {
+    ctx.kv.set(KV_KEYS.flowsConfig, JSON.stringify({ contract: { tableId: "tblCT", base: BASE } }));
+  }
+  async function seedInReview(ctx: Ctx): Promise<BitableRecord> {
+    const rec = ctx.seed("tblCT", {
+      申请单号: "HT-2026-001", 状态: "in_review", 申请人: "张三", "申请人 open_id": "ou-member",
+      合同名称: "采购合同", 审批人: APPROVERS,
+    });
+    return rec;
+  }
+
+  it("提交：HT 三位单号 + 初始 pending_approval；缺审批人名单/金额非正数被拦", async () => {
+    const ctx = createCtx();
+    setupCt(ctx);
+    await expect(
+      submitApprovalCore(ctx.env, {
+        type: "contract",
+        fields: { 合同名称: "x", 合同金额: 100, 合同文件: "f.pdf" },
+        user: MEMBER, role: MEMBER_ROLE, source: "portal",
+      }),
+    ).rejects.toThrow("审批人");
+    await expect(
+      submitApprovalCore(ctx.env, {
+        type: "contract",
+        fields: { 合同名称: "x", 合同金额: 0, 合同文件: "f.pdf", 审批人: APPROVERS },
+        user: MEMBER, role: MEMBER_ROLE, source: "portal",
+      }),
+    ).rejects.toThrow("合同金额（须大于 0）");
+    const res = await submitApprovalCore(ctx.env, {
+      type: "contract",
+      fields: { 合同名称: "采购合同", 合同金额: 5000, 合同文件: "c.pdf", 审批人: APPROVERS },
+      user: MEMBER, role: MEMBER_ROLE, source: "portal",
+    });
+    expect(res.application_id).toMatch(/^HT-\d{4}-001$/);
+    expect(res.status).toBe("pending_approval");
+  });
+
+  it("participant 守卫：非参与人 403；名单内审批人可 start_review", async () => {
+    const ctx = createCtx();
+    setupCt(ctx);
+    ctx.seed("tblCT", {
+      申请单号: "HT-2026-001", 状态: "pending_approval", 申请人: "张三", "申请人 open_id": "ou-member", 审批人: APPROVERS,
+    });
+    await expect(
+      runApprovalAction(ctx.env, { type: "contract", appId: "HT-2026-001", action: "start_review", user: CAPTAIN, role: CAPTAIN_ROLE }),
+    ).rejects.toThrow("仅该单参与人");
+    const res = await runApprovalAction(ctx.env, { type: "contract", appId: "HT-2026-001", action: "start_review", user: REVIEWER_A, role: MEMBER_ROLE });
+    expect(res.status).toBe("in_review");
+  });
+
+  it("会签：未全员通过状态不变（只写名单字段）；全员通过才流转；重复审批 409；非名单成员 403", async () => {
+    const ctx = createCtx();
+    setupCt(ctx);
+    const rec = await seedInReview(ctx);
+    // 第一人通过：状态不变，名单落个人意见
+    const r1 = await runApprovalAction(ctx.env, { type: "contract", appId: "HT-2026-001", action: "approve", comment: "同意", user: REVIEWER_A, role: MEMBER_ROLE });
+    expect(r1.status).toBe("in_review");
+    expect(rec.fields["状态"]).toBe("in_review");
+    const list1 = JSON.parse(String(rec.fields["审批人"])) as Array<{ approverId: string; status: string; comment?: string; actedAt?: string }>;
+    expect(list1[0].status).toBe("approved");
+    expect(list1[0].comment).toBe("同意");
+    expect(list1[0].actedAt).toBeTruthy();
+    expect(list1[1].status).toBe("pending");
+    // 重复审批 → 409；非名单成员 → 403
+    await expect(
+      runApprovalAction(ctx.env, { type: "contract", appId: "HT-2026-001", action: "approve", user: REVIEWER_A, role: MEMBER_ROLE }),
+    ).rejects.toThrow("已提交过审批意见");
+    await expect(
+      runApprovalAction(ctx.env, { type: "contract", appId: "HT-2026-001", action: "approve", user: MEMBER, role: MEMBER_ROLE }),
+    ).rejects.toThrow(); // 申请人本人过 participant 守卫，但不是会签审批人
+    // 第二人通过：全员通过 → 流转 approved；审批人字段仍是 JSON（未被姓名覆盖）
+    const r2 = await runApprovalAction(ctx.env, { type: "contract", appId: "HT-2026-001", action: "approve", user: REVIEWER_B, role: MEMBER_ROLE });
+    expect(r2.status).toBe("approved");
+    expect(rec.fields["状态"]).toBe("approved");
+    const list2 = JSON.parse(String(rec.fields["审批人"])) as Array<{ status: string }>;
+    expect(list2.every((a) => a.status === "approved")).toBe(true);
+  });
+
+  it("会签 reject：名单成员驳回即流转 rejected 并落个人意见", async () => {
+    const ctx = createCtx();
+    setupCt(ctx);
+    const rec = await seedInReview(ctx);
+    const res = await runApprovalAction(ctx.env, { type: "contract", appId: "HT-2026-001", action: "reject", comment: "条款有误", user: REVIEWER_B, role: MEMBER_ROLE });
+    expect(res.status).toBe("rejected");
+    const list = JSON.parse(String(rec.fields["审批人"])) as Array<{ approverId: string; status: string; comment?: string }>;
+    expect(list[1]).toMatchObject({ approverId: "ou-b", status: "rejected", comment: "条款有误" });
+  });
+});
+
+describe("pendingStates（待办聚合 / SLA 判定）", () => {
+  function setupDr(ctx: Ctx) {
+    ctx.kv.set(KV_KEYS.flowsConfig, JSON.stringify({ drawing_review: { tableId: "tblDR", base: BASE } }));
+  }
+
+  it("aggregateTodos：pending_review + in_review 进待办，archived 不进", async () => {
+    const ctx = createCtx();
+    setupDr(ctx);
+    // 预置 todo:tbl 缓存（等价于一次全表扫描后的待审批子集缓存），避免 search mock 单值限制
+    const records = [
+      { record_id: "r1", fields: { 申请单号: "DR-2026-0001", 状态: "pending_review", 机型名称: "A", 提交时间: 1000 } },
+      { record_id: "r2", fields: { 申请单号: "DR-2026-0002", 状态: "in_review", 机型名称: "B", 提交时间: 2000 } },
+      { record_id: "r3", fields: { 申请单号: "DR-2026-0003", 状态: "archived", 机型名称: "C", 提交时间: 3000 } },
+    ];
+    ctx.kv.set(KV_KEYS.todoTable("drawing_review"), JSON.stringify({ data: records, cachedAt: Date.now() }));
+    const todos = (await aggregateTodos(ctx.env, CAPTAIN_ROLE)) as { by_type: Record<string, Array<{ application_id: string }>> };
+    expect(todos.by_type.drawing_review?.map((r) => r.application_id)).toEqual(["DR-2026-0001", "DR-2026-0002"]);
+  });
+
+  it("fetchFlowRecordsCached：search 下推 filter 带完整 pendingStates", async () => {
+    const ctx = createCtx();
+    setupDr(ctx);
+    ctx.seed("tblDR", { 申请单号: "DR-2026-0001", 状态: "pending_review", 机型名称: "A" });
+    await fetchFlowRecordsCached(ctx.env, "drawing_review");
+    const fetchMock = vi.mocked(fetch);
+    const searchCall = fetchMock.mock.calls.find((c) => String(c[0]).includes("/records/search"));
+    expect(searchCall).toBeTruthy();
+    const body = JSON.parse(String((searchCall![1] as { body: string }).body)) as { filter: { conditions: Array<{ field_name: string; value: string[] }> } };
+    expect(body.filter.conditions[0].field_name).toBe("状态");
+    expect(body.filter.conditions[0].value).toEqual(["pending_review", "in_review"]);
+  });
+
+  it("SLA：pendingStates 状态超时升级提醒，其他状态不动", async () => {
+    const ctx = createCtx({ withWebhook: true });
+    ctx.kv.set(KV_KEYS.flowsConfig, JSON.stringify({
+      drawing_review: { tableId: "tblDR", base: BASE, sla: { escalateHours: 1, autoCancelDays: 0, escalateTo: "队长" } },
+    }));
+    ctx.seed("tblDR", { 申请单号: "DR-2026-0001", 状态: "pending_review", 申请人: "张三", 提交时间: Date.now() - 2 * 3600e3 });
+    ctx.seed("tblDR", { 申请单号: "DR-2026-0002", 状态: "archived", 申请人: "张三", 提交时间: Date.now() - 2 * 3600e3 });
+    const summary = await runApprovalSla(ctx.env);
+    expect(summary.escalated).toBe(1);
+    const texts = ctx.webhookCalls.map((c) => String((c.body.content as { text?: string })?.text ?? ""));
+    expect(texts.some((t) => t.includes("审批超时提醒 DR-2026-0001"))).toBe(true);
+    expect(texts.some((t) => t.includes("DR-2026-0002"))).toBe(false);
+  });
+});
+
+describe("config_flows 新字段校验", () => {
+  it("machine/countersign/pendingStates/serialDigits 非法输入被拦，合法写入生效", async () => {
+    const ctx = createCtx();
+    await expect(
+      toolConfigFlows({ action: "set", flows: { drawing_review: { machine: { transitions: [{ action: "a", from: "x" }] } } } }, ctx.env, true),
+    ).rejects.toThrow("machine.transitions 项不合法");
+    await expect(
+      toolConfigFlows({ action: "set", flows: { contract: { machine: { transitions: [{ action: "a", from: "x", to: "y", guard: "root" }] } } } }, ctx.env, true),
+    ).rejects.toThrow("guard 不合法");
+    await expect(
+      toolConfigFlows({ action: "set", flows: { contract: { countersign: {} } } }, ctx.env, true),
+    ).rejects.toThrow("countersign 不合法");
+    await expect(
+      toolConfigFlows({ action: "set", flows: { contract: { pendingStates: ["ok", 1] } } }, ctx.env, true),
+    ).rejects.toThrow("pendingStates 不合法");
+    await expect(
+      toolConfigFlows({ action: "set", flows: { contract: { serialDigits: 0 } } }, ctx.env, true),
+    ).rejects.toThrow("serialDigits 不合法");
+    const res = await toolConfigFlows({ action: "set", flows: { contract: { pendingStates: ["in_review"], serialDigits: 3 } } }, ctx.env, true);
+    expect(res.content[0].text).toContain("✅");
+    const saved = (await getFlowsConfig(ctx.env)).contract;
+    expect(saved.pendingStates).toEqual(["in_review"]);
+    expect(saved.serialDigits).toBe(3);
   });
 });

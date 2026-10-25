@@ -120,6 +120,12 @@ export function toggleTodoList() {
   todoBar.expanded = !todoBar.expanded
 }
 
+/** 门户内处理完待办后调用：先清服务端 5 分钟缓存再重拉，计数立即刷新 */
+export async function refreshTodos() {
+  try { await fetch('/api/todos/invalidate', { method: 'POST' }) } catch { /* 缓存清理失败不阻塞重拉 */ }
+  await loadTodos()
+}
+
 export function hideTodoBar() {
   try { sessionStorage.setItem(TODO_BAR_HIDDEN_KEY, todoBarSig(todoBar.data)) } catch { /* ignore */ }
   todoBar.hidden = true

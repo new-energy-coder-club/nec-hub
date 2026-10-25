@@ -1,10 +1,12 @@
 /**
- * FE-01 角色解析测试：resolveUserRole 的 open_id / 姓名精确 / 姓名包含匹配与 external 降级。
+ * FE-01 角色解析测试：resolveUserRole 的 open_id / 姓名精确匹配与 external 降级。
+ * 姓名双向包含兜底已移除（误配风险）：显示名带前缀/后缀的用户须补录 open_id。
  * mock 风格沿用 dr-test-utils.ts：内存 KV + fetch 路由。
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BitableRecord } from "../feishu/bitable";
 import { resolveUserRole } from "../auth/role";
+import { KV_KEYS } from "../shared/kv-keys";
 
 const MEMBERS_TABLE = "tblMembers";
 
@@ -25,7 +27,7 @@ function makeCtx(): Ctx {
   const kv = new Map<string, string>();
   const members: BitableRecord[] = [];
   kv.set(
-    "dashboard:config",
+    KV_KEYS.dashboardConfig,
     JSON.stringify({ base: "appMockBase", tables: { members: MEMBERS_TABLE }, updatedAt: new Date().toISOString() }),
   );
   const fetchMock = vi.fn(async (input: unknown) => {
@@ -51,7 +53,7 @@ function makeCtx(): Ctx {
   const env = {
     REGISTRY: {
       get: vi.fn(async (key: string, type?: string) => {
-        if (key === "feishu:tenant_access_token") return { token: "mock-token", expireAt: Date.now() + 3600e3 };
+        if (key === KV_KEYS.feishuTenantAccessToken) return { token: "mock-token", expireAt: Date.now() + 3600e3 };
         const v = kv.get(key);
         if (v == null) return null;
         return type === "json" ? JSON.parse(v) : v;
@@ -86,14 +88,13 @@ describe("resolveUserRole", () => {
     expect(r.matched).toBe(true);
   });
 
-  it("飞书显示名带前缀时双向包含匹配", async () => {
+  it("飞书显示名带前缀且未录 open_id → external（包含匹配已移除，须补录 open_id）", async () => {
     const r = await resolveUserRole(ctx.env, { open_id: "ou-other-app", name: "DarrenPig 朱佩韦" });
-    expect(r.role).toBe("维护者");
-    expect(r.group).toBe("指导");
-    expect(r.matched).toBe(true);
+    expect(r.matched).toBe(false);
+    expect(r.role).toBe("external");
   });
 
-  it("包含匹配不作用于单字姓名，避免误配", async () => {
+  it("显示名包含名单姓名（大小写/顺序差异）同样不再命中", async () => {
     ctx.members.push(member("王", null));
     const r = await resolveUserRole(ctx.env, { open_id: "ou-x", name: "王大锤" });
     expect(r.matched).toBe(false);
