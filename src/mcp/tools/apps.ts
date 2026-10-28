@@ -22,6 +22,16 @@ export async function toolDeployApp(args: Record<string, unknown>, env: Env, req
   const files = (args.files ?? []) as Array<{ path?: string; text?: string; base64?: string }>;
   if (!Array.isArray(files) || files.length === 0) throw new Error("files 不能为空");
   if (files.length > 100) throw new Error("单次最多上传 100 个文件");
+  // 上传限额（fail-fast，在 R2 写入前拦截）：单文件 2MB，总量 10MB
+  const FILE_LIMIT = 2 * 1024 * 1024;
+  const TOTAL_LIMIT = 10 * 1024 * 1024;
+  let totalSize = 0;
+  for (const f of files) {
+    const size = typeof f.text === "string" ? f.text.length : typeof f.base64 === "string" ? Math.floor(f.base64.length * 3 / 4) : 0;
+    if (size > FILE_LIMIT) throw new Error(`单文件大小限制 ${FILE_LIMIT / 1024 / 1024}MB：${String(f.path ?? "")}`);
+    totalSize += size;
+  }
+  if (totalSize > TOTAL_LIMIT) throw new Error(`总大小超过限制 ${TOTAL_LIMIT / 1024 / 1024}MB（当前 ${(totalSize / 1024 / 1024).toFixed(1)}MB）`);
   if (!files.some((f) => f.path === "index.html")) {
     throw new Error("必须包含入口文件 index.html");
   }

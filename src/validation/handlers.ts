@@ -95,7 +95,13 @@ export async function toolValidateBitable(args: Record<string, unknown>, env: En
   return { content: [{ type: "text", text: formatValidateReportText(report) }] };
 }
 
-export async function toolConfigValidateRules(args: Record<string, unknown>, env: Env) {
+export async function toolConfigValidateRules(args: Record<string, unknown>, env: Env, hasMcpToken?: boolean) {
+  // fail-closed 闸门（mcp-admin-guard 口径）：显式传入 hasMcpToken=false 时拒绝；
+  // 省略该参数保持既有调用方行为不变（闸门在 handler 入口层）。
+  if (hasMcpToken === false) {
+    const { requireMcpToken } = await import("../mcp/guard");
+    requireMcpToken(false, "config_validate_rules");
+  }
   const action = String(args.action ?? "get");
   if (action === "get") {
     const custom = await env.REGISTRY.get(VALIDATE_RULES_KEY);
