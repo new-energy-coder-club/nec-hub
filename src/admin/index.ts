@@ -50,7 +50,7 @@ import { resolveSession, revokeUserSessions, type HubUser, type SessionData } fr
 const SESSION_LIST_LIMIT = 1000;
 
 /** 管理接口统一门控：返回会话或 401/403 响应；label 为各接口的拒绝文案主体 */
-async function requireAdmin(
+export async function requireAdmin(
   request: Request,
   env: Env,
   ctx: ExecutionContext | undefined,

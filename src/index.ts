@@ -32,6 +32,7 @@
  *   POST /api/auth/logout-all → 退出所有设备（删除当前用户全部会话 key + 清本机 Cookie）
  *   GET  /api/admin/overview  → 管理总览（队长/组长/管理员：租户接入状态、活跃会话数、成员名单聚合、模块配置状态）
  *   GET  /api/admin/sessions  → 会话清单（按 open_id 分组聚合）；POST /api/admin/sessions/revoke → 强制下线
+ *   POST /api/admin/announce  → 管理员一键发飞书群公告（title/content/link/flow/dry_run；LEADER 或 CONFIG_ADMIN）
  *   POST /api/admin/config/<dashboard|flows> → 模块配置 HTTP 写入口（复用 MCP 工具校验口径）
  *   /api/admin/cf/*（DNS 查/增/删、边缘缓存清除、URL 探测）与 /api/admin/accounts*（本地账号管理）
  *     → Cloudflare 运维后台数据源（CONFIG_ADMIN，含维护者；详见 admin/index.ts 与 public/apps/admin/）
@@ -109,6 +110,10 @@ export default {
       if (url.pathname === "/api/admin/sessions/revoke") {
         const ad = await import("./admin");
         return await ad.handleAdminRevokeSessions(request, env, ctx);
+      }
+      if (url.pathname === "/api/admin/announce") {
+        const { handleAdminAnnounce } = await import("./admin/announce");
+        return await handleAdminAnnounce(request, env, ctx);
       }
       if (url.pathname.startsWith("/api/admin/config/")) {
         const ad = await import("./admin");

@@ -63,6 +63,7 @@ export const KV_KEYS = {
   slaLastRun: "sla:lastRun",
   role: (openId: string) => `role:${openId}`,
   notifyFailed: "notify:failed",
+  announceLog: "announce:log",
   domainsIndex: "domains:index",
   domainRecord: (subdomain: string) => `${KV_PREFIXES.domainRecord}${subdomain}`,
   claSignature: (github: string) => `${KV_PREFIXES.claSignature}${github}`,
