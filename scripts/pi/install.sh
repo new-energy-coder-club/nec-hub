@@ -4,8 +4,8 @@
 # 可选环境变量：REPO_URL（覆盖仓库地址）· INSTALL_DIR（默认 ~/nec-hub）· PORT（默认 8787）
 set -euo pipefail
 
-REPO_URL="${REPO_URL:-https://github.com/new-energy-coder-club/nec-hub.git}"
-MIRROR_URL="https://gh-proxy.com/https://github.com/new-energy-coder-club/nec-hub.git"
+REPO_URL="${REPO_URL:-https://github.com/necc-hub/nec-hub.git}"
+MIRROR_URL="https://gh-proxy.com/https://github.com/necc-hub/nec-hub.git"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/nec-hub}"
 PORT="${PORT:-8787}"
 

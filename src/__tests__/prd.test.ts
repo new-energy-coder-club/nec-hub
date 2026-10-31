@@ -156,7 +156,7 @@ describe("update_prd（MCP 工具）", () => {
 describe("POST /api/hooks/github", () => {
   const payload = JSON.stringify({
     ref: "refs/heads/main",
-    repository: { full_name: "new-energy-coder-club/nec-hub", html_url: "https://github.com/x" },
+    repository: { full_name: "necc-hub/nec-hub", html_url: "https://github.com/x" },
     head_commit: { message: "feat: 测试提交\n\n详情", author: { name: "张三" }, url: "https://github.com/x/commit/1" },
   });
 
@@ -219,7 +219,7 @@ describe("POST /api/hooks/github", () => {
     for (let i = 1; i <= 3; i++) {
       const p = JSON.stringify({
         ref: "refs/heads/main",
-        repository: { full_name: "new-energy-coder-club/nec-hub" },
+        repository: { full_name: "necc-hub/nec-hub" },
         head_commit: { message: `commit ${i}`, author: { name: "张三" }, url: `https://github.com/x/commit/${i}` },
       });
       const res = await handleGithubPush(

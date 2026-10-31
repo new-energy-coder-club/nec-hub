@@ -15,7 +15,7 @@
 前置：Raspberry Pi OS / Ubuntu 64 位，能联网。仓库公开可匿名克隆，直连失败自动走 gh-proxy 镜像。
 
 ```bash
-git clone https://github.com/new-energy-coder-club/nec-hub.git ~/nec-hub
+git clone https://github.com/necc-hub/nec-hub.git ~/nec-hub
 cd ~/nec-hub && bash scripts/pi/install.sh
 ```
 

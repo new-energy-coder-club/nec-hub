@@ -257,7 +257,7 @@ async function loadTodoCards() {
 // 后端条目为 { repo, branch, message, author, url, at }（无 sha/id 字段，见 src/prd.ts），按 url 唯一去重；
 // 历史不同分支的同一条提交合并为「N 分支」徽章（title 列出分支名）；最多 4 条，保持接口时间倒序。
 const commits = ref<any[]>([])
-const COMMIT_FALLBACK_BASE = 'https://github.com/new-energy-coder-club/nec-hub/commit/'
+const COMMIT_FALLBACK_BASE = 'https://github.com/necc-hub/nec-hub/commit/'
 function fmtAt(v: any): string {
   const t = new Date(v)
   return isNaN(t.getTime()) ? '' : t.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })

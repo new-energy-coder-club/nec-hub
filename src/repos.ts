@@ -27,7 +27,7 @@ interface RepoEntry {
 }
 
 /** NEC 开源仓库的 GitHub 组织名（/api/repos 数据源之一） */
-const GITHUB_ORG = "new-energy-coder-club";
+const GITHUB_ORG = "necc-hub";
 
 /** NEC 开源仓库的 Gitee 默认账号（组织无 Gitee 版，用队长账号兜底；可用 wrangler vars GITEE_USER 覆盖） */
 const GITEE_USER_DEFAULT = "darrenpig";

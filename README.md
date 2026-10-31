@@ -4,7 +4,7 @@
 
 - 生产门户：<https://hub.newenergycoder.club>
 - MCP 端点（Agent 接入）：`https://hub.newenergycoder.club/mcp`（streamable HTTP / JSON-RPC，写操作需 `Authorization: Bearer <MCP_TOKEN>`）；token 生成 `npm run mcp:token` + `wrangler secret put MCP_TOKEN`，桌面 IDE 一键接入 `npm run mcp:setup`，详见 [`docs/IDE接入指南.md`](docs/IDE接入指南.md)
-- 源码：GitHub [new-energy-coder-club/nec-hub](https://github.com/new-energy-coder-club/nec-hub) · Gitee 镜像 [darrenpig/nec-hub](https://gitee.com/darrenpig/nec-hub)
+- 源码：GitHub [necc-hub/nec-hub](https://github.com/necc-hub/nec-hub) · Gitee 镜像 [darrenpig/nec-hub](https://gitee.com/darrenpig/nec-hub)
 
 ## 线上内容（截至 2026-10-16）
 
@@ -82,7 +82,7 @@ src/
 - **域名分发系统**：`/api/domains/*` 成员自助申请 `<subdomain>.newenergycoder.club` 三级域名（CNAME/A/AAAA，Cloudflare API 落 DNS，未配凭证时 pending + retry 补同步），申请/释放推群公示；泛域名应用直达 `<app>.<zone>` → R2 `apps/<app>/`（`deploy_app` 零配置获得独立域名）。
 - **CLA 签署**：`/api/cla*` 开源社区贡献协议——元信息 + 公开签署名单（脱敏）、签署状态查询、按 GitHub 用户名幂等签署（登录会话自动绑定 open_id）。
 - **资料页**：品牌规范 / 文档模板 / 制度 SOP / 培训材料的登记与展示（`GET /api/docs` + `publish_doc` 工具）。
-- **开源仓库**：`/api/repos` 合并 GitHub org `new-energy-coder-club` 与 Gitee `darrenpig`，含 Star/Fork/Commit，KV 1 小时缓存（可选 `GITHUB_TOKEN` / `GITEE_TOKEN` 提额）。
+- **开源仓库**：`/api/repos` 合并 GitHub org `necc-hub` 与 Gitee `darrenpig`，含 Star/Fork/Commit，KV 1 小时缓存（可选 `GITHUB_TOKEN` / `GITEE_TOKEN` 提额）。
 
 ## 审批通知与 webhook 配置（两步待办）
 
@@ -94,7 +94,7 @@ FE-05 校验周报与图纸评审告警走另一变量 `FEISHU_WEBHOOK_URL`（�
 ## 相关仓库与文档
 
 - Skill 源仓库（Gitee）：<https://gitee.com/darrenpig/new_energy_coder_club>（`SKill` 分支，`skills/*/SKILL.md`）
-- 开源组织（GitHub）：<https://github.com/new-energy-coder-club>
+- 开源组织（GitHub）：<https://github.com/necc-hub>
 - 需求与规划：[`docs/团队AI中台PRD_V2.1.md`](docs/团队AI中台PRD_V2.1.md) · [`docs/团队AI中台搭建方案_V1.0.md`](docs/团队AI中台搭建方案_V1.0.md)
 - 图纸评审：[`docs/新增机图纸评审流程_PRD.md`](docs/新增机图纸评审流程_PRD.md) · [`docs/新增机图纸评审流程_设计文档.md`](docs/新增机图纸评审流程_设计文档.md) · [`docs/新增机图纸评审流程_方案C混合架构设计.md`](docs/新增机图纸评审流程_方案C混合架构设计.md) · [`docs/图纸评审流程对比分析.md`](docs/图纸评审流程对比分析.md)
 - 联想功能文档体系：[`docs/文档目录索引.md`](docs/文档目录索引.md)（README/快速开始/架构/API 参考/部署/运维/FAQ/用户手册共 13 篇，`node scripts/validate-docs.js` 质检）
@@ -134,7 +134,7 @@ printf 'MCP_TOKEN=%s\n' "$(cat .mcp-token)" > .dev.vars             # Worker 侧
 |---|---|---|---|
 | 用户级 | `~/.kimi-code/mcp.json` 加 `nec-hub` 条目（headers 带生产 token） | 生产 `https://hub.newenergycoder.club/mcp` | 日常使用，**所有项目**可用，无需本地起服务 |
 | 项目级 | 本仓库 `.kimi-code/mcp.json`（gitignored） | 本地 `http://localhost:8787/mcp` | 开发中台本身；**同名条目自动覆盖用户级**，进本仓库即走本地 |
-| 插件级 | 本仓库 `.kimi-plugin/plugin.json`（随仓库分发） | 生产（token 走环境变量 `NEC_HUB_MCP_TOKEN`，不落文件） | 团队成员一键安装：`/plugins install https://github.com/new-energy-coder-club/nec-hub` |
+| 插件级 | 本仓库 `.kimi-plugin/plugin.json`（随仓库分发） | 生产（token 走环境变量 `NEC_HUB_MCP_TOKEN`，不落文件） | 团队成员一键安装：`/plugins install https://github.com/necc-hub/nec-hub` |
 | Pi 常驻 | `scripts/pi/`（install.sh + systemd，仓库分发） | 局域网树莓派 `http://<pi-ip>:8787/mcp` | 团队共享 staging：调试/联调走 Pi（Miniflare 模拟，与生产隔离），**不耗 CF 配额**；队员配 `nec-hub-dev` 条目与生产并存，详见 [`scripts/pi/README.md`](scripts/pi/README.md) |
 
 三条规则让体验「充分绑定」：① 用户级与项目级同名 `nec-hub`，Kimi Code 按项目级优先自动切换本地/生产，无需手工改配置；② `config.toml` 加 `[[permission.rules]]`（`decision = "allow"`, `pattern = "mcp__nec-hub__*"`）免逐次批准；③ 改动后 `/reload` 或新会话生效，`/mcp` 可查连接状态。

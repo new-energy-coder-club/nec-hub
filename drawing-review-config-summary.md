@@ -34,7 +34,7 @@
 
 ### 1. 启动服务
 ```bash
-cd /Users/darrenpig/GitHub/new-energy-coder-club/nec-hub
+cd /Users/darrenpig/GitHub/necc-hub/nec-hub
 npx wrangler dev --port 8799
 ```
 

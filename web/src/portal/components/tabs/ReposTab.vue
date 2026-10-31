@@ -63,7 +63,7 @@ const hostBtns = [
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-bold">NEC 开源仓库</h2>
       <div class="text-sm">
- <a href="https://github.com/new-energy-coder-club" target="_blank" class="hover:underline text-nec-cyan">GitHub org →</a>
+ <a href="https://github.com/necc-hub" target="_blank" class="hover:underline text-nec-cyan">GitHub org →</a>
         <span class="text-gray-300 mx-1">·</span>
  <a href="https://gitee.com/darrenpig" target="_blank" class="hover:underline text-nec-cyan">Gitee →</a>
       </div>
